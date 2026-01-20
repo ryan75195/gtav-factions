@@ -28,6 +28,11 @@ namespace FactionWars.Combat.Models
         /// <summary>
         /// The zone specified in the encounter was not found.
         /// </summary>
-        ZoneNotFound
+        ZoneNotFound,
+
+        /// <summary>
+        /// Zone was cleared and is now neutral (needs to be claimed).
+        /// </summary>
+        ZoneNeutralized
     }
 }

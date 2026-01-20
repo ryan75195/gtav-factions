@@ -44,10 +44,11 @@ namespace FactionWars.Combat.Services
 
         private CombatProcessingResult ProcessAttackerVictory(CombatEncounter encounter)
         {
-            // Transfer ownership to the attacker
+            // NEW: Victory makes zone neutral, not captured
+            // Player must then claim it by paying for a troop
             var transferSuccess = _zoneService.TransferZoneOwnership(
                 encounter.ZoneId,
-                encounter.AttackingFactionId);
+                null);  // null = neutral
 
             if (!transferSuccess)
             {
@@ -56,16 +57,16 @@ namespace FactionWars.Combat.Services
                     encounter.ZoneId);
             }
 
-            // Set control to 100% for the new owner
-            _zoneService.UpdateZoneControl(encounter.ZoneId, 100f);
+            // Set control to 0% (neutral)
+            _zoneService.UpdateZoneControl(encounter.ZoneId, 0f);
 
             // Clear contested state
             _zoneService.SetZoneContested(encounter.ZoneId, false);
 
             return CombatProcessingResult.Success(
-                CombatResultOutcome.ZoneCaptured,
+                CombatResultOutcome.ZoneNeutralized,  // New outcome type
                 encounter.ZoneId,
-                encounter.AttackingFactionId,
+                null,  // No new owner yet
                 encounter.DefendingFactionId);
         }
 
