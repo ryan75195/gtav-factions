@@ -43,6 +43,7 @@ namespace FactionWars.ScriptHookV
         private CombatManager? _combatManager;
         private AIManager? _aiManager;
         private BackgroundBattleSimulator? _backgroundBattleSimulator;
+        private AIDecisionExecutor? _aiDecisionExecutor;
         private VictoryManager? _victoryManager;
         private IAutoSaveService? _autoSaveService;
         private MainMenuController? _mainMenuController;
@@ -499,6 +500,9 @@ namespace FactionWars.ScriptHookV
             _backgroundBattleSimulator = _container.Resolve<BackgroundBattleSimulator>();
             _aiManager.OnAIDecision += _backgroundBattleSimulator.HandleAIDecision;
 
+            // Initialize AI decision executor
+            _aiDecisionExecutor = _container.Resolve<AIDecisionExecutor>();
+
             // Initialize victory manager for victory condition checking
             var victoryConditionService = _container.Resolve<IVictoryConditionService>();
             var notificationService = _container.Resolve<INotificationService>();
@@ -690,6 +694,7 @@ namespace FactionWars.ScriptHookV
                 _aiManager.OnAIDecision -= _backgroundBattleSimulator.HandleAIDecision;
             }
             _backgroundBattleSimulator = null;
+            _aiDecisionExecutor = null;
 
             if (_aiManager != null)
             {
@@ -973,17 +978,12 @@ namespace FactionWars.ScriptHookV
 
         /// <summary>
         /// Handles AI faction decisions.
-        /// Processes attack decisions to simulate AI territorial battles.
+        /// Routes through the decision executor for budget enforcement.
         /// </summary>
         private void HandleAIDecision(object? sender, AIDecisionEventArgs e)
         {
-            if (e.Decision.DecisionType == AIDecisionType.Attack && e.Decision.TargetZoneId != null)
-            {
-                // AI faction is attacking a zone
-                // This could trigger background battles or update zone ownership based on troop counts
-                // For now, we log the decision for debugging purposes
-                // Future enhancement: simulate AI battles and update zone ownership
-            }
+            // Route through decision executor for budget enforcement
+            _aiDecisionExecutor?.ProcessDecisionCycle(e.FactionId, e.Decision);
         }
 
         /// <summary>
