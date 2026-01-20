@@ -28,6 +28,7 @@ using FactionWars.Territory.Services;
 using FactionWars.UI.Interfaces;
 using FactionWars.UI.Models;
 using FactionWars.UI.Services;
+using Moq;
 using Xunit;
 
 namespace FactionWars.Tests.Integration.EndToEnd
@@ -774,6 +775,7 @@ namespace FactionWars.Tests.Integration.EndToEnd
             var waveSpawnerService = new WaveSpawnerService();
             var followerService = new FollowerService();
 
+            var aggressionResponseServiceMock = new Mock<IAggressionResponseService>();
             var combatManager = new CombatManager(
                 gameBridge,
                 pedPool,
@@ -783,7 +785,8 @@ namespace FactionWars.Tests.Integration.EndToEnd
                 takeoverDetector,
                 combatResultHandler,
                 waveSpawnerService,
-                followerService);
+                followerService,
+                aggressionResponseServiceMock.Object);
 
             // Track events
             bool zoneEnteredRaised = false;
@@ -926,10 +929,11 @@ namespace FactionWars.Tests.Integration.EndToEnd
             var waveSpawnerService = new WaveSpawnerService();
             var followerService = new FollowerService();
 
+            var aggressionResponseServiceMock = new Mock<IAggressionResponseService>();
             var combatManager = new CombatManager(
                 gameBridge, pedPool, pedSpawningService, spawnPositionCalculator,
                 controlCalculator, takeoverDetector, combatResultHandler, waveSpawnerService,
-                followerService);
+                followerService, aggressionResponseServiceMock.Object);
 
             // Start combat
             var encounter = combatManager.StartCombat(enemyZone, MichaelFactionId);
@@ -1015,10 +1019,11 @@ namespace FactionWars.Tests.Integration.EndToEnd
             var waveSpawnerService = new WaveSpawnerService();
             var followerService = new FollowerService();
 
+            var aggressionResponseServiceMock = new Mock<IAggressionResponseService>();
             var combatManager = new CombatManager(
                 gameBridge, pedPool, pedSpawningService, spawnPositionCalculator,
                 controlCalculator, takeoverDetector, combatResultHandler, waveSpawnerService,
-                followerService);
+                followerService, aggressionResponseServiceMock.Object);
 
             // Act: Capture zone 1
             combatManager.StartCombat(zone1, MichaelFactionId);
@@ -1083,6 +1088,7 @@ namespace FactionWars.Tests.Integration.EndToEnd
             var waveSpawnerService = new WaveSpawnerService();
             var followerService = new FollowerService();
 
+            var aggressionResponseServiceMock = new Mock<IAggressionResponseService>();
             var combatManager = new CombatManager(
                 gameBridge,
                 pedPool,
@@ -1092,7 +1098,8 @@ namespace FactionWars.Tests.Integration.EndToEnd
                 takeoverDetector,
                 combatResultHandler,
                 waveSpawnerService,
-                followerService);
+                followerService,
+                aggressionResponseServiceMock.Object);
 
             // Track combat events
             bool combatEndedRaised = false;
@@ -1195,10 +1202,11 @@ namespace FactionWars.Tests.Integration.EndToEnd
             var waveSpawnerService = new WaveSpawnerService();
             var followerService = new FollowerService();
 
+            var aggressionResponseServiceMock = new Mock<IAggressionResponseService>();
             var combatManager = new CombatManager(
                 gameBridge, pedPool, pedSpawningService, spawnPositionCalculator,
                 controlCalculator, takeoverDetector, combatResultHandler, waveSpawnerService,
-                followerService);
+                followerService, aggressionResponseServiceMock.Object);
 
             CombatEncounter? endedEncounter = null;
             combatManager.CombatEnded += (sender, encounter) => endedEncounter = encounter;
@@ -1258,10 +1266,11 @@ namespace FactionWars.Tests.Integration.EndToEnd
             var waveSpawnerService = new WaveSpawnerService();
             var followerService = new FollowerService();
 
+            var aggressionResponseServiceMock = new Mock<IAggressionResponseService>();
             var combatManager = new CombatManager(
                 gameBridge, pedPool, pedSpawningService, spawnPositionCalculator,
                 controlCalculator, takeoverDetector, combatResultHandler, waveSpawnerService,
-                followerService);
+                followerService, aggressionResponseServiceMock.Object);
 
             CombatEncounter? endedEncounter = null;
             combatManager.CombatEnded += (sender, encounter) => endedEncounter = encounter;

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using FactionWars.AI.Interfaces;
 using FactionWars.Combat.Interfaces;
 using FactionWars.Combat.Models;
 using FactionWars.Core.Interfaces;
@@ -26,6 +27,7 @@ namespace FactionWars.ScriptHookV.Managers
         private readonly ICombatResultHandler _combatResultHandler;
         private readonly IWaveSpawnerService _waveSpawnerService;
         private readonly IFollowerService _followerService;
+        private readonly IAggressionResponseService _aggressionResponseService;
 
         private CombatEncounter? _currentEncounter;
         private WaveState? _currentWaveState;
@@ -68,6 +70,7 @@ namespace FactionWars.ScriptHookV.Managers
         /// <param name="combatResultHandler">Handler for processing combat results.</param>
         /// <param name="waveSpawnerService">Service for wave-based defender spawning.</param>
         /// <param name="followerService">Service for tracking followers who count as attackers.</param>
+        /// <param name="aggressionResponseService">Service for recording player aggression for AI retaliation.</param>
         /// <exception cref="ArgumentNullException">Thrown if any parameter is null.</exception>
         public CombatManager(
             IGameBridge gameBridge,
@@ -78,7 +81,8 @@ namespace FactionWars.ScriptHookV.Managers
             ITakeoverDetector takeoverDetector,
             ICombatResultHandler combatResultHandler,
             IWaveSpawnerService waveSpawnerService,
-            IFollowerService followerService)
+            IFollowerService followerService,
+            IAggressionResponseService aggressionResponseService)
         {
             _gameBridge = gameBridge ?? throw new ArgumentNullException(nameof(gameBridge));
             _pedPool = pedPool ?? throw new ArgumentNullException(nameof(pedPool));
@@ -89,6 +93,7 @@ namespace FactionWars.ScriptHookV.Managers
             _combatResultHandler = combatResultHandler ?? throw new ArgumentNullException(nameof(combatResultHandler));
             _waveSpawnerService = waveSpawnerService ?? throw new ArgumentNullException(nameof(waveSpawnerService));
             _followerService = followerService ?? throw new ArgumentNullException(nameof(followerService));
+            _aggressionResponseService = aggressionResponseService ?? throw new ArgumentNullException(nameof(aggressionResponseService));
         }
 
         /// <summary>
@@ -133,6 +138,14 @@ namespace FactionWars.ScriptHookV.Managers
                 zone.OwnerFactionId);
 
             FileLogger.Combat($"CombatManager.StartCombat: Created encounter {encounterId}, attacker={attackingFactionId}, defender={zone.OwnerFactionId}");
+
+            // Record player aggression for AI retaliation tracking
+            _aggressionResponseService.RecordAggression(
+                attackingFactionId,
+                zone.Id,
+                damage: 1);  // Base damage value
+
+            FileLogger.Combat($"CombatManager.StartCombat: Recorded aggression for attacker={attackingFactionId} against zone={zone.Id}");
 
             // Raise event
             CombatStarted?.Invoke(this, _currentEncounter);

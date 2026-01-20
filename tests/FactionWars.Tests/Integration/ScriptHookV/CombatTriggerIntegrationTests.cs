@@ -1,4 +1,5 @@
 using System.Linq;
+using FactionWars.AI.Interfaces;
 using FactionWars.Combat.Interfaces;
 using FactionWars.Combat.Pools;
 using FactionWars.Combat.Services;
@@ -12,6 +13,7 @@ using FactionWars.Territory.Interfaces;
 using FactionWars.Territory.Models;
 using FactionWars.Territory.Repositories;
 using FactionWars.Territory.Services;
+using Moq;
 using Xunit;
 
 namespace FactionWars.Tests.Integration.ScriptHookV
@@ -55,6 +57,7 @@ namespace FactionWars.Tests.Integration.ScriptHookV
             var combatResultHandler = new CombatResultHandler(_zoneService);
             var followerService = new FollowerService();
 
+            var aggressionResponseServiceMock = new Mock<IAggressionResponseService>();
             _combatManager = new CombatManager(
                 _gameBridge,
                 _pedPool,
@@ -64,7 +67,8 @@ namespace FactionWars.Tests.Integration.ScriptHookV
                 takeoverDetector,
                 combatResultHandler,
                 waveSpawnerService,
-                followerService);
+                followerService,
+                aggressionResponseServiceMock.Object);
 
             _combatTriggerCoordinator = new CombatTriggerCoordinator(
                 _territoryManager,

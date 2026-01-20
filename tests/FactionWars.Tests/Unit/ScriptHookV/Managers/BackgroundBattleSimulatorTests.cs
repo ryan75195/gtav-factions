@@ -8,6 +8,7 @@ using FactionWars.Factions.Models;
 using FactionWars.ScriptHookV.Managers;
 using FactionWars.Territory.Interfaces;
 using FactionWars.Territory.Models;
+using FactionWars.UI.Interfaces;
 using Moq;
 using Xunit;
 
@@ -23,6 +24,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         private readonly Mock<IFactionService> _factionServiceMock;
         private readonly Mock<IZoneService> _zoneServiceMock;
         private readonly Mock<IZoneDefenderAllocationService> _allocationServiceMock;
+        private readonly Mock<IEventAlertService> _eventAlertServiceMock;
+        private readonly Mock<IEventFeedService> _eventFeedServiceMock;
         private readonly BackgroundBattleSimulator _simulator;
 
         public BackgroundBattleSimulatorTests()
@@ -31,12 +34,16 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             _factionServiceMock = new Mock<IFactionService>();
             _zoneServiceMock = new Mock<IZoneService>();
             _allocationServiceMock = new Mock<IZoneDefenderAllocationService>();
+            _eventAlertServiceMock = new Mock<IEventAlertService>();
+            _eventFeedServiceMock = new Mock<IEventFeedService>();
 
             _simulator = new BackgroundBattleSimulator(
                 _battleSimulationServiceMock.Object,
                 _factionServiceMock.Object,
                 _zoneServiceMock.Object,
-                _allocationServiceMock.Object);
+                _allocationServiceMock.Object,
+                _eventAlertServiceMock.Object,
+                _eventFeedServiceMock.Object);
         }
 
         #region Constructor Tests
@@ -48,7 +55,9 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
                 null!,
                 _factionServiceMock.Object,
                 _zoneServiceMock.Object,
-                _allocationServiceMock.Object));
+                _allocationServiceMock.Object,
+                _eventAlertServiceMock.Object,
+                _eventFeedServiceMock.Object));
         }
 
         [Fact]
@@ -58,7 +67,9 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
                 _battleSimulationServiceMock.Object,
                 null!,
                 _zoneServiceMock.Object,
-                _allocationServiceMock.Object));
+                _allocationServiceMock.Object,
+                _eventAlertServiceMock.Object,
+                _eventFeedServiceMock.Object));
         }
 
         [Fact]
@@ -68,7 +79,9 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
                 _battleSimulationServiceMock.Object,
                 _factionServiceMock.Object,
                 null!,
-                _allocationServiceMock.Object));
+                _allocationServiceMock.Object,
+                _eventAlertServiceMock.Object,
+                _eventFeedServiceMock.Object));
         }
 
         [Fact]
@@ -78,7 +91,9 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
                 _battleSimulationServiceMock.Object,
                 _factionServiceMock.Object,
                 _zoneServiceMock.Object,
-                null!));
+                null!,
+                _eventAlertServiceMock.Object,
+                _eventFeedServiceMock.Object));
         }
 
         [Fact]
@@ -88,7 +103,9 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
                 _battleSimulationServiceMock.Object,
                 _factionServiceMock.Object,
                 _zoneServiceMock.Object,
-                _allocationServiceMock.Object);
+                _allocationServiceMock.Object,
+                _eventAlertServiceMock.Object,
+                _eventFeedServiceMock.Object);
 
             Assert.NotNull(simulator);
         }

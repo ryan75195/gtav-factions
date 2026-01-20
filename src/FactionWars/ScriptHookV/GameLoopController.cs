@@ -454,6 +454,7 @@ namespace FactionWars.ScriptHookV
             var takeoverDetector = _container.Resolve<ITakeoverDetector>();
             var combatResultHandler = _container.Resolve<ICombatResultHandler>();
             var waveSpawnerService = _container.Resolve<IWaveSpawnerService>();
+            var aggressionResponseService = _container.Resolve<IAggressionResponseService>();
             // followerService already resolved above for FollowerManager
             _combatManager = new CombatManager(
                 _gameBridge,
@@ -464,7 +465,8 @@ namespace FactionWars.ScriptHookV
                 takeoverDetector,
                 combatResultHandler,
                 waveSpawnerService,
-                followerService);
+                followerService,
+                aggressionResponseService);
 
             // Subscribe to combat ended event to show claim prompt after victory
             _combatManager.CombatEnded += OnCombatEnded;

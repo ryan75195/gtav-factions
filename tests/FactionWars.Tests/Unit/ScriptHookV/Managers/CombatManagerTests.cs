@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using FactionWars.AI.Interfaces;
 using FactionWars.Combat.Interfaces;
 using FactionWars.Combat.Models;
 using FactionWars.Combat.Services;
@@ -22,6 +23,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         private readonly Mock<ICombatResultHandler> _combatResultHandlerMock;
         private readonly IWaveSpawnerService _waveSpawnerService;
         private readonly Mock<IFollowerService> _followerServiceMock;
+        private readonly Mock<IAggressionResponseService> _aggressionResponseServiceMock;
         private readonly CombatManager _manager;
 
         public CombatManagerTests()
@@ -36,6 +38,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             _waveSpawnerService = new WaveSpawnerService();
             _followerServiceMock = new Mock<IFollowerService>();
             _followerServiceMock.Setup(f => f.GetFollowerCount(It.IsAny<string>())).Returns(0);
+            _aggressionResponseServiceMock = new Mock<IAggressionResponseService>();
             _manager = new CombatManager(
                 _gameBridgeMock.Object,
                 _pedPoolMock.Object,
@@ -45,7 +48,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
                 _takeoverDetectorMock.Object,
                 _combatResultHandlerMock.Object,
                 _waveSpawnerService,
-                _followerServiceMock.Object);
+                _followerServiceMock.Object,
+                _aggressionResponseServiceMock.Object);
         }
 
         [Fact]
@@ -151,6 +155,22 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
 
             // Assert
             Assert.Same(encounter, raisedEncounter);
+        }
+
+        [Fact]
+        public void StartCombat_ShouldRecordAggressionForAIRetaliation()
+        {
+            // Arrange
+            var zone = new Zone("zone1", "Downtown", new Vector3(100f, 200f, 30f), 100f, 10);
+            zone.OwnerFactionId = "defender";
+
+            // Act
+            _manager.StartCombat(zone, "attacker");
+
+            // Assert - verify aggression was recorded
+            _aggressionResponseServiceMock.Verify(
+                a => a.RecordAggression("attacker", "zone1", 1),
+                Times.Once);
         }
 
         [Fact]

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using FactionWars.AI.Interfaces;
 using FactionWars.Combat.Interfaces;
 using FactionWars.Combat.Models;
 using FactionWars.Combat.Pools;
@@ -13,6 +14,7 @@ using FactionWars.Territory.Interfaces;
 using FactionWars.Territory.Models;
 using FactionWars.Territory.Repositories;
 using FactionWars.Territory.Services;
+using Moq;
 using Xunit;
 
 namespace FactionWars.Tests.Integration.Combat
@@ -71,6 +73,7 @@ namespace FactionWars.Tests.Integration.Combat
             _combatResultHandler = new CombatResultHandler(_zoneService);
 
             // Create CombatManager
+            var aggressionResponseServiceMock = new Mock<IAggressionResponseService>();
             _combatManager = new CombatManager(
                 _gameBridge,
                 _pedPool,
@@ -80,7 +83,8 @@ namespace FactionWars.Tests.Integration.Combat
                 _takeoverDetector,
                 _combatResultHandler,
                 _waveSpawnerService,
-                _followerService);
+                _followerService,
+                aggressionResponseServiceMock.Object);
         }
 
         #region Combat Start/End Flow Tests
