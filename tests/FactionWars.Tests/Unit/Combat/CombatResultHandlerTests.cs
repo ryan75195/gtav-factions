@@ -93,28 +93,30 @@ namespace FactionWars.Tests.Unit.Combat
         #region ProcessCombatResult - Attacker Victory
 
         [Fact]
-        public void ProcessCombatResult_AttackerVictory_TransfersZoneOwnership()
+        public void ProcessCombatResult_AttackerVictory_MakesZoneNeutral()
         {
             var encounter = CreateEncounter();
             encounter.End(CombatStatus.AttackerVictory);
 
             _handler.ProcessCombatResult(encounter);
 
+            // Zone should be transferred to null (neutral) not to attacker
             _mockZoneService.Verify(
-                s => s.TransferZoneOwnership("zone-1", "faction-A"),
+                s => s.TransferZoneOwnership("zone-1", null),
                 Times.Once);
         }
 
         [Fact]
-        public void ProcessCombatResult_AttackerVictory_SetsControlTo100Percent()
+        public void ProcessCombatResult_AttackerVictory_SetsControlToZeroPercent()
         {
             var encounter = CreateEncounter();
             encounter.End(CombatStatus.AttackerVictory);
 
             _handler.ProcessCombatResult(encounter);
 
+            // Neutral zones have 0% control
             _mockZoneService.Verify(
-                s => s.UpdateZoneControl("zone-1", 100f),
+                s => s.UpdateZoneControl("zone-1", 0f),
                 Times.Once);
         }
 
@@ -132,7 +134,7 @@ namespace FactionWars.Tests.Unit.Combat
         }
 
         [Fact]
-        public void ProcessCombatResult_AttackerVictory_ReturnsSuccessResult()
+        public void ProcessCombatResult_AttackerVictory_ReturnsZoneNeutralizedResult()
         {
             var encounter = CreateEncounter();
             encounter.End(CombatStatus.AttackerVictory);
@@ -140,20 +142,22 @@ namespace FactionWars.Tests.Unit.Combat
             var result = _handler.ProcessCombatResult(encounter);
 
             Assert.True(result.IsSuccess);
-            Assert.Equal(CombatResultOutcome.ZoneCaptured, result.Outcome);
-            Assert.Equal("faction-A", result.NewOwnerFactionId);
+            Assert.Equal(CombatResultOutcome.ZoneNeutralized, result.Outcome);
+            Assert.Null(result.NewOwnerFactionId);  // No new owner - zone is neutral
             Assert.Equal("zone-1", result.ZoneId);
         }
 
         [Fact]
-        public void ProcessCombatResult_AttackerVictory_ReturnsNewOwnerAsPreviousDefender()
+        public void ProcessCombatResult_AttackerVictory_RecordsPreviousOwner()
         {
             var encounter = CreateEncounter(attackerId: "michael", defenderId: "trevor");
             encounter.End(CombatStatus.AttackerVictory);
 
             var result = _handler.ProcessCombatResult(encounter);
 
-            Assert.Equal("michael", result.NewOwnerFactionId);
+            // Zone is now neutral - no new owner
+            Assert.Null(result.NewOwnerFactionId);
+            // Previous owner (defender) is recorded for reference
             Assert.Equal("trevor", result.PreviousOwnerFactionId);
         }
 
