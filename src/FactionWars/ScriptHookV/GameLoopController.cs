@@ -53,6 +53,8 @@ namespace FactionWars.ScriptHookV
         private SettingsMenuController? _settingsMenuController;
         private CombatHudRenderer? _combatHudRenderer;
         private TerritoryIndicatorRenderer? _territoryIndicatorRenderer;
+        private EventFeedRenderer? _eventFeedRenderer;
+        private IEventFeedService? _eventFeedService;
         private IZoneService? _zoneService;
         private DateTime _lastTickTime;
         private bool _isInitialized;
@@ -392,6 +394,13 @@ namespace FactionWars.ScriptHookV
 
                 _combatHudRenderer.Draw();
             }
+
+            // Render event feed
+            if (_eventFeedRenderer != null && _eventFeedService != null)
+            {
+                _eventFeedRenderer.Render(_eventFeedService.Entries);
+                _eventFeedRenderer.Draw();
+            }
         }
 
         /// <summary>
@@ -480,6 +489,10 @@ namespace FactionWars.ScriptHookV
             // Initialize HUD renderers for combat and territory display
             _combatHudRenderer = new CombatHudRenderer();
             _territoryIndicatorRenderer = new TerritoryIndicatorRenderer();
+
+            // Event feed renderer for displaying world events
+            _eventFeedRenderer = new EventFeedRenderer(_container.Resolve<IFactionRepository>());
+            _eventFeedService = _container.Resolve<IEventFeedService>();
 
             // Wire territory events to combat manager
             _territoryManager.ZoneEntered += OnZoneEntered;
@@ -672,6 +685,10 @@ namespace FactionWars.ScriptHookV
 
             // Clean up follower manager
             _followerManager = null;
+
+            // Clean up event feed renderer and service
+            _eventFeedRenderer = null;
+            _eventFeedService = null;
         }
 
         /// <summary>
