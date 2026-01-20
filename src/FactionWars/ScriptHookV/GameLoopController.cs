@@ -65,6 +65,11 @@ namespace FactionWars.ScriptHookV
         private int _debugLogCounter;
         private bool _wasInCombat;
 
+        // Threat decay tracking
+        private float _threatDecayTimer = 0f;
+        private const float ThreatDecayInterval = 60f;  // Decay every 60 seconds
+        private const float ThreatDecayRate = 0.1f;     // 10% decay per interval
+
         // Neutral zone claim state
         private Zone? _currentNeutralZone;
         private bool _showingClaimPrompt;
@@ -298,6 +303,15 @@ namespace FactionWars.ScriptHookV
 
             // Update AI manager (makes decisions for non-player factions)
             _aiManager?.Update(deltaTime);
+
+            // Decay AI threat levels over time
+            _threatDecayTimer += deltaTime;
+            if (_threatDecayTimer >= ThreatDecayInterval)
+            {
+                _threatDecayTimer = 0f;
+                var aggressionService = _container.Resolve<IAggressionResponseService>();
+                aggressionService.DecayThreatLevels(ThreatDecayRate);
+            }
 
             // Update victory manager (checks for 100% control)
             _victoryManager?.Update(deltaTime);
