@@ -1,5 +1,6 @@
 using System;
 using FactionWars.Core.Interfaces;
+using FactionWars.ScriptHookV.Logging;
 using FactionWars.Territory.Interfaces;
 using FactionWars.Territory.Models;
 
@@ -31,6 +32,11 @@ namespace FactionWars.ScriptHookV.Managers
         public event EventHandler<Zone>? ZoneExited;
 
         /// <summary>
+        /// Raised when the player enters a neutral zone (a zone with no owner).
+        /// </summary>
+        public event EventHandler<Zone>? NeutralZoneEntered;
+
+        /// <summary>
         /// Creates a new TerritoryManager.
         /// </summary>
         /// <param name="gameBridge">The game bridge for getting player position.</param>
@@ -54,9 +60,13 @@ namespace FactionWars.ScriptHookV.Managers
             // Check if zone changed
             if (!ZonesAreEqual(_currentZone, newZone))
             {
+                FileLogger.Zone($"Zone change detected: {_currentZone?.Name ?? "NULL"} -> {newZone?.Name ?? "NULL"}");
+                FileLogger.Zone($"Player position: ({playerPosition.X:F1}, {playerPosition.Y:F1}, {playerPosition.Z:F1})");
+
                 // Raise exit event for old zone
                 if (_currentZone != null)
                 {
+                    FileLogger.Zone($"Raising ZoneExited event for {_currentZone.Name}");
                     ZoneExited?.Invoke(this, _currentZone);
                 }
 
@@ -66,7 +76,19 @@ namespace FactionWars.ScriptHookV.Managers
                 // Raise enter event for new zone
                 if (_currentZone != null)
                 {
+                    FileLogger.Zone($"Raising ZoneEntered event for {_currentZone.Name}");
                     ZoneEntered?.Invoke(this, _currentZone);
+
+                    // Check if this is a neutral zone (no owner)
+                    if (_currentZone.OwnerFactionId == null)
+                    {
+                        FileLogger.Zone($"Raising NeutralZoneEntered event for {_currentZone.Name}");
+                        NeutralZoneEntered?.Invoke(this, _currentZone);
+                    }
+                }
+                else
+                {
+                    FileLogger.Zone("Player is not in any defined zone");
                 }
             }
         }
