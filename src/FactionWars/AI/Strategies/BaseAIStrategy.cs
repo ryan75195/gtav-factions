@@ -326,6 +326,65 @@ namespace FactionWars.AI.Strategies
             return Math.Max(MinimumAttackTroops, Math.Min(troops, available));
         }
 
+        /// <summary>
+        /// Calculates a weighted score for a target zone based on defense and ownership.
+        /// Used for probability-weighted target selection.
+        /// </summary>
+        protected static float CalculateTargetScore(Zone zone, IDictionary<string, int> defenderCounts)
+        {
+            // Base score from strategic value
+            float score = zone.StrategicValue;
+
+            // Defense multiplier based on defender count
+            int defenders = defenderCounts.TryGetValue(zone.Id, out var count) ? count : 0;
+            float defenseMultiplier;
+            if (defenders == 0)
+                defenseMultiplier = 3.0f;      // Unguarded
+            else if (defenders <= 3)
+                defenseMultiplier = 2.0f;      // Lightly guarded
+            else if (defenders <= 7)
+                defenseMultiplier = 1.0f;      // Moderately guarded
+            else
+                defenseMultiplier = 0.3f;      // Heavily guarded
+
+            // Ownership multiplier
+            float ownershipMultiplier = zone.OwnerFactionId == null ? 1.5f : 1.0f;  // Neutral bonus
+
+            return score * defenseMultiplier * ownershipMultiplier;
+        }
+
+        /// <summary>
+        /// Selects a target zone using probability-weighted random selection.
+        /// </summary>
+        protected Zone? SelectTargetByProbability(
+            IList<Zone> zones,
+            IDictionary<string, int> defenderCounts,
+            Random? random = null)
+        {
+            if (zones == null || zones.Count == 0)
+                return null;
+
+            random ??= new Random();
+
+            var scores = zones.Select(z => new { Zone = z, Score = CalculateTargetScore(z, defenderCounts) }).ToList();
+            var totalScore = scores.Sum(s => s.Score);
+
+            if (totalScore <= 0)
+                return zones[0];
+
+            var roll = random.NextDouble() * totalScore;
+            float cumulative = 0;
+
+            foreach (var item in scores)
+            {
+                cumulative += item.Score;
+                if (roll <= cumulative)
+                    return item.Zone;
+            }
+
+            return scores.Last().Zone;
+        }
+
         #endregion
     }
 }
