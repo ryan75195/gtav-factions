@@ -33,6 +33,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             _pedPoolMock = new Mock<IPedPool>();
             _pedSpawningServiceMock = new Mock<IPedSpawningService>();
             _pedDespawnServiceMock = new Mock<IPedDespawnService>();
+            _pedDespawnServiceMock.Setup(p => p.DespawnPedsByZone(It.IsAny<string>())).Returns(new System.Collections.Generic.List<FactionWars.Combat.Models.PedHandle>());
+            _pedDespawnServiceMock.Setup(p => p.DespawnDeadPeds()).Returns(new System.Collections.Generic.List<FactionWars.Combat.Models.PedHandle>());
             _spawnPositionCalculatorMock = new Mock<ISpawnPositionCalculator>();
             _controlCalculatorMock = new Mock<IControlPercentageCalculator>();
             _takeoverDetectorMock = new Mock<ITakeoverDetector>();

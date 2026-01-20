@@ -776,6 +776,8 @@ namespace FactionWars.Tests.Integration.EndToEnd
             var followerService = new FollowerService();
 
             var pedDespawnServiceMock = new Mock<IPedDespawnService>();
+            pedDespawnServiceMock.Setup(p => p.DespawnPedsByZone(It.IsAny<string>())).Returns(new System.Collections.Generic.List<FactionWars.Combat.Models.PedHandle>());
+            pedDespawnServiceMock.Setup(p => p.DespawnDeadPeds()).Returns(new System.Collections.Generic.List<FactionWars.Combat.Models.PedHandle>());
             var aggressionResponseServiceMock = new Mock<IAggressionResponseService>();
             var combatManager = new CombatManager(
                 gameBridge,
@@ -932,6 +934,8 @@ namespace FactionWars.Tests.Integration.EndToEnd
             var followerService = new FollowerService();
 
             var pedDespawnServiceMock = new Mock<IPedDespawnService>();
+            pedDespawnServiceMock.Setup(p => p.DespawnPedsByZone(It.IsAny<string>())).Returns(new System.Collections.Generic.List<FactionWars.Combat.Models.PedHandle>());
+            pedDespawnServiceMock.Setup(p => p.DespawnDeadPeds()).Returns(new System.Collections.Generic.List<FactionWars.Combat.Models.PedHandle>());
             var aggressionResponseServiceMock = new Mock<IAggressionResponseService>();
             var combatManager = new CombatManager(
                 gameBridge, pedPool, pedSpawningService, pedDespawnServiceMock.Object, spawnPositionCalculator,
@@ -1023,6 +1027,8 @@ namespace FactionWars.Tests.Integration.EndToEnd
             var followerService = new FollowerService();
 
             var pedDespawnServiceMock = new Mock<IPedDespawnService>();
+            pedDespawnServiceMock.Setup(p => p.DespawnPedsByZone(It.IsAny<string>())).Returns(new System.Collections.Generic.List<FactionWars.Combat.Models.PedHandle>());
+            pedDespawnServiceMock.Setup(p => p.DespawnDeadPeds()).Returns(new System.Collections.Generic.List<FactionWars.Combat.Models.PedHandle>());
             var aggressionResponseServiceMock = new Mock<IAggressionResponseService>();
             var combatManager = new CombatManager(
                 gameBridge, pedPool, pedSpawningService, pedDespawnServiceMock.Object, spawnPositionCalculator,
@@ -1093,6 +1099,8 @@ namespace FactionWars.Tests.Integration.EndToEnd
             var followerService = new FollowerService();
 
             var pedDespawnServiceMock = new Mock<IPedDespawnService>();
+            pedDespawnServiceMock.Setup(p => p.DespawnPedsByZone(It.IsAny<string>())).Returns(new System.Collections.Generic.List<FactionWars.Combat.Models.PedHandle>());
+            pedDespawnServiceMock.Setup(p => p.DespawnDeadPeds()).Returns(new System.Collections.Generic.List<FactionWars.Combat.Models.PedHandle>());
             var aggressionResponseServiceMock = new Mock<IAggressionResponseService>();
             var combatManager = new CombatManager(
                 gameBridge,
@@ -1209,6 +1217,8 @@ namespace FactionWars.Tests.Integration.EndToEnd
             var followerService = new FollowerService();
 
             var pedDespawnServiceMock = new Mock<IPedDespawnService>();
+            pedDespawnServiceMock.Setup(p => p.DespawnPedsByZone(It.IsAny<string>())).Returns(new System.Collections.Generic.List<FactionWars.Combat.Models.PedHandle>());
+            pedDespawnServiceMock.Setup(p => p.DespawnDeadPeds()).Returns(new System.Collections.Generic.List<FactionWars.Combat.Models.PedHandle>());
             var aggressionResponseServiceMock = new Mock<IAggressionResponseService>();
             var combatManager = new CombatManager(
                 gameBridge, pedPool, pedSpawningService, pedDespawnServiceMock.Object, spawnPositionCalculator,
@@ -1274,6 +1284,8 @@ namespace FactionWars.Tests.Integration.EndToEnd
             var followerService = new FollowerService();
 
             var pedDespawnServiceMock = new Mock<IPedDespawnService>();
+            pedDespawnServiceMock.Setup(p => p.DespawnPedsByZone(It.IsAny<string>())).Returns(new System.Collections.Generic.List<FactionWars.Combat.Models.PedHandle>());
+            pedDespawnServiceMock.Setup(p => p.DespawnDeadPeds()).Returns(new System.Collections.Generic.List<FactionWars.Combat.Models.PedHandle>());
             var aggressionResponseServiceMock = new Mock<IAggressionResponseService>();
             var combatManager = new CombatManager(
                 gameBridge, pedPool, pedSpawningService, pedDespawnServiceMock.Object, spawnPositionCalculator,
