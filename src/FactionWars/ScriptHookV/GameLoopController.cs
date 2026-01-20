@@ -45,6 +45,7 @@ namespace FactionWars.ScriptHookV
         private BackgroundBattleSimulator? _backgroundBattleSimulator;
         private AIDecisionExecutor? _aiDecisionExecutor;
         private VictoryManager? _victoryManager;
+        private FriendlyDefenderManager? _friendlyDefenderManager;
         private IAutoSaveService? _autoSaveService;
         private MainMenuController? _mainMenuController;
         private ArmyMenuController? _armyMenuController;
@@ -156,6 +157,12 @@ namespace FactionWars.ScriptHookV
         /// Returns null if not yet initialized.
         /// </summary>
         public VictoryManager? VictoryManager => _victoryManager;
+
+        /// <summary>
+        /// Gets the FriendlyDefenderManager for friendly zone defender spawning.
+        /// Returns null if not yet initialized.
+        /// </summary>
+        public FriendlyDefenderManager? FriendlyDefenderManager => _friendlyDefenderManager;
 
         /// <summary>
         /// Creates a new GameLoopController with the specified service container.
@@ -464,6 +471,20 @@ namespace FactionWars.ScriptHookV
             _zoneService = _container.Resolve<IZoneService>();
             _territoryManager = new TerritoryManager(_gameBridge, _zoneService);
 
+            // Initialize friendly defender manager for spawning defenders in player-owned zones
+            var allocationService = _container.Resolve<IZoneDefenderAllocationService>();
+            _friendlyDefenderManager = new FriendlyDefenderManager(
+                _gameBridge,
+                allocationService,
+                pedSpawningService,
+                defenderTierService,
+                pedBlipService,
+                CurrentPlayerFactionId ?? "");
+
+            // Subscribe to zone events for friendly defender spawning
+            _territoryManager.ZoneEntered += (sender, zone) => _friendlyDefenderManager.OnZoneEntered(zone);
+            _territoryManager.ZoneExited += (sender, zone) => _friendlyDefenderManager.OnZoneExited(zone);
+
             // Initialize combat manager for combat encounters
             var pedPool = _container.Resolve<IPedPool>();
             var pedDespawnService = _container.Resolve<IPedDespawnService>();
@@ -533,7 +554,7 @@ namespace FactionWars.ScriptHookV
             // Initialize submenu controllers
             var playerContext = _container.Resolve<IPlayerContext>();
             var purchaseService = _container.Resolve<ITroopPurchaseService>();
-            var allocationService = _container.Resolve<IZoneDefenderAllocationService>();
+            // allocationService already resolved above for FriendlyDefenderManager
 
             _overviewMenuController = new OverviewMenuController(
                 menuProvider,
@@ -711,6 +732,10 @@ namespace FactionWars.ScriptHookV
             // Clean up follower manager
             _followerManager = null;
 
+            // Clean up friendly defender manager
+            _friendlyDefenderManager?.DespawnAllDefenders();
+            _friendlyDefenderManager = null;
+
             // Clean up event feed renderer and service
             _eventFeedRenderer = null;
             _eventFeedService = null;
@@ -726,6 +751,16 @@ namespace FactionWars.ScriptHookV
             if (!string.IsNullOrEmpty(oldFactionId) && _followerManager != null)
             {
                 _followerManager.DismissAllFollowers(oldFactionId);
+            }
+
+            // Despawn all friendly defenders and update faction for the new character
+            if (_friendlyDefenderManager != null)
+            {
+                _friendlyDefenderManager.DespawnAllDefenders();
+                if (!string.IsNullOrEmpty(newFactionId))
+                {
+                    _friendlyDefenderManager.SetPlayerFaction(newFactionId);
+                }
             }
 
             // Update managers with new faction
