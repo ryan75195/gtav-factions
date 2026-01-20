@@ -58,7 +58,7 @@ namespace FactionWars.ScriptHookV.Managers
                 return false;
 
             var cost = _budgetService.CalculateAttackCost(decision.TroopsToCommit);
-            _factionService.AddCash(factionId, -cost);
+            _factionService.SpendCash(factionId, cost);
 
             OnDecisionExecuting?.Invoke(this, new AIDecisionEventArgs(factionId, decision));
 

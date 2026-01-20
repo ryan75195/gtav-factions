@@ -19,7 +19,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
 
             var factionState = new FactionState("attacker", initialCash: 1000, initialTroopCount: 20);
             mockFactionService.Setup(f => f.GetFactionState("attacker")).Returns(factionState);
-            mockFactionService.Setup(f => f.AddCash("attacker", It.IsAny<int>())).Returns(true);
+            mockFactionService.Setup(f => f.SpendCash("attacker", It.IsAny<int>())).Returns(true);
 
             var executor = new AIDecisionExecutor(
                 mockFactionService.Object,
@@ -31,7 +31,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             var result = executor.TryExecuteAttack("attacker", decision);
 
             Assert.True(result);
-            mockFactionService.Verify(f => f.AddCash("attacker", -500), Times.Once);
+            mockFactionService.Verify(f => f.SpendCash("attacker", 500), Times.Once);
         }
 
         [Fact]
@@ -53,7 +53,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             var result = executor.TryExecuteAttack("attacker", decision);
 
             Assert.False(result);
-            mockFactionService.Verify(f => f.AddCash(It.IsAny<string>(), It.IsAny<int>()), Times.Never);
+            mockFactionService.Verify(f => f.SpendCash(It.IsAny<string>(), It.IsAny<int>()), Times.Never);
         }
     }
 }
