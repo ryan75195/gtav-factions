@@ -456,6 +456,9 @@ namespace FactionWars.ScriptHookV
                 waveSpawnerService,
                 followerService);
 
+            // Subscribe to combat ended event to show claim prompt after victory
+            _combatManager.CombatEnded += OnCombatEnded;
+
             // Initialize AI manager for AI faction decisions
             var strategies = _container.Resolve<IDictionary<string, IAIStrategy>>();
             _aiManager = new AIManager(_factionService, _zoneService, strategies);
@@ -637,7 +640,11 @@ namespace FactionWars.ScriptHookV
             }
 
             // Stop and clean up combat manager
-            _combatManager?.EndCombat(CombatStatus.Aborted);
+            if (_combatManager != null)
+            {
+                _combatManager.CombatEnded -= OnCombatEnded;
+                _combatManager.EndCombat(CombatStatus.Aborted);
+            }
             _combatManager = null;
 
             // Unsubscribe from AI events and stop AI manager
@@ -793,6 +800,23 @@ namespace FactionWars.ScriptHookV
             {
                 _combatManager.EndCombat(CombatStatus.PlayerRetreat);
                 _gameBridge.ShowNotification($"~y~Retreated from:~w~ {zone.Name}");
+            }
+        }
+
+        /// <summary>
+        /// Called when a combat encounter ends.
+        /// If the player won (AttackerVictory), shows the claim prompt for the now-neutral zone.
+        /// </summary>
+        private void OnCombatEnded(object? sender, CombatEncounter encounter)
+        {
+            if (encounter.Status == CombatStatus.AttackerVictory)
+            {
+                // Zone is now neutral after attacker victory, show claim prompt
+                var zone = _zoneService?.GetZone(encounter.ZoneId);
+                if (zone != null)
+                {
+                    OnNeutralZoneEntered(this, zone);
+                }
             }
         }
 
