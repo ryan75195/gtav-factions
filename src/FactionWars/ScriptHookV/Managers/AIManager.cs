@@ -53,7 +53,7 @@ namespace FactionWars.ScriptHookV.Managers
         private float _decisionIntervalSeconds;
         private string? _playerFactionId;
 
-        private const float DefaultDecisionInterval = 5.0f;
+        private const float DefaultDecisionInterval = 150.0f; // 2.5 minutes
         private const float MinDecisionInterval = 1.0f;
 
         /// <summary>
