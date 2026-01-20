@@ -382,7 +382,9 @@ namespace FactionWars.ScriptHookV
                     container.Resolve<IBattleSimulationService>(),
                     container.Resolve<IFactionService>(),
                     container.Resolve<IZoneService>(),
-                    container.Resolve<IZoneDefenderAllocationService>()));
+                    container.Resolve<IZoneDefenderAllocationService>(),
+                    container.Resolve<IEventAlertService>(),
+                    container.Resolve<IEventFeedService>()));
         }
     }
 }

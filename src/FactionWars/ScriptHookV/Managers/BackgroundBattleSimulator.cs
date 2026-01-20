@@ -4,6 +4,7 @@ using FactionWars.Core.Interfaces;
 using FactionWars.Core.Models;
 using FactionWars.Factions.Interfaces;
 using FactionWars.Territory.Interfaces;
+using FactionWars.UI.Interfaces;
 
 namespace FactionWars.ScriptHookV.Managers
 {
@@ -17,6 +18,8 @@ namespace FactionWars.ScriptHookV.Managers
         private readonly IFactionService _factionService;
         private readonly IZoneService _zoneService;
         private readonly IZoneDefenderAllocationService _allocationService;
+        private readonly IEventAlertService _eventAlertService;
+        private readonly IEventFeedService _eventFeedService;
         private string? _currentPlayerZone;
 
         /// <summary>
@@ -36,17 +39,23 @@ namespace FactionWars.ScriptHookV.Managers
         /// <param name="factionService">The service for faction management.</param>
         /// <param name="zoneService">The service for zone management.</param>
         /// <param name="allocationService">The service for defender allocation.</param>
+        /// <param name="eventAlertService">The service for raising event alerts.</param>
+        /// <param name="eventFeedService">The service for the event feed.</param>
         /// <exception cref="ArgumentNullException">Thrown if any parameter is null.</exception>
         public BackgroundBattleSimulator(
             IBattleSimulationService battleSimulationService,
             IFactionService factionService,
             IZoneService zoneService,
-            IZoneDefenderAllocationService allocationService)
+            IZoneDefenderAllocationService allocationService,
+            IEventAlertService eventAlertService,
+            IEventFeedService eventFeedService)
         {
             _battleSimulationService = battleSimulationService ?? throw new ArgumentNullException(nameof(battleSimulationService));
             _factionService = factionService ?? throw new ArgumentNullException(nameof(factionService));
             _zoneService = zoneService ?? throw new ArgumentNullException(nameof(zoneService));
             _allocationService = allocationService ?? throw new ArgumentNullException(nameof(allocationService));
+            _eventAlertService = eventAlertService ?? throw new ArgumentNullException(nameof(eventAlertService));
+            _eventFeedService = eventFeedService ?? throw new ArgumentNullException(nameof(eventFeedService));
         }
 
         /// <summary>
@@ -124,6 +133,22 @@ namespace FactionWars.ScriptHookV.Managers
 
             // Apply the results
             ApplyBattleResult(result);
+
+            // Notify UI of battle result
+            var attackerFaction = _factionService.GetFaction(attackerFactionId);
+            var defenderFactionName = zone.OwnerFactionId != null
+                ? _factionService.GetFaction(zone.OwnerFactionId)?.Name ?? zone.OwnerFactionId
+                : "Neutral";
+
+            if (result.AttackerWon)
+            {
+                _eventFeedService.AddZoneCaptured(zone.Name, attackerFaction?.Name ?? attackerFactionId);
+                _eventAlertService.RaiseZoneCaptured(zone.Name, attackerFaction?.Name ?? attackerFactionId);
+            }
+            else
+            {
+                _eventFeedService.AddCombatEnded(zone.Name, defenderFactionName, defenderWon: true);
+            }
 
             // Raise the event
             OnBattleCompleted?.Invoke(this, result);
