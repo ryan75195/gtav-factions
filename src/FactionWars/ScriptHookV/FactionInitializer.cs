@@ -17,18 +17,10 @@ namespace FactionWars.ScriptHookV
         private readonly IZoneRepository _zoneRepository;
         private bool _isInitialized;
 
-        // Starting resources per faction
-        private const int MichaelStartingCash = 10000;
-        private const int MichaelStartingTroops = 50;
-        private const int MichaelStartingZones = 8;
-
-        private const int TrevorStartingCash = 8000;
-        private const int TrevorStartingTroops = 60;
-        private const int TrevorStartingZones = 10;
-
-        private const int FranklinStartingCash = 5000;
-        private const int FranklinStartingTroops = 30;
-        private const int FranklinStartingZones = 5;
+        // Starting resources per faction - NORMALIZED
+        private const int StartingCash = 5000;
+        private const int StartingTroopsPerZone = 5;
+        private const int StartingZonesPerFaction = 3;
 
         /// <summary>
         /// Gets whether the factions have been initialized.
@@ -107,69 +99,53 @@ namespace FactionWars.ScriptHookV
 
         private void InitializeFactionStates()
         {
-            // Michael: 8 zones, 50 troops, $10k
+            // All factions start equal: $5k cash, 0 reserve troops (all deployed)
             var michaelState = new FactionState(
                 CharacterModelFactionDetector.MichaelFactionId,
-                MichaelStartingCash,
-                MichaelStartingTroops
+                StartingCash,
+                0  // No reserve troops - all deployed to zones
             );
             _factionRepository.SetState(michaelState);
 
-            // Trevor: 10 zones, 60 troops, $8k
             var trevorState = new FactionState(
                 CharacterModelFactionDetector.TrevorFactionId,
-                TrevorStartingCash,
-                TrevorStartingTroops
+                StartingCash,
+                0
             );
             _factionRepository.SetState(trevorState);
 
-            // Franklin: 5 zones, 30 troops, $5k
             var franklinState = new FactionState(
                 CharacterModelFactionDetector.FranklinFactionId,
-                FranklinStartingCash,
-                FranklinStartingTroops
+                StartingCash,
+                0
             );
             _factionRepository.SetState(franklinState);
         }
 
         private void AssignStartingZones()
         {
-            // Michael's zones - wealthy Los Santos areas (8 zones)
+            // Michael's zones - wealthy west side near his mansion (3 zones)
             var michaelZones = new[]
             {
-                "rockford_hills",    // Wealthy residential
-                "vinewood",          // Entertainment district
-                "richman",           // High-value residential
-                "del_perro",         // Coastal commercial
-                "morningwood",       // Residential
-                "pillbox_hill",      // Downtown commercial
-                "downtown",          // City center
-                "vespucci"           // Coastal area
+                "rockford_hills",
+                "vinewood",
+                "del_perro"
             };
 
-            // Trevor's zones - Blaine County and industrial areas (10 zones)
+            // Trevor's zones - Blaine County around his trailer (3 zones)
             var trevorZones = new[]
             {
-                "sandy_shores",          // Trevor's home base
-                "grapeseed",             // Rural area
-                "harmony",               // Small town
-                "alamo_sea",             // Lake area
-                "grand_senora_desert",   // Desert
-                "trevor_airfield",       // Trevor's airfield
-                "paleto_bay",            // Northern town
-                "paleto_forest",         // Forest area
-                "chiliad_wilderness",    // Mountain area
-                "cypress_flats"          // Industrial
+                "sandy_shores",
+                "harmony",
+                "grapeseed"
             };
 
-            // Franklin's zones - South Los Santos and port areas (5 zones)
+            // Franklin's zones - South LS around Forum Drive (3 zones)
             var franklinZones = new[]
             {
-                "davis",                 // Franklin's home area
-                "strawberry",            // South LS residential
-                "rancho",                // South LS
-                "port_of_los_santos",    // Port
-                "elysian_island"         // Port area
+                "davis",
+                "strawberry",
+                "rancho"
             };
 
             AssignZonesToFaction(CharacterModelFactionDetector.MichaelFactionId, michaelZones);
