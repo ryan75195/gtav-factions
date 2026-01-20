@@ -12,6 +12,7 @@ namespace FactionWars.Core.Interfaces
         Blue = 3,
         Yellow = 66,
         Orange = 17,
+        LightBlue = 18,  // Cyan/Light Blue for friendly defenders
         Purple = 27,
         Pink = 41,
         MichaelBlue = 42,
