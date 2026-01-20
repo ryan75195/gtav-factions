@@ -385,6 +385,22 @@ namespace FactionWars.ScriptHookV
                     container.Resolve<IZoneDefenderAllocationService>(),
                     container.Resolve<IEventAlertService>(),
                     container.Resolve<IEventFeedService>()));
+
+            // Register AI budget service
+            container.RegisterSingleton<IAIBudgetService>(() => new AIBudgetService(
+                costPerTroop: 50,
+                recruitCostPerTroop: 100));
+
+            // Register AI recruitment service
+            container.RegisterSingleton<IAIRecruitmentService>(() => new AIRecruitmentService(
+                container.Resolve<IFactionService>(),
+                container.Resolve<IAIBudgetService>()));
+
+            // Register AI decision executor
+            container.RegisterSingleton<AIDecisionExecutor>(() => new AIDecisionExecutor(
+                container.Resolve<IFactionService>(),
+                container.Resolve<IAIBudgetService>(),
+                container.Resolve<IAIRecruitmentService>()));
         }
     }
 }
