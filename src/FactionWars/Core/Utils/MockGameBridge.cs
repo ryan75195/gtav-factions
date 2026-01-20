@@ -19,6 +19,7 @@ namespace FactionWars.Core.Utils
 
         private int _nextPedHandle = 1;
         private int _nextBlipHandle = 1;
+        private int _nextPedBlipHandle = 5000;
 
         /// <summary>
         /// Gets or sets the player position to return from GetPlayerPosition.
@@ -329,6 +330,16 @@ namespace FactionWars.Core.Utils
             {
                 ped.IsAttackingPlayer = true;
             }
+        }
+
+        public int CreateBlipForPed(int pedHandle)
+        {
+            return _nextPedBlipHandle++;
+        }
+
+        public void TaskPedWanderInArea(int pedHandle, Vector3 center, float radius)
+        {
+            // Mock implementation - no-op
         }
 
         // Additional helper methods for testing

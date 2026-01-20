@@ -233,5 +233,21 @@ namespace FactionWars.Core.Interfaces
         /// </summary>
         /// <param name="pedHandle">Handle of the ped to make hostile.</param>
         void SetPedToAttackPlayer(int pedHandle);
+
+        /// <summary>
+        /// Creates a blip attached to a ped that follows the ped on the minimap.
+        /// </summary>
+        /// <param name="pedHandle">Handle of the ped to attach blip to.</param>
+        /// <returns>Handle to the created blip, or -1 if creation failed.</returns>
+        int CreateBlipForPed(int pedHandle);
+
+        /// <summary>
+        /// Tasks a ped to wander within a specified area.
+        /// Used for zone defenders that patrol instead of following the player.
+        /// </summary>
+        /// <param name="pedHandle">Handle of the ped to task.</param>
+        /// <param name="center">Center point of the wander area.</param>
+        /// <param name="radius">Radius of the wander area in meters.</param>
+        void TaskPedWanderInArea(int pedHandle, Vector3 center, float radius);
     }
 }

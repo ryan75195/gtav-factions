@@ -836,6 +836,42 @@ namespace FactionWars.ScriptHookV
             }
         }
 
+        /// <inheritdoc />
+        public int CreateBlipForPed(int pedHandle)
+        {
+            try
+            {
+                var ped = Entity.FromHandle(pedHandle) as Ped;
+                if (ped == null || !ped.Exists())
+                    return -1;
+
+                var blip = ped.AddBlip();
+                return blip?.Handle ?? -1;
+            }
+            catch
+            {
+                return -1;
+            }
+        }
+
+        /// <inheritdoc />
+        public void TaskPedWanderInArea(int pedHandle, DomainVector3 center, float radius)
+        {
+            try
+            {
+                var ped = Entity.FromHandle(pedHandle) as Ped;
+                if (ped == null || !ped.Exists())
+                    return;
+
+                var gtaCenter = new GTA.Math.Vector3(center.X, center.Y, center.Z);
+                Function.Call(Hash.TASK_WANDER_IN_AREA, ped.Handle, gtaCenter.X, gtaCenter.Y, gtaCenter.Z, radius, 0f, 0f);
+            }
+            catch
+            {
+                // Silently ignore
+            }
+        }
+
         /// <summary>
         /// Converts our domain BlipColor enum to GTA V's BlipColor.
         /// </summary>
