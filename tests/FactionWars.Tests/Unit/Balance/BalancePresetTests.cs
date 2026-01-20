@@ -238,5 +238,70 @@ namespace FactionWars.Tests.Unit.Balance
         }
 
         #endregion
+
+        #region AI Aggression Scaling Tests
+
+        [Fact]
+        public void EasyPreset_HasLessAggressiveAI()
+        {
+            // AI in easy mode should be less aggressive
+            var easy = BalancePresets.Easy();
+            var normal = BalancePresets.Normal();
+
+            Assert.True(easy.AIAggressionMultiplier <= normal.AIAggressionMultiplier);
+            Assert.True(easy.AIAttackCooldownSeconds >= normal.AIAttackCooldownSeconds);
+        }
+
+        [Fact]
+        public void HardPreset_HasMoreAggressiveAI()
+        {
+            // AI in hard mode should be more aggressive
+            var hard = BalancePresets.Hard();
+            var normal = BalancePresets.Normal();
+
+            Assert.True(hard.AIAggressionMultiplier >= normal.AIAggressionMultiplier);
+            Assert.True(hard.AIAttackCooldownSeconds <= normal.AIAttackCooldownSeconds);
+        }
+
+        [Fact]
+        public void VeteranPreset_HasMostAggressiveAI()
+        {
+            // Veteran mode has the most aggressive AI
+            var veteran = BalancePresets.Veteran();
+            var hard = BalancePresets.Hard();
+
+            Assert.True(veteran.AIAggressionMultiplier >= hard.AIAggressionMultiplier);
+        }
+
+        [Fact]
+        public void AllPresets_HaveValidAIDecisionInterval()
+        {
+            // All presets should have positive AI decision interval
+            var easy = BalancePresets.Easy();
+            var normal = BalancePresets.Normal();
+            var hard = BalancePresets.Hard();
+            var veteran = BalancePresets.Veteran();
+
+            Assert.True(easy.AIDecisionIntervalSeconds > 0);
+            Assert.True(normal.AIDecisionIntervalSeconds > 0);
+            Assert.True(hard.AIDecisionIntervalSeconds > 0);
+            Assert.True(veteran.AIDecisionIntervalSeconds > 0);
+        }
+
+        [Fact]
+        public void HarderPresets_HaveFasterAIDecisions()
+        {
+            // Harder difficulties should have faster AI decisions
+            var easy = BalancePresets.Easy();
+            var normal = BalancePresets.Normal();
+            var hard = BalancePresets.Hard();
+            var veteran = BalancePresets.Veteran();
+
+            Assert.True(easy.AIDecisionIntervalSeconds >= normal.AIDecisionIntervalSeconds);
+            Assert.True(normal.AIDecisionIntervalSeconds >= hard.AIDecisionIntervalSeconds);
+            Assert.True(hard.AIDecisionIntervalSeconds >= veteran.AIDecisionIntervalSeconds);
+        }
+
+        #endregion
     }
 }

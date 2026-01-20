@@ -26,6 +26,7 @@ namespace FactionWars.Tests.Integration.Economy
         private readonly InMemoryFactionRepository _factionRepository;
         private readonly IFactionService _factionService;
         private readonly IZoneTraitResourceModifier _resourceModifier;
+        private readonly ISupplyLineService _supplyLineService;
         private readonly IResourceTickService _resourceTickService;
 
         private const string MichaelFactionId = "faction-michael";
@@ -40,10 +41,12 @@ namespace FactionWars.Tests.Integration.Economy
             _factionRepository = new InMemoryFactionRepository();
             _factionService = new FactionService(_factionRepository);
             _resourceModifier = new ZoneTraitResourceModifier();
+            _supplyLineService = new SupplyLineService(_zoneService);
             _resourceTickService = new ResourceTickService(
                 _factionService,
                 _zoneService,
                 _resourceModifier,
+                _supplyLineService,
                 TickIntervalSeconds);
         }
 

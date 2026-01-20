@@ -28,6 +28,12 @@ namespace FactionWars.Combat.Models
         /// <summary>
         /// Combat was aborted (e.g., player left area, time limit).
         /// </summary>
-        Aborted
+        Aborted,
+
+        /// <summary>
+        /// Player retreated from combat (e.g., player died in contested zone).
+        /// Zone ownership remains unchanged.
+        /// </summary>
+        PlayerRetreat
     }
 }

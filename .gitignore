@@ -26,3 +26,6 @@ nul
 # OS files
 Thumbs.db
 .DS_Store
+
+# External libraries (downloaded separately)
+lib/

@@ -1,3 +1,4 @@
+using FactionWars.Core.Models;
 using FactionWars.Factions.Models;
 using System;
 using System.Collections.Generic;
@@ -633,6 +634,186 @@ namespace FactionWars.Tests.Unit.Factions
             Assert.Contains("faction_michael", result);
             Assert.Contains("5000", result);
             Assert.Contains("15", result);
+        }
+
+        #endregion
+
+        #region Reserve Pool - Troops by Tier
+
+        [Fact]
+        public void FactionState_ShouldHaveEmptyReservePoolByDefault()
+        {
+            // Arrange & Act
+            var state = new FactionState("faction_michael");
+
+            // Assert
+            Assert.Equal(0, state.GetReserveTroops(DefenderTier.Basic));
+            Assert.Equal(0, state.GetReserveTroops(DefenderTier.Medium));
+            Assert.Equal(0, state.GetReserveTroops(DefenderTier.Heavy));
+        }
+
+        [Fact]
+        public void FactionState_AddReserveTroops_ShouldAddToCorrectTier()
+        {
+            // Arrange
+            var state = new FactionState("faction_michael");
+
+            // Act
+            state.AddReserveTroops(DefenderTier.Basic, 10);
+            state.AddReserveTroops(DefenderTier.Medium, 5);
+            state.AddReserveTroops(DefenderTier.Heavy, 2);
+
+            // Assert
+            Assert.Equal(10, state.GetReserveTroops(DefenderTier.Basic));
+            Assert.Equal(5, state.GetReserveTroops(DefenderTier.Medium));
+            Assert.Equal(2, state.GetReserveTroops(DefenderTier.Heavy));
+        }
+
+        [Fact]
+        public void FactionState_AddReserveTroops_ShouldAccumulateTroops()
+        {
+            // Arrange
+            var state = new FactionState("faction_michael");
+
+            // Act
+            state.AddReserveTroops(DefenderTier.Basic, 5);
+            state.AddReserveTroops(DefenderTier.Basic, 3);
+
+            // Assert
+            Assert.Equal(8, state.GetReserveTroops(DefenderTier.Basic));
+        }
+
+        [Fact]
+        public void FactionState_AddReserveTroops_ShouldThrowOnNegativeCount()
+        {
+            // Arrange
+            var state = new FactionState("faction_michael");
+
+            // Act & Assert
+            Assert.Throws<ArgumentOutOfRangeException>(() =>
+                state.AddReserveTroops(DefenderTier.Basic, -1));
+        }
+
+        [Fact]
+        public void FactionState_RemoveReserveTroops_ShouldRemoveFromCorrectTier()
+        {
+            // Arrange
+            var state = new FactionState("faction_michael");
+            state.AddReserveTroops(DefenderTier.Basic, 10);
+
+            // Act
+            var removed = state.RemoveReserveTroops(DefenderTier.Basic, 3);
+
+            // Assert
+            Assert.True(removed);
+            Assert.Equal(7, state.GetReserveTroops(DefenderTier.Basic));
+        }
+
+        [Fact]
+        public void FactionState_RemoveReserveTroops_ShouldReturnFalseIfInsufficientTroops()
+        {
+            // Arrange
+            var state = new FactionState("faction_michael");
+            state.AddReserveTroops(DefenderTier.Basic, 5);
+
+            // Act
+            var removed = state.RemoveReserveTroops(DefenderTier.Basic, 10);
+
+            // Assert
+            Assert.False(removed);
+            Assert.Equal(5, state.GetReserveTroops(DefenderTier.Basic)); // Unchanged
+        }
+
+        [Fact]
+        public void FactionState_RemoveReserveTroops_ShouldThrowOnNegativeCount()
+        {
+            // Arrange
+            var state = new FactionState("faction_michael");
+
+            // Act & Assert
+            Assert.Throws<ArgumentOutOfRangeException>(() =>
+                state.RemoveReserveTroops(DefenderTier.Basic, -1));
+        }
+
+        [Fact]
+        public void FactionState_HasReserveTroops_ShouldReturnTrueIfSufficientTroops()
+        {
+            // Arrange
+            var state = new FactionState("faction_michael");
+            state.AddReserveTroops(DefenderTier.Heavy, 5);
+
+            // Act & Assert
+            Assert.True(state.HasReserveTroops(DefenderTier.Heavy, 3));
+            Assert.True(state.HasReserveTroops(DefenderTier.Heavy, 5));
+        }
+
+        [Fact]
+        public void FactionState_HasReserveTroops_ShouldReturnFalseIfInsufficientTroops()
+        {
+            // Arrange
+            var state = new FactionState("faction_michael");
+            state.AddReserveTroops(DefenderTier.Heavy, 5);
+
+            // Act & Assert
+            Assert.False(state.HasReserveTroops(DefenderTier.Heavy, 10));
+        }
+
+        [Fact]
+        public void FactionState_TotalReserveTroops_ShouldSumAllTiers()
+        {
+            // Arrange
+            var state = new FactionState("faction_michael");
+            state.AddReserveTroops(DefenderTier.Basic, 10);
+            state.AddReserveTroops(DefenderTier.Medium, 5);
+            state.AddReserveTroops(DefenderTier.Heavy, 2);
+
+            // Act & Assert
+            Assert.Equal(17, state.TotalReserveTroops);
+        }
+
+        [Fact]
+        public void FactionState_ReservePool_ShouldBeIndependentFromTroopCount()
+        {
+            // Arrange
+            var state = new FactionState("faction_michael", initialTroopCount: 50);
+            state.AddReserveTroops(DefenderTier.Basic, 10);
+
+            // Act & Assert
+            Assert.Equal(50, state.TroopCount);
+            Assert.Equal(10, state.GetReserveTroops(DefenderTier.Basic));
+            Assert.Equal(10, state.TotalReserveTroops);
+        }
+
+        [Fact]
+        public void FactionState_GetReservePoolCopy_ShouldReturnDictionaryOfTiers()
+        {
+            // Arrange
+            var state = new FactionState("faction_michael");
+            state.AddReserveTroops(DefenderTier.Basic, 10);
+            state.AddReserveTroops(DefenderTier.Medium, 5);
+
+            // Act
+            var pool = state.GetReservePoolCopy();
+
+            // Assert
+            Assert.Equal(10, pool[DefenderTier.Basic]);
+            Assert.Equal(5, pool[DefenderTier.Medium]);
+            Assert.Equal(0, pool[DefenderTier.Heavy]);
+        }
+
+        [Fact]
+        public void FactionState_GetReservePoolCopy_ShouldBeIndependentOfInternalState()
+        {
+            // Arrange
+            var state = new FactionState("faction_michael");
+            state.AddReserveTroops(DefenderTier.Basic, 10);
+
+            // Act - modify the returned copy
+            var pool = state.GetReservePoolCopy();
+            pool[DefenderTier.Basic] = 100;
+
+            // Assert - internal state should be unchanged
+            Assert.Equal(10, state.GetReserveTroops(DefenderTier.Basic));
         }
 
         #endregion

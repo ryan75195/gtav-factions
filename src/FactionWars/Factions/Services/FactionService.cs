@@ -1,3 +1,4 @@
+using FactionWars.Core.Models;
 using FactionWars.Factions.Interfaces;
 using FactionWars.Factions.Models;
 using System;
@@ -293,6 +294,23 @@ namespace FactionWars.Factions.Services
                 return false;
 
             state.RecruitmentPoints += amount;
+            _repository.SetState(state);
+            return true;
+        }
+
+        /// <inheritdoc />
+        public bool AddReserveTroops(string factionId, DefenderTier tier, int count)
+        {
+            if (factionId == null)
+                throw new ArgumentNullException(nameof(factionId));
+            if (count < 0)
+                throw new ArgumentOutOfRangeException(nameof(count), "Count cannot be negative.");
+
+            var state = _repository.GetState(factionId);
+            if (state == null)
+                return false;
+
+            state.AddReserveTroops(tier, count);
             _repository.SetState(state);
             return true;
         }

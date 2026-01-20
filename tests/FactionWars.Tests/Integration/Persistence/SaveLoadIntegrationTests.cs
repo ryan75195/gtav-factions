@@ -8,6 +8,8 @@ using FactionWars.AI.Strategies;
 using FactionWars.Combat.Models;
 using FactionWars.Combat.Services;
 using FactionWars.Core.Interfaces;
+using FactionWars.Core.Models;
+using FactionWars.Core.Services;
 using FactionWars.Economy.Services;
 using FactionWars.Factions.Interfaces;
 using FactionWars.Factions.Models;
@@ -603,6 +605,485 @@ namespace FactionWars.Tests.Integration.Persistence
 
         #endregion
 
+        #region Save/Load Integrity Tests
+
+        [Fact]
+        public void Integrity_SaveLoadCycle_PreservesReservePoolByTier()
+        {
+            // Arrange: Create world with specific reserve pool values
+            var world = CreateCompleteGameWorld();
+
+            // Add troops to reserve pool by tier
+            var michaelState = world.FactionService.GetFactionState(MichaelFactionId)!;
+            michaelState.AddReserveTroops(DefenderTier.Basic, 100);
+            michaelState.AddReserveTroops(DefenderTier.Medium, 50);
+            michaelState.AddReserveTroops(DefenderTier.Heavy, 25);
+
+            var trevorState = world.FactionService.GetFactionState(TrevorFactionId)!;
+            trevorState.AddReserveTroops(DefenderTier.Basic, 80);
+            trevorState.AddReserveTroops(DefenderTier.Medium, 40);
+            trevorState.AddReserveTroops(DefenderTier.Heavy, 20);
+
+            // Act: Save and restore
+            var gameState = CreateGameStateSnapshot(world);
+            var filePath = GetTestFilePath("reserve_pool.json");
+            _persistenceService.Save(gameState, filePath);
+            var loadedState = _persistenceService.Load(filePath);
+            var restoredWorld = RestoreGameWorld(loadedState);
+
+            // Assert: Reserve pool is preserved by tier
+            var restoredMichaelState = restoredWorld.FactionService.GetFactionState(MichaelFactionId)!;
+            Assert.Equal(100, restoredMichaelState.GetReserveTroops(DefenderTier.Basic));
+            Assert.Equal(50, restoredMichaelState.GetReserveTroops(DefenderTier.Medium));
+            Assert.Equal(25, restoredMichaelState.GetReserveTroops(DefenderTier.Heavy));
+
+            var restoredTrevorState = restoredWorld.FactionService.GetFactionState(TrevorFactionId)!;
+            Assert.Equal(80, restoredTrevorState.GetReserveTroops(DefenderTier.Basic));
+            Assert.Equal(40, restoredTrevorState.GetReserveTroops(DefenderTier.Medium));
+            Assert.Equal(20, restoredTrevorState.GetReserveTroops(DefenderTier.Heavy));
+        }
+
+        [Fact]
+        public void Integrity_SaveLoadCycle_EmptyReservePool_PreservesZeroValues()
+        {
+            // Arrange: Create world with empty reserve pools
+            var world = CreateCompleteGameWorld();
+            // Faction states are created with 0 reserves by default
+
+            // Act: Save and restore
+            var gameState = CreateGameStateSnapshot(world);
+            var filePath = GetTestFilePath("empty_reserve.json");
+            _persistenceService.Save(gameState, filePath);
+            var loadedState = _persistenceService.Load(filePath);
+            var restoredWorld = RestoreGameWorld(loadedState);
+
+            // Assert: Zero values are preserved
+            var restoredMichaelState = restoredWorld.FactionService.GetFactionState(MichaelFactionId)!;
+            Assert.Equal(0, restoredMichaelState.GetReserveTroops(DefenderTier.Basic));
+            Assert.Equal(0, restoredMichaelState.GetReserveTroops(DefenderTier.Medium));
+            Assert.Equal(0, restoredMichaelState.GetReserveTroops(DefenderTier.Heavy));
+        }
+
+        [Fact]
+        public void Integrity_CorruptedJsonFile_ThrowsInvalidOperationException()
+        {
+            // Arrange: Write corrupted JSON to file
+            var filePath = GetTestFilePath("corrupted.json");
+            File.WriteAllText(filePath, "{ invalid json content not closed properly");
+
+            // Act & Assert: Should throw InvalidOperationException
+            Assert.Throws<InvalidOperationException>(() => _persistenceService.Load(filePath));
+        }
+
+        [Fact]
+        public void Integrity_TruncatedJsonFile_ThrowsInvalidOperationException()
+        {
+            // Arrange: Write truncated JSON
+            var filePath = GetTestFilePath("truncated.json");
+            File.WriteAllText(filePath, "{\"Version\":1,\"SaveName\":\"Test\",\"Factions\":[{\"Id\":\"fac");
+
+            // Act & Assert
+            Assert.Throws<InvalidOperationException>(() => _persistenceService.Load(filePath));
+        }
+
+        [Fact]
+        public void Integrity_EmptyFile_ThrowsInvalidOperationException()
+        {
+            // Arrange: Write empty file
+            var filePath = GetTestFilePath("empty.json");
+            File.WriteAllText(filePath, "");
+
+            // Act & Assert
+            Assert.Throws<InvalidOperationException>(() => _persistenceService.Load(filePath));
+        }
+
+        [Fact]
+        public void Integrity_NonexistentFile_ThrowsFileNotFoundException()
+        {
+            // Arrange
+            var filePath = GetTestFilePath("nonexistent_file.json");
+
+            // Act & Assert
+            Assert.Throws<FileNotFoundException>(() => _persistenceService.Load(filePath));
+        }
+
+        [Fact]
+        public void Integrity_MultipleSaveLoadCycles_MaintainsDataConsistency()
+        {
+            // Arrange: Create initial state
+            var world = CreateCompleteGameWorld();
+            var michaelState = world.FactionService.GetFactionState(MichaelFactionId)!;
+            michaelState.AddReserveTroops(DefenderTier.Heavy, 50);
+            michaelState.Cash = 99999;
+
+            var filePath = GetTestFilePath("multi_cycle.json");
+
+            // Act: Perform 5 save/load cycles
+            for (int cycle = 0; cycle < 5; cycle++)
+            {
+                var gameState = CreateGameStateSnapshot(world);
+                _persistenceService.Save(gameState, filePath);
+                var loadedState = _persistenceService.Load(filePath);
+                world = RestoreGameWorld(loadedState);
+            }
+
+            // Assert: Data is still consistent after multiple cycles
+            var finalMichaelState = world.FactionService.GetFactionState(MichaelFactionId)!;
+            Assert.Equal(50, finalMichaelState.GetReserveTroops(DefenderTier.Heavy));
+            Assert.Equal(99999, finalMichaelState.Cash);
+            Assert.Equal(2, world.FactionService.GetZoneCount(MichaelFactionId));
+        }
+
+        [Fact]
+        public void Integrity_ReferentialConsistency_ZoneOwnerMatchesFactionOwnedZones()
+        {
+            // Arrange: Create world and save
+            var world = CreateCompleteGameWorld();
+            var gameState = CreateGameStateSnapshot(world);
+            var filePath = GetTestFilePath("referential.json");
+            _persistenceService.Save(gameState, filePath);
+            var loadedState = _persistenceService.Load(filePath);
+
+            // Act & Assert: For each zone with an owner, the owner's FactionState should include that zone
+            foreach (var zoneData in loadedState.Zones)
+            {
+                if (zoneData.OwnerFactionId != null)
+                {
+                    var ownerState = loadedState.FactionStates.Find(fs => fs.FactionId == zoneData.OwnerFactionId);
+                    Assert.NotNull(ownerState);
+                    Assert.Contains(zoneData.Id, ownerState.OwnedZoneIds);
+                }
+            }
+
+            // And vice versa: each zone in FactionState.OwnedZoneIds should have that faction as owner
+            foreach (var factionState in loadedState.FactionStates)
+            {
+                foreach (var zoneId in factionState.OwnedZoneIds)
+                {
+                    var zone = loadedState.Zones.Find(z => z.Id == zoneId);
+                    Assert.NotNull(zone);
+                    Assert.Equal(factionState.FactionId, zone.OwnerFactionId);
+                }
+            }
+        }
+
+        [Fact]
+        public void Integrity_ValidatorCatchesReferentialInconsistency_FactionStateReferencesNonexistentZone()
+        {
+            // Arrange: Create game state with inconsistent data
+            var gameState = new GameState { SaveName = "Inconsistent" };
+            gameState.Factions.Add(new FactionData { Id = "faction-1", Name = "Test Faction" });
+            gameState.FactionStates.Add(new FactionStateData
+            {
+                FactionId = "faction-1",
+                Cash = 1000,
+                OwnedZoneIds = new List<string> { "zone-that-does-not-exist" }
+            });
+            gameState.Zones.Add(new ZoneData
+            {
+                Id = "zone-1",
+                Name = "Real Zone",
+                OwnerFactionId = "faction-1"
+            });
+
+            var validator = new SaveFileValidator();
+
+            // Act
+            var result = validator.Validate(gameState);
+
+            // Assert: Validator catches the inconsistency
+            Assert.False(result.IsValid);
+            Assert.Contains(result.Errors, e => e.Contains("zone") && e.Contains("does not exist"));
+        }
+
+        [Fact]
+        public void Integrity_SaveLoadWithValidation_RejectsInvalidGameState()
+        {
+            // Arrange: Create an invalid game state
+            var invalidState = new GameState
+            {
+                Version = -1, // Invalid
+                SaveName = "Invalid",
+                TotalPlayTimeSeconds = -100 // Invalid
+            };
+            var filePath = GetTestFilePath("invalid_state.json");
+
+            // Save it anyway
+            _persistenceService.Save(invalidState, filePath);
+
+            // Load and validate
+            var loadedState = _persistenceService.Load(filePath);
+            var validator = new SaveFileValidator();
+            var result = validator.Validate(loadedState);
+
+            // Assert: Validation fails
+            Assert.False(result.IsValid);
+            Assert.True(result.Errors.Count >= 2);
+        }
+
+        [Fact]
+        public void Integrity_PreservesSpecialFloatValues_ControlPercentageBoundaries()
+        {
+            // Arrange: Test boundary values
+            var gameState = new GameState { SaveName = "Boundaries" };
+            gameState.Factions.Add(new FactionData { Id = "faction-1", Name = "Test" });
+            gameState.Zones.Add(new ZoneData
+            {
+                Id = "zone-0",
+                Name = "Zero Control",
+                OwnerFactionId = "faction-1",
+                ControlPercentage = 0f
+            });
+            gameState.Zones.Add(new ZoneData
+            {
+                Id = "zone-100",
+                Name = "Full Control",
+                OwnerFactionId = "faction-1",
+                ControlPercentage = 100f
+            });
+            gameState.Zones.Add(new ZoneData
+            {
+                Id = "zone-partial",
+                Name = "Partial Control",
+                OwnerFactionId = "faction-1",
+                ControlPercentage = 33.333f
+            });
+
+            var filePath = GetTestFilePath("boundaries.json");
+
+            // Act
+            _persistenceService.Save(gameState, filePath);
+            var loadedState = _persistenceService.Load(filePath);
+
+            // Assert
+            Assert.Equal(0f, loadedState.Zones.Find(z => z.Id == "zone-0")!.ControlPercentage);
+            Assert.Equal(100f, loadedState.Zones.Find(z => z.Id == "zone-100")!.ControlPercentage);
+            Assert.Equal(33.333f, loadedState.Zones.Find(z => z.Id == "zone-partial")!.ControlPercentage, precision: 3);
+        }
+
+        [Fact]
+        public void Integrity_PreservesUnicodeCharacters_InSaveNameAndFactionNames()
+        {
+            // Arrange: Unicode characters in names
+            var gameState = new GameState { SaveName = "保存游戏 - Campaign" };
+            gameState.Factions.Add(new FactionData
+            {
+                Id = "faction-unicode",
+                Name = "Команда Михаила", // Russian
+                Leader = "ミカエル" // Japanese
+            });
+
+            var filePath = GetTestFilePath("unicode.json");
+
+            // Act
+            _persistenceService.Save(gameState, filePath);
+            var loadedState = _persistenceService.Load(filePath);
+
+            // Assert
+            Assert.Equal("保存游戏 - Campaign", loadedState.SaveName);
+            Assert.Equal("Команда Михаила", loadedState.Factions[0].Name);
+            Assert.Equal("ミカエル", loadedState.Factions[0].Leader);
+        }
+
+        [Fact]
+        public void Integrity_PreservesDateTimePrecision()
+        {
+            // Arrange: Specific timestamp
+            var specificTime = new DateTime(2025, 6, 15, 14, 30, 45, DateTimeKind.Utc);
+            var gameState = new GameState
+            {
+                SaveName = "Timestamp Test",
+                CreatedAt = specificTime,
+                ModifiedAt = specificTime.AddHours(2)
+            };
+
+            var filePath = GetTestFilePath("timestamp.json");
+
+            // Act
+            _persistenceService.Save(gameState, filePath);
+            var loadedState = _persistenceService.Load(filePath);
+
+            // Assert: Timestamps preserved to second precision
+            Assert.Equal(specificTime.Year, loadedState.CreatedAt.Year);
+            Assert.Equal(specificTime.Month, loadedState.CreatedAt.Month);
+            Assert.Equal(specificTime.Day, loadedState.CreatedAt.Day);
+            Assert.Equal(specificTime.Hour, loadedState.CreatedAt.Hour);
+            Assert.Equal(specificTime.Minute, loadedState.CreatedAt.Minute);
+            Assert.Equal(specificTime.Second, loadedState.CreatedAt.Second);
+        }
+
+        [Fact]
+        public void Integrity_AllDefenderTiers_SurviveSerializationRoundTrip()
+        {
+            // Arrange: Test all defender tiers in reserve pool
+            var gameState = new GameState { SaveName = "All Tiers" };
+            gameState.Factions.Add(new FactionData { Id = "faction-1", Name = "Test" });
+            gameState.FactionStates.Add(new FactionStateData
+            {
+                FactionId = "faction-1",
+                Cash = 5000,
+                ReservePool = new Dictionary<DefenderTier, int>
+                {
+                    { DefenderTier.Basic, 111 },
+                    { DefenderTier.Medium, 222 },
+                    { DefenderTier.Heavy, 333 }
+                }
+            });
+
+            var filePath = GetTestFilePath("all_tiers.json");
+
+            // Act
+            _persistenceService.Save(gameState, filePath);
+            var loadedState = _persistenceService.Load(filePath);
+
+            // Assert
+            var loadedFactionState = loadedState.FactionStates[0];
+            Assert.Equal(111, loadedFactionState.ReservePool[DefenderTier.Basic]);
+            Assert.Equal(222, loadedFactionState.ReservePool[DefenderTier.Medium]);
+            Assert.Equal(333, loadedFactionState.ReservePool[DefenderTier.Heavy]);
+        }
+
+        #endregion
+
+        #region Save/Load + Victory Verification Tests
+
+        [Fact]
+        public void Integration_SaveLoadNearVictory_ThenCaptureLastZone_TriggersVictoryAt100Percent()
+        {
+            // Arrange: Create world where Michael controls all but one zone
+            var world = CreateCompleteGameWorld();
+
+            // Give Michael control of 5 of 6 zones, Franklin keeps the last one
+            var franklinZones = world.ZoneRepo.GetAll()
+                .Where(z => z.OwnerFactionId == FranklinFactionId)
+                .ToList();
+            var trevorZones = world.ZoneRepo.GetAll()
+                .Where(z => z.OwnerFactionId == TrevorFactionId)
+                .ToList();
+
+            // Transfer Trevor's zones to Michael
+            foreach (var zone in trevorZones)
+            {
+                zone.OwnerFactionId = MichaelFactionId;
+                world.ZoneRepo.Update(zone);
+                world.FactionService.RemoveZoneFromFaction(TrevorFactionId, zone.Id);
+                world.FactionService.AddZoneToFaction(MichaelFactionId, zone.Id);
+            }
+
+            // Transfer one of Franklin's zones to Michael (keep one for the last capture)
+            if (franklinZones.Count > 1)
+            {
+                var transferZone = franklinZones[0];
+                transferZone.OwnerFactionId = MichaelFactionId;
+                world.ZoneRepo.Update(transferZone);
+                world.FactionService.RemoveZoneFromFaction(FranklinFactionId, transferZone.Id);
+                world.FactionService.AddZoneToFaction(MichaelFactionId, transferZone.Id);
+            }
+
+            // Verify pre-save state: Michael controls 5/6 zones
+            var victoryService = new VictoryConditionService(world.ZoneService);
+            float progressBeforeSave = victoryService.GetVictoryProgress(MichaelFactionId);
+            Assert.True(progressBeforeSave > 80f && progressBeforeSave < 100f,
+                $"Expected progress > 80% and < 100%, got {progressBeforeSave}%");
+            Assert.False(victoryService.IsGameOver(), "Game should not be over yet");
+
+            // Act 1: Save the near-victory state
+            var gameState = CreateGameStateSnapshot(world);
+            gameState.SaveName = "Near Victory Save";
+            var filePath = GetTestFilePath("near_victory.json");
+            _persistenceService.Save(gameState, filePath);
+
+            // Act 2: Load the save
+            var loadedState = _persistenceService.Load(filePath);
+            var restoredWorld = RestoreGameWorld(loadedState);
+            var restoredVictoryService = new VictoryConditionService(restoredWorld.ZoneService);
+
+            // Verify restored progress matches original
+            float progressAfterLoad = restoredVictoryService.GetVictoryProgress(MichaelFactionId);
+            Assert.Equal(progressBeforeSave, progressAfterLoad, precision: 2);
+            Assert.False(restoredVictoryService.IsGameOver(), "Game should still not be over after load");
+
+            // Act 3: Capture the last remaining zone (Franklin's last zone)
+            var lastFranklinZone = restoredWorld.ZoneRepo.GetAll()
+                .First(z => z.OwnerFactionId == FranklinFactionId);
+
+            var encounter = new CombatEncounter("final-combat", lastFranklinZone.Id, MichaelFactionId, FranklinFactionId);
+            encounter.AttackerPedCount = 25;
+            encounter.DefenderPedCount = 0;
+
+            var controlCalc = new ControlPercentageCalculator();
+            controlCalc.ApplyToEncounter(encounter);
+            encounter.End(CombatStatus.AttackerVictory);
+            restoredWorld.CombatHandler.ProcessCombatResult(encounter);
+
+            // Update faction tracking
+            restoredWorld.FactionService.RemoveZoneFromFaction(FranklinFactionId, lastFranklinZone.Id);
+            restoredWorld.FactionService.AddZoneToFaction(MichaelFactionId, lastFranklinZone.Id);
+
+            // Assert: Victory condition triggers at 100%
+            float finalProgress = restoredVictoryService.GetVictoryProgress(MichaelFactionId);
+            Assert.Equal(100f, finalProgress);
+
+            var victoryResult = restoredVictoryService.CheckVictoryCondition(MichaelFactionId);
+            Assert.True(victoryResult.IsVictory, "Should be victory when controlling 100% of zones");
+            Assert.Equal(MichaelFactionId, victoryResult.FactionId);
+            Assert.Equal(restoredVictoryService.GetTotalZoneCount(), victoryResult.ZonesOwned);
+
+            Assert.True(restoredVictoryService.IsGameOver(), "Game should be over");
+            Assert.Equal(MichaelFactionId, restoredVictoryService.GetWinningFactionId());
+        }
+
+        [Fact]
+        public void Integration_SaveLoadAfterVictory_PreservesVictoryState()
+        {
+            // Arrange: Create world where Michael has already won
+            var world = CreateCompleteGameWorld();
+
+            // Transfer all zones to Michael
+            var allZones = world.ZoneRepo.GetAll().ToList();
+            foreach (var zone in allZones)
+            {
+                if (zone.OwnerFactionId != MichaelFactionId)
+                {
+                    var previousOwner = zone.OwnerFactionId;
+                    zone.OwnerFactionId = MichaelFactionId;
+                    world.ZoneRepo.Update(zone);
+                    if (previousOwner != null)
+                    {
+                        world.FactionService.RemoveZoneFromFaction(previousOwner, zone.Id);
+                    }
+                    world.FactionService.AddZoneToFaction(MichaelFactionId, zone.Id);
+                }
+            }
+
+            // Verify victory state before save
+            var victoryService = new VictoryConditionService(world.ZoneService);
+            Assert.True(victoryService.IsGameOver());
+            Assert.Equal(MichaelFactionId, victoryService.GetWinningFactionId());
+            Assert.Equal(100f, victoryService.GetVictoryProgress(MichaelFactionId));
+
+            // Act: Save and load
+            var gameState = CreateGameStateSnapshot(world);
+            gameState.SaveName = "Victory Save";
+            var filePath = GetTestFilePath("victory.json");
+            _persistenceService.Save(gameState, filePath);
+            var loadedState = _persistenceService.Load(filePath);
+            var restoredWorld = RestoreGameWorld(loadedState);
+
+            // Assert: Victory state is preserved
+            var restoredVictoryService = new VictoryConditionService(restoredWorld.ZoneService);
+            Assert.True(restoredVictoryService.IsGameOver(), "Victory state should be preserved after load");
+            Assert.Equal(MichaelFactionId, restoredVictoryService.GetWinningFactionId());
+            Assert.Equal(100f, restoredVictoryService.GetVictoryProgress(MichaelFactionId));
+
+            var victoryResult = restoredVictoryService.CheckVictoryCondition(MichaelFactionId);
+            Assert.True(victoryResult.IsVictory);
+            Assert.Equal(6, victoryResult.ZonesOwned); // All 6 zones
+            Assert.Equal(6, victoryResult.TotalZones);
+        }
+
+        #endregion
+
         #region AI State Preservation Tests
 
         [Fact]
@@ -746,7 +1227,8 @@ namespace FactionWars.Tests.Integration.Persistence
             var relationshipService = new FactionRelationshipService(factionRepo, relationshipRepo);
             var combatHandler = new CombatResultHandler(zoneService);
             var resourceModifier = new ZoneTraitResourceModifier();
-            var tickService = new ResourceTickService(factionService, zoneService, resourceModifier, 300);
+            var supplyLineService = new SupplyLineService(zoneService);
+            var tickService = new ResourceTickService(factionService, zoneService, resourceModifier, supplyLineService, 300);
 
             // Create factions
             var michael = new Faction(MichaelFactionId, "Michael's Crew", "Michael", "Professional crew",
@@ -837,7 +1319,8 @@ namespace FactionWars.Tests.Integration.Persistence
             var relationshipService = new FactionRelationshipService(factionRepo, relationshipRepo);
             var combatHandler = new CombatResultHandler(zoneService);
             var resourceModifier = new ZoneTraitResourceModifier();
-            var tickService = new ResourceTickService(factionService, zoneService, resourceModifier, 300);
+            var supplyLineService = new SupplyLineService(zoneService);
+            var tickService = new ResourceTickService(factionService, zoneService, resourceModifier, supplyLineService, 300);
 
             // Restore factions
             foreach (var factionData in gameState.Factions)
@@ -857,6 +1340,11 @@ namespace FactionWars.Tests.Integration.Persistence
                     foreach (var zoneId in stateData.OwnedZoneIds)
                     {
                         state.AddZone(zoneId);
+                    }
+                    // Restore reserve pool by tier
+                    foreach (var kvp in stateData.ReservePool)
+                    {
+                        state.AddReserveTroops(kvp.Key, kvp.Value);
                     }
                 }
             }

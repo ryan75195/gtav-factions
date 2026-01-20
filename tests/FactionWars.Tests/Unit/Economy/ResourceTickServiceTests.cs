@@ -21,6 +21,7 @@ namespace FactionWars.Tests.Unit.Economy
         private readonly Mock<IFactionService> _mockFactionService;
         private readonly Mock<IZoneService> _mockZoneService;
         private readonly Mock<IZoneTraitResourceModifier> _mockModifier;
+        private readonly Mock<ISupplyLineService> _mockSupplyLineService;
         private readonly ResourceTickService _service;
 
         private const int DefaultTickInterval = 300; // 5 minutes in seconds
@@ -30,10 +31,17 @@ namespace FactionWars.Tests.Unit.Economy
             _mockFactionService = new Mock<IFactionService>();
             _mockZoneService = new Mock<IZoneService>();
             _mockModifier = new Mock<IZoneTraitResourceModifier>();
+            _mockSupplyLineService = new Mock<ISupplyLineService>();
+
+            // Default supply line efficiency is 1.0 (full efficiency)
+            _mockSupplyLineService.Setup(s => s.GetSupplyLineEfficiency(It.IsAny<string>(), It.IsAny<string>()))
+                .Returns(1.0f);
+
             _service = new ResourceTickService(
                 _mockFactionService.Object,
                 _mockZoneService.Object,
                 _mockModifier.Object,
+                _mockSupplyLineService.Object,
                 DefaultTickInterval);
         }
 
@@ -47,6 +55,7 @@ namespace FactionWars.Tests.Unit.Economy
                 _mockFactionService.Object,
                 _mockZoneService.Object,
                 _mockModifier.Object,
+                _mockSupplyLineService.Object,
                 DefaultTickInterval);
 
             // Assert
@@ -58,7 +67,7 @@ namespace FactionWars.Tests.Unit.Economy
         {
             // Act & Assert
             var exception = Assert.Throws<ArgumentNullException>(() =>
-                new ResourceTickService(null!, _mockZoneService.Object, _mockModifier.Object, DefaultTickInterval));
+                new ResourceTickService(null!, _mockZoneService.Object, _mockModifier.Object, _mockSupplyLineService.Object, DefaultTickInterval));
             Assert.Equal("factionService", exception.ParamName);
         }
 
@@ -67,7 +76,7 @@ namespace FactionWars.Tests.Unit.Economy
         {
             // Act & Assert
             var exception = Assert.Throws<ArgumentNullException>(() =>
-                new ResourceTickService(_mockFactionService.Object, null!, _mockModifier.Object, DefaultTickInterval));
+                new ResourceTickService(_mockFactionService.Object, null!, _mockModifier.Object, _mockSupplyLineService.Object, DefaultTickInterval));
             Assert.Equal("zoneService", exception.ParamName);
         }
 
@@ -76,8 +85,17 @@ namespace FactionWars.Tests.Unit.Economy
         {
             // Act & Assert
             var exception = Assert.Throws<ArgumentNullException>(() =>
-                new ResourceTickService(_mockFactionService.Object, _mockZoneService.Object, null!, DefaultTickInterval));
+                new ResourceTickService(_mockFactionService.Object, _mockZoneService.Object, null!, _mockSupplyLineService.Object, DefaultTickInterval));
             Assert.Equal("resourceModifier", exception.ParamName);
+        }
+
+        [Fact]
+        public void Constructor_WithNullSupplyLineService_ThrowsArgumentNullException()
+        {
+            // Act & Assert
+            var exception = Assert.Throws<ArgumentNullException>(() =>
+                new ResourceTickService(_mockFactionService.Object, _mockZoneService.Object, _mockModifier.Object, null!, DefaultTickInterval));
+            Assert.Equal("supplyLineService", exception.ParamName);
         }
 
         [Theory]
@@ -92,6 +110,7 @@ namespace FactionWars.Tests.Unit.Economy
                     _mockFactionService.Object,
                     _mockZoneService.Object,
                     _mockModifier.Object,
+                    _mockSupplyLineService.Object,
                     invalidInterval));
             Assert.Equal("tickIntervalSeconds", exception.ParamName);
         }
@@ -104,6 +123,7 @@ namespace FactionWars.Tests.Unit.Economy
                 _mockFactionService.Object,
                 _mockZoneService.Object,
                 _mockModifier.Object,
+                _mockSupplyLineService.Object,
                 600);
 
             // Assert
@@ -711,6 +731,195 @@ namespace FactionWars.Tests.Unit.Economy
             Assert.Equal(100, args.CashGenerated);
             Assert.Equal(50, args.RecruitmentGenerated);
             Assert.Equal(25, args.WeaponsGenerated);
+        }
+
+        #endregion
+
+        #region Supply Line Efficiency Tests
+
+        [Fact]
+        public void Tick_WithDisconnectedZone_AppliesReducedEfficiency()
+        {
+            // Arrange
+            var faction = CreateFaction("faction1");
+            var state = new FactionState("faction1", 0, 0);
+            var zone = CreateZone("zone1", "faction1", ZoneTrait.None, 1);
+
+            _mockFactionService.Setup(f => f.GetActiveFactions())
+                .Returns(new[] { faction });
+            _mockFactionService.Setup(f => f.GetFactionState("faction1"))
+                .Returns(state);
+            _mockZoneService.Setup(z => z.GetZonesByOwner("faction1"))
+                .Returns(new[] { zone });
+            SetupModifierForNoBonus();
+
+            // Disconnected zone has 50% efficiency
+            _mockSupplyLineService.Setup(s => s.GetSupplyLineEfficiency("faction1", "zone1"))
+                .Returns(0.5f);
+
+            ResourceTickEventArgs? receivedArgs = null;
+            _service.OnResourceTick += (_, args) => receivedArgs = args;
+
+            // Act
+            _service.ForceTick();
+
+            // Assert
+            Assert.NotNull(receivedArgs);
+            // Base rates: Cash=100, Recruitment=10, Weapons=5 multiplied by 0.5 efficiency
+            Assert.Equal(50, receivedArgs.CashGenerated);
+            Assert.Equal(5, receivedArgs.RecruitmentGenerated);
+            Assert.Equal(2, receivedArgs.WeaponsGenerated); // 5 * 0.5 = 2.5, truncated to 2
+        }
+
+        [Fact]
+        public void Tick_WithConnectedZone_AppliesFullEfficiency()
+        {
+            // Arrange
+            var faction = CreateFaction("faction1");
+            var state = new FactionState("faction1", 0, 0);
+            var zone = CreateZone("zone1", "faction1", ZoneTrait.None, 1);
+
+            _mockFactionService.Setup(f => f.GetActiveFactions())
+                .Returns(new[] { faction });
+            _mockFactionService.Setup(f => f.GetFactionState("faction1"))
+                .Returns(state);
+            _mockZoneService.Setup(z => z.GetZonesByOwner("faction1"))
+                .Returns(new[] { zone });
+            SetupModifierForNoBonus();
+
+            // Connected zone has 100% efficiency
+            _mockSupplyLineService.Setup(s => s.GetSupplyLineEfficiency("faction1", "zone1"))
+                .Returns(1.0f);
+
+            ResourceTickEventArgs? receivedArgs = null;
+            _service.OnResourceTick += (_, args) => receivedArgs = args;
+
+            // Act
+            _service.ForceTick();
+
+            // Assert
+            Assert.NotNull(receivedArgs);
+            Assert.Equal(100, receivedArgs.CashGenerated);
+            Assert.Equal(10, receivedArgs.RecruitmentGenerated);
+            Assert.Equal(5, receivedArgs.WeaponsGenerated);
+        }
+
+        [Fact]
+        public void Tick_WithMixedConnectivity_AppliesCorrectEfficiencyToEachZone()
+        {
+            // Arrange
+            var faction = CreateFaction("faction1");
+            var state = new FactionState("faction1", 0, 0);
+            var connectedZone = CreateZone("zone1", "faction1", ZoneTrait.None, 1);
+            var disconnectedZone = CreateZone("zone2", "faction1", ZoneTrait.None, 1);
+
+            _mockFactionService.Setup(f => f.GetActiveFactions())
+                .Returns(new[] { faction });
+            _mockFactionService.Setup(f => f.GetFactionState("faction1"))
+                .Returns(state);
+            _mockZoneService.Setup(z => z.GetZonesByOwner("faction1"))
+                .Returns(new[] { connectedZone, disconnectedZone });
+            SetupModifierForNoBonus();
+
+            // Connected zone = full efficiency, disconnected zone = half efficiency
+            _mockSupplyLineService.Setup(s => s.GetSupplyLineEfficiency("faction1", "zone1"))
+                .Returns(1.0f);
+            _mockSupplyLineService.Setup(s => s.GetSupplyLineEfficiency("faction1", "zone2"))
+                .Returns(0.5f);
+
+            ResourceTickEventArgs? receivedArgs = null;
+            _service.OnResourceTick += (_, args) => receivedArgs = args;
+
+            // Act
+            _service.ForceTick();
+
+            // Assert
+            Assert.NotNull(receivedArgs);
+            // Connected: 100 + Disconnected: 50 = 150 cash
+            Assert.Equal(150, receivedArgs.CashGenerated);
+            // Connected: 10 + Disconnected: 5 = 15 recruitment
+            Assert.Equal(15, receivedArgs.RecruitmentGenerated);
+            // Connected: 5 + Disconnected: 2 = 7 weapons
+            Assert.Equal(7, receivedArgs.WeaponsGenerated);
+        }
+
+        [Fact]
+        public void Tick_SupplyLineEfficiencyStacksWithTraitBonus()
+        {
+            // Arrange
+            var faction = CreateFaction("faction1");
+            var state = new FactionState("faction1", 0, 0);
+            var zone = CreateZone("zone1", "faction1", ZoneTrait.Commercial, 1);
+
+            _mockFactionService.Setup(f => f.GetActiveFactions())
+                .Returns(new[] { faction });
+            _mockFactionService.Setup(f => f.GetFactionState("faction1"))
+                .Returns(state);
+            _mockZoneService.Setup(z => z.GetZonesByOwner("faction1"))
+                .Returns(new[] { zone });
+
+            // Commercial gives +50% cash
+            _mockModifier.Setup(m => m.GetModifier(ZoneTrait.Commercial, ResourceType.Cash))
+                .Returns(1.5f);
+            _mockModifier.Setup(m => m.GetModifier(ZoneTrait.Commercial, ResourceType.Recruitment))
+                .Returns(1.0f);
+            _mockModifier.Setup(m => m.GetModifier(ZoneTrait.Commercial, ResourceType.Weapons))
+                .Returns(1.0f);
+
+            // 50% supply line efficiency (disconnected)
+            _mockSupplyLineService.Setup(s => s.GetSupplyLineEfficiency("faction1", "zone1"))
+                .Returns(0.5f);
+
+            ResourceTickEventArgs? receivedArgs = null;
+            _service.OnResourceTick += (_, args) => receivedArgs = args;
+
+            // Act
+            _service.ForceTick();
+
+            // Assert
+            Assert.NotNull(receivedArgs);
+            // Base: 100 * trait: 1.5 * efficiency: 0.5 = 75 cash
+            Assert.Equal(75, receivedArgs.CashGenerated);
+            // Base: 10 * trait: 1.0 * efficiency: 0.5 = 5 recruitment
+            Assert.Equal(5, receivedArgs.RecruitmentGenerated);
+            // Base: 5 * trait: 1.0 * efficiency: 0.5 = 2 weapons (truncated from 2.5)
+            Assert.Equal(2, receivedArgs.WeaponsGenerated);
+        }
+
+        [Fact]
+        public void Tick_SupplyLineEfficiencyStacksWithStrategicValue()
+        {
+            // Arrange
+            var faction = CreateFaction("faction1");
+            var state = new FactionState("faction1", 0, 0);
+            var zone = CreateZone("zone1", "faction1", ZoneTrait.None, 2); // 2x strategic value
+
+            _mockFactionService.Setup(f => f.GetActiveFactions())
+                .Returns(new[] { faction });
+            _mockFactionService.Setup(f => f.GetFactionState("faction1"))
+                .Returns(state);
+            _mockZoneService.Setup(z => z.GetZonesByOwner("faction1"))
+                .Returns(new[] { zone });
+            SetupModifierForNoBonus();
+
+            // 50% supply line efficiency (disconnected)
+            _mockSupplyLineService.Setup(s => s.GetSupplyLineEfficiency("faction1", "zone1"))
+                .Returns(0.5f);
+
+            ResourceTickEventArgs? receivedArgs = null;
+            _service.OnResourceTick += (_, args) => receivedArgs = args;
+
+            // Act
+            _service.ForceTick();
+
+            // Assert
+            Assert.NotNull(receivedArgs);
+            // Base: 100 * strategic: 2 * efficiency: 0.5 = 100 cash
+            Assert.Equal(100, receivedArgs.CashGenerated);
+            // Base: 10 * strategic: 2 * efficiency: 0.5 = 10 recruitment
+            Assert.Equal(10, receivedArgs.RecruitmentGenerated);
+            // Base: 5 * strategic: 2 * efficiency: 0.5 = 5 weapons
+            Assert.Equal(5, receivedArgs.WeaponsGenerated);
         }
 
         #endregion

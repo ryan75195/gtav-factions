@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using FactionWars.Core.Models;
 
 namespace FactionWars.Factions.Models
 {
@@ -12,6 +14,7 @@ namespace FactionWars.Factions.Models
         private const int WeaponMultiplier = 2;
 
         private readonly HashSet<string> _ownedZoneIds;
+        private readonly Dictionary<DefenderTier, int> _reservePool;
         private int _cash;
         private int _recruitmentPoints;
         private int _weapons;
@@ -95,6 +98,12 @@ namespace FactionWars.Factions.Models
 
             FactionId = factionId;
             _ownedZoneIds = new HashSet<string>();
+            _reservePool = new Dictionary<DefenderTier, int>
+            {
+                { DefenderTier.Basic, 0 },
+                { DefenderTier.Medium, 0 },
+                { DefenderTier.Heavy, 0 }
+            };
             _cash = Math.Max(0, initialCash);
             _troopCount = Math.Max(0, initialTroopCount);
             _recruitmentPoints = 0;
@@ -229,6 +238,82 @@ namespace FactionWars.Factions.Models
         public bool HasTroops(int count)
         {
             return _troopCount >= count;
+        }
+
+        #endregion
+
+        #region Reserve Pool Operations
+
+        /// <summary>
+        /// Total number of troops across all tiers in the reserve pool.
+        /// </summary>
+        public int TotalReserveTroops => _reservePool.Values.Sum();
+
+        /// <summary>
+        /// Gets the number of reserve troops for a specific tier.
+        /// </summary>
+        /// <param name="tier">The defender tier to query.</param>
+        /// <returns>The number of troops in that tier's reserve.</returns>
+        public int GetReserveTroops(DefenderTier tier)
+        {
+            return _reservePool.TryGetValue(tier, out var count) ? count : 0;
+        }
+
+        /// <summary>
+        /// Adds troops to the reserve pool for a specific tier.
+        /// </summary>
+        /// <param name="tier">The defender tier to add to.</param>
+        /// <param name="count">The number of troops to add (must be non-negative).</param>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown if count is negative.</exception>
+        public void AddReserveTroops(DefenderTier tier, int count)
+        {
+            if (count < 0)
+                throw new ArgumentOutOfRangeException(nameof(count), "Count cannot be negative.");
+
+            if (!_reservePool.ContainsKey(tier))
+                _reservePool[tier] = 0;
+
+            _reservePool[tier] += count;
+        }
+
+        /// <summary>
+        /// Removes troops from the reserve pool for a specific tier.
+        /// </summary>
+        /// <param name="tier">The defender tier to remove from.</param>
+        /// <param name="count">The number of troops to remove (must be non-negative).</param>
+        /// <returns>True if the troops were removed, false if insufficient troops.</returns>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown if count is negative.</exception>
+        public bool RemoveReserveTroops(DefenderTier tier, int count)
+        {
+            if (count < 0)
+                throw new ArgumentOutOfRangeException(nameof(count), "Count cannot be negative.");
+
+            if (!_reservePool.TryGetValue(tier, out var current) || current < count)
+                return false;
+
+            _reservePool[tier] = current - count;
+            return true;
+        }
+
+        /// <summary>
+        /// Checks if the reserve pool has at least a specified number of troops for a tier.
+        /// </summary>
+        /// <param name="tier">The defender tier to check.</param>
+        /// <param name="count">The minimum troop count to check for.</param>
+        /// <returns>True if the tier has enough troops, false otherwise.</returns>
+        public bool HasReserveTroops(DefenderTier tier, int count)
+        {
+            return _reservePool.TryGetValue(tier, out var current) && current >= count;
+        }
+
+        /// <summary>
+        /// Returns a copy of the reserve pool dictionary.
+        /// Modifying the returned dictionary will not affect the internal state.
+        /// </summary>
+        /// <returns>A new dictionary with the reserve pool counts by tier.</returns>
+        public Dictionary<DefenderTier, int> GetReservePoolCopy()
+        {
+            return new Dictionary<DefenderTier, int>(_reservePool);
         }
 
         #endregion

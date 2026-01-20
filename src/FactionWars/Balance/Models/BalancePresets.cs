@@ -70,6 +70,12 @@ namespace FactionWars.Balance.Models
                 PlayerCombatMultiplier = 1.2f,   // +20% combat effectiveness
                 PlayerDefenseMultiplier = 1.25f, // +25% defense
 
+                // AI Aggression - Less aggressive AI
+                AIDecisionIntervalSeconds = 8f,   // Slower AI decisions
+                AIAggressionMultiplier = 0.7f,   // -30% aggression
+                AIAttackCooldownSeconds = 60f,   // Longer cooldown between attacks
+                AITroopCommitmentMultiplier = 0.8f, // AI commits fewer troops
+
                 PresetName = "Easy"
             };
         }
@@ -108,6 +114,12 @@ namespace FactionWars.Balance.Models
                 PlayerResourceMultiplier = 1.0f,
                 PlayerCombatMultiplier = 1.0f,
                 PlayerDefenseMultiplier = 1.0f,
+
+                // AI Aggression - Standard settings
+                AIDecisionIntervalSeconds = 5f,   // Standard AI decisions
+                AIAggressionMultiplier = 1.0f,   // No modifier
+                AIAttackCooldownSeconds = 30f,   // Standard cooldown
+                AITroopCommitmentMultiplier = 1.0f, // Standard commitment
 
                 PresetName = "Normal"
             };
@@ -148,6 +160,12 @@ namespace FactionWars.Balance.Models
                 PlayerCombatMultiplier = 1.0f,
                 PlayerDefenseMultiplier = 1.0f,
 
+                // AI Aggression - More aggressive AI
+                AIDecisionIntervalSeconds = 4f,   // Faster AI decisions
+                AIAggressionMultiplier = 1.2f,   // +20% aggression
+                AIAttackCooldownSeconds = 20f,   // Shorter cooldown
+                AITroopCommitmentMultiplier = 1.1f, // AI commits more troops
+
                 PresetName = "Hard"
             };
         }
@@ -186,6 +204,12 @@ namespace FactionWars.Balance.Models
                 PlayerResourceMultiplier = 0.75f, // -25% resources
                 PlayerCombatMultiplier = 0.9f,   // -10% combat effectiveness
                 PlayerDefenseMultiplier = 0.9f,  // -10% defense
+
+                // AI Aggression - Very aggressive AI
+                AIDecisionIntervalSeconds = 3f,   // Very fast AI decisions
+                AIAggressionMultiplier = 1.5f,   // +50% aggression
+                AIAttackCooldownSeconds = 15f,   // Very short cooldown
+                AITroopCommitmentMultiplier = 1.25f, // AI commits significantly more troops
 
                 PresetName = "Veteran"
             };

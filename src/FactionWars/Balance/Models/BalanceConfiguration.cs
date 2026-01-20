@@ -280,6 +280,79 @@ namespace FactionWars.Balance.Models
 
         #endregion
 
+        #region AI Aggression Settings
+
+        private float _aiDecisionIntervalSeconds = 5f;
+        private float _aiAggressionMultiplier = 1.0f;
+        private float _aiAttackCooldownSeconds = 30f;
+        private float _aiTroopCommitmentMultiplier = 1.0f;
+
+        /// <summary>
+        /// Interval between AI decision cycles in seconds.
+        /// Lower values make AI more responsive.
+        /// Default: 5
+        /// </summary>
+        public float AIDecisionIntervalSeconds
+        {
+            get => _aiDecisionIntervalSeconds;
+            set
+            {
+                if (value <= 0f)
+                    throw new ArgumentOutOfRangeException(nameof(value), "AIDecisionIntervalSeconds must be positive.");
+                _aiDecisionIntervalSeconds = value;
+            }
+        }
+
+        /// <summary>
+        /// Multiplier applied to AI aggression scores.
+        /// Higher values make AI more likely to attack.
+        /// Default: 1.0
+        /// </summary>
+        public float AIAggressionMultiplier
+        {
+            get => _aiAggressionMultiplier;
+            set
+            {
+                if (value <= 0f)
+                    throw new ArgumentOutOfRangeException(nameof(value), "AIAggressionMultiplier must be positive.");
+                _aiAggressionMultiplier = value;
+            }
+        }
+
+        /// <summary>
+        /// Cooldown between AI attacks in seconds.
+        /// Lower values allow more frequent attacks.
+        /// Default: 30
+        /// </summary>
+        public float AIAttackCooldownSeconds
+        {
+            get => _aiAttackCooldownSeconds;
+            set
+            {
+                if (value < 0f)
+                    throw new ArgumentOutOfRangeException(nameof(value), "AIAttackCooldownSeconds cannot be negative.");
+                _aiAttackCooldownSeconds = value;
+            }
+        }
+
+        /// <summary>
+        /// Multiplier for troops AI commits to attacks.
+        /// Higher values make AI commit more troops per attack.
+        /// Default: 1.0
+        /// </summary>
+        public float AITroopCommitmentMultiplier
+        {
+            get => _aiTroopCommitmentMultiplier;
+            set
+            {
+                if (value <= 0f)
+                    throw new ArgumentOutOfRangeException(nameof(value), "AITroopCommitmentMultiplier must be positive.");
+                _aiTroopCommitmentMultiplier = value;
+            }
+        }
+
+        #endregion
+
         #region Player Bonus Settings
 
         private float _playerResourceMultiplier = 1.0f;
@@ -395,6 +468,12 @@ namespace FactionWars.Balance.Models
                 _maxPedsPerWave = _maxPedsPerWave,
                 _maxActiveWaves = _maxActiveWaves,
                 _resourceCostPerPed = _resourceCostPerPed,
+
+                // AI Aggression
+                _aiDecisionIntervalSeconds = _aiDecisionIntervalSeconds,
+                _aiAggressionMultiplier = _aiAggressionMultiplier,
+                _aiAttackCooldownSeconds = _aiAttackCooldownSeconds,
+                _aiTroopCommitmentMultiplier = _aiTroopCommitmentMultiplier,
 
                 // Player Bonus
                 _playerResourceMultiplier = _playerResourceMultiplier,

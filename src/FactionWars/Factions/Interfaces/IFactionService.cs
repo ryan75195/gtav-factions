@@ -1,3 +1,4 @@
+using FactionWars.Core.Models;
 using FactionWars.Factions.Models;
 using System.Collections.Generic;
 
@@ -176,5 +177,16 @@ namespace FactionWars.Factions.Interfaces
         /// <exception cref="System.ArgumentNullException">Thrown if factionId is null.</exception>
         /// <exception cref="System.ArgumentOutOfRangeException">Thrown if amount is negative.</exception>
         bool AddRecruitmentPoints(string factionId, int amount);
+
+        /// <summary>
+        /// Adds troops to a faction's reserve pool for a specific tier.
+        /// </summary>
+        /// <param name="factionId">The faction ID to add reserve troops to.</param>
+        /// <param name="tier">The defender tier to add troops to.</param>
+        /// <param name="count">The number of troops to add (must be non-negative).</param>
+        /// <returns>True if troops were added, false if faction or state not found.</returns>
+        /// <exception cref="System.ArgumentNullException">Thrown if factionId is null.</exception>
+        /// <exception cref="System.ArgumentOutOfRangeException">Thrown if count is negative.</exception>
+        bool AddReserveTroops(string factionId, DefenderTier tier, int count);
     }
 }

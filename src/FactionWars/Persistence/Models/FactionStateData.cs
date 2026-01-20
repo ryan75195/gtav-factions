@@ -1,3 +1,4 @@
+using FactionWars.Core.Models;
 using FactionWars.Factions.Models;
 using System.Collections.Generic;
 
@@ -14,6 +15,7 @@ namespace FactionWars.Persistence.Models
         public int Weapons { get; set; }
         public int TroopCount { get; set; }
         public List<string> OwnedZoneIds { get; set; } = new List<string>();
+        public Dictionary<DefenderTier, int> ReservePool { get; set; } = new Dictionary<DefenderTier, int>();
 
         /// <summary>
         /// Creates a FactionStateData from a FactionState model.
@@ -27,7 +29,8 @@ namespace FactionWars.Persistence.Models
                 RecruitmentPoints = state.RecruitmentPoints,
                 Weapons = state.Weapons,
                 TroopCount = state.TroopCount,
-                OwnedZoneIds = new List<string>(state.OwnedZoneIds)
+                OwnedZoneIds = new List<string>(state.OwnedZoneIds),
+                ReservePool = state.GetReservePoolCopy()
             };
             return data;
         }
@@ -43,6 +46,10 @@ namespace FactionWars.Persistence.Models
             foreach (var zoneId in OwnedZoneIds)
             {
                 state.AddZone(zoneId);
+            }
+            foreach (var kvp in ReservePool)
+            {
+                state.AddReserveTroops(kvp.Key, kvp.Value);
             }
             return state;
         }

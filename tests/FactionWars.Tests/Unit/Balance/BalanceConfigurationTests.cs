@@ -318,5 +318,92 @@ namespace FactionWars.Tests.Unit.Balance
         }
 
         #endregion
+
+        #region AI Aggression Settings Tests
+
+        [Fact]
+        public void Constructor_WithDefaults_SetsReasonableAIAggressionValues()
+        {
+            // Arrange & Act
+            var config = new BalanceConfiguration();
+
+            // Assert - AI aggression defaults
+            Assert.Equal(5f, config.AIDecisionIntervalSeconds);
+            Assert.Equal(1.0f, config.AIAggressionMultiplier);
+            Assert.Equal(30f, config.AIAttackCooldownSeconds);
+            Assert.Equal(1.0f, config.AITroopCommitmentMultiplier);
+        }
+
+        [Theory]
+        [InlineData(0f)]
+        [InlineData(-1f)]
+        public void AIDecisionIntervalSeconds_WhenSetToZeroOrNegative_ThrowsArgumentOutOfRangeException(float value)
+        {
+            // Arrange
+            var config = new BalanceConfiguration();
+
+            // Act & Assert
+            Assert.Throws<ArgumentOutOfRangeException>(() => config.AIDecisionIntervalSeconds = value);
+        }
+
+        [Theory]
+        [InlineData(0f)]
+        [InlineData(-0.5f)]
+        public void AIAggressionMultiplier_WhenSetToZeroOrNegative_ThrowsArgumentOutOfRangeException(float value)
+        {
+            // Arrange
+            var config = new BalanceConfiguration();
+
+            // Act & Assert
+            Assert.Throws<ArgumentOutOfRangeException>(() => config.AIAggressionMultiplier = value);
+        }
+
+        [Theory]
+        [InlineData(-1f)]
+        [InlineData(-0.1f)]
+        public void AIAttackCooldownSeconds_WhenSetToNegative_ThrowsArgumentOutOfRangeException(float value)
+        {
+            // Arrange
+            var config = new BalanceConfiguration();
+
+            // Act & Assert
+            Assert.Throws<ArgumentOutOfRangeException>(() => config.AIAttackCooldownSeconds = value);
+        }
+
+        [Theory]
+        [InlineData(0f)]
+        [InlineData(-1f)]
+        public void AITroopCommitmentMultiplier_WhenSetToZeroOrNegative_ThrowsArgumentOutOfRangeException(float value)
+        {
+            // Arrange
+            var config = new BalanceConfiguration();
+
+            // Act & Assert
+            Assert.Throws<ArgumentOutOfRangeException>(() => config.AITroopCommitmentMultiplier = value);
+        }
+
+        [Fact]
+        public void Clone_CopiesAIAggressionProperties()
+        {
+            // Arrange
+            var original = new BalanceConfiguration
+            {
+                AIDecisionIntervalSeconds = 10f,
+                AIAggressionMultiplier = 1.5f,
+                AIAttackCooldownSeconds = 60f,
+                AITroopCommitmentMultiplier = 0.8f
+            };
+
+            // Act
+            var clone = original.Clone();
+
+            // Assert
+            Assert.Equal(original.AIDecisionIntervalSeconds, clone.AIDecisionIntervalSeconds);
+            Assert.Equal(original.AIAggressionMultiplier, clone.AIAggressionMultiplier);
+            Assert.Equal(original.AIAttackCooldownSeconds, clone.AIAttackCooldownSeconds);
+            Assert.Equal(original.AITroopCommitmentMultiplier, clone.AITroopCommitmentMultiplier);
+        }
+
+        #endregion
     }
 }

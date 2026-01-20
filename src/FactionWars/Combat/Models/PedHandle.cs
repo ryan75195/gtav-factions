@@ -1,5 +1,6 @@
 using System;
 using FactionWars.Core.Interfaces;
+using FactionWars.Core.Models;
 
 namespace FactionWars.Combat.Models
 {
@@ -36,6 +37,12 @@ namespace FactionWars.Combat.Models
         public string? ZoneId { get; }
 
         /// <summary>
+        /// The defender tier of this ped, if it's a defender.
+        /// Null for attackers, followers, or other non-defender peds.
+        /// </summary>
+        public DefenderTier? DefenderTier { get; }
+
+        /// <summary>
         /// The UTC time when this ped handle was created.
         /// </summary>
         public DateTime CreatedAt { get; }
@@ -56,6 +63,11 @@ namespace FactionWars.Combat.Models
         public bool IsValid => Handle >= 0;
 
         /// <summary>
+        /// Returns true if this ped is a defender (has a defender tier assigned).
+        /// </summary>
+        public bool IsDefender => DefenderTier.HasValue;
+
+        /// <summary>
         /// Represents an invalid ped handle (handle = -1).
         /// </summary>
         public static PedHandle Invalid => new PedHandle(-1);
@@ -68,18 +80,21 @@ namespace FactionWars.Combat.Models
         /// <param name="spawnPosition">The position where the ped was spawned.</param>
         /// <param name="modelName">The model name used for spawning.</param>
         /// <param name="zoneId">The zone this ped is assigned to.</param>
+        /// <param name="defenderTier">The defender tier if this ped is a defender.</param>
         public PedHandle(
             int handle,
             string? factionId = null,
             Vector3 spawnPosition = default,
             string? modelName = null,
-            string? zoneId = null)
+            string? zoneId = null,
+            DefenderTier? defenderTier = null)
         {
             Handle = handle;
             FactionId = factionId;
             SpawnPosition = spawnPosition;
             ModelName = modelName;
             ZoneId = zoneId;
+            DefenderTier = defenderTier;
             CreatedAt = DateTime.UtcNow;
             IsMarkedForDeletion = false;
             IsRecycled = false;

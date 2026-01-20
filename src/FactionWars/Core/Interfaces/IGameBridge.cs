@@ -92,5 +92,132 @@ namespace FactionWars.Core.Interfaces
         /// <param name="modelName">The new model name to apply.</param>
         /// <returns>True if the model was changed successfully.</returns>
         bool SetPedModel(int pedHandle, string modelName);
+
+        /// <summary>
+        /// Gets the model name of the player's current character.
+        /// Used to detect which protagonist (Michael, Franklin, Trevor) is active.
+        /// </summary>
+        /// <returns>The model name of the player character (e.g., "player_zero" for Michael).</returns>
+        string GetPlayerCharacterModel();
+
+        /// <summary>
+        /// Gets the player's current heading (direction they're facing) in degrees.
+        /// 0 = North, 90 = East, 180 = South, 270 = West.
+        /// </summary>
+        /// <returns>The player's heading in degrees (0-360).</returns>
+        float GetPlayerHeading();
+
+        /// <summary>
+        /// Checks if the player character is currently dead.
+        /// </summary>
+        /// <returns>True if the player is dead, false if alive.</returns>
+        bool IsPlayerDead();
+
+        /// <summary>
+        /// Gets the player's current money amount.
+        /// </summary>
+        /// <returns>The player's money in GTA V dollars.</returns>
+        int GetPlayerMoney();
+
+        /// <summary>
+        /// Adds money to the player's account.
+        /// </summary>
+        /// <param name="amount">Amount to add (can be negative to subtract).</param>
+        void AddPlayerMoney(int amount);
+
+        /// <summary>
+        /// Makes a ped follow the player as a bodyguard.
+        /// Sets up the appropriate task and relationship group so the ped follows and assists in combat.
+        /// </summary>
+        /// <param name="pedHandle">Handle of the ped to make follow.</param>
+        void SetPedAsFollower(int pedHandle);
+
+        /// <summary>
+        /// Checks if the player is currently in a vehicle.
+        /// </summary>
+        /// <returns>True if the player is in a vehicle, false otherwise.</returns>
+        bool IsPlayerInVehicle();
+
+        /// <summary>
+        /// Gets the handle of the vehicle the player is currently in.
+        /// </summary>
+        /// <returns>The vehicle handle, or -1 if player is not in a vehicle.</returns>
+        int GetPlayerVehicle();
+
+        /// <summary>
+        /// Checks if a ped is currently in any vehicle.
+        /// </summary>
+        /// <param name="pedHandle">Handle of the ped to check.</param>
+        /// <returns>True if the ped is in a vehicle, false otherwise.</returns>
+        bool IsPedInVehicle(int pedHandle);
+
+        /// <summary>
+        /// Gets the available (free) seat indices for a vehicle.
+        /// </summary>
+        /// <param name="vehicleHandle">Handle of the vehicle to check.</param>
+        /// <returns>An array of free seat indices (0 = driver, 1+ = passengers).</returns>
+        int[] GetVehicleFreeSeats(int vehicleHandle);
+
+        /// <summary>
+        /// Tasks a ped to enter a specific vehicle and seat.
+        /// </summary>
+        /// <param name="pedHandle">Handle of the ped to task.</param>
+        /// <param name="vehicleHandle">Handle of the vehicle to enter.</param>
+        /// <param name="seatIndex">The seat index to enter (0 = driver, 1+ = passengers).</param>
+        void TaskPedEnterVehicle(int pedHandle, int vehicleHandle, int seatIndex);
+
+        /// <summary>
+        /// Tasks a ped to leave their current vehicle.
+        /// </summary>
+        /// <param name="pedHandle">Handle of the ped to task.</param>
+        void TaskPedLeaveVehicle(int pedHandle);
+
+        /// <summary>
+        /// Gives a weapon to a ped.
+        /// </summary>
+        /// <param name="pedHandle">Handle of the ped to give the weapon to.</param>
+        /// <param name="weaponName">The weapon name/hash (e.g., "weapon_pistol", "weapon_smg").</param>
+        void GivePedWeapon(int pedHandle, string weaponName);
+
+        /// <summary>
+        /// Sets a ped's shooting accuracy.
+        /// </summary>
+        /// <param name="pedHandle">Handle of the ped.</param>
+        /// <param name="accuracy">Accuracy value from 0.0 (worst) to 1.0 (best).</param>
+        void SetPedAccuracy(int pedHandle, float accuracy);
+
+        /// <summary>
+        /// Sets a ped's armor value.
+        /// </summary>
+        /// <param name="pedHandle">Handle of the ped.</param>
+        /// <param name="armor">Armor value (0 = no armor, 100 = full armor).</param>
+        void SetPedArmor(int pedHandle, int armor);
+
+        /// <summary>
+        /// Sets a ped's maximum and current health.
+        /// </summary>
+        /// <param name="pedHandle">Handle of the ped.</param>
+        /// <param name="health">Health value (typically 100-200).</param>
+        void SetPedHealth(int pedHandle, int health);
+
+        /// <summary>
+        /// Configures a ped's combat behavior attributes.
+        /// </summary>
+        /// <param name="pedHandle">Handle of the ped.</param>
+        /// <param name="canUseCover">Whether the ped will use cover during combat.</param>
+        /// <param name="willFightArmedPeds">Whether the ped will engage armed enemies.</param>
+        void SetPedCombatAttributes(int pedHandle, bool canUseCover, bool willFightArmedPeds);
+
+        /// <summary>
+        /// Sets a waypoint on the map at the specified position.
+        /// The player can use this for navigation but must travel there manually.
+        /// </summary>
+        /// <param name="position">World position for the waypoint.</param>
+        void SetWaypoint(Vector3 position);
+
+        /// <summary>
+        /// Clears any currently set waypoint from the map.
+        /// </summary>
+        void ClearWaypoint();
     }
 }
