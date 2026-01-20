@@ -563,5 +563,78 @@ namespace FactionWars.ScriptHookV.Managers
         }
 
         #endregion
+
+        #region Immediate Spawning
+
+        /// <summary>
+        /// Spawns all defenders immediately at spread positions around the zone centroid.
+        /// Used for player encounters where all defenders appear at once.
+        /// </summary>
+        /// <param name="spawnPlan">The spawn plan defining how many peds of each tier to spawn.</param>
+        /// <param name="modelsByTier">Dictionary mapping tiers to ped model names.</param>
+        /// <param name="factionId">The faction ID for the defenders.</param>
+        /// <param name="zoneCentroid">The center point of the zone to spawn around.</param>
+        /// <returns>A list of all spawned ped handles.</returns>
+        public IList<PedHandle> SpawnAllDefendersImmediately(
+            DefenderSpawnPlan spawnPlan,
+            Dictionary<DefenderTier, string> modelsByTier,
+            string factionId,
+            Vector3 zoneCentroid)
+        {
+            if (_currentEncounter == null)
+                throw new InvalidOperationException("Cannot spawn defenders when not in combat.");
+            if (spawnPlan == null)
+                throw new ArgumentNullException(nameof(spawnPlan));
+            if (modelsByTier == null)
+                throw new ArgumentNullException(nameof(modelsByTier));
+            if (string.IsNullOrEmpty(factionId))
+                throw new ArgumentNullException(nameof(factionId));
+
+            var allSpawned = new List<PedHandle>();
+            var totalToSpawn = spawnPlan.TotalPeds;
+
+            if (totalToSpawn <= 0)
+                return allSpawned;
+
+            // Get all spawn positions at once - spread 30-50m around centroid
+            var spawnPositions = _spawnPositionCalculator.CalculateSpreadPositions(
+                zoneCentroid,
+                totalToSpawn,
+                minRadius: 30f,
+                maxRadius: 50f);
+
+            int positionIndex = 0;
+
+            // Spawn all tiers immediately (Heavy → Medium → Basic)
+            foreach (DefenderTier tier in new[] { DefenderTier.Heavy, DefenderTier.Medium, DefenderTier.Basic })
+            {
+                var count = spawnPlan.GetPedCount(tier);
+                if (count <= 0)
+                    continue;
+
+                if (!modelsByTier.TryGetValue(tier, out var modelName) || string.IsNullOrEmpty(modelName))
+                    continue;
+
+                for (int i = 0; i < count && positionIndex < spawnPositions.Count; i++)
+                {
+                    if (!_pedSpawningService.CanSpawn())
+                        break;
+
+                    var position = spawnPositions[positionIndex++];
+                    var ped = _pedSpawningService.SpawnPed(modelName, position, factionId, _currentEncounter.ZoneId);
+
+                    if (ped.IsValid)
+                    {
+                        _gameBridge.SetPedToAttackPlayer(ped.Handle);
+                        allSpawned.Add(ped);
+                    }
+                }
+            }
+
+            FileLogger.Combat($"CombatManager.SpawnAllDefendersImmediately: Spawned {allSpawned.Count}/{totalToSpawn} defenders");
+            return allSpawned;
+        }
+
+        #endregion
     }
 }

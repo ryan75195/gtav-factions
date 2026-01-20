@@ -30,5 +30,16 @@ namespace FactionWars.Combat.Interfaces
         /// <param name="count">Number of spawn positions to calculate.</param>
         /// <returns>A list of Vector3 positions behind the player.</returns>
         IList<Vector3> CalculateNaturalSpawnPositions(int count);
+
+        /// <summary>
+        /// Calculates multiple spawn positions spread around a center point.
+        /// Used for immediate spawning of all defenders at once.
+        /// </summary>
+        /// <param name="center">Center point to spread around.</param>
+        /// <param name="count">Number of positions to calculate.</param>
+        /// <param name="minRadius">Minimum distance from center.</param>
+        /// <param name="maxRadius">Maximum distance from center.</param>
+        /// <returns>List of spawn positions.</returns>
+        IList<Vector3> CalculateSpreadPositions(Vector3 center, int count, float minRadius, float maxRadius);
     }
 }

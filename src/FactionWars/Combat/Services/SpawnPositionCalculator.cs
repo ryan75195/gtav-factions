@@ -120,5 +120,24 @@ namespace FactionWars.Combat.Services
 
             return positions;
         }
+
+        /// <inheritdoc />
+        public IList<Vector3> CalculateSpreadPositions(Vector3 center, int count, float minRadius, float maxRadius)
+        {
+            var positions = new List<Vector3>();
+
+            for (int i = 0; i < count; i++)
+            {
+                var angle = (2 * Math.PI * i) / Math.Max(count, 1);
+                var distance = minRadius + (i % 3) * ((maxRadius - minRadius) / 2);
+
+                positions.Add(new Vector3(
+                    center.X + (float)(Math.Cos(angle) * distance),
+                    center.Y + (float)(Math.Sin(angle) * distance),
+                    center.Z));
+            }
+
+            return positions;
+        }
     }
 }
