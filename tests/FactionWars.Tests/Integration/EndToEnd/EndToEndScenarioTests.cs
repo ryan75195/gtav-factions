@@ -772,6 +772,7 @@ namespace FactionWars.Tests.Integration.EndToEnd
             var takeoverDetector = new TakeoverDetector();
             var combatResultHandler = new CombatResultHandler(zoneService);
             var waveSpawnerService = new WaveSpawnerService();
+            var followerService = new FollowerService();
 
             var combatManager = new CombatManager(
                 gameBridge,
@@ -781,7 +782,8 @@ namespace FactionWars.Tests.Integration.EndToEnd
                 controlCalculator,
                 takeoverDetector,
                 combatResultHandler,
-                waveSpawnerService);
+                waveSpawnerService,
+                followerService);
 
             // Track events
             bool zoneEnteredRaised = false;
@@ -922,10 +924,12 @@ namespace FactionWars.Tests.Integration.EndToEnd
             var takeoverDetector = new TakeoverDetector();
             var combatResultHandler = new CombatResultHandler(zoneService);
             var waveSpawnerService = new WaveSpawnerService();
+            var followerService = new FollowerService();
 
             var combatManager = new CombatManager(
                 gameBridge, pedPool, pedSpawningService, spawnPositionCalculator,
-                controlCalculator, takeoverDetector, combatResultHandler, waveSpawnerService);
+                controlCalculator, takeoverDetector, combatResultHandler, waveSpawnerService,
+                followerService);
 
             // Start combat
             var encounter = combatManager.StartCombat(enemyZone, MichaelFactionId);
@@ -1009,10 +1013,12 @@ namespace FactionWars.Tests.Integration.EndToEnd
             var takeoverDetector = new TakeoverDetector();
             var combatResultHandler = new CombatResultHandler(zoneService);
             var waveSpawnerService = new WaveSpawnerService();
+            var followerService = new FollowerService();
 
             var combatManager = new CombatManager(
                 gameBridge, pedPool, pedSpawningService, spawnPositionCalculator,
-                controlCalculator, takeoverDetector, combatResultHandler, waveSpawnerService);
+                controlCalculator, takeoverDetector, combatResultHandler, waveSpawnerService,
+                followerService);
 
             // Act: Capture zone 1
             combatManager.StartCombat(zone1, MichaelFactionId);
@@ -1075,6 +1081,7 @@ namespace FactionWars.Tests.Integration.EndToEnd
             var takeoverDetector = new TakeoverDetector();
             var combatResultHandler = new CombatResultHandler(zoneService);
             var waveSpawnerService = new WaveSpawnerService();
+            var followerService = new FollowerService();
 
             var combatManager = new CombatManager(
                 gameBridge,
@@ -1084,7 +1091,8 @@ namespace FactionWars.Tests.Integration.EndToEnd
                 controlCalculator,
                 takeoverDetector,
                 combatResultHandler,
-                waveSpawnerService);
+                waveSpawnerService,
+                followerService);
 
             // Track combat events
             bool combatEndedRaised = false;
@@ -1185,10 +1193,12 @@ namespace FactionWars.Tests.Integration.EndToEnd
             var takeoverDetector = new TakeoverDetector();
             var combatResultHandler = new CombatResultHandler(zoneService);
             var waveSpawnerService = new WaveSpawnerService();
+            var followerService = new FollowerService();
 
             var combatManager = new CombatManager(
                 gameBridge, pedPool, pedSpawningService, spawnPositionCalculator,
-                controlCalculator, takeoverDetector, combatResultHandler, waveSpawnerService);
+                controlCalculator, takeoverDetector, combatResultHandler, waveSpawnerService,
+                followerService);
 
             CombatEncounter? endedEncounter = null;
             combatManager.CombatEnded += (sender, encounter) => endedEncounter = encounter;
@@ -1246,10 +1256,12 @@ namespace FactionWars.Tests.Integration.EndToEnd
             var takeoverDetector = new TakeoverDetector();
             var combatResultHandler = new CombatResultHandler(zoneService);
             var waveSpawnerService = new WaveSpawnerService();
+            var followerService = new FollowerService();
 
             var combatManager = new CombatManager(
                 gameBridge, pedPool, pedSpawningService, spawnPositionCalculator,
-                controlCalculator, takeoverDetector, combatResultHandler, waveSpawnerService);
+                controlCalculator, takeoverDetector, combatResultHandler, waveSpawnerService,
+                followerService);
 
             CombatEncounter? endedEncounter = null;
             combatManager.CombatEnded += (sender, encounter) => endedEncounter = encounter;

@@ -1,5 +1,6 @@
 using System;
 using FactionWars.Core.Interfaces;
+using FactionWars.ScriptHookV.Logging;
 using GTA;
 using GTA.Math;
 using GTA.Native;
@@ -24,30 +25,99 @@ namespace FactionWars.ScriptHookV
         /// <inheritdoc />
         public int CreatePed(string modelName, DomainVector3 position)
         {
+            FileLogger.Spawn($"CreatePed called: model={modelName}, pos=({position.X:F1}, {position.Y:F1}, {position.Z:F1})");
+
             try
             {
                 var model = new Model(modelName);
-                model.Request(1000);
+                FileLogger.Spawn($"Model created: IsValid={model.IsValid}, Hash={model.Hash}");
 
-                if (!model.IsLoaded)
+                if (!model.IsValid)
                 {
+                    FileLogger.Error($"Model '{modelName}' is not valid!");
+                    GTA.UI.Notification.Show($"~r~Invalid model: {modelName}");
                     return -1;
                 }
 
+                // Request model with longer timeout
+                model.Request(5000);
+                FileLogger.Spawn($"Model requested, waiting for load...");
+
+                // Wait for model to load (blocking call)
+                int waitCounter = 0;
+                while (!model.IsLoaded && waitCounter < 100)
+                {
+                    Script.Wait(10);
+                    waitCounter++;
+                }
+
+                FileLogger.Spawn($"Model load wait complete: waitCounter={waitCounter}, IsLoaded={model.IsLoaded}");
+
+                if (!model.IsLoaded)
+                {
+                    FileLogger.Error($"Model '{modelName}' failed to load after {waitCounter * 10}ms");
+                    GTA.UI.Notification.Show($"~r~Model failed to load: {modelName}");
+                    return -1;
+                }
+
+                // Get ground Z coordinate for proper placement
                 var gtaPosition = new GTA.Math.Vector3(position.X, position.Y, position.Z);
-                var ped = World.CreatePed(model, gtaPosition);
+                FileLogger.Spawn($"Initial position: ({gtaPosition.X:F1}, {gtaPosition.Y:F1}, {gtaPosition.Z:F1})");
+
+                // Try to get ground Z at position
+                float groundZ = 0f;
+                bool gotGround = World.GetGroundHeight(new GTA.Math.Vector3(position.X, position.Y, position.Z + 100f), out groundZ);
+                FileLogger.Spawn($"Ground height check: success={gotGround}, groundZ={groundZ:F1}");
+
+                if (gotGround && groundZ > 0)
+                {
+                    gtaPosition.Z = groundZ + 1f; // Spawn slightly above ground
+                    FileLogger.Spawn($"Adjusted Z to ground: {gtaPosition.Z:F1}");
+                }
+                else
+                {
+                    FileLogger.Warn($"Could not get ground height, using original Z={gtaPosition.Z:F1}");
+                }
+
+                // Create ped facing player
+                var playerPos = Game.Player.Character.Position;
+                var toPlayer = playerPos - gtaPosition;
+                float heading = (float)(Math.Atan2(toPlayer.X, toPlayer.Y) * 180.0 / Math.PI);
+                FileLogger.Spawn($"Creating ped at ({gtaPosition.X:F1}, {gtaPosition.Y:F1}, {gtaPosition.Z:F1}), heading={heading:F1}");
+
+                var ped = World.CreatePed(model, gtaPosition, heading);
 
                 model.MarkAsNoLongerNeeded();
 
                 if (ped == null)
                 {
+                    FileLogger.Error("World.CreatePed returned null!");
+                    GTA.UI.Notification.Show("~r~Ped creation failed (null)!");
                     return -1;
                 }
 
+                if (!ped.Exists())
+                {
+                    FileLogger.Error("Ped created but doesn't exist!");
+                    GTA.UI.Notification.Show("~r~Ped creation failed (not exists)!");
+                    return -1;
+                }
+
+                FileLogger.Spawn($"Ped created successfully: Handle={ped.Handle}, Health={ped.Health}");
+
+                // Make ped persistent so they don't despawn
+                ped.IsPersistent = true;
+
+                // NOTE: Don't set combat task here - caller will configure based on ped type
+                // (enemy defenders vs friendly followers have different behaviors)
+                FileLogger.Spawn($"Ped configured: Persistent=true, ready for combat configuration");
+
                 return ped.Handle;
             }
-            catch
+            catch (Exception ex)
             {
+                FileLogger.Error("Exception in CreatePed", ex);
+                GTA.UI.Notification.Show($"~r~CreatePed error: {ex.Message}");
                 return -1;
             }
         }
@@ -332,46 +402,80 @@ namespace FactionWars.ScriptHookV
         {
             try
             {
+                FileLogger.Info($"SetPedAsFollower called for handle {pedHandle}");
+
                 var ped = Entity.FromHandle(pedHandle) as Ped;
-                if (ped == null || !ped.Exists()) return;
+                if (ped == null || !ped.Exists())
+                {
+                    FileLogger.Error($"SetPedAsFollower: Ped {pedHandle} doesn't exist");
+                    return;
+                }
 
                 var player = Game.Player.Character;
-                if (player == null || !player.Exists()) return;
+                if (player == null || !player.Exists())
+                {
+                    FileLogger.Error("SetPedAsFollower: Player doesn't exist");
+                    return;
+                }
+
+                // Clear any existing tasks first
+                ped.Task.ClearAllImmediately();
 
                 // Set relationship to be friendly with the player
                 var playerGroup = player.RelationshipGroup;
                 ped.RelationshipGroup = playerGroup;
+                FileLogger.Info($"Set ped {pedHandle} to player's relationship group");
 
-                // Add to player's ped group
+                // Add to player's ped group so they move together
                 var pedGroup = player.PedGroup;
                 if (pedGroup != null)
                 {
                     pedGroup.Add(ped, false);
+                    FileLogger.Info($"Added ped {pedHandle} to player's ped group");
+                }
+                else
+                {
+                    // Create a new group if player doesn't have one
+                    pedGroup = new PedGroup();
+                    pedGroup.Add(player, true); // Player is leader
+                    pedGroup.Add(ped, false);
+                    FileLogger.Info($"Created new ped group with player as leader");
                 }
 
-                // Set as companion - task them to follow and guard the player
-                ped.Task.ClearAllImmediately();
-                ped.AlwaysKeepTask = true;
-                ped.BlockPermanentEvents = true;
+                // Configure ped for bodyguard behavior
+                ped.IsPersistent = true;
+                ped.KeepTaskWhenMarkedAsNoLongerNeeded = true;
+                ped.BlockPermanentEvents = false; // Allow them to react to combat
+                ped.CanSwitchWeapons = true;
 
-                // Make the ped follow the player
-                // Use native call for TASK_FOLLOW_TO_OFFSET_OF_ENTITY with combat behavior
-                Function.Call(Hash.TASK_FOLLOW_TO_OFFSET_OF_ENTITY,
-                    ped.Handle,
-                    player.Handle,
-                    0f, -2f, 0f, // Offset: slightly behind player
-                    5.0f, // Movement speed
-                    -1, // Timeout (-1 = indefinite)
-                    2.0f, // Stop range
-                    true // Persist following
-                );
+                // Set combat attributes for aggressive defense
+                Function.Call(Hash.SET_PED_COMBAT_ATTRIBUTES, ped.Handle, 46, true); // BF_CanFightArmedPedsWhenNotArmed
+                Function.Call(Hash.SET_PED_COMBAT_ATTRIBUTES, ped.Handle, 5, true);  // BF_CanUseCover
+                Function.Call(Hash.SET_PED_COMBAT_ATTRIBUTES, ped.Handle, 0, true);  // BF_CanUseCoverShootOnlyWhenAimingAtTarget
+                Function.Call(Hash.SET_PED_COMBAT_ATTRIBUTES, ped.Handle, 2, true);  // BF_CanDoDrivebys
+                Function.Call(Hash.SET_PED_COMBAT_ATTRIBUTES, ped.Handle, 3, true);  // BF_CanLeaveVehicle
 
-                // Make them fight any enemies
+                // Set combat ability and range
+                Function.Call(Hash.SET_PED_COMBAT_ABILITY, ped.Handle, 2); // Professional
+                Function.Call(Hash.SET_PED_COMBAT_RANGE, ped.Handle, 2); // Far
+                Function.Call(Hash.SET_PED_COMBAT_MOVEMENT, ped.Handle, 2); // Offensive
+
+                // Set firing pattern
                 ped.FiringPattern = FiringPattern.FullAuto;
+
+                // Use TASK_COMBAT_HATED_TARGETS_AROUND_PED to fight any hostile peds nearby
+                // This makes them automatically engage enemies
+                Function.Call(Hash.TASK_COMBAT_HATED_TARGETS_AROUND_PED, ped.Handle, 100f, 0);
+
+                // Also register them as a companion that follows
+                Function.Call(Hash.REGISTER_TARGET, ped.Handle, player.Handle);
+                Function.Call(Hash.SET_PED_AS_GROUP_MEMBER, ped.Handle, Function.Call<int>(Hash.GET_PLAYER_GROUP, Game.Player.Handle));
+
+                FileLogger.Info($"Follower {pedHandle} configured: combat and follow behavior set");
             }
-            catch
+            catch (Exception ex)
             {
-                // Silently ignore
+                FileLogger.Error($"SetPedAsFollower exception", ex);
             }
         }
 
@@ -616,6 +720,68 @@ namespace FactionWars.ScriptHookV
             catch
             {
                 // Silently ignore
+            }
+        }
+
+        /// <inheritdoc />
+        public void SetPedToAttackPlayer(int pedHandle)
+        {
+            try
+            {
+                FileLogger.Combat($"SetPedToAttackPlayer called for handle {pedHandle}");
+
+                var ped = Entity.FromHandle(pedHandle) as Ped;
+                if (ped == null || !ped.Exists())
+                {
+                    FileLogger.Error($"SetPedToAttackPlayer: Ped {pedHandle} doesn't exist");
+                    return;
+                }
+
+                var player = Game.Player.Character;
+                if (player == null || !player.Exists())
+                {
+                    FileLogger.Error("SetPedToAttackPlayer: Player doesn't exist");
+                    return;
+                }
+
+                // Create or get an enemy relationship group for defenders
+                var enemyGroup = World.AddRelationshipGroup("DEFENDER_ENEMIES");
+                var playerGroup = player.RelationshipGroup;
+
+                // Set ped to enemy group
+                ped.RelationshipGroup = enemyGroup;
+
+                // Make the groups hate each other
+                enemyGroup.SetRelationshipBetweenGroups(playerGroup, Relationship.Hate, true);
+
+                // Configure ped for aggressive combat
+                ped.IsPersistent = true;
+                ped.KeepTaskWhenMarkedAsNoLongerNeeded = true;
+                ped.BlockPermanentEvents = false; // Allow them to react
+
+                // Set combat attributes for aggressive behavior
+                Function.Call(Hash.SET_PED_COMBAT_ATTRIBUTES, ped.Handle, 46, true); // BF_CanFightArmedPedsWhenNotArmed
+                Function.Call(Hash.SET_PED_COMBAT_ATTRIBUTES, ped.Handle, 5, true);  // BF_CanUseCover
+                Function.Call(Hash.SET_PED_COMBAT_ATTRIBUTES, ped.Handle, 0, false); // BF_CanUseCoverShootOnlyWhenAimingAtTarget
+                Function.Call(Hash.SET_PED_COMBAT_ATTRIBUTES, ped.Handle, 46, true); // BF_CanFightArmedPedsWhenNotArmed
+
+                // Set combat ability and range
+                Function.Call(Hash.SET_PED_COMBAT_ABILITY, ped.Handle, 2); // Professional
+                Function.Call(Hash.SET_PED_COMBAT_RANGE, ped.Handle, 2);   // Far
+                Function.Call(Hash.SET_PED_COMBAT_MOVEMENT, ped.Handle, 2); // Offensive
+
+                // Set firing pattern for aggression
+                ped.FiringPattern = FiringPattern.FullAuto;
+
+                // CRITICAL: Give the ped a task to fight the player
+                ped.Task.ClearAllImmediately();
+                ped.Task.Combat(player);
+
+                FileLogger.Combat($"Defender {pedHandle} set to attack player with Combat task");
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error("SetPedToAttackPlayer exception", ex);
             }
         }
 

@@ -4,6 +4,7 @@ using FactionWars.Combat.Pools;
 using FactionWars.Combat.Services;
 using FactionWars.Core.Interfaces;
 using FactionWars.Core.Models;
+using FactionWars.Core.Services;
 using FactionWars.Core.Utils;
 using FactionWars.ScriptHookV;
 using FactionWars.ScriptHookV.Managers;
@@ -52,6 +53,7 @@ namespace FactionWars.Tests.Integration.ScriptHookV
             var takeoverDetector = new TakeoverDetector();
             var waveSpawnerService = new WaveSpawnerService();
             var combatResultHandler = new CombatResultHandler(_zoneService);
+            var followerService = new FollowerService();
 
             _combatManager = new CombatManager(
                 _gameBridge,
@@ -61,7 +63,8 @@ namespace FactionWars.Tests.Integration.ScriptHookV
                 controlCalculator,
                 takeoverDetector,
                 combatResultHandler,
-                waveSpawnerService);
+                waveSpawnerService,
+                followerService);
 
             _combatTriggerCoordinator = new CombatTriggerCoordinator(
                 _territoryManager,

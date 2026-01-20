@@ -2,6 +2,7 @@ using FactionWars.Core.Interfaces;
 using FactionWars.Core.Models;
 using FactionWars.Core.Utils;
 using FactionWars.ScriptHookV;
+using FactionWars.Tests.Mocks;
 using Xunit;
 
 namespace FactionWars.Tests.Unit.ScriptHookV
@@ -20,7 +21,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             _gameBridge = new MockGameBridge();
             _gameBridge.PlayerCharacterModel = initialCharacterModel;
             _gameBridge.PlayerMoney = playerMoney;
-            _container = ServiceContainerFactory.Create(_gameBridge);
+            _container = ServiceContainerFactory.Create(_gameBridge, new MockMenuProvider());
         }
 
         [Fact]

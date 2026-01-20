@@ -22,6 +22,7 @@ using FactionWars.ScriptHookV.Persistence;
 using FactionWars.ScriptHookV.UI;
 using FactionWars.UI.Interfaces;
 using FactionWars.UI.Services;
+using FactionWars.Combat.Models;
 
 namespace FactionWars.ScriptHookV
 {
@@ -45,9 +46,10 @@ namespace FactionWars.ScriptHookV
         /// Creates a fully configured ServiceContainer with all services wired together.
         /// </summary>
         /// <param name="gameBridge">The game bridge implementation for native calls.</param>
+        /// <param name="menuProvider">Optional menu provider for testing. If null, uses NativeUIMenuProvider.</param>
         /// <returns>A configured ServiceContainer ready for use.</returns>
         /// <exception cref="ArgumentNullException">Thrown if gameBridge is null.</exception>
-        public static ServiceContainer Create(IGameBridge gameBridge)
+        public static ServiceContainer Create(IGameBridge gameBridge, IMenuProvider? menuProvider = null)
         {
             if (gameBridge == null)
                 throw new ArgumentNullException(nameof(gameBridge));
@@ -73,7 +75,7 @@ namespace FactionWars.ScriptHookV
             RegisterPersistenceServices(container);
 
             // Register UI services
-            RegisterUIServices(container);
+            RegisterUIServices(container, menuProvider);
 
             // Register AI services
             RegisterAIServices(container);
@@ -147,6 +149,10 @@ namespace FactionWars.ScriptHookV
                 new PlayerContext(
                     container.Resolve<IGameBridge>(),
                     container.Resolve<IPlayerFactionDetector>()));
+
+            // Victory condition service - checks for faction victory (100% control)
+            container.RegisterSingleton<IVictoryConditionService>(() =>
+                new VictoryConditionService(container.Resolve<IZoneService>()));
         }
 
         private static void RegisterCombatServices(ServiceContainer container)
@@ -188,6 +194,24 @@ namespace FactionWars.ScriptHookV
             // Wave spawner service - no dependencies
             container.RegisterSingleton<IWaveSpawnerService>(() =>
                 new WaveSpawnerService());
+
+            // Reinforcement service - manages reinforcement waves during combat
+            container.RegisterSingleton<IReinforcementService>(() =>
+                new ReinforcementService(
+                    container.Resolve<IPedSpawningService>(),
+                    container.Resolve<ITimeProvider>(),
+                    new ReinforcementConfig()));
+
+            // Defender scaling service - scales zone troops to spawnable peds
+            container.RegisterSingleton<IDefenderScalingService>(() =>
+                new DefenderScalingService());
+
+            // Defender casualty service - processes defender casualties
+            container.RegisterSingleton<IDefenderCasualtyService>(() =>
+                new DefenderCasualtyService(
+                    container.Resolve<IGameBridge>(),
+                    container.Resolve<IPedPool>(),
+                    container.Resolve<IZoneDefenderAllocationRepository>()));
         }
 
         private static void RegisterPersistenceServices(ServiceContainer container)
@@ -258,11 +282,18 @@ namespace FactionWars.ScriptHookV
                     container.Resolve<IFactionService>()));
         }
 
-        private static void RegisterUIServices(ServiceContainer container)
+        private static void RegisterUIServices(ServiceContainer container, IMenuProvider? menuProvider)
         {
-            // Menu provider - NativeUI implementation for game menus
-            container.RegisterSingleton<IMenuProvider>(() =>
-                new NativeUIMenuProvider());
+            // Menu provider - use provided instance for testing, or NativeUI for production
+            if (menuProvider != null)
+            {
+                container.Register<IMenuProvider>(menuProvider);
+            }
+            else
+            {
+                container.RegisterSingleton<IMenuProvider>(() =>
+                    new NativeUIMenuProvider());
+            }
 
             // Map blip service depends on game bridge, zone service, and faction repository
             container.RegisterSingleton<IMapBlipService>(() =>
@@ -288,6 +319,29 @@ namespace FactionWars.ScriptHookV
                 new TerritoryIndicatorService(
                     container.Resolve<IFactionRepository>(),
                     container.Resolve<ITerritoryIndicatorRenderer>()));
+
+            // Combat HUD renderer - ScriptHookV implementation for combat HUD
+            container.RegisterSingleton<ICombatHudRenderer>(() =>
+                new CombatHudRenderer());
+
+            // Combat HUD service - manages combat HUD display
+            container.RegisterSingleton<ICombatHudService>(() =>
+                new CombatHudService(
+                    container.Resolve<IReinforcementService>(),
+                    container.Resolve<ICombatHudRenderer>()));
+
+            // Faction color service - manages faction color assignments
+            container.RegisterSingleton<IFactionColorService>(() =>
+                new FactionColorService());
+
+            // Event alert service - raises and manages game event alerts
+            container.RegisterSingleton<IEventAlertService>(() =>
+                new EventAlertService(
+                    container.Resolve<INotificationService>()));
+
+            // Event feed service - manages the scrolling event feed display
+            container.RegisterSingleton<IEventFeedService>(() =>
+                new EventFeedService(container.Resolve<ITimeProvider>()));
         }
 
         private static void RegisterAIServices(ServiceContainer container)
@@ -312,6 +366,14 @@ namespace FactionWars.ScriptHookV
             // Aggression response service - tracks aggression and determines AI responses
             container.RegisterSingleton<IAggressionResponseService>(() =>
                 new AggressionResponseService());
+
+            // AI difficulty service - manages AI difficulty settings and scaling
+            container.RegisterSingleton<IAIDifficultyService>(() =>
+                new AIDifficultyService());
+
+            // Battle simulation service - simulates AI vs AI battles
+            container.RegisterSingleton<IBattleSimulationService>(() =>
+                new BattleSimulationService());
         }
     }
 }

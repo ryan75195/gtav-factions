@@ -316,6 +316,15 @@ namespace FactionWars.Core.Utils
             WaypointPosition = null;
         }
 
+        public void SetPedToAttackPlayer(int pedHandle)
+        {
+            // Mock implementation - track that ped was set to attack
+            if (_peds.TryGetValue(pedHandle, out var ped))
+            {
+                ped.IsAttackingPlayer = true;
+            }
+        }
+
         // Additional helper methods for testing
 
         /// <summary>
@@ -506,6 +515,7 @@ namespace FactionWars.Core.Utils
             public int Health { get; set; } = 100;
             public bool CanUseCover { get; set; } = false;
             public bool WillFightArmedPeds { get; set; } = false;
+            public bool IsAttackingPlayer { get; set; } = false;
         }
 
         private class BlipState

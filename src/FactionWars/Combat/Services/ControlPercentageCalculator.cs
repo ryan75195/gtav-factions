@@ -1,6 +1,7 @@
 using System;
 using FactionWars.Combat.Interfaces;
 using FactionWars.Combat.Models;
+using FactionWars.ScriptHookV.Logging;
 
 namespace FactionWars.Combat.Services
 {
@@ -19,15 +20,19 @@ namespace FactionWars.Combat.Services
 
             int total = validAttackers + validDefenders;
 
-            // If no peds, return zero for both
+            // If no peds, return 50/50 (neutral state) - this prevents immediate victory
+            // before any peds have spawned
             if (total == 0)
             {
-                return new ControlPercentageResult(0f, 0f, 0);
+                FileLogger.Debug($"ControlCalc: No peds (attackers={attackerCount}, defenders={defenderCount}) -> 50/50 neutral");
+                return new ControlPercentageResult(50f, 50f, 0);
             }
 
             // Calculate percentages proportionally
             float attackerPercentage = (validAttackers / (float)total) * 100f;
             float defenderPercentage = (validDefenders / (float)total) * 100f;
+
+            FileLogger.Debug($"ControlCalc: attackers={validAttackers}, defenders={validDefenders} -> {attackerPercentage:F1}% / {defenderPercentage:F1}%");
 
             return new ControlPercentageResult(attackerPercentage, defenderPercentage, total);
         }

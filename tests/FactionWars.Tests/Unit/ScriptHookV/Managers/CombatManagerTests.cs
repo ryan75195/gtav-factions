@@ -21,6 +21,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         private readonly Mock<ITakeoverDetector> _takeoverDetectorMock;
         private readonly Mock<ICombatResultHandler> _combatResultHandlerMock;
         private readonly IWaveSpawnerService _waveSpawnerService;
+        private readonly Mock<IFollowerService> _followerServiceMock;
         private readonly CombatManager _manager;
 
         public CombatManagerTests()
@@ -33,6 +34,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             _takeoverDetectorMock = new Mock<ITakeoverDetector>();
             _combatResultHandlerMock = new Mock<ICombatResultHandler>();
             _waveSpawnerService = new WaveSpawnerService();
+            _followerServiceMock = new Mock<IFollowerService>();
+            _followerServiceMock.Setup(f => f.GetFollowerCount(It.IsAny<string>())).Returns(0);
             _manager = new CombatManager(
                 _gameBridgeMock.Object,
                 _pedPoolMock.Object,
@@ -41,7 +44,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
                 _controlCalculatorMock.Object,
                 _takeoverDetectorMock.Object,
                 _combatResultHandlerMock.Object,
-                _waveSpawnerService);
+                _waveSpawnerService,
+                _followerServiceMock.Object);
         }
 
         [Fact]

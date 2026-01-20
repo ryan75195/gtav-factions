@@ -1,6 +1,7 @@
 using System;
 using FactionWars.Combat.Interfaces;
 using FactionWars.Combat.Models;
+using FactionWars.ScriptHookV.Logging;
 
 namespace FactionWars.Combat.Services
 {
@@ -34,6 +35,9 @@ namespace FactionWars.Combat.Services
         public TakeoverResult CheckTakeover(float attackerControlPercentage, float defenderControlPercentage,
             string attackerFactionId, string defenderFactionId)
         {
+            FileLogger.Debug($"TakeoverDetector.CheckTakeover: attacker={attackerControlPercentage:F1}%, defender={defenderControlPercentage:F1}%, attackerFaction={attackerFactionId}, defenderFaction={defenderFactionId}");
+            FileLogger.Debug($"TakeoverDetector: Thresholds - AttackerVictory={_config.AttackerVictoryThreshold}%, DefenderVictory={_config.DefenderVictoryThreshold}%");
+
             // Validate percentages
             if (attackerControlPercentage < 0f || attackerControlPercentage > 100f)
                 throw new ArgumentOutOfRangeException(nameof(attackerControlPercentage),
@@ -55,16 +59,19 @@ namespace FactionWars.Combat.Services
             // Check for attacker victory
             if (IsAttackerVictory(attackerControlPercentage))
             {
+                FileLogger.Combat($"TakeoverDetector: ATTACKER VICTORY! {attackerControlPercentage:F1}% >= {_config.AttackerVictoryThreshold}%");
                 return TakeoverResult.AttackerVictory(attackerFactionId, attackerControlPercentage, defenderControlPercentage);
             }
 
             // Check for defender victory
             if (IsDefenderVictory(attackerControlPercentage))
             {
+                FileLogger.Combat($"TakeoverDetector: DEFENDER VICTORY! {attackerControlPercentage:F1}% <= {_config.DefenderVictoryThreshold}%");
                 return TakeoverResult.DefenderVictory(defenderFactionId, attackerControlPercentage, defenderControlPercentage);
             }
 
             // Still in progress
+            FileLogger.Debug($"TakeoverDetector: Combat in progress - no victory condition met");
             return TakeoverResult.InProgress(attackerControlPercentage, defenderControlPercentage);
         }
 

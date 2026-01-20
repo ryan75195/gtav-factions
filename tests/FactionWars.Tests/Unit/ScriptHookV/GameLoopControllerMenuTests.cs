@@ -1,6 +1,7 @@
 using FactionWars.Core.Utils;
 using FactionWars.ScriptHookV;
 using FactionWars.ScriptHookV.UI;
+using FactionWars.Tests.Mocks;
 using Xunit;
 
 namespace FactionWars.Tests.Unit.ScriptHookV
@@ -18,7 +19,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
         {
             _gameBridge = new MockGameBridge();
             _gameBridge.PlayerCharacterModel = "player_zero"; // Michael
-            _container = ServiceContainerFactory.Create(_gameBridge);
+            _container = ServiceContainerFactory.Create(_gameBridge, new MockMenuProvider());
             return new GameLoopController(_container);
         }
 

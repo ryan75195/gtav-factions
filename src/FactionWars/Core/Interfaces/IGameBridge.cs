@@ -219,5 +219,12 @@ namespace FactionWars.Core.Interfaces
         /// Clears any currently set waypoint from the map.
         /// </summary>
         void ClearWaypoint();
+
+        /// <summary>
+        /// Makes a ped hostile to the player and tasks them to attack.
+        /// Used for enemy defenders.
+        /// </summary>
+        /// <param name="pedHandle">Handle of the ped to make hostile.</param>
+        void SetPedToAttackPlayer(int pedHandle);
     }
 }

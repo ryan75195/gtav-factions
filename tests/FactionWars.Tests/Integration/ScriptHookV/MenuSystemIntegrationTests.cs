@@ -1,6 +1,7 @@
 using FactionWars.Core.Utils;
 using FactionWars.ScriptHookV;
 using FactionWars.ScriptHookV.UI;
+using FactionWars.Tests.Mocks;
 using FactionWars.UI.Interfaces;
 using Xunit;
 
@@ -19,7 +20,7 @@ namespace FactionWars.Tests.Integration.ScriptHookV
         private readonly MockGameBridge _gameBridge;
         private readonly ServiceContainer _container;
         private readonly GameLoopController _controller;
-        private readonly NativeUIMenuProvider _menuProvider;
+        private readonly MockMenuProvider _menuProvider;
 
         public MenuSystemIntegrationTests()
         {
@@ -28,8 +29,8 @@ namespace FactionWars.Tests.Integration.ScriptHookV
                 PlayerCharacterModel = "player_zero" // Michael
             };
 
-            _container = ServiceContainerFactory.Create(_gameBridge);
-            _menuProvider = (NativeUIMenuProvider)_container.Resolve<IMenuProvider>();
+            _menuProvider = new MockMenuProvider();
+            _container = ServiceContainerFactory.Create(_gameBridge, _menuProvider);
             _controller = new GameLoopController(_container);
 
             // Initialize the controller

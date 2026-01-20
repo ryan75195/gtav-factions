@@ -2,6 +2,7 @@ using FactionWars.Core.Interfaces;
 using FactionWars.Core.Models;
 using FactionWars.Economy.Interfaces;
 using FactionWars.Factions.Interfaces;
+using FactionWars.ScriptHookV.Managers;
 using FactionWars.UI.Interfaces;
 using FactionWars.UI.Models;
 using System;
@@ -111,6 +112,8 @@ namespace FactionWars.ScriptHookV.UI
         private readonly IFollowerService _followerService;
         private readonly IDefenderTierService _tierService;
         private readonly IPlayerContext _playerContext;
+        private readonly FollowerManager? _followerManager;
+        private readonly IGameBridge? _gameBridge;
 
         private Guid? _selectedFollowerId;
 
@@ -128,14 +131,18 @@ namespace FactionWars.ScriptHookV.UI
         /// <param name="followerService">The follower service for managing followers.</param>
         /// <param name="tierService">The defender tier service for tier costs.</param>
         /// <param name="playerContext">The player context for determining the current faction.</param>
-        /// <exception cref="ArgumentNullException">Thrown if any parameter is null.</exception>
+        /// <param name="followerManager">The follower manager for spawning actual peds (optional).</param>
+        /// <param name="gameBridge">The game bridge for notifications (optional).</param>
+        /// <exception cref="ArgumentNullException">Thrown if any required parameter is null.</exception>
         public ArmyMenuController(
             IMenuProvider menuProvider,
             IFactionService factionService,
             ITroopPurchaseService purchaseService,
             IFollowerService followerService,
             IDefenderTierService tierService,
-            IPlayerContext playerContext)
+            IPlayerContext playerContext,
+            FollowerManager? followerManager = null,
+            IGameBridge? gameBridge = null)
         {
             _menuProvider = menuProvider ?? throw new ArgumentNullException(nameof(menuProvider));
             _factionService = factionService ?? throw new ArgumentNullException(nameof(factionService));
@@ -143,6 +150,8 @@ namespace FactionWars.ScriptHookV.UI
             _followerService = followerService ?? throw new ArgumentNullException(nameof(followerService));
             _tierService = tierService ?? throw new ArgumentNullException(nameof(tierService));
             _playerContext = playerContext ?? throw new ArgumentNullException(nameof(playerContext));
+            _followerManager = followerManager;
+            _gameBridge = gameBridge;
 
             // Subscribe to menu item selection events
             _menuProvider.ItemSelected += OnItemSelected;
@@ -489,19 +498,43 @@ namespace FactionWars.ScriptHookV.UI
 
         /// <summary>
         /// Recruits a follower of the specified tier.
+        /// Uses FollowerManager if available, which handles both domain and game world spawning.
         /// </summary>
         private void RecruitFollower(string factionId, DefenderTier tier)
         {
-            // Deduct money through purchase service
-            var purchaseResult = _purchaseService.PurchaseTroops(factionId, tier, 1);
-            if (purchaseResult.Success)
+            // Use FollowerManager if available (handles both domain and game world spawning)
+            if (_followerManager != null)
             {
-                // Recruit the follower
-                var result = _followerService.Recruit(factionId, tier);
-                if (!result.Success)
+                var result = _followerManager.RecruitFollower(factionId, tier);
+
+                if (result.Success)
                 {
-                    // If recruitment fails, we should ideally refund
-                    // For now, the troop goes to reserve as a fallback
+                    _gameBridge?.ShowNotification($"~g~Recruited {tier} follower");
+                }
+                else
+                {
+                    var errorMsg = result.FailureReason switch
+                    {
+                        FollowerRecruitFailureReason.MaxFollowersReached => "Max followers reached",
+                        FollowerRecruitFailureReason.InsufficientFunds => "Insufficient funds",
+                        FollowerRecruitFailureReason.InvalidFaction => "Invalid faction",
+                        FollowerRecruitFailureReason.SpawnFailed => "Spawn failed",
+                        _ => "Unknown error"
+                    };
+                    _gameBridge?.ShowNotification($"~r~Failed: {errorMsg}");
+                }
+            }
+            else
+            {
+                // Fallback to domain-only recruitment (no actual ped spawning)
+                var purchaseResult = _purchaseService.PurchaseTroops(factionId, tier, 1);
+                if (purchaseResult.Success)
+                {
+                    var result = _followerService.Recruit(factionId, tier);
+                    if (!result.Success)
+                    {
+                        // If recruitment fails, troop goes to reserve as a fallback
+                    }
                 }
             }
             ShowArmyMenu();

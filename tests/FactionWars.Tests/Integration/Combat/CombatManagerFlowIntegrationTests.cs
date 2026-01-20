@@ -6,6 +6,7 @@ using FactionWars.Combat.Pools;
 using FactionWars.Combat.Services;
 using FactionWars.Core.Interfaces;
 using FactionWars.Core.Models;
+using FactionWars.Core.Services;
 using FactionWars.Core.Utils;
 using FactionWars.ScriptHookV.Managers;
 using FactionWars.Territory.Interfaces;
@@ -35,6 +36,7 @@ namespace FactionWars.Tests.Integration.Combat
         private readonly ITakeoverDetector _takeoverDetector;
         private readonly ICombatResultHandler _combatResultHandler;
         private readonly IWaveSpawnerService _waveSpawnerService;
+        private readonly IFollowerService _followerService;
         private readonly InMemoryZoneRepository _zoneRepository;
         private readonly IZoneService _zoneService;
         private readonly CombatManager _combatManager;
@@ -61,6 +63,7 @@ namespace FactionWars.Tests.Integration.Combat
             _controlCalculator = new ControlPercentageCalculator();
             _takeoverDetector = new TakeoverDetector();
             _waveSpawnerService = new WaveSpawnerService();
+            _followerService = new FollowerService();
 
             // Set up zone repository and services
             _zoneRepository = new InMemoryZoneRepository();
@@ -76,7 +79,8 @@ namespace FactionWars.Tests.Integration.Combat
                 _controlCalculator,
                 _takeoverDetector,
                 _combatResultHandler,
-                _waveSpawnerService);
+                _waveSpawnerService,
+                _followerService);
         }
 
         #region Combat Start/End Flow Tests

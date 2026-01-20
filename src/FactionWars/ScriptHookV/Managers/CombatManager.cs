@@ -6,6 +6,7 @@ using FactionWars.Combat.Models;
 using FactionWars.Core.Interfaces;
 using FactionWars.Core.Models;
 using FactionWars.Territory.Models;
+using FactionWars.ScriptHookV.Logging;
 
 namespace FactionWars.ScriptHookV.Managers
 {
@@ -24,6 +25,7 @@ namespace FactionWars.ScriptHookV.Managers
         private readonly ITakeoverDetector _takeoverDetector;
         private readonly ICombatResultHandler _combatResultHandler;
         private readonly IWaveSpawnerService _waveSpawnerService;
+        private readonly IFollowerService _followerService;
 
         private CombatEncounter? _currentEncounter;
         private WaveState? _currentWaveState;
@@ -65,6 +67,7 @@ namespace FactionWars.ScriptHookV.Managers
         /// <param name="takeoverDetector">Detector for takeover thresholds.</param>
         /// <param name="combatResultHandler">Handler for processing combat results.</param>
         /// <param name="waveSpawnerService">Service for wave-based defender spawning.</param>
+        /// <param name="followerService">Service for tracking followers who count as attackers.</param>
         /// <exception cref="ArgumentNullException">Thrown if any parameter is null.</exception>
         public CombatManager(
             IGameBridge gameBridge,
@@ -74,7 +77,8 @@ namespace FactionWars.ScriptHookV.Managers
             IControlPercentageCalculator controlCalculator,
             ITakeoverDetector takeoverDetector,
             ICombatResultHandler combatResultHandler,
-            IWaveSpawnerService waveSpawnerService)
+            IWaveSpawnerService waveSpawnerService,
+            IFollowerService followerService)
         {
             _gameBridge = gameBridge ?? throw new ArgumentNullException(nameof(gameBridge));
             _pedPool = pedPool ?? throw new ArgumentNullException(nameof(pedPool));
@@ -84,6 +88,7 @@ namespace FactionWars.ScriptHookV.Managers
             _takeoverDetector = takeoverDetector ?? throw new ArgumentNullException(nameof(takeoverDetector));
             _combatResultHandler = combatResultHandler ?? throw new ArgumentNullException(nameof(combatResultHandler));
             _waveSpawnerService = waveSpawnerService ?? throw new ArgumentNullException(nameof(waveSpawnerService));
+            _followerService = followerService ?? throw new ArgumentNullException(nameof(followerService));
         }
 
         /// <summary>
@@ -97,6 +102,8 @@ namespace FactionWars.ScriptHookV.Managers
         /// <exception cref="ArgumentException">Thrown if zone has no owner or attacker is the same as defender.</exception>
         public CombatEncounter StartCombat(Zone zone, string attackingFactionId)
         {
+            FileLogger.Combat($"CombatManager.StartCombat: zone={zone?.Id}, attacker={attackingFactionId}, defender={zone?.OwnerFactionId}");
+
             if (zone == null)
                 throw new ArgumentNullException(nameof(zone));
             if (attackingFactionId == null)
@@ -104,7 +111,10 @@ namespace FactionWars.ScriptHookV.Managers
 
             // If already in combat, return existing encounter
             if (_currentEncounter != null)
+            {
+                FileLogger.Combat($"CombatManager.StartCombat: Already in combat (encounter={_currentEncounter.Id}), returning existing");
                 return _currentEncounter;
+            }
 
             // Validate zone has an owner
             if (zone.OwnerFactionId == null)
@@ -122,6 +132,8 @@ namespace FactionWars.ScriptHookV.Managers
                 attackingFactionId,
                 zone.OwnerFactionId);
 
+            FileLogger.Combat($"CombatManager.StartCombat: Created encounter {encounterId}, attacker={attackingFactionId}, defender={zone.OwnerFactionId}");
+
             // Raise event
             CombatStarted?.Invoke(this, _currentEncounter);
 
@@ -136,7 +148,13 @@ namespace FactionWars.ScriptHookV.Managers
         public void EndCombat(CombatStatus status)
         {
             if (_currentEncounter == null)
+            {
+                FileLogger.Combat("CombatManager.EndCombat: No current encounter to end");
                 return;
+            }
+
+            FileLogger.Combat($"CombatManager.EndCombat: Ending encounter {_currentEncounter.Id} with status={status}");
+            FileLogger.Combat($"CombatManager.EndCombat: Final state - attackers={_currentEncounter.AttackerPedCount}, defenders={_currentEncounter.DefenderPedCount}, control={_currentEncounter.AttackerControlPercentage:F1}%/{_currentEncounter.DefenderControlPercentage:F1}%");
 
             var encounter = _currentEncounter;
             encounter.End(status);
@@ -144,7 +162,12 @@ namespace FactionWars.ScriptHookV.Managers
             // Only process result for non-aborted/non-retreat combat
             if (status != CombatStatus.Aborted && status != CombatStatus.Stalemate && status != CombatStatus.PlayerRetreat)
             {
+                FileLogger.Combat($"CombatManager.EndCombat: Processing combat result");
                 _combatResultHandler.ProcessCombatResult(encounter);
+            }
+            else
+            {
+                FileLogger.Combat($"CombatManager.EndCombat: Skipping result processing for status={status}");
             }
 
             _currentEncounter = null;
@@ -152,6 +175,7 @@ namespace FactionWars.ScriptHookV.Managers
 
             // Raise event
             CombatEnded?.Invoke(this, encounter);
+            FileLogger.Combat($"CombatManager.EndCombat: Combat ended, CombatEnded event raised");
         }
 
         /// <summary>
@@ -199,31 +223,59 @@ namespace FactionWars.ScriptHookV.Managers
         public void Update()
         {
             if (_currentEncounter == null)
+            {
                 return;
+            }
+
+            FileLogger.Debug($"CombatManager.Update: Encounter={_currentEncounter.Id}, Zone={_currentEncounter.ZoneId}");
 
             // Check for player death first - if dead, retreat from combat
             if (_gameBridge.IsPlayerDead())
             {
+                FileLogger.Combat("CombatManager.Update: Player is dead, triggering retreat");
                 Retreat();
                 return;
             }
 
-            // Count peds in the zone for each faction
+            // Count attackers: Player (always 1) + followers from attacking faction
+            // Player is always counted as an attacker when in combat
+            int attackerCount = 1; // Player
+            int followerCount = _followerService.GetFollowerCount(_currentEncounter.AttackingFactionId);
+            attackerCount += followerCount;
+
+            // Also count any attacker peds from the pool (in case of AI attackers in future)
             var attackerPeds = _pedPool.GetByFactionAndZone(
                 _currentEncounter.AttackingFactionId,
                 _currentEncounter.ZoneId).ToList();
+            attackerCount += attackerPeds.Count;
+
+            // Count defenders from ped pool (spawned NPCs)
             var defenderPeds = _pedPool.GetByFactionAndZone(
                 _currentEncounter.DefendingFactionId,
                 _currentEncounter.ZoneId).ToList();
 
+            FileLogger.Debug($"CombatManager.Update: Attackers - player=1, followers={followerCount}, pedPool={attackerPeds.Count}, total={attackerCount}");
+            FileLogger.Debug($"CombatManager.Update: Defenders - pedPool={defenderPeds.Count} (faction={_currentEncounter.DefendingFactionId})");
+
             // Update ped counts on encounter
-            _currentEncounter.AttackerPedCount = attackerPeds.Count;
+            _currentEncounter.AttackerPedCount = attackerCount;
             _currentEncounter.DefenderPedCount = defenderPeds.Count;
 
-            // Calculate control percentages
-            var controlResult = _controlCalculator.Calculate(attackerPeds.Count, defenderPeds.Count);
+            // Calculate control percentages using total attacker count (player + followers + NPCs)
+            var controlResult = _controlCalculator.Calculate(attackerCount, defenderPeds.Count);
             _currentEncounter.AttackerControlPercentage = controlResult.AttackerPercentage;
             _currentEncounter.DefenderControlPercentage = controlResult.DefenderPercentage;
+
+            FileLogger.Combat($"CombatManager.Update: Control - attacker={controlResult.AttackerPercentage:F1}%, defender={controlResult.DefenderPercentage:F1}%, total={controlResult.TotalPeds}");
+
+            // Don't check for takeover until defenders have had a chance to spawn
+            // This prevents instant victory when entering a zone before any defenders appear
+            bool defendersStillSpawning = _currentWaveState != null && !IsWaveSpawningComplete() && defenderPeds.Count == 0;
+            if (defendersStillSpawning)
+            {
+                FileLogger.Debug($"CombatManager.Update: Skipping takeover check - defenders still spawning (waveComplete={IsWaveSpawningComplete()}, defenderCount={defenderPeds.Count})");
+                return;
+            }
 
             // Check for takeover
             var takeoverResult = _takeoverDetector.CheckTakeover(
@@ -232,12 +284,15 @@ namespace FactionWars.ScriptHookV.Managers
                 _currentEncounter.AttackingFactionId,
                 _currentEncounter.DefendingFactionId);
 
+            FileLogger.Debug($"CombatManager.Update: Takeover check - status={takeoverResult.Status}, complete={takeoverResult.IsTakeoverComplete}");
+
             // End combat if takeover detected
             if (takeoverResult.IsTakeoverComplete)
             {
                 var status = takeoverResult.Status == TakeoverStatus.AttackerVictory
                     ? CombatStatus.AttackerVictory
                     : CombatStatus.DefenderVictory;
+                FileLogger.Combat($"CombatManager.Update: COMBAT ENDING with status={status}");
                 EndCombat(status);
             }
         }
@@ -322,12 +377,15 @@ namespace FactionWars.ScriptHookV.Managers
         /// <exception cref="ArgumentNullException">Thrown if spawnPlan is null.</exception>
         public void InitializeWaveSpawning(DefenderSpawnPlan spawnPlan)
         {
+            FileLogger.Combat($"CombatManager.InitializeWaveSpawning: plan={spawnPlan?.TotalPeds ?? 0} total peds");
+
             if (_currentEncounter == null)
                 throw new InvalidOperationException("Cannot initialize wave spawning when not in combat.");
             if (spawnPlan == null)
                 throw new ArgumentNullException(nameof(spawnPlan));
 
             _currentWaveState = _waveSpawnerService.CreateWaveState(spawnPlan);
+            FileLogger.Combat($"CombatManager.InitializeWaveSpawning: WaveState created, Heavy={spawnPlan.GetPedCount(DefenderTier.Heavy)}, Medium={spawnPlan.GetPedCount(DefenderTier.Medium)}, Basic={spawnPlan.GetPedCount(DefenderTier.Basic)}");
         }
 
         /// <summary>
@@ -355,6 +413,8 @@ namespace FactionWars.ScriptHookV.Managers
         /// <exception cref="ArgumentNullException">Thrown if modelsByTier or factionId is null.</exception>
         public IList<PedHandle> SpawnNextWave(Dictionary<DefenderTier, string> modelsByTier, string factionId, int maxPerTick)
         {
+            FileLogger.Spawn($"CombatManager.SpawnNextWave: factionId={factionId}, maxPerTick={maxPerTick}");
+
             if (_currentEncounter == null)
                 throw new InvalidOperationException("Cannot spawn wave when not in combat.");
             if (_currentWaveState == null)
@@ -369,43 +429,71 @@ namespace FactionWars.ScriptHookV.Managers
             // Get the next tier to spawn
             var nextTier = _waveSpawnerService.GetNextWaveTier(_currentWaveState);
             if (nextTier == null)
+            {
+                FileLogger.Spawn("CombatManager.SpawnNextWave: All waves complete, no more tiers to spawn");
                 return spawnedPeds; // All waves complete
+            }
 
             var tier = nextTier.Value;
+            FileLogger.Spawn($"CombatManager.SpawnNextWave: Next tier={tier}");
 
             // Get model name for this tier
             if (!modelsByTier.TryGetValue(tier, out var modelName) || string.IsNullOrEmpty(modelName))
+            {
+                FileLogger.Warn($"CombatManager.SpawnNextWave: No model configured for tier {tier}");
                 return spawnedPeds; // No model configured for this tier
+            }
+
+            FileLogger.Spawn($"CombatManager.SpawnNextWave: Using model '{modelName}' for tier {tier}");
 
             // Calculate how many to spawn this tick
             int toSpawn = _waveSpawnerService.GetSpawnCountForWave(_currentWaveState, tier, maxPerTick);
             if (toSpawn <= 0)
+            {
+                FileLogger.Spawn($"CombatManager.SpawnNextWave: No peds to spawn (toSpawn={toSpawn})");
                 return spawnedPeds;
+            }
+
+            FileLogger.Spawn($"CombatManager.SpawnNextWave: Will spawn {toSpawn} peds");
 
             // Get spawn positions
             var spawnPositions = _spawnPositionCalculator.CalculateNaturalSpawnPositions(toSpawn);
+            FileLogger.Spawn($"CombatManager.SpawnNextWave: Got {spawnPositions.Count} spawn positions");
 
             // Spawn peds and track how many we actually spawned
             int actuallySpawned = 0;
+            int positionIndex = 0;
             foreach (var position in spawnPositions)
             {
                 if (!_pedSpawningService.CanSpawn())
+                {
+                    FileLogger.Spawn($"CombatManager.SpawnNextWave: CanSpawn=false, stopping spawn loop");
                     break;
+                }
 
+                FileLogger.Spawn($"CombatManager.SpawnNextWave: Spawning ped {positionIndex + 1} at ({position.X:F1}, {position.Y:F1}, {position.Z:F1})");
                 var ped = _pedSpawningService.SpawnPed(modelName, position, factionId, _currentEncounter.ZoneId);
                 if (ped.IsValid)
                 {
+                    FileLogger.Spawn($"CombatManager.SpawnNextWave: Spawned ped handle={ped.Handle}");
                     spawnedPeds.Add(ped);
                     actuallySpawned++;
                 }
+                else
+                {
+                    FileLogger.Warn($"CombatManager.SpawnNextWave: Failed to spawn ped at position {positionIndex}");
+                }
+                positionIndex++;
             }
 
             // Record how many we spawned in the wave state
             if (actuallySpawned > 0)
             {
                 _currentWaveState.RecordSpawned(tier, actuallySpawned);
+                FileLogger.Spawn($"CombatManager.SpawnNextWave: Recorded {actuallySpawned} spawned for tier {tier}");
             }
 
+            FileLogger.Spawn($"CombatManager.SpawnNextWave: Completed - spawned {actuallySpawned} peds, remaining={_currentWaveState.TotalRemaining}");
             return spawnedPeds;
         }
 
