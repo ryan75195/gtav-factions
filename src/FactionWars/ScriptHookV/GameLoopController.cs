@@ -42,6 +42,7 @@ namespace FactionWars.ScriptHookV
         private TerritoryManager? _territoryManager;
         private CombatManager? _combatManager;
         private AIManager? _aiManager;
+        private BackgroundBattleSimulator? _backgroundBattleSimulator;
         private VictoryManager? _victoryManager;
         private IAutoSaveService? _autoSaveService;
         private MainMenuController? _mainMenuController;
@@ -466,6 +467,10 @@ namespace FactionWars.ScriptHookV
             _aiManager.SetPlayerFactionId(CurrentPlayerFactionId);
             _aiManager.OnAIDecision += HandleAIDecision;
 
+            // Wire background battle simulator for AI vs AI combat
+            _backgroundBattleSimulator = _container.Resolve<BackgroundBattleSimulator>();
+            _aiManager.OnAIDecision += _backgroundBattleSimulator.HandleAIDecision;
+
             // Initialize victory manager for victory condition checking
             var victoryConditionService = _container.Resolve<IVictoryConditionService>();
             var notificationService = _container.Resolve<INotificationService>();
@@ -648,6 +653,12 @@ namespace FactionWars.ScriptHookV
             _combatManager = null;
 
             // Unsubscribe from AI events and stop AI manager
+            if (_aiManager != null && _backgroundBattleSimulator != null)
+            {
+                _aiManager.OnAIDecision -= _backgroundBattleSimulator.HandleAIDecision;
+            }
+            _backgroundBattleSimulator = null;
+
             if (_aiManager != null)
             {
                 _aiManager.OnAIDecision -= HandleAIDecision;
@@ -715,6 +726,9 @@ namespace FactionWars.ScriptHookV
                 FileLogger.Error($"OnZoneEntered: combatManager={_combatManager != null}, zone={zone != null}");
                 return;
             }
+
+            // Tell battle simulator to skip battles in player's current zone
+            _backgroundBattleSimulator?.SetPlayerZone(zone.Id);
 
             FileLogger.Zone($"Zone: {zone.Name} (ID: {zone.Id})");
             FileLogger.Zone($"Zone Owner: {zone.OwnerFactionId ?? "NULL/NONE"}");
@@ -792,6 +806,9 @@ namespace FactionWars.ScriptHookV
         /// </summary>
         private void OnZoneExited(object? sender, Zone zone)
         {
+            // Clear player zone tracking
+            _backgroundBattleSimulator?.SetPlayerZone(null);
+
             if (_combatManager == null || zone == null)
                 return;
 
