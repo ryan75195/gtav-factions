@@ -18,6 +18,7 @@ using FactionWars.Persistence;
 using FactionWars.Territory.Interfaces;
 using FactionWars.Territory.Repositories;
 using FactionWars.Territory.Services;
+using FactionWars.ScriptHookV.Managers;
 using FactionWars.ScriptHookV.Persistence;
 using FactionWars.ScriptHookV.UI;
 using FactionWars.UI.Interfaces;
@@ -374,6 +375,14 @@ namespace FactionWars.ScriptHookV
             // Battle simulation service - simulates AI vs AI battles
             container.RegisterSingleton<IBattleSimulationService>(() =>
                 new BattleSimulationService());
+
+            // Background battle simulator for AI vs AI combat
+            container.RegisterSingleton<BackgroundBattleSimulator>(() =>
+                new BackgroundBattleSimulator(
+                    container.Resolve<IBattleSimulationService>(),
+                    container.Resolve<IFactionService>(),
+                    container.Resolve<IZoneService>(),
+                    container.Resolve<IZoneDefenderAllocationService>()));
         }
     }
 }
