@@ -303,6 +303,10 @@ namespace FactionWars.ScriptHookV
                     container.Resolve<IZoneService>(),
                     container.Resolve<IFactionRepository>()));
 
+            // Ped blip service - manages minimap blips for peds (followers, defenders)
+            container.RegisterSingleton<IPedBlipService>(() =>
+                new PedBlipService(container.Resolve<IGameBridge>()));
+
             // Notification renderer - use a simple implementation that delegates to game bridge
             container.RegisterSingleton<INotificationRenderer>(() =>
                 new GameBridgeNotificationRenderer(container.Resolve<IGameBridge>()));

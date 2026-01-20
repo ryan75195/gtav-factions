@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using FactionWars.Combat.Interfaces;
 using FactionWars.Core.Interfaces;
 using FactionWars.Core.Models;
+using FactionWars.UI.Interfaces;
 
 namespace FactionWars.ScriptHookV.Managers
 {
@@ -17,6 +18,7 @@ namespace FactionWars.ScriptHookV.Managers
         private readonly IFollowerService _followerService;
         private readonly IPedSpawningService _pedSpawningService;
         private readonly IDefenderTierService _defenderTierService;
+        private readonly IPedBlipService _pedBlipService;
         private readonly Dictionary<DefenderTier, string> _modelsByTier;
 
         /// <summary>
@@ -31,17 +33,20 @@ namespace FactionWars.ScriptHookV.Managers
         /// <param name="followerService">The domain-layer follower service.</param>
         /// <param name="pedSpawningService">Service for spawning peds.</param>
         /// <param name="defenderTierService">Service for defender tier configurations.</param>
+        /// <param name="pedBlipService">Service for managing ped blips on the minimap.</param>
         /// <exception cref="ArgumentNullException">Thrown if any parameter is null.</exception>
         public FollowerManager(
             IGameBridge gameBridge,
             IFollowerService followerService,
             IPedSpawningService pedSpawningService,
-            IDefenderTierService defenderTierService)
+            IDefenderTierService defenderTierService,
+            IPedBlipService pedBlipService)
         {
             _gameBridge = gameBridge ?? throw new ArgumentNullException(nameof(gameBridge));
             _followerService = followerService ?? throw new ArgumentNullException(nameof(followerService));
             _pedSpawningService = pedSpawningService ?? throw new ArgumentNullException(nameof(pedSpawningService));
             _defenderTierService = defenderTierService ?? throw new ArgumentNullException(nameof(defenderTierService));
+            _pedBlipService = pedBlipService ?? throw new ArgumentNullException(nameof(pedBlipService));
 
             _modelsByTier = new Dictionary<DefenderTier, string>
             {
@@ -131,6 +136,9 @@ namespace FactionWars.ScriptHookV.Managers
             // Configure combat stats AFTER follower setup (health must be set last to persist)
             ConfigureFollowerCombat(pedHandle.Handle, tierConfig);
 
+            // Create a yellow blip on the minimap for this follower
+            _pedBlipService.CreateBlipForPed(pedHandle.Handle, BlipColor.Yellow);
+
             return FollowerRecruitResult.Succeeded(follower);
         }
 
@@ -151,6 +159,7 @@ namespace FactionWars.ScriptHookV.Managers
             // Despawn the ped if it has a valid handle
             if (follower.PedHandle >= 0)
             {
+                _pedBlipService.RemoveBlipForPed(follower.PedHandle);
                 _gameBridge.DeletePed(follower.PedHandle);
             }
 
@@ -176,6 +185,7 @@ namespace FactionWars.ScriptHookV.Managers
             {
                 if (follower.PedHandle >= 0)
                 {
+                    _pedBlipService.RemoveBlipForPed(follower.PedHandle);
                     _gameBridge.DeletePed(follower.PedHandle);
                 }
             }
@@ -222,7 +232,8 @@ namespace FactionWars.ScriptHookV.Managers
                 // Check if the ped is dead
                 if (!_gameBridge.IsPedAlive(follower.PedHandle))
                 {
-                    // Handle death - delete ped and notify service
+                    // Handle death - remove blip, delete ped and notify service
+                    _pedBlipService.RemoveBlipForPed(follower.PedHandle);
                     _gameBridge.DeletePed(follower.PedHandle);
                     _followerService.HandleFollowerDeath(follower.Id);
 

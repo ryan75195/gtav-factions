@@ -7,6 +7,8 @@ using FactionWars.Core.Models;
 using FactionWars.Core.Services;
 using FactionWars.Core.Utils;
 using FactionWars.ScriptHookV.Managers;
+using FactionWars.UI.Interfaces;
+using FactionWars.UI.Services;
 using Xunit;
 
 namespace FactionWars.Tests.Integration.ScriptHookV
@@ -25,6 +27,7 @@ namespace FactionWars.Tests.Integration.ScriptHookV
         private readonly IPedSpawningService _pedSpawningService;
         private readonly IFollowerService _followerService;
         private readonly IDefenderTierService _defenderTierService;
+        private readonly IPedBlipService _pedBlipService;
         private readonly FollowerManager _followerManager;
 
         public FollowerManagerIntegrationTests()
@@ -39,12 +42,14 @@ namespace FactionWars.Tests.Integration.ScriptHookV
             _pedSpawningService = new PedSpawningService(_gameBridge, _pedPool);
             _followerService = new FollowerService(maxFollowers: 6);
             _defenderTierService = new DefenderTierService();
+            _pedBlipService = new PedBlipService(_gameBridge);
 
             _followerManager = new FollowerManager(
                 _gameBridge,
                 _followerService,
                 _pedSpawningService,
-                _defenderTierService);
+                _defenderTierService,
+                _pedBlipService);
         }
 
         #region Following Behavior Tests

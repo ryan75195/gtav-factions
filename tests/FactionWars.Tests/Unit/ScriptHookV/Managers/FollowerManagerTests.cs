@@ -5,6 +5,7 @@ using FactionWars.Combat.Models;
 using FactionWars.Core.Interfaces;
 using FactionWars.Core.Models;
 using FactionWars.ScriptHookV.Managers;
+using FactionWars.UI.Interfaces;
 using Moq;
 using Xunit;
 
@@ -16,6 +17,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         private readonly Mock<IFollowerService> _followerServiceMock;
         private readonly Mock<IPedSpawningService> _pedSpawningServiceMock;
         private readonly Mock<IDefenderTierService> _defenderTierServiceMock;
+        private readonly Mock<IPedBlipService> _pedBlipServiceMock;
         private readonly FollowerManager _manager;
 
         public FollowerManagerTests()
@@ -24,6 +26,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             _followerServiceMock = new Mock<IFollowerService>();
             _pedSpawningServiceMock = new Mock<IPedSpawningService>();
             _defenderTierServiceMock = new Mock<IDefenderTierService>();
+            _pedBlipServiceMock = new Mock<IPedBlipService>();
 
             // Set up default tier configs (tests can override as needed)
             _defenderTierServiceMock.Setup(s => s.GetTierConfig(DefenderTier.Basic))
@@ -40,7 +43,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
                 _gameBridgeMock.Object,
                 _followerServiceMock.Object,
                 _pedSpawningServiceMock.Object,
-                _defenderTierServiceMock.Object);
+                _defenderTierServiceMock.Object,
+                _pedBlipServiceMock.Object);
         }
 
         #region Constructor Tests
@@ -53,7 +57,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
                 null!,
                 _followerServiceMock.Object,
                 _pedSpawningServiceMock.Object,
-                _defenderTierServiceMock.Object));
+                _defenderTierServiceMock.Object,
+                _pedBlipServiceMock.Object));
         }
 
         [Fact]
@@ -64,7 +69,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
                 _gameBridgeMock.Object,
                 null!,
                 _pedSpawningServiceMock.Object,
-                _defenderTierServiceMock.Object));
+                _defenderTierServiceMock.Object,
+                _pedBlipServiceMock.Object));
         }
 
         [Fact]
@@ -75,7 +81,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
                 _gameBridgeMock.Object,
                 _followerServiceMock.Object,
                 null!,
-                _defenderTierServiceMock.Object));
+                _defenderTierServiceMock.Object,
+                _pedBlipServiceMock.Object));
         }
 
         [Fact]
@@ -86,7 +93,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
                 _gameBridgeMock.Object,
                 _followerServiceMock.Object,
                 _pedSpawningServiceMock.Object,
-                null!));
+                null!,
+                _pedBlipServiceMock.Object));
         }
 
         #endregion

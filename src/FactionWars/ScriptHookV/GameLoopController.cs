@@ -457,7 +457,8 @@ namespace FactionWars.ScriptHookV
             var followerService = _container.Resolve<IFollowerService>();
             var pedSpawningService = _container.Resolve<IPedSpawningService>();
             var defenderTierService = _container.Resolve<IDefenderTierService>();
-            _followerManager = new FollowerManager(_gameBridge, followerService, pedSpawningService, defenderTierService);
+            var pedBlipService = _container.Resolve<IPedBlipService>();
+            _followerManager = new FollowerManager(_gameBridge, followerService, pedSpawningService, defenderTierService, pedBlipService);
 
             // Initialize territory manager for zone detection
             _zoneService = _container.Resolve<IZoneService>();
