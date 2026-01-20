@@ -116,6 +116,7 @@ namespace FactionWars.ScriptHookV.UI
         private readonly IGameBridge? _gameBridge;
 
         private Guid? _selectedFollowerId;
+        private string? _lastSelectedItemId;
 
         /// <summary>
         /// Event raised when the user selects the back option from the main army menu.
@@ -163,6 +164,7 @@ namespace FactionWars.ScriptHookV.UI
         public void Show()
         {
             _selectedFollowerId = null;
+            _lastSelectedItemId = null;
             ShowArmyMenu();
         }
 
@@ -274,7 +276,7 @@ namespace FactionWars.ScriptHookV.UI
                 "Return to main menu");
             menu.AddItem(backItem);
 
-            _menuProvider.ShowMenu(menu);
+            _menuProvider.ShowMenu(menu, _lastSelectedItemId);
         }
 
         /// <summary>
@@ -394,9 +396,13 @@ namespace FactionWars.ScriptHookV.UI
         {
             var factionId = _playerContext.CurrentFactionId;
 
+            // Store the selected item ID for cursor retention on menu refresh
+            _lastSelectedItemId = itemId;
+
             switch (itemId)
             {
                 case BackItemId:
+                    _lastSelectedItemId = null; // Clear on navigation away
                     _menuProvider.CloseMenu();
                     BackRequested?.Invoke(this, EventArgs.Empty);
                     break;
@@ -447,6 +453,7 @@ namespace FactionWars.ScriptHookV.UI
                     break;
 
                 case ManageFollowersItemId:
+                    _lastSelectedItemId = null; // Clear when navigating to submenu
                     ShowFollowerListMenu();
                     break;
             }
