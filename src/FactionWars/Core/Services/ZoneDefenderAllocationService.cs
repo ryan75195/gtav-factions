@@ -125,5 +125,46 @@ namespace FactionWars.Core.Services
 
             return true;
         }
+
+        /// <inheritdoc />
+        public void SetAllocation(string factionId, string zoneId, DefenderTier tier, int count)
+        {
+            if (factionId == null)
+                throw new ArgumentNullException(nameof(factionId));
+            if (string.IsNullOrWhiteSpace(factionId))
+                throw new ArgumentException("Faction ID cannot be empty or whitespace.", nameof(factionId));
+            if (zoneId == null)
+                throw new ArgumentNullException(nameof(zoneId));
+            if (string.IsNullOrWhiteSpace(zoneId))
+                throw new ArgumentException("Zone ID cannot be empty or whitespace.", nameof(zoneId));
+            if (count < 0)
+                throw new ArgumentOutOfRangeException(nameof(count), "Count cannot be negative.");
+
+            // Get or create allocation
+            var allocation = _repository.Get(factionId, zoneId);
+            if (allocation == null)
+            {
+                allocation = new ZoneDefenderAllocation(factionId, zoneId);
+                if (count > 0)
+                {
+                    allocation.AddTroops(tier, count);
+                }
+                _repository.Add(allocation);
+            }
+            else
+            {
+                // Clear existing troops of this tier and set new count
+                var existingCount = allocation.GetTroopCount(tier);
+                if (existingCount > 0)
+                {
+                    allocation.RemoveTroops(tier, existingCount);
+                }
+                if (count > 0)
+                {
+                    allocation.AddTroops(tier, count);
+                }
+                _repository.Update(allocation);
+            }
+        }
     }
 }

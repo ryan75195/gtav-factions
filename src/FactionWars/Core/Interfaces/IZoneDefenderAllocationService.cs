@@ -61,5 +61,18 @@ namespace FactionWars.Core.Interfaces
         /// <exception cref="System.ArgumentException">Thrown if zoneId is empty or whitespace.</exception>
         /// <exception cref="System.ArgumentOutOfRangeException">Thrown if count is less than or equal to zero.</exception>
         bool WithdrawTroops(FactionState factionState, string zoneId, DefenderTier tier, int count);
+
+        /// <summary>
+        /// Directly sets the troop allocation for a zone without requiring reserve troops.
+        /// Used for initial game setup and loading saved games.
+        /// </summary>
+        /// <param name="factionId">The faction ID.</param>
+        /// <param name="zoneId">The zone ID.</param>
+        /// <param name="tier">The defender tier to set.</param>
+        /// <param name="count">The number of troops to set.</param>
+        /// <exception cref="System.ArgumentNullException">Thrown if factionId or zoneId is null.</exception>
+        /// <exception cref="System.ArgumentException">Thrown if factionId or zoneId is empty or whitespace.</exception>
+        /// <exception cref="System.ArgumentOutOfRangeException">Thrown if count is negative.</exception>
+        void SetAllocation(string factionId, string zoneId, DefenderTier tier, int count);
     }
 }

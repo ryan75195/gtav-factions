@@ -1,4 +1,6 @@
 using System.Linq;
+using FactionWars.Core.Interfaces;
+using FactionWars.Core.Services;
 using FactionWars.Factions.Interfaces;
 using FactionWars.Factions.Models;
 using FactionWars.Factions.Repositories;
@@ -17,18 +19,22 @@ namespace FactionWars.Tests.Unit.ScriptHookV
     {
         private readonly IFactionRepository _factionRepository;
         private readonly IZoneRepository _zoneRepository;
+        private readonly IZoneDefenderAllocationRepository _allocationRepository;
+        private readonly IZoneDefenderAllocationService _allocationService;
         private readonly FactionInitializer _initializer;
 
         public FactionInitializerTests()
         {
             _factionRepository = new InMemoryFactionRepository();
             _zoneRepository = new InMemoryZoneRepository();
+            _allocationRepository = new InMemoryZoneDefenderAllocationRepository();
+            _allocationService = new ZoneDefenderAllocationService(_allocationRepository);
 
             // Load zones so we can assign them
             var zoneLoader = new ZoneDataLoader(_zoneRepository);
             zoneLoader.LoadDefaultZones();
 
-            _initializer = new FactionInitializer(_factionRepository, _zoneRepository);
+            _initializer = new FactionInitializer(_factionRepository, _zoneRepository, _allocationService);
         }
 
         #region Constructor Tests
@@ -37,14 +43,21 @@ namespace FactionWars.Tests.Unit.ScriptHookV
         public void Constructor_ShouldThrowOnNullFactionRepository()
         {
             Assert.Throws<System.ArgumentNullException>(() =>
-                new FactionInitializer(null!, _zoneRepository));
+                new FactionInitializer(null!, _zoneRepository, _allocationService));
         }
 
         [Fact]
         public void Constructor_ShouldThrowOnNullZoneRepository()
         {
             Assert.Throws<System.ArgumentNullException>(() =>
-                new FactionInitializer(_factionRepository, null!));
+                new FactionInitializer(_factionRepository, null!, _allocationService));
+        }
+
+        [Fact]
+        public void Constructor_ShouldThrowOnNullAllocationService()
+        {
+            Assert.Throws<System.ArgumentNullException>(() =>
+                new FactionInitializer(_factionRepository, _zoneRepository, null!));
         }
 
         #endregion
@@ -147,118 +160,67 @@ namespace FactionWars.Tests.Unit.ScriptHookV
 
         #endregion
 
-        #region Initialize Tests - Starting Resources
+        #region Initialize Tests - Starting Resources (NORMALIZED)
 
         [Fact]
-        public void Initialize_MichaelFaction_ShouldHave10kCash()
+        public void Initialize_AllFactions_ShouldHave5kCash()
         {
             // Act
             _initializer.Initialize();
 
-            // Assert
-            var state = _factionRepository.GetState(CharacterModelFactionDetector.MichaelFactionId);
-            Assert.NotNull(state);
-            Assert.Equal(10000, state!.Cash);
+            // Assert - All factions start with equal $5k cash
+            var michaelState = _factionRepository.GetState(CharacterModelFactionDetector.MichaelFactionId);
+            var trevorState = _factionRepository.GetState(CharacterModelFactionDetector.TrevorFactionId);
+            var franklinState = _factionRepository.GetState(CharacterModelFactionDetector.FranklinFactionId);
+
+            Assert.NotNull(michaelState);
+            Assert.NotNull(trevorState);
+            Assert.NotNull(franklinState);
+            Assert.Equal(5000, michaelState!.Cash);
+            Assert.Equal(5000, trevorState!.Cash);
+            Assert.Equal(5000, franklinState!.Cash);
         }
 
         [Fact]
-        public void Initialize_MichaelFaction_ShouldHave50Troops()
+        public void Initialize_AllFactions_ShouldHaveZeroReserveTroops()
         {
             // Act
             _initializer.Initialize();
 
-            // Assert
-            var state = _factionRepository.GetState(CharacterModelFactionDetector.MichaelFactionId);
-            Assert.NotNull(state);
-            Assert.Equal(50, state!.TroopCount);
-        }
+            // Assert - All factions start with 0 reserve troops (troops are deployed to zones)
+            var michaelState = _factionRepository.GetState(CharacterModelFactionDetector.MichaelFactionId);
+            var trevorState = _factionRepository.GetState(CharacterModelFactionDetector.TrevorFactionId);
+            var franklinState = _factionRepository.GetState(CharacterModelFactionDetector.FranklinFactionId);
 
-        [Fact]
-        public void Initialize_TrevorFaction_ShouldHave8kCash()
-        {
-            // Act
-            _initializer.Initialize();
-
-            // Assert
-            var state = _factionRepository.GetState(CharacterModelFactionDetector.TrevorFactionId);
-            Assert.NotNull(state);
-            Assert.Equal(8000, state!.Cash);
-        }
-
-        [Fact]
-        public void Initialize_TrevorFaction_ShouldHave60Troops()
-        {
-            // Act
-            _initializer.Initialize();
-
-            // Assert
-            var state = _factionRepository.GetState(CharacterModelFactionDetector.TrevorFactionId);
-            Assert.NotNull(state);
-            Assert.Equal(60, state!.TroopCount);
-        }
-
-        [Fact]
-        public void Initialize_FranklinFaction_ShouldHave5kCash()
-        {
-            // Act
-            _initializer.Initialize();
-
-            // Assert
-            var state = _factionRepository.GetState(CharacterModelFactionDetector.FranklinFactionId);
-            Assert.NotNull(state);
-            Assert.Equal(5000, state!.Cash);
-        }
-
-        [Fact]
-        public void Initialize_FranklinFaction_ShouldHave30Troops()
-        {
-            // Act
-            _initializer.Initialize();
-
-            // Assert
-            var state = _factionRepository.GetState(CharacterModelFactionDetector.FranklinFactionId);
-            Assert.NotNull(state);
-            Assert.Equal(30, state!.TroopCount);
+            Assert.NotNull(michaelState);
+            Assert.NotNull(trevorState);
+            Assert.NotNull(franklinState);
+            Assert.Equal(0, michaelState!.TroopCount);
+            Assert.Equal(0, trevorState!.TroopCount);
+            Assert.Equal(0, franklinState!.TroopCount);
         }
 
         #endregion
 
-        #region Initialize Tests - Starting Zones
+        #region Initialize Tests - Starting Zones (NORMALIZED)
 
         [Fact]
-        public void Initialize_MichaelFaction_ShouldHave8Zones()
+        public void Initialize_AllFactions_ShouldHave3Zones()
         {
             // Act
             _initializer.Initialize();
 
-            // Assert
-            var state = _factionRepository.GetState(CharacterModelFactionDetector.MichaelFactionId);
-            Assert.NotNull(state);
-            Assert.Equal(8, state!.ZoneCount);
-        }
+            // Assert - All factions start with equal 3 zones
+            var michaelState = _factionRepository.GetState(CharacterModelFactionDetector.MichaelFactionId);
+            var trevorState = _factionRepository.GetState(CharacterModelFactionDetector.TrevorFactionId);
+            var franklinState = _factionRepository.GetState(CharacterModelFactionDetector.FranklinFactionId);
 
-        [Fact]
-        public void Initialize_TrevorFaction_ShouldHave10Zones()
-        {
-            // Act
-            _initializer.Initialize();
-
-            // Assert
-            var state = _factionRepository.GetState(CharacterModelFactionDetector.TrevorFactionId);
-            Assert.NotNull(state);
-            Assert.Equal(10, state!.ZoneCount);
-        }
-
-        [Fact]
-        public void Initialize_FranklinFaction_ShouldHave5Zones()
-        {
-            // Act
-            _initializer.Initialize();
-
-            // Assert
-            var state = _factionRepository.GetState(CharacterModelFactionDetector.FranklinFactionId);
-            Assert.NotNull(state);
-            Assert.Equal(5, state!.ZoneCount);
+            Assert.NotNull(michaelState);
+            Assert.NotNull(trevorState);
+            Assert.NotNull(franklinState);
+            Assert.Equal(3, michaelState!.ZoneCount);
+            Assert.Equal(3, trevorState!.ZoneCount);
+            Assert.Equal(3, franklinState!.ZoneCount);
         }
 
         [Fact]
@@ -267,13 +229,13 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             // Act
             _initializer.Initialize();
 
-            // Assert - total zones assigned should be 8 + 10 + 5 = 23
+            // Assert - total zones assigned should be 3 + 3 + 3 = 9
             var michaelState = _factionRepository.GetState(CharacterModelFactionDetector.MichaelFactionId)!;
             var trevorState = _factionRepository.GetState(CharacterModelFactionDetector.TrevorFactionId)!;
             var franklinState = _factionRepository.GetState(CharacterModelFactionDetector.FranklinFactionId)!;
 
             var totalZones = michaelState.ZoneCount + trevorState.ZoneCount + franklinState.ZoneCount;
-            Assert.Equal(23, totalZones);
+            Assert.Equal(9, totalZones);
         }
 
         [Fact]
@@ -326,6 +288,59 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             var state = _factionRepository.GetState(CharacterModelFactionDetector.FranklinFactionId);
             Assert.NotNull(state);
             Assert.Contains("davis", state!.OwnedZoneIds);
+        }
+
+        #endregion
+
+        #region Initialize Tests - Troop Allocation
+
+        [Fact]
+        public void Initialize_ShouldAllocate5BasicTroopsToEachStartingZone()
+        {
+            // Act
+            _initializer.Initialize();
+
+            // Assert - Each starting zone should have 5 Basic troops allocated
+            var michaelState = _factionRepository.GetState(CharacterModelFactionDetector.MichaelFactionId)!;
+            foreach (var zoneId in michaelState.OwnedZoneIds)
+            {
+                var allocation = _allocationService.GetAllocation(CharacterModelFactionDetector.MichaelFactionId, zoneId);
+                Assert.NotNull(allocation);
+                Assert.Equal(5, allocation!.GetTroopCount(FactionWars.Core.Models.DefenderTier.Basic));
+            }
+
+            var trevorState = _factionRepository.GetState(CharacterModelFactionDetector.TrevorFactionId)!;
+            foreach (var zoneId in trevorState.OwnedZoneIds)
+            {
+                var allocation = _allocationService.GetAllocation(CharacterModelFactionDetector.TrevorFactionId, zoneId);
+                Assert.NotNull(allocation);
+                Assert.Equal(5, allocation!.GetTroopCount(FactionWars.Core.Models.DefenderTier.Basic));
+            }
+
+            var franklinState = _factionRepository.GetState(CharacterModelFactionDetector.FranklinFactionId)!;
+            foreach (var zoneId in franklinState.OwnedZoneIds)
+            {
+                var allocation = _allocationService.GetAllocation(CharacterModelFactionDetector.FranklinFactionId, zoneId);
+                Assert.NotNull(allocation);
+                Assert.Equal(5, allocation!.GetTroopCount(FactionWars.Core.Models.DefenderTier.Basic));
+            }
+        }
+
+        [Fact]
+        public void Initialize_TotalAllocatedTroops_ShouldBe45()
+        {
+            // Act
+            _initializer.Initialize();
+
+            // Assert - 9 zones * 5 troops = 45 total allocated troops
+            var michaelTroops = _allocationService.GetTotalAllocatedTroops(CharacterModelFactionDetector.MichaelFactionId);
+            var trevorTroops = _allocationService.GetTotalAllocatedTroops(CharacterModelFactionDetector.TrevorFactionId);
+            var franklinTroops = _allocationService.GetTotalAllocatedTroops(CharacterModelFactionDetector.FranklinFactionId);
+
+            Assert.Equal(15, michaelTroops);  // 3 zones * 5 troops
+            Assert.Equal(15, trevorTroops);   // 3 zones * 5 troops
+            Assert.Equal(15, franklinTroops); // 3 zones * 5 troops
+            Assert.Equal(45, michaelTroops + trevorTroops + franklinTroops);
         }
 
         #endregion

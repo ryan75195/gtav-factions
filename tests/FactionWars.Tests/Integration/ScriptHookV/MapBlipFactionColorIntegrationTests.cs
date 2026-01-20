@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using FactionWars.Core.Interfaces;
+using FactionWars.Core.Services;
 using FactionWars.Factions.Interfaces;
 using FactionWars.Factions.Repositories;
 using FactionWars.Factions.Services;
@@ -219,7 +220,9 @@ namespace FactionWars.Tests.Integration.ScriptHookV
             SetupDefaultZones();
 
             // Initialize factions with starting conditions
-            var factionInitializer = new FactionInitializer(_factionRepository, _zoneRepository);
+            var allocationRepository = new InMemoryZoneDefenderAllocationRepository();
+            var allocationService = new ZoneDefenderAllocationService(allocationRepository);
+            var factionInitializer = new FactionInitializer(_factionRepository, _zoneRepository, allocationService);
             factionInitializer.Initialize();
 
             var mapBlipManager = new MapBlipManager(

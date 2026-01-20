@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using FactionWars.Core.Interfaces;
+using FactionWars.Core.Models;
 using FactionWars.Factions.Interfaces;
 using FactionWars.Factions.Models;
 using FactionWars.Territory.Interfaces;
@@ -15,6 +17,7 @@ namespace FactionWars.ScriptHookV
     {
         private readonly IFactionRepository _factionRepository;
         private readonly IZoneRepository _zoneRepository;
+        private readonly IZoneDefenderAllocationService _allocationService;
         private bool _isInitialized;
 
         // Starting resources per faction - NORMALIZED
@@ -32,11 +35,16 @@ namespace FactionWars.ScriptHookV
         /// </summary>
         /// <param name="factionRepository">The faction repository to populate.</param>
         /// <param name="zoneRepository">The zone repository to read zones from.</param>
+        /// <param name="allocationService">The zone defender allocation service for initial troop allocation.</param>
         /// <exception cref="ArgumentNullException">Thrown if any parameter is null.</exception>
-        public FactionInitializer(IFactionRepository factionRepository, IZoneRepository zoneRepository)
+        public FactionInitializer(
+            IFactionRepository factionRepository,
+            IZoneRepository zoneRepository,
+            IZoneDefenderAllocationService allocationService)
         {
             _factionRepository = factionRepository ?? throw new ArgumentNullException(nameof(factionRepository));
             _zoneRepository = zoneRepository ?? throw new ArgumentNullException(nameof(zoneRepository));
+            _allocationService = allocationService ?? throw new ArgumentNullException(nameof(allocationService));
         }
 
         /// <summary>
@@ -172,10 +180,12 @@ namespace FactionWars.ScriptHookV
 
                     // Add zone to faction state
                     state.AddZone(zoneId);
+
+                    // Allocate 5 Basic troops to each starting zone
+                    _allocationService.SetAllocation(factionId, zoneId, DefenderTier.Basic, StartingTroopsPerZone);
                 }
             }
 
-            // Update the faction state
             _factionRepository.SetState(state);
         }
     }
