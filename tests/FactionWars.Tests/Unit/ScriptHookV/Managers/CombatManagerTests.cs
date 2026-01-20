@@ -23,6 +23,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         private readonly Mock<ICombatResultHandler> _combatResultHandlerMock;
         private readonly IWaveSpawnerService _waveSpawnerService;
         private readonly Mock<IFollowerService> _followerServiceMock;
+        private readonly Mock<IPedDespawnService> _pedDespawnServiceMock;
         private readonly Mock<IAggressionResponseService> _aggressionResponseServiceMock;
         private readonly CombatManager _manager;
 
@@ -31,6 +32,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             _gameBridgeMock = new Mock<IGameBridge>();
             _pedPoolMock = new Mock<IPedPool>();
             _pedSpawningServiceMock = new Mock<IPedSpawningService>();
+            _pedDespawnServiceMock = new Mock<IPedDespawnService>();
             _spawnPositionCalculatorMock = new Mock<ISpawnPositionCalculator>();
             _controlCalculatorMock = new Mock<IControlPercentageCalculator>();
             _takeoverDetectorMock = new Mock<ITakeoverDetector>();
@@ -43,6 +45,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
                 _gameBridgeMock.Object,
                 _pedPoolMock.Object,
                 _pedSpawningServiceMock.Object,
+                _pedDespawnServiceMock.Object,
                 _spawnPositionCalculatorMock.Object,
                 _controlCalculatorMock.Object,
                 _takeoverDetectorMock.Object,

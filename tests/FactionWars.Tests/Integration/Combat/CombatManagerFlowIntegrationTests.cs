@@ -73,11 +73,13 @@ namespace FactionWars.Tests.Integration.Combat
             _combatResultHandler = new CombatResultHandler(_zoneService);
 
             // Create CombatManager
+            var pedDespawnServiceMock = new Mock<IPedDespawnService>();
             var aggressionResponseServiceMock = new Mock<IAggressionResponseService>();
             _combatManager = new CombatManager(
                 _gameBridge,
                 _pedPool,
                 _pedSpawningService,
+                pedDespawnServiceMock.Object,
                 _spawnPositionCalculator,
                 _controlCalculator,
                 _takeoverDetector,

@@ -57,11 +57,13 @@ namespace FactionWars.Tests.Integration.ScriptHookV
             var combatResultHandler = new CombatResultHandler(_zoneService);
             var followerService = new FollowerService();
 
+            var pedDespawnServiceMock = new Mock<IPedDespawnService>();
             var aggressionResponseServiceMock = new Mock<IAggressionResponseService>();
             _combatManager = new CombatManager(
                 _gameBridge,
                 _pedPool,
                 pedSpawningService,
+                pedDespawnServiceMock.Object,
                 spawnPositionCalculator,
                 controlCalculator,
                 takeoverDetector,

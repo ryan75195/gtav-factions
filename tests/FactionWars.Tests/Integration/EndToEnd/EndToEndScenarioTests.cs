@@ -775,11 +775,13 @@ namespace FactionWars.Tests.Integration.EndToEnd
             var waveSpawnerService = new WaveSpawnerService();
             var followerService = new FollowerService();
 
+            var pedDespawnServiceMock = new Mock<IPedDespawnService>();
             var aggressionResponseServiceMock = new Mock<IAggressionResponseService>();
             var combatManager = new CombatManager(
                 gameBridge,
                 pedPool,
                 pedSpawningService,
+                pedDespawnServiceMock.Object,
                 spawnPositionCalculator,
                 controlCalculator,
                 takeoverDetector,
@@ -929,9 +931,10 @@ namespace FactionWars.Tests.Integration.EndToEnd
             var waveSpawnerService = new WaveSpawnerService();
             var followerService = new FollowerService();
 
+            var pedDespawnServiceMock = new Mock<IPedDespawnService>();
             var aggressionResponseServiceMock = new Mock<IAggressionResponseService>();
             var combatManager = new CombatManager(
-                gameBridge, pedPool, pedSpawningService, spawnPositionCalculator,
+                gameBridge, pedPool, pedSpawningService, pedDespawnServiceMock.Object, spawnPositionCalculator,
                 controlCalculator, takeoverDetector, combatResultHandler, waveSpawnerService,
                 followerService, aggressionResponseServiceMock.Object);
 
@@ -1019,9 +1022,10 @@ namespace FactionWars.Tests.Integration.EndToEnd
             var waveSpawnerService = new WaveSpawnerService();
             var followerService = new FollowerService();
 
+            var pedDespawnServiceMock = new Mock<IPedDespawnService>();
             var aggressionResponseServiceMock = new Mock<IAggressionResponseService>();
             var combatManager = new CombatManager(
-                gameBridge, pedPool, pedSpawningService, spawnPositionCalculator,
+                gameBridge, pedPool, pedSpawningService, pedDespawnServiceMock.Object, spawnPositionCalculator,
                 controlCalculator, takeoverDetector, combatResultHandler, waveSpawnerService,
                 followerService, aggressionResponseServiceMock.Object);
 
@@ -1088,11 +1092,13 @@ namespace FactionWars.Tests.Integration.EndToEnd
             var waveSpawnerService = new WaveSpawnerService();
             var followerService = new FollowerService();
 
+            var pedDespawnServiceMock = new Mock<IPedDespawnService>();
             var aggressionResponseServiceMock = new Mock<IAggressionResponseService>();
             var combatManager = new CombatManager(
                 gameBridge,
                 pedPool,
                 pedSpawningService,
+                pedDespawnServiceMock.Object,
                 spawnPositionCalculator,
                 controlCalculator,
                 takeoverDetector,
@@ -1202,9 +1208,10 @@ namespace FactionWars.Tests.Integration.EndToEnd
             var waveSpawnerService = new WaveSpawnerService();
             var followerService = new FollowerService();
 
+            var pedDespawnServiceMock = new Mock<IPedDespawnService>();
             var aggressionResponseServiceMock = new Mock<IAggressionResponseService>();
             var combatManager = new CombatManager(
-                gameBridge, pedPool, pedSpawningService, spawnPositionCalculator,
+                gameBridge, pedPool, pedSpawningService, pedDespawnServiceMock.Object, spawnPositionCalculator,
                 controlCalculator, takeoverDetector, combatResultHandler, waveSpawnerService,
                 followerService, aggressionResponseServiceMock.Object);
 
@@ -1266,9 +1273,10 @@ namespace FactionWars.Tests.Integration.EndToEnd
             var waveSpawnerService = new WaveSpawnerService();
             var followerService = new FollowerService();
 
+            var pedDespawnServiceMock = new Mock<IPedDespawnService>();
             var aggressionResponseServiceMock = new Mock<IAggressionResponseService>();
             var combatManager = new CombatManager(
-                gameBridge, pedPool, pedSpawningService, spawnPositionCalculator,
+                gameBridge, pedPool, pedSpawningService, pedDespawnServiceMock.Object, spawnPositionCalculator,
                 controlCalculator, takeoverDetector, combatResultHandler, waveSpawnerService,
                 followerService, aggressionResponseServiceMock.Object);
 
