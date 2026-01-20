@@ -24,10 +24,31 @@ namespace FactionWars.Tests.Mocks
         /// <inheritdoc />
         public event EventHandler? MenuClosed;
 
+        /// <summary>
+        /// Gets the currently selected item index, or -1 if no menu is open.
+        /// </summary>
+        public int SelectedIndex { get; private set; } = -1;
+
         /// <inheritdoc />
-        public void ShowMenu(MenuDefinition definition)
+        public void ShowMenu(MenuDefinition definition, string? selectedItemId = null)
         {
             _currentDefinition = definition ?? throw new ArgumentNullException(nameof(definition));
+
+            // Default to first item
+            SelectedIndex = 0;
+
+            // Find the index of the selected item if specified
+            if (!string.IsNullOrEmpty(selectedItemId))
+            {
+                for (int i = 0; i < definition.Items.Count; i++)
+                {
+                    if (definition.Items[i].Id == selectedItemId)
+                    {
+                        SelectedIndex = i;
+                        break;
+                    }
+                }
+            }
         }
 
         /// <inheritdoc />
@@ -37,6 +58,7 @@ namespace FactionWars.Tests.Mocks
                 return;
 
             _currentDefinition = null;
+            SelectedIndex = -1;
             MenuClosed?.Invoke(this, EventArgs.Empty);
         }
 

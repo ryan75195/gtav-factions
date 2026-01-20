@@ -13,7 +13,8 @@ namespace FactionWars.UI.Interfaces
         /// Creates and displays a menu based on the provided definition.
         /// </summary>
         /// <param name="definition">The menu definition containing title and items.</param>
-        void ShowMenu(MenuDefinition definition);
+        /// <param name="selectedItemId">Optional ID of the item to select initially for cursor retention.</param>
+        void ShowMenu(MenuDefinition definition, string? selectedItemId = null);
 
         /// <summary>
         /// Closes any currently open menu.

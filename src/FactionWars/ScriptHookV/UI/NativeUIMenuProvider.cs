@@ -43,7 +43,7 @@ namespace FactionWars.ScriptHookV.UI
         }
 
         /// <inheritdoc />
-        public void ShowMenu(MenuDefinition definition)
+        public void ShowMenu(MenuDefinition definition, string? selectedItemId = null)
         {
             if (definition == null)
                 throw new ArgumentNullException(nameof(definition));
@@ -56,6 +56,9 @@ namespace FactionWars.ScriptHookV.UI
             // Create the NativeUI menu
             _currentMenu = new UIMenu(definition.Title, definition.Subtitle ?? "");
 
+            int selectedIndex = 0;
+            int currentIndex = 0;
+
             // Add items to the menu
             foreach (var item in definition.Items)
             {
@@ -64,6 +67,13 @@ namespace FactionWars.ScriptHookV.UI
 
                 _itemIdMap[uiItem] = item.Id;
                 _currentMenu.AddItem(uiItem);
+
+                // Track index of selected item
+                if (item.Id == selectedItemId)
+                {
+                    selectedIndex = currentIndex;
+                }
+                currentIndex++;
             }
 
             // Subscribe to item selection
@@ -73,6 +83,12 @@ namespace FactionWars.ScriptHookV.UI
             // Add to pool and open
             _menuPool.Add(_currentMenu);
             _currentMenu.Visible = true;
+
+            // Set the selected index if specified
+            if (!string.IsNullOrEmpty(selectedItemId) && selectedIndex >= 0 && selectedIndex < _currentMenu.MenuItems.Count)
+            {
+                _currentMenu.CurrentSelection = selectedIndex;
+            }
         }
 
         /// <inheritdoc />
