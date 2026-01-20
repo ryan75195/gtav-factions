@@ -62,6 +62,11 @@ namespace FactionWars.ScriptHookV
         private int _debugLogCounter;
         private bool _wasInCombat;
 
+        // Neutral zone claim state
+        private Zone? _currentNeutralZone;
+        private bool _showingClaimPrompt;
+        private const int ClaimKeyCode = 0x45; // E key
+
         /// <summary>
         /// Event raised when the player switches to a different character.
         /// </summary>
@@ -472,6 +477,10 @@ namespace FactionWars.ScriptHookV
             _territoryManager.ZoneEntered += OnZoneEntered;
             _territoryManager.ZoneExited += OnZoneExited;
 
+            // Wire neutral zone claim events
+            _territoryManager.NeutralZoneEntered += OnNeutralZoneEntered;
+            _territoryManager.ZoneExited += OnZoneExitedForClaim;
+
             // Initialize main menu controller for UI
             var menuProvider = _container.Resolve<IMenuProvider>();
             _mainMenuController = new MainMenuController(menuProvider);
@@ -582,6 +591,13 @@ namespace FactionWars.ScriptHookV
             if (!_isInitialized)
                 return;
 
+            // Handle claim key when in neutral zone
+            if (keyCode == ClaimKeyCode && _showingClaimPrompt && _currentNeutralZone != null)
+            {
+                TryClaimNeutralZone();
+                return;
+            }
+
             // Pass key events to the main menu controller
             _mainMenuController?.OnKeyDown(keyCode);
         }
@@ -615,6 +631,8 @@ namespace FactionWars.ScriptHookV
             {
                 _territoryManager.ZoneEntered -= OnZoneEntered;
                 _territoryManager.ZoneExited -= OnZoneExited;
+                _territoryManager.NeutralZoneEntered -= OnNeutralZoneEntered;
+                _territoryManager.ZoneExited -= OnZoneExitedForClaim;
                 _territoryManager = null;
             }
 
@@ -776,6 +794,75 @@ namespace FactionWars.ScriptHookV
                 _combatManager.EndCombat(CombatStatus.PlayerRetreat);
                 _gameBridge.ShowNotification($"~y~Retreated from:~w~ {zone.Name}");
             }
+        }
+
+        /// <summary>
+        /// Called when the player enters a neutral (unowned) zone.
+        /// Shows the claim prompt.
+        /// </summary>
+        private void OnNeutralZoneEntered(object? sender, Zone zone)
+        {
+            _currentNeutralZone = zone;
+            _showingClaimPrompt = true;
+
+            var cost = GetBasicTroopCost();
+            _gameBridge.ShowNotification($"~y~Unclaimed territory: {zone.Name}~n~Press ~g~E~w~ to claim for ~g~${cost}");
+        }
+
+        /// <summary>
+        /// Called when the player exits a zone (for claim state tracking).
+        /// Clears the claim prompt if exiting the current neutral zone.
+        /// </summary>
+        private void OnZoneExitedForClaim(object? sender, Zone zone)
+        {
+            if (_currentNeutralZone?.Id == zone.Id)
+            {
+                _currentNeutralZone = null;
+                _showingClaimPrompt = false;
+            }
+        }
+
+        /// <summary>
+        /// Gets the cost of a basic troop from the defender tier service.
+        /// </summary>
+        private int GetBasicTroopCost()
+        {
+            var tierService = _container.Resolve<IDefenderTierService>();
+            return tierService.GetTierConfig(DefenderTier.Basic).Cost;
+        }
+
+        /// <summary>
+        /// Attempts to claim the current neutral zone by paying for a guard troop.
+        /// </summary>
+        private void TryClaimNeutralZone()
+        {
+            if (_currentNeutralZone == null) return;
+
+            var cost = GetBasicTroopCost();
+            var playerMoney = _gameBridge.GetPlayerMoney();
+            var playerFaction = CurrentPlayerFactionId;
+
+            if (playerMoney < cost)
+            {
+                _gameBridge.ShowNotification($"~r~Not enough cash! Need ${cost}");
+                return;
+            }
+
+            // Deduct cost
+            _gameBridge.AddPlayerMoney(-cost);
+
+            // Transfer ownership
+            _zoneService!.TransferZoneOwnership(_currentNeutralZone.Id, playerFaction);
+
+            // Allocate 1 Basic troop
+            var allocationService = _container.Resolve<IZoneDefenderAllocationService>();
+            allocationService.SetAllocation(playerFaction!, _currentNeutralZone.Id, DefenderTier.Basic, 1);
+
+            _gameBridge.ShowNotification($"~g~You now control {_currentNeutralZone.Name}!");
+
+            // Clear prompt state
+            _currentNeutralZone = null;
+            _showingClaimPrompt = false;
         }
 
         /// <summary>
