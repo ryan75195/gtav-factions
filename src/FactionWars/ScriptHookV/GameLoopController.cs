@@ -196,18 +196,19 @@ namespace FactionWars.ScriptHookV
             if (!_isInitialized)
                 return;
 
-            // Initialize game data on first tick (zones and factions)
-            if (!_gameDataInitialized)
-            {
-                InitializeGameData();
-                _gameDataInitialized = true;
-            }
-
-            // Initialize character switch detection on first tick
+            // Initialize character switch detection FIRST so CurrentPlayerFactionId is available
             if (!_characterSwitchInitialized)
             {
                 _characterSwitchDetector.Initialize();
                 _characterSwitchInitialized = true;
+            }
+
+            // Initialize game data on first tick (zones and factions)
+            // Must happen AFTER character switch detector so EconomyManager gets correct faction ID
+            if (!_gameDataInitialized)
+            {
+                InitializeGameData();
+                _gameDataInitialized = true;
             }
 
             // Check for character switches
@@ -463,6 +464,7 @@ namespace FactionWars.ScriptHookV
 
             // Initialize combat manager for combat encounters
             var pedPool = _container.Resolve<IPedPool>();
+            var pedDespawnService = _container.Resolve<IPedDespawnService>();
             var spawnPositionCalculator = _container.Resolve<ISpawnPositionCalculator>();
             var controlCalculator = _container.Resolve<IControlPercentageCalculator>();
             var takeoverDetector = _container.Resolve<ITakeoverDetector>();
@@ -474,6 +476,7 @@ namespace FactionWars.ScriptHookV
                 _gameBridge,
                 pedPool,
                 pedSpawningService,
+                pedDespawnService,
                 spawnPositionCalculator,
                 controlCalculator,
                 takeoverDetector,

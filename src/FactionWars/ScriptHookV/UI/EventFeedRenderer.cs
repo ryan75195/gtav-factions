@@ -63,10 +63,11 @@ namespace FactionWars.ScriptHookV.UI
             if (entries == null)
                 throw new ArgumentNullException(nameof(entries));
 
+            // Always store entries - Draw() will handle empty case
+            // Don't set _isVisible=false on empty, as this prevents later entries from showing
             if (entries.Count == 0)
             {
-                _isVisible = false;
-                _currentEntries = null;
+                _currentEntries = entries;
                 return;
             }
 

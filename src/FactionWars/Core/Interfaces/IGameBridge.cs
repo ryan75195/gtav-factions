@@ -152,6 +152,13 @@ namespace FactionWars.Core.Interfaces
         bool IsPedInVehicle(int pedHandle);
 
         /// <summary>
+        /// Checks if a ped is currently trying to enter a vehicle.
+        /// </summary>
+        /// <param name="pedHandle">Handle of the ped to check.</param>
+        /// <returns>True if the ped is attempting to enter a vehicle, false otherwise.</returns>
+        bool IsPedTryingToEnterVehicle(int pedHandle);
+
+        /// <summary>
         /// Gets the available (free) seat indices for a vehicle.
         /// </summary>
         /// <param name="vehicleHandle">Handle of the vehicle to check.</param>

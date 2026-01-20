@@ -187,6 +187,7 @@ namespace FactionWars.Core.Utils
         private readonly List<int> _followingPeds = new List<int>();
         private readonly Dictionary<int, VehicleState> _vehicles = new Dictionary<int, VehicleState>();
         private readonly Dictionary<int, int> _pedsInVehicles = new Dictionary<int, int>(); // pedHandle -> vehicleHandle
+        private readonly HashSet<int> _pedsTryingToEnterVehicle = new HashSet<int>();
         private int _nextVehicleHandle = 1000;
 
         /// <summary>
@@ -219,6 +220,11 @@ namespace FactionWars.Core.Utils
         public bool IsPedInVehicle(int pedHandle)
         {
             return _pedsInVehicles.ContainsKey(pedHandle);
+        }
+
+        public bool IsPedTryingToEnterVehicle(int pedHandle)
+        {
+            return _pedsTryingToEnterVehicle.Contains(pedHandle);
         }
 
         public int[] GetVehicleFreeSeats(int vehicleHandle)

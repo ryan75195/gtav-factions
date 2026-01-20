@@ -426,6 +426,10 @@ namespace FactionWars.ScriptHookV
                 ped.RelationshipGroup = playerGroup;
                 FileLogger.Info($"Set ped {pedHandle} to player's relationship group");
 
+                // Ensure followers hate the defender enemies group (used by hostile zone defenders)
+                var defenderEnemyGroup = World.AddRelationshipGroup("DEFENDER_ENEMIES");
+                playerGroup.SetRelationshipBetweenGroups(defenderEnemyGroup, Relationship.Hate, true);
+
                 // Add to player's ped group so they move together
                 var pedGroup = player.PedGroup;
                 if (pedGroup != null)
@@ -449,27 +453,29 @@ namespace FactionWars.ScriptHookV
                 ped.CanSwitchWeapons = true;
 
                 // Set combat attributes for aggressive defense
-                Function.Call(Hash.SET_PED_COMBAT_ATTRIBUTES, ped.Handle, 46, true); // BF_CanFightArmedPedsWhenNotArmed
-                Function.Call(Hash.SET_PED_COMBAT_ATTRIBUTES, ped.Handle, 5, true);  // BF_CanUseCover
-                Function.Call(Hash.SET_PED_COMBAT_ATTRIBUTES, ped.Handle, 0, true);  // BF_CanUseCoverShootOnlyWhenAimingAtTarget
-                Function.Call(Hash.SET_PED_COMBAT_ATTRIBUTES, ped.Handle, 2, true);  // BF_CanDoDrivebys
-                Function.Call(Hash.SET_PED_COMBAT_ATTRIBUTES, ped.Handle, 3, true);  // BF_CanLeaveVehicle
+                Function.Call(Hash.SET_PED_COMBAT_ATTRIBUTES, ped.Handle, 46, true);  // BF_CanFightArmedPedsWhenNotArmed
+                Function.Call(Hash.SET_PED_COMBAT_ATTRIBUTES, ped.Handle, 5, true);   // BF_CanUseCover
+                Function.Call(Hash.SET_PED_COMBAT_ATTRIBUTES, ped.Handle, 0, false);  // BF_CanUseCoverShootOnlyWhenAimingAtTarget - false for more aggressive
+                Function.Call(Hash.SET_PED_COMBAT_ATTRIBUTES, ped.Handle, 2, true);   // BF_CanDoDrivebys
+                Function.Call(Hash.SET_PED_COMBAT_ATTRIBUTES, ped.Handle, 3, true);   // BF_CanLeaveVehicle
+                Function.Call(Hash.SET_PED_COMBAT_ATTRIBUTES, ped.Handle, 20, true);  // BF_CanTauntInVehicle
+                Function.Call(Hash.SET_PED_COMBAT_ATTRIBUTES, ped.Handle, 1, true);   // BF_CanBeTargetedWhenInjured
+                Function.Call(Hash.SET_PED_COMBAT_ATTRIBUTES, ped.Handle, 52, true);  // BF_CanBeTargetedByScriptedPeds
 
                 // Set combat ability and range
                 Function.Call(Hash.SET_PED_COMBAT_ABILITY, ped.Handle, 2); // Professional
-                Function.Call(Hash.SET_PED_COMBAT_RANGE, ped.Handle, 2); // Far
+                Function.Call(Hash.SET_PED_COMBAT_RANGE, ped.Handle, 2);   // Far
                 Function.Call(Hash.SET_PED_COMBAT_MOVEMENT, ped.Handle, 2); // Offensive
 
                 // Set firing pattern
                 ped.FiringPattern = FiringPattern.FullAuto;
 
+                // Register as group member
+                Function.Call(Hash.SET_PED_AS_GROUP_MEMBER, ped.Handle, Function.Call<int>(Hash.GET_PLAYER_GROUP, Game.Player.Handle));
+
                 // Use TASK_COMBAT_HATED_TARGETS_AROUND_PED to fight any hostile peds nearby
                 // This makes them automatically engage enemies
                 Function.Call(Hash.TASK_COMBAT_HATED_TARGETS_AROUND_PED, ped.Handle, 100f, 0);
-
-                // Also register them as a companion that follows
-                Function.Call(Hash.REGISTER_TARGET, ped.Handle, player.Handle);
-                Function.Call(Hash.SET_PED_AS_GROUP_MEMBER, ped.Handle, Function.Call<int>(Hash.GET_PLAYER_GROUP, Game.Player.Handle));
 
                 FileLogger.Info($"Follower {pedHandle} configured: combat and follow behavior set");
             }
@@ -526,6 +532,23 @@ namespace FactionWars.ScriptHookV
         }
 
         /// <inheritdoc />
+        public bool IsPedTryingToEnterVehicle(int pedHandle)
+        {
+            try
+            {
+                var ped = Entity.FromHandle(pedHandle) as Ped;
+                if (ped == null || !ped.Exists()) return false;
+
+                // Check if ped is getting into a vehicle using native
+                return Function.Call<bool>(Hash.IS_PED_GETTING_INTO_A_VEHICLE, ped.Handle);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <inheritdoc />
         public int[] GetVehicleFreeSeats(int vehicleHandle)
         {
             try
@@ -570,9 +593,20 @@ namespace FactionWars.ScriptHookV
 
                 // Convert our seat index (1-based for passengers) to GTA V seat index (0-based)
                 // Our 0 = driver (-1 in GTA), our 1+ = passengers (0+ in GTA)
-                var gtaSeatIndex = (VehicleSeat)(seatIndex - 1);
+                var gtaSeatIndex = seatIndex - 1;
 
-                ped.Task.EnterVehicle(vehicle, gtaSeatIndex);
+                // Use native for better control - TASK_ENTER_VEHICLE with flags
+                // Flags: 1 = warp if failed, 8 = don't wait for door to open, 16 = warp in
+                // Timeout -1 = no timeout
+                // Speed: 2.0 = run
+                Function.Call(Hash.TASK_ENTER_VEHICLE,
+                    ped.Handle,
+                    vehicle.Handle,
+                    -1,           // timeout - no timeout
+                    gtaSeatIndex, // seat
+                    2.0f,         // speed (run)
+                    1,            // flag: 1 = normal entry
+                    0);           // unknown
             }
             catch
             {
@@ -608,8 +642,14 @@ namespace FactionWars.ScriptHookV
                 // Get weapon hash from name
                 var weaponHash = (WeaponHash)Game.GenerateHash(weaponName.ToUpperInvariant());
 
-                // Give the weapon with max ammo
-                ped.Weapons.Give(weaponHash, 9999, true, true);
+                // Give the weapon with max ammo and equip it
+                var weapon = ped.Weapons.Give(weaponHash, 9999, true, true);
+
+                // Explicitly select the weapon to ensure they're holding it
+                if (weapon != null)
+                {
+                    ped.Weapons.Select(weapon);
+                }
             }
             catch
             {
@@ -659,13 +699,24 @@ namespace FactionWars.ScriptHookV
                 var ped = Entity.FromHandle(pedHandle) as Ped;
                 if (ped == null || !ped.Exists()) return;
 
-                // Set max health first, then current health
+                // CRITICAL: Disable instant headshot kills first
+                // SET_PED_SUFFERS_CRITICAL_HITS(ped, false) - prevents one-shot headshot deaths
+                Function.Call(Hash.SET_PED_SUFFERS_CRITICAL_HITS, ped.Handle, false);
+
+                // Use natives directly for more reliable health setting
+                // SET_PED_MAX_HEALTH is more reliable than setting MaxHealth property
+                Function.Call(Hash.SET_PED_MAX_HEALTH, ped.Handle, health);
+                Function.Call(Hash.SET_ENTITY_HEALTH, ped.Handle, health, 0);
+
+                // Also set the property as backup
                 ped.MaxHealth = health;
                 ped.Health = health;
+
+                FileLogger.Info($"SetPedHealth: Set ped {pedHandle} health to {health}, critical hits disabled");
             }
-            catch
+            catch (Exception ex)
             {
-                // Silently ignore
+                FileLogger.Error($"SetPedHealth exception for ped {pedHandle}", ex);
             }
         }
 

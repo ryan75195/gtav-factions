@@ -8,6 +8,7 @@ using FactionWars.Core.Interfaces;
 using FactionWars.Core.Models;
 using FactionWars.Territory.Models;
 using FactionWars.ScriptHookV.Logging;
+using FactionWars.Combat.Services;
 
 namespace FactionWars.ScriptHookV.Managers
 {
@@ -21,6 +22,7 @@ namespace FactionWars.ScriptHookV.Managers
         private readonly IGameBridge _gameBridge;
         private readonly IPedPool _pedPool;
         private readonly IPedSpawningService _pedSpawningService;
+        private readonly IPedDespawnService _pedDespawnService;
         private readonly ISpawnPositionCalculator _spawnPositionCalculator;
         private readonly IControlPercentageCalculator _controlCalculator;
         private readonly ITakeoverDetector _takeoverDetector;
@@ -32,6 +34,8 @@ namespace FactionWars.ScriptHookV.Managers
         private CombatEncounter? _currentEncounter;
         private WaveState? _currentWaveState;
         private int _nextEncounterId = 1;
+        private float _deadPedCleanupTimer = 0f;
+        private const float DeadPedCleanupInterval = 0.5f; // Clean up dead peds every 0.5 seconds
 
         /// <summary>
         /// Gets the current combat encounter, or null if not in combat.
@@ -64,6 +68,7 @@ namespace FactionWars.ScriptHookV.Managers
         /// <param name="gameBridge">The game bridge for game interactions.</param>
         /// <param name="pedPool">The ped pool for tracking peds.</param>
         /// <param name="pedSpawningService">Service for spawning peds.</param>
+        /// <param name="pedDespawnService">Service for despawning peds.</param>
         /// <param name="spawnPositionCalculator">Calculator for spawn positions.</param>
         /// <param name="controlCalculator">Calculator for control percentages.</param>
         /// <param name="takeoverDetector">Detector for takeover thresholds.</param>
@@ -76,6 +81,7 @@ namespace FactionWars.ScriptHookV.Managers
             IGameBridge gameBridge,
             IPedPool pedPool,
             IPedSpawningService pedSpawningService,
+            IPedDespawnService pedDespawnService,
             ISpawnPositionCalculator spawnPositionCalculator,
             IControlPercentageCalculator controlCalculator,
             ITakeoverDetector takeoverDetector,
@@ -87,6 +93,7 @@ namespace FactionWars.ScriptHookV.Managers
             _gameBridge = gameBridge ?? throw new ArgumentNullException(nameof(gameBridge));
             _pedPool = pedPool ?? throw new ArgumentNullException(nameof(pedPool));
             _pedSpawningService = pedSpawningService ?? throw new ArgumentNullException(nameof(pedSpawningService));
+            _pedDespawnService = pedDespawnService ?? throw new ArgumentNullException(nameof(pedDespawnService));
             _spawnPositionCalculator = spawnPositionCalculator ?? throw new ArgumentNullException(nameof(spawnPositionCalculator));
             _controlCalculator = controlCalculator ?? throw new ArgumentNullException(nameof(controlCalculator));
             _takeoverDetector = takeoverDetector ?? throw new ArgumentNullException(nameof(takeoverDetector));
@@ -170,6 +177,7 @@ namespace FactionWars.ScriptHookV.Managers
             FileLogger.Combat($"CombatManager.EndCombat: Final state - attackers={_currentEncounter.AttackerPedCount}, defenders={_currentEncounter.DefenderPedCount}, control={_currentEncounter.AttackerControlPercentage:F1}%/{_currentEncounter.DefenderControlPercentage:F1}%");
 
             var encounter = _currentEncounter;
+            var zoneId = encounter.ZoneId;
             encounter.End(status);
 
             // Only process result for non-aborted/non-retreat combat
@@ -182,6 +190,10 @@ namespace FactionWars.ScriptHookV.Managers
             {
                 FileLogger.Combat($"CombatManager.EndCombat: Skipping result processing for status={status}");
             }
+
+            // Despawn all peds in the zone to prevent stacking on re-entry
+            var despawnedPeds = _pedDespawnService.DespawnPedsByZone(zoneId);
+            FileLogger.Combat($"CombatManager.EndCombat: Despawned {despawnedPeds.Count} peds from zone {zoneId}");
 
             _currentEncounter = null;
             _currentWaveState = null;
@@ -233,7 +245,8 @@ namespace FactionWars.ScriptHookV.Managers
         /// Updates ped counts, control percentages, and checks for takeover.
         /// Also checks for player death which triggers a retreat.
         /// </summary>
-        public void Update()
+        /// <param name="deltaTime">Time elapsed since last update in seconds.</param>
+        public void Update(float deltaTime = 0.016f)
         {
             if (_currentEncounter == null)
             {
@@ -250,6 +263,18 @@ namespace FactionWars.ScriptHookV.Managers
                 return;
             }
 
+            // Periodically clean up dead peds from the pool to avoid expensive checks every frame
+            _deadPedCleanupTimer += deltaTime;
+            if (_deadPedCleanupTimer >= DeadPedCleanupInterval)
+            {
+                _deadPedCleanupTimer = 0f;
+                var despawned = _pedDespawnService.DespawnDeadPeds();
+                if (despawned.Count > 0)
+                {
+                    FileLogger.Combat($"CombatManager.Update: Cleaned up {despawned.Count} dead peds");
+                }
+            }
+
             // Count attackers: Player (always 1) + followers from attacking faction
             // Player is always counted as an attacker when in combat
             int attackerCount = 1; // Player
@@ -262,7 +287,7 @@ namespace FactionWars.ScriptHookV.Managers
                 _currentEncounter.ZoneId).ToList();
             attackerCount += attackerPeds.Count;
 
-            // Count defenders from ped pool (spawned NPCs)
+            // Count defenders from ped pool - dead peds are cleaned up periodically above
             var defenderPeds = _pedPool.GetByFactionAndZone(
                 _currentEncounter.DefendingFactionId,
                 _currentEncounter.ZoneId).ToList();
@@ -274,7 +299,7 @@ namespace FactionWars.ScriptHookV.Managers
             _currentEncounter.AttackerPedCount = attackerCount;
             _currentEncounter.DefenderPedCount = defenderPeds.Count;
 
-            // Calculate control percentages using total attacker count (player + followers + NPCs)
+            // Calculate control percentages
             var controlResult = _controlCalculator.Calculate(attackerCount, defenderPeds.Count);
             _currentEncounter.AttackerControlPercentage = controlResult.AttackerPercentage;
             _currentEncounter.DefenderControlPercentage = controlResult.DefenderPercentage;

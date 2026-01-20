@@ -26,9 +26,9 @@ namespace FactionWars.Core.Services
                     new DefenderTierConfig(
                         tier: DefenderTier.Basic,
                         cost: 200,
-                        health: 100,
-                        armor: 0,
-                        weapon: "Pistol",
+                        health: 200,
+                        armor: 50,
+                        weapon: "WEAPON_PISTOL",
                         accuracy: 0.3f,
                         combatModifier: 1.0f)
                 },
@@ -37,9 +37,9 @@ namespace FactionWars.Core.Services
                     new DefenderTierConfig(
                         tier: DefenderTier.Medium,
                         cost: 500,
-                        health: 150,
-                        armor: 50,
-                        weapon: "SMG",
+                        health: 350,
+                        armor: 100,
+                        weapon: "WEAPON_SMG",
                         accuracy: 0.5f,
                         combatModifier: 1.5f)
                 },
@@ -48,9 +48,9 @@ namespace FactionWars.Core.Services
                     new DefenderTierConfig(
                         tier: DefenderTier.Heavy,
                         cost: 1000,
-                        health: 200,
-                        armor: 100,
-                        weapon: "Carbine",
+                        health: 500,
+                        armor: 200,
+                        weapon: "WEAPON_CARBINERIFLE",
                         accuracy: 0.7f,
                         combatModifier: 2.0f)
                 }

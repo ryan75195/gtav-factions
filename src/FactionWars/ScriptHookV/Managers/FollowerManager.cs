@@ -125,11 +125,11 @@ namespace FactionWars.ScriptHookV.Managers
             // Deduct money from player (only after successful spawn)
             _gameBridge.AddPlayerMoney(-cost);
 
-            // Configure combat stats based on tier
-            ConfigureFollowerCombat(pedHandle.Handle, tierConfig);
-
-            // Make the ped follow the player
+            // Make the ped follow the player FIRST (sets up ped group, clears tasks)
             _gameBridge.SetPedAsFollower(pedHandle.Handle);
+
+            // Configure combat stats AFTER follower setup (health must be set last to persist)
+            ConfigureFollowerCombat(pedHandle.Handle, tierConfig);
 
             return FollowerRecruitResult.Succeeded(follower);
         }
@@ -233,10 +233,11 @@ namespace FactionWars.ScriptHookV.Managers
 
                 // Handle vehicle behavior
                 var followerInVehicle = _gameBridge.IsPedInVehicle(follower.PedHandle);
+                var followerTryingToEnter = _gameBridge.IsPedTryingToEnterVehicle(follower.PedHandle);
 
-                if (playerInVehicle && !followerInVehicle)
+                if (playerInVehicle && !followerInVehicle && !followerTryingToEnter)
                 {
-                    // Player is in vehicle but follower isn't - order follower to enter
+                    // Player is in vehicle but follower isn't and isn't already trying - order follower to enter
                     if (freeSeats != null && seatIndex < freeSeats.Length)
                     {
                         _gameBridge.TaskPedEnterVehicle(follower.PedHandle, playerVehicle, freeSeats[seatIndex]);
