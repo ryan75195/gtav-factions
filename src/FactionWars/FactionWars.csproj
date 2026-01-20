@@ -7,6 +7,7 @@
     <RootNamespace>FactionWars</RootNamespace>
     <AssemblyName>FactionWars</AssemblyName>
     <Nullable>enable</Nullable>
+    <PlatformTarget>x64</PlatformTarget>
   </PropertyGroup>
 
   <ItemGroup>
@@ -14,6 +15,11 @@
       <HintPath>..\..\lib\ScriptHookVDotNet3.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="NativeUI">
+      <HintPath>..\..\lib\NativeUI.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="System.Windows.Forms" />
   </ItemGroup>
 
   <ItemGroup>
