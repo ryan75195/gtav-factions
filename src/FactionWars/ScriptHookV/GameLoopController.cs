@@ -788,6 +788,17 @@ namespace FactionWars.ScriptHookV
             {
                 FileLogger.Combat($"Starting combat in {zone.Name}");
 
+                // Add combat started event to event feed
+                if (_eventFeedService != null)
+                {
+                    var attackerFaction = _factionService.GetFaction(playerFactionId);
+                    var defenderFaction = _factionService.GetFaction(zone.OwnerFactionId!);
+                    _eventFeedService.AddCombatStarted(
+                        zone.Name,
+                        attackerFaction?.Name ?? "Player",
+                        defenderFaction?.Name ?? "Defender");
+                }
+
                 // Start combat in enemy zone
                 var encounter = _combatManager.StartCombat(zone, playerFactionId);
                 FileLogger.Combat($"Combat encounter created: ID={encounter?.Id ?? "NULL"}");
@@ -859,6 +870,24 @@ namespace FactionWars.ScriptHookV
         /// </summary>
         private void OnCombatEnded(object? sender, CombatEncounter encounter)
         {
+            // Add combat result event to event feed
+            if (_eventFeedService != null)
+            {
+                var zone = _zoneService?.GetZone(encounter.ZoneId);
+                if (encounter.Status == CombatStatus.AttackerVictory)
+                {
+                    _eventFeedService.AddZoneCaptured(zone?.Name ?? "Unknown", "You");
+                }
+                else if (encounter.Status == CombatStatus.DefenderVictory)
+                {
+                    var defenderFaction = _factionService.GetFaction(encounter.DefendingFactionId);
+                    _eventFeedService.AddCombatEnded(
+                        zone?.Name ?? "Unknown",
+                        defenderFaction?.Name ?? "Defender",
+                        defenderWon: true);
+                }
+            }
+
             if (encounter.Status == CombatStatus.AttackerVictory)
             {
                 // Zone is now neutral after attacker victory, show claim prompt
