@@ -1,5 +1,6 @@
 using FactionWars.AI.Controllers;
 using FactionWars.AI.Interfaces;
+using FactionWars.Combat.Interfaces;
 using FactionWars.Core.Interfaces;
 using FactionWars.Factions.Interfaces;
 using FactionWars.Factions.Models;
@@ -17,6 +18,7 @@ namespace FactionWars.Tests.Unit.AI
         private readonly Mock<IBattleSimulationService> _battleSimulationServiceMock;
         private readonly Mock<IZoneDefenderAllocationService> _allocationServiceMock;
         private readonly Mock<IGameBridge> _gameBridgeMock;
+        private readonly Mock<IActiveBattleManager> _activeBattleManagerMock;
         private readonly Dictionary<string, IAIStrategy> _strategies;
 
         public AIControllerTests()
@@ -26,6 +28,7 @@ namespace FactionWars.Tests.Unit.AI
             _battleSimulationServiceMock = new Mock<IBattleSimulationService>();
             _allocationServiceMock = new Mock<IZoneDefenderAllocationService>();
             _gameBridgeMock = new Mock<IGameBridge>();
+            _activeBattleManagerMock = new Mock<IActiveBattleManager>();
             _strategies = new Dictionary<string, IAIStrategy>();
         }
 
@@ -133,7 +136,8 @@ namespace FactionWars.Tests.Unit.AI
                 _battleSimulationServiceMock.Object,
                 _allocationServiceMock.Object,
                 _gameBridgeMock.Object,
-                _strategies);
+                _strategies,
+                _activeBattleManagerMock.Object);
         }
     }
 }
