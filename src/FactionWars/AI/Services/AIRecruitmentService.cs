@@ -33,7 +33,7 @@ namespace FactionWars.AI.Services
             int cost = _budgetService.CalculateRecruitmentCost(troopsToRecruit);
 
             _factionService.RecruitTroops(factionId, troopsToRecruit);
-            _factionService.AddCash(factionId, -cost);
+            _factionService.SpendCash(factionId, cost);
 
             return troopsToRecruit;
         }
