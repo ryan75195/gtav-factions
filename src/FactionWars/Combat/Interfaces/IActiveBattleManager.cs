@@ -64,6 +64,16 @@ namespace FactionWars.Combat.Interfaces
         void ReportTroopKilled(string zoneId, string factionId, DefenderTier tier);
 
         /// <summary>
+        /// Adds defender troops to an active battle in the specified zone.
+        /// Used when player allocates reinforcements during active battle.
+        /// </summary>
+        /// <param name="zoneId">The zone with the active battle.</param>
+        /// <param name="tier">The tier of troops to add.</param>
+        /// <param name="count">The number of troops to add.</param>
+        /// <returns>True if troops were added to an existing battle, false if no battle exists.</returns>
+        bool AddDefenderTroops(string zoneId, DefenderTier tier, int count);
+
+        /// <summary>
         /// Raised when a kill occurs in a battle.
         /// </summary>
         event EventHandler<BattleKillEvent>? OnKill;

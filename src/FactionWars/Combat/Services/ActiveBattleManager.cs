@@ -216,6 +216,16 @@ namespace FactionWars.Combat.Services
             }
         }
 
+        public bool AddDefenderTroops(string zoneId, DefenderTier tier, int count)
+        {
+            var battle = GetBattleForZone(zoneId);
+            if (battle == null) return false;
+
+            battle.AddDefenderTroops(tier, count);
+            FileLogger.Combat($"ActiveBattleManager: Added {count} {tier} defenders to battle in {zoneId}, new total: {battle.TotalDefenderTroops}");
+            return true;
+        }
+
         private void ProcessKill(ActiveBattle battle)
         {
             // Calculate weighted strength for each side
