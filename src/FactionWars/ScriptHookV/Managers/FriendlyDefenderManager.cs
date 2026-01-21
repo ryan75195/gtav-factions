@@ -468,16 +468,17 @@ namespace FactionWars.ScriptHookV.Managers
 
         /// <summary>
         /// Calculates the spawn position for a defender based on the zone center and
-        /// the defender's index in the spawn sequence.
+        /// the defender's index in the spawn sequence. Uses GetGroundZ to ensure
+        /// spawning at ground level rather than on rooftops.
         /// </summary>
         private Vector3 CalculateSpawnPosition(Vector3 center, int index, int totalCount)
         {
             var angle = (2 * Math.PI * index) / Math.Max(totalCount, 1);
             var distance = 30f + (index % 3) * 10f;
-            return new Vector3(
-                center.X + (float)(Math.Cos(angle) * distance),
-                center.Y + (float)(Math.Sin(angle) * distance),
-                center.Z);
+            var x = center.X + (float)(Math.Cos(angle) * distance);
+            var y = center.Y + (float)(Math.Sin(angle) * distance);
+            var z = _gameBridge.GetGroundZ(x, y, center.Z);
+            return new Vector3(x, y, z);
         }
 
         /// <summary>
