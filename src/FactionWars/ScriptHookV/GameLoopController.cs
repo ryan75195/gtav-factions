@@ -564,6 +564,14 @@ namespace FactionWars.ScriptHookV
                 }
             };
 
+            // Initialize active battle manager for timed AI battles (must be before EnemyDefenderManager)
+            _activeBattleManager = _container.Resolve<IActiveBattleManager>();
+            _activeBattleManager.OnKill += OnBattleKill;
+            _activeBattleManager.OnBattleEnded += OnBattleEnded;
+
+            // Initialize battle HUD renderer
+            _battleHudRenderer = new BattleHudRenderer();
+
             // Initialize enemy defender manager for spawning defenders in enemy zones
             _enemyDefenderManager = new EnemyDefenderManager(
                 _gameBridge,
@@ -571,7 +579,8 @@ namespace FactionWars.ScriptHookV
                 pedSpawningService,
                 defenderTierService,
                 pedBlipService,
-                _zoneService);
+                _zoneService,
+                _activeBattleManager);
 
             // Initialize combat manager for combat encounters
             var pedPool = _container.Resolve<IPedPool>();
@@ -617,14 +626,6 @@ namespace FactionWars.ScriptHookV
             _aiController = _container.Resolve<IAIController>();
             _aiController.SetPlayerFactionId(CurrentPlayerFactionId);
             _aiController.Start();
-
-            // Initialize active battle manager for timed AI battles
-            _activeBattleManager = _container.Resolve<IActiveBattleManager>();
-            _activeBattleManager.OnKill += OnBattleKill;
-            _activeBattleManager.OnBattleEnded += OnBattleEnded;
-
-            // Initialize battle HUD renderer
-            _battleHudRenderer = new BattleHudRenderer();
 
             // Initialize victory manager for victory condition checking
             var victoryConditionService = _container.Resolve<IVictoryConditionService>();
@@ -853,6 +854,7 @@ namespace FactionWars.ScriptHookV
             }
             _activeBattleManager = null;
             _battleHudRenderer = null;
+            _currentBattleHudIndex = 0;
 
             // Clean up follower manager
             _followerManager = null;
