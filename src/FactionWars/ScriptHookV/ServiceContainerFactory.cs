@@ -421,7 +421,8 @@ namespace FactionWars.ScriptHookV
                 container.Resolve<IBattleSimulationService>(),
                 container.Resolve<IZoneDefenderAllocationService>(),
                 container.Resolve<IGameBridge>(),
-                container.Resolve<IDictionary<string, IAIStrategy>>()));
+                container.Resolve<IDictionary<string, IAIStrategy>>(),
+                container.Resolve<IActiveBattleManager>()));
         }
     }
 }

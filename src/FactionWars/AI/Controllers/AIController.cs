@@ -9,6 +9,7 @@ using FactionWars.Factions.Interfaces;
 using FactionWars.Factions.Models;
 using FactionWars.ScriptHookV.Logging;
 using FactionWars.Territory.Interfaces;
+using FactionWars.Combat.Interfaces;
 
 namespace FactionWars.AI.Controllers
 {
@@ -25,6 +26,7 @@ namespace FactionWars.AI.Controllers
         private readonly IZoneDefenderAllocationService _allocationService;
         private readonly IGameBridge _gameBridge;
         private readonly IDictionary<string, IAIStrategy> _strategies;
+        private readonly IActiveBattleManager _activeBattleManager;
 
         // Configuration
         private const float DefaultDecisionIntervalSeconds = 60f;  // Slowed from 30s for better pacing
@@ -64,7 +66,8 @@ namespace FactionWars.AI.Controllers
             IBattleSimulationService battleSimulationService,
             IZoneDefenderAllocationService allocationService,
             IGameBridge gameBridge,
-            IDictionary<string, IAIStrategy> strategies)
+            IDictionary<string, IAIStrategy> strategies,
+            IActiveBattleManager activeBattleManager)
         {
             _factionService = factionService ?? throw new ArgumentNullException(nameof(factionService));
             _zoneService = zoneService ?? throw new ArgumentNullException(nameof(zoneService));
@@ -72,6 +75,7 @@ namespace FactionWars.AI.Controllers
             _allocationService = allocationService ?? throw new ArgumentNullException(nameof(allocationService));
             _gameBridge = gameBridge ?? throw new ArgumentNullException(nameof(gameBridge));
             _strategies = strategies ?? throw new ArgumentNullException(nameof(strategies));
+            _activeBattleManager = activeBattleManager ?? throw new ArgumentNullException(nameof(activeBattleManager));
 
             _isRunning = false;
             _decisionTimer = 0f;
@@ -320,42 +324,26 @@ namespace FactionWars.AI.Controllers
             var defenderFactionId = zone.OwnerFactionId;
             FileLogger.AI($"      SimulateBattle: {attackerFactionId} vs {defenderFactionId} for {zone.Name}");
 
-            // Build troop compositions
-            var attackerTroops = new TroopComposition(decision.TroopsToCommit, 0, 0);
-            var defenderTroops = BuildDefenderTroops(defenderFactionId, decision.TargetZoneId!);
-            FileLogger.AI($"      SimulateBattle: Attackers={attackerTroops.TotalCount}, Defenders={defenderTroops.TotalCount}");
+            // Build troop dictionaries for timed battle
+            var attackerTroopDict = new Dictionary<DefenderTier, int>
+            {
+                { DefenderTier.Basic, decision.TroopsToCommit },
+                { DefenderTier.Medium, 0 },
+                { DefenderTier.Heavy, 0 }
+            };
 
-            // Simulate battle
-            var result = _battleSimulationService.SimulateBattle(
+            var defenderTroopDict = BuildDefenderTroopsDictionary(defenderFactionId, decision.TargetZoneId!);
+
+            // Start timed battle instead of instant simulation
+            _activeBattleManager.StartBattle(
                 attackerFactionId,
                 defenderFactionId,
                 decision.TargetZoneId!,
-                attackerTroops,
-                defenderTroops);
+                attackerTroopDict,
+                defenderTroopDict);
 
-            // Apply results
-            ApplyBattleResult(result, decision.TroopsToCommit);
-
-            // Notify
-            var defenderFactionName = _factionService.GetFaction(defenderFactionId)?.Name ?? defenderFactionId;
-            if (result.AttackerWon)
-            {
-                FileLogger.AI($"      SimulateBattle: {attackerFactionName} CAPTURED {zone.Name}!");
-                _gameBridge.ShowNotification($"~y~{attackerFactionName}~w~ captured ~b~{zone.Name}~w~ from ~r~{defenderFactionName}");
-            }
-            else
-            {
-                FileLogger.AI($"      SimulateBattle: {defenderFactionName} DEFENDED {zone.Name}");
-                _gameBridge.ShowNotification($"~g~{defenderFactionName}~w~ defended ~b~{zone.Name}~w~ against ~r~{attackerFactionName}");
-            }
-
-            OnBattleResolved?.Invoke(this, new AIBattleResultEventArgs(
-                attackerFactionId,
-                defenderFactionId,
-                decision.TargetZoneId!,
-                result.AttackerWon,
-                result.AttackerCasualties.TotalCount,
-                result.DefenderCasualties.TotalCount));
+            FileLogger.AI($"      SimulateBattle: Started timed battle for {zone.Name}");
+            return; // Battle resolution handled by ActiveBattleManager
         }
 
         private TroopComposition BuildDefenderTroops(string defenderFactionId, string zoneId)
@@ -368,6 +356,26 @@ namespace FactionWars.AI.Controllers
                 allocation.GetTroopCount(DefenderTier.Basic),
                 allocation.GetTroopCount(DefenderTier.Medium),
                 allocation.GetTroopCount(DefenderTier.Heavy));
+        }
+
+        private Dictionary<DefenderTier, int> BuildDefenderTroopsDictionary(string defenderFactionId, string zoneId)
+        {
+            var result = new Dictionary<DefenderTier, int>
+            {
+                { DefenderTier.Basic, 0 },
+                { DefenderTier.Medium, 0 },
+                { DefenderTier.Heavy, 0 }
+            };
+
+            var allocation = _allocationService.GetAllocation(defenderFactionId, zoneId);
+            if (allocation != null)
+            {
+                result[DefenderTier.Basic] = allocation.GetTroopCount(DefenderTier.Basic);
+                result[DefenderTier.Medium] = allocation.GetTroopCount(DefenderTier.Medium);
+                result[DefenderTier.Heavy] = allocation.GetTroopCount(DefenderTier.Heavy);
+            }
+
+            return result;
         }
 
         private void ApplyBattleResult(BattleSimulationResult result, int attackingTroops)
