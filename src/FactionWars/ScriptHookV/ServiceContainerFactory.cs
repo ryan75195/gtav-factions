@@ -214,6 +214,13 @@ namespace FactionWars.ScriptHookV
                     container.Resolve<IGameBridge>(),
                     container.Resolve<IPedPool>(),
                     container.Resolve<IZoneDefenderAllocationRepository>()));
+
+            // Active battle manager - manages timed AI territorial battles
+            container.RegisterSingleton<IActiveBattleManager>(() =>
+                new ActiveBattleManager(
+                    container.Resolve<IFactionService>(),
+                    container.Resolve<IZoneService>(),
+                    container.Resolve<IZoneDefenderAllocationService>()));
         }
 
         private static void RegisterPersistenceServices(ServiceContainer container)
