@@ -1,6 +1,5 @@
 using System;
 using System.Drawing;
-using FactionWars.Factions.Models;
 using FactionWars.UI.Interfaces;
 using FactionWars.UI.Models;
 using GTA.UI;
@@ -9,14 +8,26 @@ namespace FactionWars.ScriptHookV.UI
 {
     /// <summary>
     /// ScriptHookVDotNet implementation of the territory indicator renderer.
-    /// Draws zone information at the top of the screen.
+    /// Draws compact zone information box at top-right of screen.
     /// </summary>
     public class TerritoryIndicatorRenderer : ITerritoryIndicatorRenderer
     {
-        private const float IndicatorY = 0.02f; // Near top of screen
-        private const float IndicatorX = 0.5f;  // Centered horizontally
-        private const float TextScale = 0.45f;
-        private const float SmallTextScale = 0.35f;
+        // Position constants - top right corner
+        private const float BoxX = 0.92f;       // Right side of screen
+        private const float BoxY = 0.02f;       // Near top
+        private const float BoxWidth = 0.14f;   // Compact width
+        private const float BoxPadding = 0.005f;
+        private const float AccentBarWidth = 0.003f;
+
+        // Text scales - compact
+        private const float TitleScale = 0.35f;
+        private const float SubtitleScale = 0.28f;
+        private const float DetailScale = 0.26f;
+
+        // Colors
+        private static readonly Color BackgroundColor = Color.FromArgb(100, 0, 0, 0);
+        private static readonly Color FriendlyAccent = Color.FromArgb(255, 100, 200, 100);
+        private static readonly Color EnemyAccent = Color.FromArgb(255, 255, 100, 100);
 
         private TerritoryIndicatorData? _currentData;
         private bool _isVisible;
@@ -49,68 +60,117 @@ namespace FactionWars.ScriptHookV.UI
 
             var data = _currentData;
 
-            // Choose color based on ownership
-            Color zoneNameColor;
+            // Don't show for neutral zones
             if (data.IsNeutral)
+                return;
+
+            if (data.IsPlayerOwned)
             {
-                zoneNameColor = Color.White;
-            }
-            else if (data.IsPlayerOwned)
-            {
-                zoneNameColor = Color.FromArgb(100, 200, 100); // Green for friendly
+                DrawFriendlyTerritoryHud(data);
             }
             else
             {
-                zoneNameColor = Color.FromArgb(255, 100, 100); // Red for enemy
+                DrawEnemyTerritoryHud(data);
             }
+        }
 
-            // Use faction color if available
-            if (data.OwnerFactionColor.HasValue)
+        private void DrawFriendlyTerritoryHud(TerritoryIndicatorData data)
+        {
+            float boxHeight = 0.055f;
+            float centerY = BoxY + (boxHeight / 2);
+
+            // Draw box
+            DrawBox(BoxX, centerY, BoxWidth, boxHeight, FriendlyAccent);
+
+            // Zone name
+            float textX = BoxX - (BoxWidth / 2) + BoxPadding + AccentBarWidth + 0.005f;
+            DrawTextLeft(data.ZoneName.ToUpperInvariant(), textX, BoxY + 0.005f, TitleScale, FriendlyAccent);
+
+            // Status
+            DrawTextLeft("Your Territory", textX, BoxY + 0.022f, SubtitleScale, Color.LightGray);
+
+            // Troop counts: "8 deployed · 14 reserve"
+            string troopText = $"{data.DeployedDefenderCount} deployed \u00B7 {data.ReserveDefenderCount} reserve";
+            DrawTextLeft(troopText, textX, BoxY + 0.038f, DetailScale, Color.White);
+        }
+
+        private void DrawEnemyTerritoryHud(TerritoryIndicatorData data)
+        {
+            float boxHeight = data.IsContested ? 0.072f : 0.055f;
+            float centerY = BoxY + (boxHeight / 2);
+
+            // Draw box
+            DrawBox(BoxX, centerY, BoxWidth, boxHeight, EnemyAccent);
+
+            // Zone name
+            float textX = BoxX - (BoxWidth / 2) + BoxPadding + AccentBarWidth + 0.005f;
+            DrawTextLeft(data.ZoneName.ToUpperInvariant(), textX, BoxY + 0.005f, TitleScale, EnemyAccent);
+
+            // Status
+            string status = data.IsContested ? "Capturing..." : $"{data.OwnerFactionName}";
+            DrawTextLeft(status, textX, BoxY + 0.022f, SubtitleScale, Color.LightGray);
+
+            if (data.IsContested)
             {
-                var fc = data.OwnerFactionColor.Value;
-                zoneNameColor = Color.FromArgb(fc.R, fc.G, fc.B);
-            }
+                // Progress bar
+                float barY = BoxY + 0.042f;
+                float barWidth = BoxWidth - 0.02f;
+                DrawProgressBar(BoxX, barY, barWidth, 0.008f, data.ControlPercentage, FriendlyAccent);
 
-            // Draw zone name (main text)
-            DrawText(data.ZoneName, IndicatorX, IndicatorY, TextScale, zoneNameColor, true);
-
-            // Build and draw status line
-            string statusText;
-            Color statusColor;
-
-            if (data.IsNeutral)
-            {
-                statusText = "Neutral Territory";
-                statusColor = Color.Gray;
+                // Percentage and troop counts on same line
+                string statsText = $"{data.ControlPercentage:F0}%  |  {data.PlayerTroopCount} vs {data.EnemyDefenderCount}";
+                DrawTextLeft(statsText, textX, BoxY + 0.054f, DetailScale, Color.White);
             }
-            else if (data.IsContested)
-            {
-                statusText = $"{data.OwnerFactionName} - CONTESTED ({data.ControlPercentage:F0}%)";
-                statusColor = Color.Yellow;
-            }
-            else
-            {
-                string ownershipText = data.IsPlayerOwned ? "Your Territory" : $"{data.OwnerFactionName}";
-                statusText = $"{ownershipText} - {data.ControlPercentage:F0}%";
-                statusColor = data.IsPlayerOwned ? Color.LightGreen : Color.FromArgb(255, 150, 150);
-            }
-
-            DrawText(statusText, IndicatorX, IndicatorY + 0.025f, SmallTextScale, statusColor, true);
         }
 
         /// <summary>
-        /// Draws text on screen using GTA V's native text rendering.
+        /// Draws a styled box with accent bar.
         /// </summary>
-        private void DrawText(string text, float x, float y, float scale, Color color, bool centered)
+        private void DrawBox(float x, float y, float width, float height, Color accentColor)
+        {
+            // Background
+            DrawRect(x, y, width, height, BackgroundColor);
+
+            // Left accent bar
+            float accentX = x - (width / 2) + (AccentBarWidth / 2);
+            DrawRect(accentX, y, AccentBarWidth, height, accentColor);
+        }
+
+        /// <summary>
+        /// Draws a filled rectangle.
+        /// </summary>
+        private void DrawRect(float x, float y, float width, float height, Color color)
+        {
+            GTA.Native.Function.Call(
+                GTA.Native.Hash.DRAW_RECT,
+                x, y, width, height,
+                color.R, color.G, color.B, color.A);
+        }
+
+        /// <summary>
+        /// Draws a progress bar.
+        /// </summary>
+        private void DrawProgressBar(float x, float y, float width, float height, float percent, Color fillColor)
+        {
+            // Background
+            DrawRect(x, y, width, height, Color.FromArgb(80, 50, 50, 50));
+
+            // Fill
+            float fillWidth = (percent / 100f) * width;
+            if (fillWidth > 0.001f)
+            {
+                float fillX = x - (width / 2) + (fillWidth / 2);
+                DrawRect(fillX, y, fillWidth, height, fillColor);
+            }
+        }
+
+        private void DrawTextLeft(string text, float x, float y, float scale, Color color)
         {
             var textElement = new TextElement(text, new PointF(x * 1920f, y * 1080f), scale, color)
             {
-                Alignment = centered ? Alignment.Center : Alignment.Left,
-                Shadow = true,
-                Outline = true
+                Alignment = Alignment.Left,
+                Shadow = true
             };
-
-            // Use screen resolution scaling for proper positioning
             textElement.ScaledDraw();
         }
     }
