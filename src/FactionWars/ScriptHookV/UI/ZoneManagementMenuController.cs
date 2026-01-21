@@ -211,7 +211,8 @@ namespace FactionWars.ScriptHookV.UI
         /// Shows the zone detail menu for a specific zone.
         /// </summary>
         /// <param name="zoneId">The zone ID to show details for.</param>
-        private void ShowZoneDetailMenu(string zoneId)
+        /// <param name="selectedItemId">Optional item ID to select after menu is shown.</param>
+        private void ShowZoneDetailMenu(string zoneId, string? selectedItemId = null)
         {
             _selectedZoneId = zoneId;
 
@@ -306,7 +307,7 @@ namespace FactionWars.ScriptHookV.UI
                 "Return to zone list");
             menu.AddItem(backItem);
 
-            _menuProvider.ShowMenu(menu);
+            _menuProvider.ShowMenu(menu, selectedItemId);
         }
 
         /// <summary>
@@ -364,32 +365,32 @@ namespace FactionWars.ScriptHookV.UI
             {
                 case AllocateBasicItemId:
                     _allocationService.AllocateTroops(factionState, _selectedZoneId, DefenderTier.Basic, 1);
-                    ShowZoneDetailMenu(_selectedZoneId);
+                    ShowZoneDetailMenu(_selectedZoneId, AllocateBasicItemId);
                     break;
 
                 case AllocateMediumItemId:
                     _allocationService.AllocateTroops(factionState, _selectedZoneId, DefenderTier.Medium, 1);
-                    ShowZoneDetailMenu(_selectedZoneId);
+                    ShowZoneDetailMenu(_selectedZoneId, AllocateMediumItemId);
                     break;
 
                 case AllocateHeavyItemId:
                     _allocationService.AllocateTroops(factionState, _selectedZoneId, DefenderTier.Heavy, 1);
-                    ShowZoneDetailMenu(_selectedZoneId);
+                    ShowZoneDetailMenu(_selectedZoneId, AllocateHeavyItemId);
                     break;
 
                 case WithdrawBasicItemId:
                     _allocationService.WithdrawTroops(factionState, _selectedZoneId, DefenderTier.Basic, 1);
-                    ShowZoneDetailMenu(_selectedZoneId);
+                    ShowZoneDetailMenu(_selectedZoneId, WithdrawBasicItemId);
                     break;
 
                 case WithdrawMediumItemId:
                     _allocationService.WithdrawTroops(factionState, _selectedZoneId, DefenderTier.Medium, 1);
-                    ShowZoneDetailMenu(_selectedZoneId);
+                    ShowZoneDetailMenu(_selectedZoneId, WithdrawMediumItemId);
                     break;
 
                 case WithdrawHeavyItemId:
                     _allocationService.WithdrawTroops(factionState, _selectedZoneId, DefenderTier.Heavy, 1);
-                    ShowZoneDetailMenu(_selectedZoneId);
+                    ShowZoneDetailMenu(_selectedZoneId, WithdrawHeavyItemId);
                     break;
             }
         }
