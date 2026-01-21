@@ -233,9 +233,8 @@ namespace FactionWars.Tests.Integration.ScriptHookV
             // Act: Initialize map blips
             mapBlipManager.Initialize();
 
-            // Assert: Verify faction-owned zones have correct colors
-            var michaelZones = new[] { "rockford_hills", "vinewood", "richman", "del_perro",
-                "morningwood", "pillbox_hill", "downtown", "vespucci" };
+            // Assert: Verify faction-owned zones have correct colors (3 zones per faction - NORMALIZED)
+            var michaelZones = new[] { "rockford_hills", "vinewood", "del_perro" };
             foreach (var zoneId in michaelZones)
             {
                 var handle = mapBlipManager.GetBlipHandle(zoneId);
@@ -245,9 +244,7 @@ namespace FactionWars.Tests.Integration.ScriptHookV
                 }
             }
 
-            var trevorZones = new[] { "sandy_shores", "grapeseed", "harmony", "alamo_sea",
-                "grand_senora_desert", "trevor_airfield", "paleto_bay", "paleto_forest",
-                "chiliad_wilderness", "cypress_flats" };
+            var trevorZones = new[] { "sandy_shores", "grapeseed", "harmony" };
             foreach (var zoneId in trevorZones)
             {
                 var handle = mapBlipManager.GetBlipHandle(zoneId);
@@ -257,8 +254,7 @@ namespace FactionWars.Tests.Integration.ScriptHookV
                 }
             }
 
-            var franklinZones = new[] { "davis", "strawberry", "rancho",
-                "port_of_los_santos", "elysian_island" };
+            var franklinZones = new[] { "davis", "strawberry", "rancho" };
             foreach (var zoneId in franklinZones)
             {
                 var handle = mapBlipManager.GetBlipHandle(zoneId);

@@ -206,7 +206,8 @@ namespace FactionWars.ScriptHookV.UI
 
         private void DrawTextLeft(string text, float x, float y, float scale, Color color)
         {
-            var textElement = new TextElement(text, new PointF(x * 1920f, y * 1080f), scale, color)
+            // ScaledDraw uses 1280x720 as base reference resolution
+            var textElement = new TextElement(text, new PointF(x * 1280f, y * 720f), scale, color)
             {
                 Alignment = Alignment.Left,
                 Shadow = true

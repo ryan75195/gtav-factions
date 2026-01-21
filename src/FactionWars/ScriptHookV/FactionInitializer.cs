@@ -24,6 +24,7 @@ namespace FactionWars.ScriptHookV
         private const int StartingCash = 5000;
         private const int StartingTroopsPerZone = 5;
         private const int StartingZonesPerFaction = 3;
+        private const int StartingReserveTroops = 10; // Reserve troops for AI to use for attacks
 
         /// <summary>
         /// Gets whether the factions have been initialized.
@@ -107,25 +108,25 @@ namespace FactionWars.ScriptHookV
 
         private void InitializeFactionStates()
         {
-            // All factions start equal: $5k cash, 0 reserve troops (all deployed)
+            // All factions start equal: $5k cash, reserve troops for attacking
             var michaelState = new FactionState(
                 CharacterModelFactionDetector.MichaelFactionId,
                 StartingCash,
-                0  // No reserve troops - all deployed to zones
+                StartingReserveTroops  // Reserve troops enable AI attacks
             );
             _factionRepository.SetState(michaelState);
 
             var trevorState = new FactionState(
                 CharacterModelFactionDetector.TrevorFactionId,
                 StartingCash,
-                0
+                StartingReserveTroops
             );
             _factionRepository.SetState(trevorState);
 
             var franklinState = new FactionState(
                 CharacterModelFactionDetector.FranklinFactionId,
                 StartingCash,
-                0
+                StartingReserveTroops
             );
             _factionRepository.SetState(franklinState);
         }

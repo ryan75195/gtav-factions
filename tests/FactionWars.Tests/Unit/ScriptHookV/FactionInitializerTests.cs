@@ -182,12 +182,12 @@ namespace FactionWars.Tests.Unit.ScriptHookV
         }
 
         [Fact]
-        public void Initialize_AllFactions_ShouldHaveZeroReserveTroops()
+        public void Initialize_AllFactions_ShouldHaveStartingReserveTroops()
         {
             // Act
             _initializer.Initialize();
 
-            // Assert - All factions start with 0 reserve troops (troops are deployed to zones)
+            // Assert - All factions start with 10 reserve troops for AI attacks
             var michaelState = _factionRepository.GetState(CharacterModelFactionDetector.MichaelFactionId);
             var trevorState = _factionRepository.GetState(CharacterModelFactionDetector.TrevorFactionId);
             var franklinState = _factionRepository.GetState(CharacterModelFactionDetector.FranklinFactionId);
@@ -195,9 +195,9 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             Assert.NotNull(michaelState);
             Assert.NotNull(trevorState);
             Assert.NotNull(franklinState);
-            Assert.Equal(0, michaelState!.TroopCount);
-            Assert.Equal(0, trevorState!.TroopCount);
-            Assert.Equal(0, franklinState!.TroopCount);
+            Assert.Equal(10, michaelState!.TroopCount);
+            Assert.Equal(10, trevorState!.TroopCount);
+            Assert.Equal(10, franklinState!.TroopCount);
         }
 
         #endregion
