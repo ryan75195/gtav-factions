@@ -29,6 +29,10 @@ namespace FactionWars.ScriptHookV.UI
         private static readonly Color FriendlyAccent = Color.FromArgb(255, 100, 200, 100);
         private static readonly Color EnemyAccent = Color.FromArgb(255, 255, 100, 100);
 
+        // Throttling
+        private DateTime _lastDataUpdate = DateTime.MinValue;
+        private static readonly TimeSpan UpdateThrottle = TimeSpan.FromMilliseconds(500);
+
         private TerritoryIndicatorData? _currentData;
         private bool _isVisible;
 
@@ -38,8 +42,44 @@ namespace FactionWars.ScriptHookV.UI
         /// <inheritdoc />
         public void Render(TerritoryIndicatorData data)
         {
-            _currentData = data ?? throw new ArgumentNullException(nameof(data));
+            if (data == null) throw new ArgumentNullException(nameof(data));
+
+            // Always accept new data but throttle updates unless significant change
+            var now = DateTime.UtcNow;
+            bool shouldUpdate = _currentData == null ||
+                                now - _lastDataUpdate >= UpdateThrottle ||
+                                DataChangedSignificantly(_currentData, data);
+
+            if (shouldUpdate)
+            {
+                _currentData = data;
+                _lastDataUpdate = now;
+            }
+
             _isVisible = true;
+        }
+
+        private static bool DataChangedSignificantly(TerritoryIndicatorData old, TerritoryIndicatorData current)
+        {
+            // Always update if zone changed
+            if (old.ZoneName != current.ZoneName) return true;
+
+            // Always update if ownership changed
+            if (old.IsPlayerOwned != current.IsPlayerOwned) return true;
+
+            // Always update if contest state changed
+            if (old.IsContested != current.IsContested) return true;
+
+            // Update if troop counts changed
+            if (old.DeployedDefenderCount != current.DeployedDefenderCount) return true;
+            if (old.ReserveDefenderCount != current.ReserveDefenderCount) return true;
+            if (old.PlayerTroopCount != current.PlayerTroopCount) return true;
+            if (old.EnemyDefenderCount != current.EnemyDefenderCount) return true;
+
+            // Update if control percentage changed by more than 1%
+            if (Math.Abs(old.ControlPercentage - current.ControlPercentage) >= 1f) return true;
+
+            return false;
         }
 
         /// <inheritdoc />
