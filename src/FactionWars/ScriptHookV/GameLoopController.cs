@@ -46,6 +46,7 @@ namespace FactionWars.ScriptHookV
         private AIDecisionExecutor? _aiDecisionExecutor;
         private VictoryManager? _victoryManager;
         private FriendlyDefenderManager? _friendlyDefenderManager;
+        private EnemyDefenderManager? _enemyDefenderManager;
         private IAIController? _aiController;
         private IAutoSaveService? _autoSaveService;
         private MainMenuController? _mainMenuController;
@@ -328,6 +329,14 @@ namespace FactionWars.ScriptHookV
             // Update friendly defender manager (death detection, replacement spawning)
             _friendlyDefenderManager?.Update();
 
+            // Update enemy defender manager (death detection, replacement spawning)
+            var currentZone = _territoryManager?.CurrentZone;
+            var enemyFactionId = currentZone?.OwnerFactionId;
+            if (enemyFactionId != null && enemyFactionId != CurrentPlayerFactionId)
+            {
+                _enemyDefenderManager?.Update(enemyFactionId);
+            }
+
             // Update and draw HUD elements
             UpdateAndDrawHud();
         }
@@ -534,6 +543,15 @@ namespace FactionWars.ScriptHookV
                     _friendlyDefenderManager.OnTroopsAllocated(e.FactionId, e.ZoneId, e.Tier, e.Count, zone.Center);
                 }
             };
+
+            // Initialize enemy defender manager for spawning defenders in enemy zones
+            _enemyDefenderManager = new EnemyDefenderManager(
+                _gameBridge,
+                allocationService,
+                pedSpawningService,
+                defenderTierService,
+                pedBlipService,
+                _zoneService);
 
             // Initialize combat manager for combat encounters
             var pedPool = _container.Resolve<IPedPool>();
@@ -795,6 +813,10 @@ namespace FactionWars.ScriptHookV
             _friendlyDefenderManager?.DespawnAllDefenders();
             _friendlyDefenderManager = null;
 
+            // Clean up enemy defender manager
+            _enemyDefenderManager?.DespawnAllDefenders();
+            _enemyDefenderManager = null;
+
             // Clean up event feed renderer and service
             _eventFeedRenderer = null;
             _eventFeedService = null;
@@ -910,32 +932,8 @@ namespace FactionWars.ScriptHookV
                 FileLogger.Combat($"Defending Faction: {encounter?.DefendingFactionId ?? "NULL"}");
                 _gameBridge.ShowNotification($"~r~COMBAT STARTED in:~w~ {zone.Name}");
 
-                // Initialize defender spawning - use allocation if exists, else default
-                var allocationService = _container.Resolve<IZoneDefenderAllocationService>();
-                var allocation = allocationService.GetAllocation(zone.OwnerFactionId, zone.Id);
-                FileLogger.Combat($"Zone allocation: {(allocation != null ? $"TotalTroops={allocation.TotalTroops}" : "NULL")}");
-
-                DefenderSpawnPlan spawnPlan;
-                if (allocation != null && allocation.TotalTroops > 0)
-                {
-                    spawnPlan = new DefenderSpawnPlan(
-                        basicPeds: allocation.GetTroopCount(DefenderTier.Basic),
-                        mediumPeds: allocation.GetTroopCount(DefenderTier.Medium),
-                        heavyPeds: allocation.GetTroopCount(DefenderTier.Heavy));
-                    FileLogger.Combat($"Using allocated troops: Basic={allocation.GetTroopCount(DefenderTier.Basic)}, Medium={allocation.GetTroopCount(DefenderTier.Medium)}, Heavy={allocation.GetTroopCount(DefenderTier.Heavy)}");
-                    _gameBridge.ShowNotification($"~y~Spawning {spawnPlan.TotalPeds} defenders (allocated)");
-                }
-                else
-                {
-                    // Default: spawn 3 basic defenders if no allocation
-                    spawnPlan = new DefenderSpawnPlan(basicPeds: 3, mediumPeds: 0, heavyPeds: 0);
-                    FileLogger.Combat("Using default spawn plan: 3 Basic defenders");
-                    _gameBridge.ShowNotification($"~y~Spawning 3 default defenders");
-                }
-
-                FileLogger.Combat($"Spawn plan total: {spawnPlan.TotalPeds} peds");
-                _combatManager.InitializeWaveSpawning(spawnPlan);
-                FileLogger.Combat($"Wave spawning initialized. IsInCombat={_combatManager.IsInCombat}, WaveComplete={_combatManager.IsWaveSpawningComplete()}");
+                // Spawn enemy defenders using EnemyDefenderManager (wander + engage behavior)
+                _enemyDefenderManager?.OnEnemyZoneEntered(zone, zone.OwnerFactionId!);
             }
             else if (zone.OwnerFactionId == null)
             {
@@ -961,6 +959,12 @@ namespace FactionWars.ScriptHookV
 
             if (_combatManager == null || zone == null)
                 return;
+
+            // If exiting an enemy zone, despawn enemy defenders
+            if (zone.OwnerFactionId != null && zone.OwnerFactionId != CurrentPlayerFactionId)
+            {
+                _enemyDefenderManager?.OnEnemyZoneExited(zone);
+            }
 
             // If we were in combat in this zone, end it (retreat)
             if (_combatManager.IsInCombat && _combatManager.CurrentEncounter?.ZoneId == zone.Id)
