@@ -555,12 +555,23 @@ namespace FactionWars.ScriptHookV
             _territoryManager.ZoneExited += (sender, zone) => _friendlyDefenderManager.OnZoneExited(zone);
 
             // Subscribe to troop allocation events for immediate spawning when player is in zone
+            // and for updating active battles when player allocates reinforcements
             allocationService.TroopsAllocated += (sender, e) =>
             {
                 var zone = _zoneService?.GetZone(e.ZoneId);
                 if (zone != null)
                 {
                     _friendlyDefenderManager.OnTroopsAllocated(e.FactionId, e.ZoneId, e.Tier, e.Count, zone.Center);
+                }
+
+                // If there's an active battle in this zone where player is defender, add troops to battle
+                if (e.FactionId == CurrentPlayerFactionId)
+                {
+                    var battle = _activeBattleManager?.GetBattleForZone(e.ZoneId);
+                    if (battle != null && battle.DefenderFactionId == e.FactionId)
+                    {
+                        _activeBattleManager?.AddDefenderTroops(e.ZoneId, e.Tier, e.Count);
+                    }
                 }
             };
 
