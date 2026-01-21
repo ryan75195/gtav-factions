@@ -174,8 +174,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             _franklinStrategyMock.Setup(s => s.MakeDecisions(It.IsAny<AIContext>()))
                 .Returns(new List<AIDecision>());
 
-            // Update with enough time to trigger decisions (default interval is 5 seconds)
-            _aiManager.Update(5.0f);
+            // Update with enough time to trigger decisions (default interval is 30 seconds)
+            _aiManager.Update(30.0f);
 
             // Trevor and Franklin are AI, Michael is player - should NOT call Michael's strategy
             _michaelStrategyMock.Verify(s => s.MakeDecisions(It.IsAny<AIContext>()), Times.Never);
@@ -195,7 +195,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             _franklinStrategyMock.Setup(s => s.MakeDecisions(It.IsAny<AIContext>()))
                 .Returns(new List<AIDecision>());
 
-            _aiManager.Update(5.0f);
+            _aiManager.Update(30.0f);
 
             // Michael and Franklin are AI, Trevor is player
             _michaelStrategyMock.Verify(s => s.MakeDecisions(It.IsAny<AIContext>()), Times.Once);
@@ -217,7 +217,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             _franklinStrategyMock.Setup(s => s.MakeDecisions(It.IsAny<AIContext>()))
                 .Returns(new List<AIDecision>());
 
-            _aiManager.Update(5.0f);
+            _aiManager.Update(30.0f);
 
             Assert.NotNull(capturedContext);
             Assert.Equal("trevor", capturedContext!.Faction.Id);
@@ -231,9 +231,9 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         #region DecisionInterval Tests
 
         [Fact]
-        public void DecisionIntervalSeconds_DefaultValue_IsFive()
+        public void DecisionIntervalSeconds_DefaultValue_Is30()
         {
-            Assert.Equal(5.0f, _aiManager.DecisionIntervalSeconds);
+            Assert.Equal(30.0f, _aiManager.DecisionIntervalSeconds);
         }
 
         [Fact]
@@ -272,7 +272,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             AIDecisionEventArgs? receivedArgs = null;
             _aiManager.OnAIDecision += (sender, args) => receivedArgs = args;
 
-            _aiManager.Update(5.0f);
+            _aiManager.Update(30.0f);
 
             Assert.NotNull(receivedArgs);
             Assert.Equal("trevor", receivedArgs!.FactionId);
@@ -351,7 +351,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             _franklinStrategyMock.Setup(s => s.MakeDecisions(It.IsAny<AIContext>()))
                 .Returns(new List<AIDecision>());
 
-            _aiManager.Update(5.0f);
+            _aiManager.Update(30.0f);
 
             var decisions = _aiManager.GetLastDecisions("trevor");
 

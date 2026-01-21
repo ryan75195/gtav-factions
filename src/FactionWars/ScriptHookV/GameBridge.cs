@@ -237,6 +237,22 @@ namespace FactionWars.ScriptHookV
         }
 
         /// <inheritdoc />
+        public void SetBlipName(int blipHandle, string name)
+        {
+            try
+            {
+                var blip = new Blip(blipHandle);
+                if (!blip.Exists()) return;
+
+                blip.Name = name;
+            }
+            catch
+            {
+                // Silently ignore
+            }
+        }
+
+        /// <inheritdoc />
         public void ShowNotification(string message)
         {
             try

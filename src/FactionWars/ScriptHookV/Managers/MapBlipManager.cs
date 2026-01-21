@@ -57,6 +57,7 @@ namespace FactionWars.ScriptHookV.Managers
                 {
                     _zoneBlips[zone.Id] = blipHandle;
                     _gameBridge.SetBlipSprite(blipHandle, SkullBlipSprite);
+                    _gameBridge.SetBlipName(blipHandle, zone.Name);
                     var color = GetBlipColorForFaction(zone.OwnerFactionId);
                     _gameBridge.SetBlipColor(blipHandle, color);
                 }

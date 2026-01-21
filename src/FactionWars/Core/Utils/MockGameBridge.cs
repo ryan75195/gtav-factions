@@ -147,6 +147,22 @@ namespace FactionWars.Core.Utils
             _blipSprites[blipHandle] = spriteId;
         }
 
+        public void SetBlipName(int blipHandle, string name)
+        {
+            if (_blips.TryGetValue(blipHandle, out var blip))
+            {
+                blip.Name = name;
+            }
+        }
+
+        /// <summary>
+        /// Gets the name that was set for a blip (for testing).
+        /// </summary>
+        public string GetBlipName(int blipHandle)
+        {
+            return _blips.TryGetValue(blipHandle, out var blip) ? blip.Name : string.Empty;
+        }
+
         /// <summary>
         /// Gets the sprite ID that was set for a blip (for testing).
         /// </summary>
@@ -577,6 +593,7 @@ namespace FactionWars.Core.Utils
             public Vector3 Position { get; set; }
             public BlipColor Color { get; set; }
             public int Sprite { get; set; }
+            public string Name { get; set; } = string.Empty;
         }
 
         private class VehicleState

@@ -67,6 +67,13 @@ namespace FactionWars.Core.Interfaces
         void SetBlipSprite(int blipHandle, int spriteId);
 
         /// <summary>
+        /// Sets the name/label of a blip that appears when hovering over it on the map.
+        /// </summary>
+        /// <param name="blipHandle">Handle of the blip.</param>
+        /// <param name="name">The name to display for the blip.</param>
+        void SetBlipName(int blipHandle, string name);
+
+        /// <summary>
         /// Shows a notification message to the player.
         /// </summary>
         /// <param name="message">Message to display.</param>
