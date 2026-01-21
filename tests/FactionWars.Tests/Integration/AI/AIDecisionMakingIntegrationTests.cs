@@ -88,7 +88,7 @@ namespace FactionWars.Tests.Integration.AI
             };
 
             // Act: Trigger AI decision cycle
-            _aiManager.Update(5.0f); // 5 seconds triggers decision (default interval)
+            _aiManager.Update(30.0f); // 30 seconds triggers decision (default interval)
 
             // Assert: Trevor and Franklin made decisions, Michael did not
             Assert.DoesNotContain(decisionsReceived, d => d.FactionId == MichaelFactionId);
@@ -140,7 +140,7 @@ namespace FactionWars.Tests.Integration.AI
             _aiManager.Start();
 
             // Act
-            _aiManager.Update(5.0f);
+            _aiManager.Update(30.0f);
 
             // Assert: Last decisions are stored
             var trevorLastDecisions = _aiManager.GetLastDecisions(TrevorFactionId);

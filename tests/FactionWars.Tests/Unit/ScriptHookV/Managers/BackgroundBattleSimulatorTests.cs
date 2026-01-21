@@ -187,7 +187,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         }
 
         [Fact]
-        public void ProcessAttackDecision_ZoneHasNoOwner_ReturnsNull()
+        public void ProcessAttackDecision_ZoneHasNoOwner_CapturesZone()
         {
             // Arrange
             var decision = new AIDecision(AIDecisionType.Attack, "zone_neutral", 0.8f, 20);
@@ -195,11 +195,27 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             zone.OwnerFactionId = null;
             _zoneServiceMock.Setup(z => z.GetZone("zone_neutral")).Returns(zone);
 
+            var trevorFaction = new Faction("trevor", "Trevor's Gang", "Trevor Philips");
+            _factionServiceMock.Setup(f => f.GetFaction("trevor")).Returns(trevorFaction);
+
             // Act
             var result = _simulator.ProcessAttackDecision("trevor", decision);
 
-            // Assert
-            Assert.Null(result);
+            // Assert - neutral zone should be captured automatically
+            Assert.NotNull(result);
+            Assert.True(result!.AttackerWon);
+            Assert.Equal("trevor", result.AttackerFactionId);
+            Assert.Equal("neutral", result.DefenderFactionId);
+            Assert.Equal("zone_neutral", result.ZoneId);
+            Assert.Equal(0, result.AttackerCasualties.TotalCount);
+            Assert.Equal(0, result.DefenderCasualties.TotalCount);
+
+            // Verify zone ownership transferred
+            _zoneServiceMock.Verify(z => z.TransferZoneOwnership("zone_neutral", "trevor"), Times.Once);
+
+            // Verify UI notifications
+            _eventFeedServiceMock.Verify(e => e.AddZoneCaptured("Neutral Zone", "Trevor's Gang"), Times.Once);
+            _eventAlertServiceMock.Verify(e => e.RaiseZoneCaptured("Neutral Zone", "Trevor's Gang"), Times.Once);
         }
 
         [Fact]

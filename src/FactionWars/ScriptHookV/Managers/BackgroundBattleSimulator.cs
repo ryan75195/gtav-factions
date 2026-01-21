@@ -107,15 +107,37 @@ namespace FactionWars.ScriptHookV.Managers
             if (zone == null)
                 return null;
 
-            // Zone must have an owner
-            if (zone.OwnerFactionId == null)
-                return null;
-
             // Can't attack own zone
             if (zone.OwnerFactionId == attackerFactionId)
                 return null;
 
+            var attackerFaction = _factionService.GetFaction(attackerFactionId);
+            var attackerFactionName = attackerFaction?.Name ?? attackerFactionId;
+
+            // Handle neutral zone capture (no battle needed)
+            if (zone.OwnerFactionId == null)
+            {
+                // Neutral zone - automatic capture with no combat
+                _zoneService.TransferZoneOwnership(decision.TargetZoneId, attackerFactionId);
+
+                // Notify UI of capture
+                _eventFeedService.AddZoneCaptured(zone.Name, attackerFactionName);
+                _eventAlertService.RaiseZoneCaptured(zone.Name, attackerFactionName);
+
+                // Create a "won" result for neutral capture (no casualties, no real defender)
+                var neutralResult = BattleSimulationResult.AttackerVictory(
+                    attackerFactionId,
+                    "neutral",
+                    decision.TargetZoneId,
+                    TroopComposition.Empty,
+                    TroopComposition.Empty);
+
+                OnBattleCompleted?.Invoke(this, neutralResult);
+                return neutralResult;
+            }
+
             var defenderFactionId = zone.OwnerFactionId;
+            var defenderFactionName = _factionService.GetFaction(defenderFactionId)?.Name ?? defenderFactionId;
 
             // Build attacker troop composition from decision
             var attackerTroops = BuildAttackerTroops(decision.TroopsToCommit);
@@ -135,15 +157,10 @@ namespace FactionWars.ScriptHookV.Managers
             ApplyBattleResult(result);
 
             // Notify UI of battle result
-            var attackerFaction = _factionService.GetFaction(attackerFactionId);
-            var defenderFactionName = zone.OwnerFactionId != null
-                ? _factionService.GetFaction(zone.OwnerFactionId)?.Name ?? zone.OwnerFactionId
-                : "Neutral";
-
             if (result.AttackerWon)
             {
-                _eventFeedService.AddZoneCaptured(zone.Name, attackerFaction?.Name ?? attackerFactionId);
-                _eventAlertService.RaiseZoneCaptured(zone.Name, attackerFaction?.Name ?? attackerFactionId);
+                _eventFeedService.AddZoneCaptured(zone.Name, attackerFactionName);
+                _eventAlertService.RaiseZoneCaptured(zone.Name, attackerFactionName);
             }
             else
             {
