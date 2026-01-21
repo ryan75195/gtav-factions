@@ -24,7 +24,7 @@ namespace FactionWars.ScriptHookV.Managers
         private readonly IDefenderTierService _defenderTierService;
         private readonly IPedBlipService _pedBlipService;
         private readonly IZoneService _zoneService;
-        private readonly string _playerFactionId;
+        private string _playerFactionId;
 
         private readonly Dictionary<DefenderTier, string> _modelsByTier;
         private readonly Dictionary<string, Dictionary<int, DefenderTier>> _spawnedPedTierByZone;
@@ -183,6 +183,16 @@ namespace FactionWars.ScriptHookV.Managers
                 return 0;
 
             return pedTiers.Values.Count(t => t == tier);
+        }
+
+        /// <summary>
+        /// Sets the player's faction ID for determining which zones the player is defending.
+        /// Called when the player switches characters.
+        /// </summary>
+        /// <param name="factionId">The new player faction ID.</param>
+        public void SetPlayerFaction(string factionId)
+        {
+            _playerFactionId = factionId ?? throw new ArgumentNullException(nameof(factionId));
         }
 
         /// <summary>

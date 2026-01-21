@@ -47,6 +47,7 @@ namespace FactionWars.ScriptHookV
         private VictoryManager? _victoryManager;
         private FriendlyDefenderManager? _friendlyDefenderManager;
         private EnemyDefenderManager? _enemyDefenderManager;
+        private BattleAttackerManager? _battleAttackerManager;
         private IAIController? _aiController;
         private IAutoSaveService? _autoSaveService;
         private MainMenuController? _mainMenuController;
@@ -344,6 +345,9 @@ namespace FactionWars.ScriptHookV
                 _enemyDefenderManager?.Update(enemyFactionId);
             }
 
+            // Update battle attacker manager (death detection for attackers in player's defending zone)
+            _battleAttackerManager?.Update();
+
             // Update and draw HUD elements
             UpdateAndDrawHud();
         }
@@ -554,6 +558,10 @@ namespace FactionWars.ScriptHookV
             _territoryManager.ZoneEntered += (sender, zone) => _friendlyDefenderManager.OnZoneEntered(zone);
             _territoryManager.ZoneExited += (sender, zone) => _friendlyDefenderManager.OnZoneExited(zone);
 
+            // Subscribe battle attacker manager to zone events
+            _territoryManager.ZoneEntered += (sender, zone) => _battleAttackerManager?.OnPlayerZoneEntered(zone);
+            _territoryManager.ZoneExited += (sender, zone) => _battleAttackerManager?.OnPlayerZoneExited(zone);
+
             // Subscribe to troop allocation events for immediate spawning when player is in zone
             // and for updating active battles when player allocates reinforcements
             allocationService.TroopsAllocated += (sender, e) =>
@@ -592,6 +600,16 @@ namespace FactionWars.ScriptHookV
                 pedBlipService,
                 _zoneService,
                 _activeBattleManager);
+
+            // Initialize battle attacker manager for spawning attackers when player defends their zone
+            _battleAttackerManager = new BattleAttackerManager(
+                _gameBridge,
+                _activeBattleManager,
+                pedSpawningService,
+                defenderTierService,
+                pedBlipService,
+                _zoneService,
+                CurrentPlayerFactionId ?? "");
 
             // Initialize combat manager for combat encounters
             var pedPool = _container.Resolve<IPedPool>();
@@ -878,6 +896,10 @@ namespace FactionWars.ScriptHookV
             _enemyDefenderManager?.DespawnAllDefenders();
             _enemyDefenderManager = null;
 
+            // Clean up battle attacker manager
+            _battleAttackerManager?.DespawnAllAttackers();
+            _battleAttackerManager = null;
+
             // Clean up event feed renderer and service
             _eventFeedRenderer = null;
             _eventFeedService = null;
@@ -903,6 +925,12 @@ namespace FactionWars.ScriptHookV
                 {
                     _friendlyDefenderManager.SetPlayerFaction(newFactionId);
                 }
+            }
+
+            // Update battle attacker manager faction
+            if (!string.IsNullOrEmpty(newFactionId))
+            {
+                _battleAttackerManager?.SetPlayerFaction(newFactionId);
             }
 
             // Update managers with new faction
