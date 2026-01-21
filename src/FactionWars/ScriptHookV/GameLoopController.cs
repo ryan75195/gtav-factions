@@ -442,6 +442,14 @@ namespace FactionWars.ScriptHookV
 
                     bool isPlayerAttacker = encounter.AttackingFactionId == playerFactionId;
 
+                    // Get defender reserves from enemy defender manager
+                    int defenderReserves = 0;
+                    if (isPlayerAttacker && _enemyDefenderManager != null)
+                    {
+                        defenderReserves = _enemyDefenderManager.GetRemainingReserves(
+                            encounter.ZoneId, encounter.DefendingFactionId);
+                    }
+
                     var combatData = new CombatHudData(
                         encounter.ZoneId,
                         zoneName,
@@ -451,6 +459,7 @@ namespace FactionWars.ScriptHookV
                         encounter.DefenderControlPercentage,
                         encounter.AttackerPedCount,
                         encounter.DefenderPedCount,
+                        defenderReserves,
                         0f, // Reinforcement cooldown not tracked yet
                         isPlayerAttacker,
                         encounter.GetDuration());

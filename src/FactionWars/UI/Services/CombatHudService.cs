@@ -37,7 +37,8 @@ namespace FactionWars.UI.Services
         /// <param name="encounter">The current combat encounter.</param>
         /// <param name="playerFactionId">The player's faction ID.</param>
         /// <param name="zoneName">The display name of the zone.</param>
-        public void Update(CombatEncounter encounter, string playerFactionId, string zoneName)
+        /// <param name="defenderReserveCount">Number of defender reserves remaining.</param>
+        public void Update(CombatEncounter encounter, string playerFactionId, string zoneName, int defenderReserveCount = 0)
         {
             if (encounter == null)
                 throw new ArgumentNullException(nameof(encounter));
@@ -76,6 +77,7 @@ namespace FactionWars.UI.Services
                 defenderControlPercent: encounter.DefenderControlPercentage,
                 attackerPedCount: encounter.AttackerPedCount,
                 defenderPedCount: encounter.DefenderPedCount,
+                defenderReserveCount: defenderReserveCount,
                 reinforcementCooldownSeconds: cooldownSeconds,
                 isPlayerAttacker: isPlayerAttacker,
                 combatDuration: encounter.GetDuration());

@@ -19,7 +19,8 @@ namespace FactionWars.UI.Interfaces
         /// <param name="encounter">The current combat encounter.</param>
         /// <param name="playerFactionId">The player's faction ID.</param>
         /// <param name="zoneName">The display name of the zone.</param>
-        void Update(CombatEncounter encounter, string playerFactionId, string zoneName);
+        /// <param name="defenderReserveCount">Number of defender reserves remaining.</param>
+        void Update(CombatEncounter encounter, string playerFactionId, string zoneName, int defenderReserveCount = 0);
 
         /// <summary>
         /// Hides the combat HUD.

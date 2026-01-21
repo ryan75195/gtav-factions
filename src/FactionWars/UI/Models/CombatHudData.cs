@@ -49,6 +49,11 @@ namespace FactionWars.UI.Models
         public int DefenderPedCount { get; }
 
         /// <summary>
+        /// Number of defender reserves remaining (allocated but not yet spawned).
+        /// </summary>
+        public int DefenderReserveCount { get; }
+
+        /// <summary>
         /// Seconds remaining until player can request reinforcements.
         /// </summary>
         public float ReinforcementCooldownSeconds { get; }
@@ -94,6 +99,7 @@ namespace FactionWars.UI.Models
         /// <param name="defenderControlPercent">Defender's control percentage (0-100).</param>
         /// <param name="attackerPedCount">Number of attacking peds.</param>
         /// <param name="defenderPedCount">Number of defending peds.</param>
+        /// <param name="defenderReserveCount">Number of defender reserves remaining.</param>
         /// <param name="reinforcementCooldownSeconds">Seconds until player can request reinforcements.</param>
         /// <param name="isPlayerAttacker">Whether the player is the attacker.</param>
         /// <param name="combatDuration">Duration of the combat encounter.</param>
@@ -106,6 +112,7 @@ namespace FactionWars.UI.Models
             float defenderControlPercent,
             int attackerPedCount,
             int defenderPedCount,
+            int defenderReserveCount,
             float reinforcementCooldownSeconds,
             bool isPlayerAttacker,
             TimeSpan combatDuration)
@@ -142,6 +149,9 @@ namespace FactionWars.UI.Models
             if (defenderPedCount < 0)
                 throw new ArgumentOutOfRangeException(nameof(defenderPedCount), "Ped count cannot be negative.");
 
+            if (defenderReserveCount < 0)
+                throw new ArgumentOutOfRangeException(nameof(defenderReserveCount), "Reserve count cannot be negative.");
+
             if (reinforcementCooldownSeconds < 0f)
                 throw new ArgumentOutOfRangeException(nameof(reinforcementCooldownSeconds), "Cooldown cannot be negative.");
 
@@ -153,6 +163,7 @@ namespace FactionWars.UI.Models
             DefenderControlPercent = defenderControlPercent;
             AttackerPedCount = attackerPedCount;
             DefenderPedCount = defenderPedCount;
+            DefenderReserveCount = defenderReserveCount;
             ReinforcementCooldownSeconds = reinforcementCooldownSeconds;
             IsPlayerAttacker = isPlayerAttacker;
             CombatDuration = combatDuration;

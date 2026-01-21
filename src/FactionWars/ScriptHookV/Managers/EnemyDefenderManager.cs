@@ -30,9 +30,7 @@ namespace FactionWars.ScriptHookV.Managers
         private readonly Dictionary<string, Dictionary<int, DefenderTier>> _spawnedPedTierByZone;
         private string? _currentEnemyZoneId;
 
-        private const float WanderRadius = 40f;
-        private const float MinSpawnRadius = 30f;
-        private const float MaxSpawnRadius = 50f;
+        private const float MinSpawnRadiusFraction = 0.3f;  // Min 30% of zone radius
 
         /// <summary>
         /// Maximum number of enemy defenders that can be spawned at once per zone.
@@ -110,12 +108,12 @@ namespace FactionWars.ScriptHookV.Managers
                 {
                     if (!_pedSpawningService.CanSpawn()) break;
 
-                    var spawnPos = CalculateRandomSpawnPosition(zone.Center, random);
+                    var spawnPos = CalculateRandomSpawnPosition(zone.Center, zone.Radius, random);
                     var pedHandle = _pedSpawningService.SpawnPed(model, spawnPos, enemyFactionId, zone.Id);
                     if (!pedHandle.IsValid) continue;
 
                     // Configure as hostile wanderer
-                    ConfigureEnemyDefender(pedHandle.Handle, tierConfig, zone.Center);
+                    ConfigureEnemyDefender(pedHandle.Handle, tierConfig, zone.Center, zone.Radius);
                     _pedBlipService.CreateBlipForPed(pedHandle.Handle, BlipColor.Red);
 
                     // Track ped with its tier
@@ -272,7 +270,7 @@ namespace FactionWars.ScriptHookV.Managers
 
             if (allocatedCount > spawnedOfTier)
             {
-                SpawnSingleDefender(zoneId, preferredTier, enemyFactionId, zone.Center);
+                SpawnSingleDefender(zoneId, preferredTier, enemyFactionId, zone);
                 FileLogger.Combat($"EnemyDefenderManager: Spawned replacement {preferredTier} in {zoneId}");
                 return true;
             }
@@ -287,7 +285,7 @@ namespace FactionWars.ScriptHookV.Managers
 
                 if (allocatedCount > spawnedOfTier)
                 {
-                    SpawnSingleDefender(zoneId, tier, enemyFactionId, zone.Center);
+                    SpawnSingleDefender(zoneId, tier, enemyFactionId, zone);
                     FileLogger.Combat($"EnemyDefenderManager: Spawned replacement {tier} in {zoneId}");
                     return true;
                 }
@@ -299,7 +297,7 @@ namespace FactionWars.ScriptHookV.Managers
         /// <summary>
         /// Spawns a single enemy defender.
         /// </summary>
-        private void SpawnSingleDefender(string zoneId, DefenderTier tier, string enemyFactionId, Vector3 center)
+        private void SpawnSingleDefender(string zoneId, DefenderTier tier, string enemyFactionId, Zone zone)
         {
             if (!_pedSpawningService.CanSpawn()) return;
 
@@ -307,12 +305,12 @@ namespace FactionWars.ScriptHookV.Managers
             var tierConfig = _defenderTierService.GetTierConfig(tier);
             var random = new Random();
 
-            var spawnPos = CalculateRandomSpawnPosition(center, random);
+            var spawnPos = CalculateRandomSpawnPosition(zone.Center, zone.Radius, random);
             var pedHandle = _pedSpawningService.SpawnPed(model, spawnPos, enemyFactionId, zoneId);
 
             if (!pedHandle.IsValid) return;
 
-            ConfigureEnemyDefender(pedHandle.Handle, tierConfig, center);
+            ConfigureEnemyDefender(pedHandle.Handle, tierConfig, zone.Center, zone.Radius);
             _pedBlipService.CreateBlipForPed(pedHandle.Handle, BlipColor.Red);
 
             if (!_spawnedPedTierByZone.ContainsKey(zoneId))
@@ -324,11 +322,13 @@ namespace FactionWars.ScriptHookV.Managers
 
         /// <summary>
         /// Calculates a random spawn position around the zone center at ground level.
+        /// Uses the zone's full radius for spawn area.
         /// </summary>
-        private Vector3 CalculateRandomSpawnPosition(Vector3 center, Random random)
+        private Vector3 CalculateRandomSpawnPosition(Vector3 center, float zoneRadius, Random random)
         {
             var angle = random.NextDouble() * 2 * Math.PI;
-            var distance = MinSpawnRadius + (float)(random.NextDouble() * (MaxSpawnRadius - MinSpawnRadius));
+            var minRadius = zoneRadius * MinSpawnRadiusFraction;
+            var distance = minRadius + (float)(random.NextDouble() * (zoneRadius - minRadius));
             var x = center.X + (float)(Math.Cos(angle) * distance);
             var y = center.Y + (float)(Math.Sin(angle) * distance);
             var z = _gameBridge.GetGroundZ(x, y, center.Z);
@@ -338,7 +338,7 @@ namespace FactionWars.ScriptHookV.Managers
         /// <summary>
         /// Configures an enemy defender's combat attributes and behavior.
         /// </summary>
-        private void ConfigureEnemyDefender(int pedHandle, DefenderTierConfig tierConfig, Vector3 zoneCenter)
+        private void ConfigureEnemyDefender(int pedHandle, DefenderTierConfig tierConfig, Vector3 zoneCenter, float wanderRadius)
         {
             // Give weapons
             _gameBridge.GivePedWeapon(pedHandle, "weapon_pistol");
@@ -351,8 +351,26 @@ namespace FactionWars.ScriptHookV.Managers
             // Set as hostile wanderer - will engage player and followers on sight
             _gameBridge.SetPedAsHostileWanderer(pedHandle);
 
-            // Give wander task
-            _gameBridge.TaskPedWanderInArea(pedHandle, zoneCenter, WanderRadius);
+            // Give wander task using zone's radius
+            _gameBridge.TaskPedWanderInArea(pedHandle, zoneCenter, wanderRadius);
+        }
+
+        /// <summary>
+        /// Gets the number of remaining reserves (allocated troops that haven't been spawned yet).
+        /// </summary>
+        /// <param name="zoneId">The zone ID.</param>
+        /// <param name="enemyFactionId">The enemy faction ID.</param>
+        /// <returns>The number of troops in reserve (allocation total - spawned count).</returns>
+        public int GetRemainingReserves(string zoneId, string enemyFactionId)
+        {
+            var allocation = _allocationService.GetAllocation(enemyFactionId, zoneId);
+            if (allocation == null) return 0;
+
+            var spawnedCount = GetSpawnedDefenderCount(zoneId);
+            var totalAllocated = allocation.TotalTroops;
+
+            // Reserves = allocation total - currently spawned (clamped to 0)
+            return Math.Max(0, totalAllocated - spawnedCount);
         }
     }
 }

@@ -75,15 +75,15 @@ namespace FactionWars.ScriptHookV.UI
             string controlText = $"{data.PlayerControlPercent:F0}%  vs  {data.EnemyControlPercent:F0}%";
             DrawText(controlText, HudX, HudY + 0.045f, SmallTextScale, Color.White, true);
 
-            // Draw combatant counts
+            // Draw combatant counts with reserves
             string combatantText;
             if (data.IsPlayerAttacker)
             {
-                combatantText = $"Attackers: {data.AttackerPedCount}  |  Defenders: {data.DefenderPedCount}";
+                combatantText = $"You: {data.AttackerPedCount}  |  Enemies: {data.DefenderPedCount} (+{data.DefenderReserveCount} reserves)";
             }
             else
             {
-                combatantText = $"Defenders: {data.DefenderPedCount}  |  Attackers: {data.AttackerPedCount}";
+                combatantText = $"You: {data.DefenderPedCount}  |  Enemies: {data.AttackerPedCount}";
             }
             DrawText(combatantText, HudX, HudY + 0.065f, SmallTextScale, NeutralColor, true);
 
