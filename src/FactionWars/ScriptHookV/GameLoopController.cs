@@ -61,6 +61,10 @@ namespace FactionWars.ScriptHookV
         private IEventFeedService? _eventFeedService;
         private IZoneService? _zoneService;
         private IZoneDefenderAllocationService? _allocationService;
+        private IActiveBattleManager? _activeBattleManager;
+        private BattleHudRenderer? _battleHudRenderer;
+        private int _currentBattleHudIndex = 0;
+        private const int BattleCycleKeyCode = 0x42; // B key
         private DateTime _lastTickTime;
         private bool _isInitialized;
         private bool _characterSwitchInitialized;
@@ -320,6 +324,9 @@ namespace FactionWars.ScriptHookV
             // Update AI controller (handles decisions, recruitment, battles)
             _aiController?.Update(deltaTime);
 
+            // Update active battle manager (timed AI battles)
+            _activeBattleManager?.Tick(deltaTime);
+
             // Update victory manager (checks for 100% control)
             _victoryManager?.Update(deltaTime);
 
@@ -374,6 +381,7 @@ namespace FactionWars.ScriptHookV
                     int reserveCount = 0;
                     int playerTroopCount = 0;
                     int enemyDefenderCount = 0;
+                    int enemyReserveCount = 0;
 
                     if (isPlayerOwned && _friendlyDefenderManager != null)
                     {
@@ -400,6 +408,13 @@ namespace FactionWars.ScriptHookV
                         {
                             playerTroopCount = encounter.AttackerPedCount;
                             enemyDefenderCount = encounter.DefenderPedCount;
+
+                            // Get enemy reserves from enemy defender manager
+                            if (_enemyDefenderManager != null)
+                            {
+                                enemyReserveCount = _enemyDefenderManager.GetRemainingReserves(
+                                    encounter.ZoneId, encounter.DefendingFactionId);
+                            }
                         }
                     }
 
@@ -413,7 +428,8 @@ namespace FactionWars.ScriptHookV
                         deployedDefenderCount: deployedCount,
                         reserveDefenderCount: reserveCount,
                         playerTroopCount: playerTroopCount,
-                        enemyDefenderCount: enemyDefenderCount);
+                        enemyDefenderCount: enemyDefenderCount,
+                        enemyReserveCount: enemyReserveCount);
 
                     _territoryIndicatorRenderer.Render(territoryData);
                 }
@@ -425,54 +441,12 @@ namespace FactionWars.ScriptHookV
                 _territoryIndicatorRenderer.Draw();
             }
 
-            // Update combat HUD when in combat
-            if (_combatHudRenderer != null && _combatManager != null)
-            {
-                if (_combatManager.IsInCombat && _combatManager.CurrentEncounter != null)
-                {
-                    var encounter = _combatManager.CurrentEncounter;
+            // Draw battle HUD showing active AI battles
+            UpdateAndDrawBattleHud();
 
-                    // Get zone name
-                    string zoneName = "Unknown Zone";
-                    if (_zoneService != null)
-                    {
-                        var zone = _zoneService.GetZone(encounter.ZoneId);
-                        zoneName = zone?.Name ?? "Unknown Zone";
-                    }
-
-                    bool isPlayerAttacker = encounter.AttackingFactionId == playerFactionId;
-
-                    // Get defender reserves from enemy defender manager
-                    int defenderReserves = 0;
-                    if (isPlayerAttacker && _enemyDefenderManager != null)
-                    {
-                        defenderReserves = _enemyDefenderManager.GetRemainingReserves(
-                            encounter.ZoneId, encounter.DefendingFactionId);
-                    }
-
-                    var combatData = new CombatHudData(
-                        encounter.ZoneId,
-                        zoneName,
-                        encounter.AttackingFactionId,
-                        encounter.DefendingFactionId,
-                        encounter.AttackerControlPercentage,
-                        encounter.DefenderControlPercentage,
-                        encounter.AttackerPedCount,
-                        encounter.DefenderPedCount,
-                        defenderReserves,
-                        0f, // Reinforcement cooldown not tracked yet
-                        isPlayerAttacker,
-                        encounter.GetDuration());
-
-                    _combatHudRenderer.RenderCombatHud(combatData);
-                }
-                else
-                {
-                    _combatHudRenderer.HideCombatHud();
-                }
-
-                _combatHudRenderer.Draw();
-            }
+            // Combat HUD disabled - TerritoryIndicatorRenderer now shows all combat info
+            // including reserves in the "nicer graphics" top-right display
+            _combatHudRenderer?.HideCombatHud();
 
             // Event feed disabled - using native GTA V notifications instead
             // if (_eventFeedRenderer != null && _eventFeedService != null)
@@ -480,6 +454,43 @@ namespace FactionWars.ScriptHookV
             //     _eventFeedRenderer.Render(_eventFeedService.Entries);
             //     _eventFeedRenderer.Draw();
             // }
+        }
+
+        /// <summary>
+        /// Updates and draws the battle HUD showing active AI battles.
+        /// </summary>
+        private void UpdateAndDrawBattleHud()
+        {
+            if (_activeBattleManager == null || _battleHudRenderer == null)
+                return;
+
+            var battles = _activeBattleManager.ActiveBattles;
+            if (battles.Count == 0)
+            {
+                _battleHudRenderer.Hide();
+                return;
+            }
+
+            // Clamp index
+            if (_currentBattleHudIndex >= battles.Count)
+                _currentBattleHudIndex = 0;
+
+            var battle = battles[_currentBattleHudIndex];
+            var zone = _zoneService?.GetZone(battle.ZoneId);
+            var attackerFaction = _factionService.GetFaction(battle.AttackerFactionId);
+            var defenderFaction = _factionService.GetFaction(battle.DefenderFactionId);
+
+            var hudData = new BattleHudData(
+                zone?.Name ?? battle.ZoneId,
+                attackerFaction?.Name ?? battle.AttackerFactionId,
+                battle.TotalAttackerTroops,
+                defenderFaction?.Name ?? battle.DefenderFactionId,
+                battle.TotalDefenderTroops,
+                _currentBattleHudIndex + 1,
+                battles.Count);
+
+            _battleHudRenderer.SetData(hudData);
+            _battleHudRenderer.Draw();
         }
 
         /// <summary>
@@ -606,6 +617,14 @@ namespace FactionWars.ScriptHookV
             _aiController = _container.Resolve<IAIController>();
             _aiController.SetPlayerFactionId(CurrentPlayerFactionId);
             _aiController.Start();
+
+            // Initialize active battle manager for timed AI battles
+            _activeBattleManager = _container.Resolve<IActiveBattleManager>();
+            _activeBattleManager.OnKill += OnBattleKill;
+            _activeBattleManager.OnBattleEnded += OnBattleEnded;
+
+            // Initialize battle HUD renderer
+            _battleHudRenderer = new BattleHudRenderer();
 
             // Initialize victory manager for victory condition checking
             var victoryConditionService = _container.Resolve<IVictoryConditionService>();
@@ -746,6 +765,17 @@ namespace FactionWars.ScriptHookV
                 return;
             }
 
+            // Handle battle HUD cycle key (B)
+            if (keyCode == BattleCycleKeyCode && _activeBattleManager != null)
+            {
+                var battles = _activeBattleManager.ActiveBattles;
+                if (battles.Count > 1)
+                {
+                    _currentBattleHudIndex = (_currentBattleHudIndex + 1) % battles.Count;
+                }
+                return;
+            }
+
             // Pass key events to the main menu controller
             _mainMenuController?.OnKeyDown(keyCode);
         }
@@ -814,6 +844,15 @@ namespace FactionWars.ScriptHookV
             // Stop victory manager
             _victoryManager?.Stop();
             _victoryManager = null;
+
+            // Cleanup active battle manager
+            if (_activeBattleManager != null)
+            {
+                _activeBattleManager.OnKill -= OnBattleKill;
+                _activeBattleManager.OnBattleEnded -= OnBattleEnded;
+            }
+            _activeBattleManager = null;
+            _battleHudRenderer = null;
 
             // Clean up follower manager
             _followerManager = null;
@@ -954,6 +993,9 @@ namespace FactionWars.ScriptHookV
                 FileLogger.Zone($"{zone.Name} is FRIENDLY (player owns)");
                 _gameBridge.ShowNotification($"~g~{zone.Name} is YOUR territory");
             }
+
+            // Notify active battle manager that player entered this zone
+            _activeBattleManager?.OnPlayerEnterZone(zone.Id);
         }
 
         /// <summary>
@@ -965,6 +1007,9 @@ namespace FactionWars.ScriptHookV
             // Clear player zone tracking
             _backgroundBattleSimulator?.SetPlayerZone(null);
             _aiController?.SetPlayerZone(null);
+
+            // Notify active battle manager that player exited this zone
+            _activeBattleManager?.OnPlayerExitZone(zone.Id);
 
             if (_combatManager == null || zone == null)
                 return;
@@ -1095,6 +1140,43 @@ namespace FactionWars.ScriptHookV
         {
             // Route through decision executor for budget enforcement
             _aiDecisionExecutor?.ProcessDecisionCycle(e.FactionId, e.Decision);
+        }
+
+        /// <summary>
+        /// Handles kill events from active AI battles for the kill feed.
+        /// </summary>
+        private void OnBattleKill(object? sender, BattleKillEvent e)
+        {
+            var killerFaction = _factionService.GetFaction(e.KillerFactionId);
+            var victimFaction = _factionService.GetFaction(e.VictimFactionId);
+
+            string killerName = killerFaction?.Name ?? e.KillerFactionId;
+            string victimName = victimFaction?.Name ?? e.VictimFactionId;
+
+            // Format: "[Ballas] Heavy killed [Grove St] Basic in Davis"
+            string message = $"~y~[{killerName}]~w~ {e.KillerTier} killed ~r~[{victimName}]~w~ {e.VictimTier} in {e.ZoneName}";
+            _gameBridge.ShowNotification(message);
+        }
+
+        /// <summary>
+        /// Handles battle ended events from active AI battles.
+        /// </summary>
+        private void OnBattleEnded(object? sender, BattleEndedEvent e)
+        {
+            var attackerFaction = _factionService.GetFaction(e.AttackerFactionId);
+            var defenderFaction = _factionService.GetFaction(e.DefenderFactionId);
+
+            string attackerName = attackerFaction?.Name ?? e.AttackerFactionId;
+            string defenderName = defenderFaction?.Name ?? e.DefenderFactionId;
+
+            if (e.AttackerWon)
+            {
+                _gameBridge.ShowNotification($"~g~[{attackerName}]~w~ captured ~b~{e.ZoneName}~w~ from ~r~[{defenderName}]");
+            }
+            else
+            {
+                _gameBridge.ShowNotification($"~g~[{defenderName}]~w~ defended ~b~{e.ZoneName}~w~ against ~r~[{attackerName}]");
+            }
         }
 
         /// <summary>
