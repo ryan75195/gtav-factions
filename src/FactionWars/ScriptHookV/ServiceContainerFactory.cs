@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using FactionWars.AI.Controllers;
 using FactionWars.AI.Interfaces;
 using FactionWars.AI.Services;
 using FactionWars.AI.Strategies;
@@ -405,6 +406,15 @@ namespace FactionWars.ScriptHookV
                 container.Resolve<IFactionService>(),
                 container.Resolve<IAIBudgetService>(),
                 container.Resolve<IAIRecruitmentService>()));
+
+            // Register consolidated AI controller
+            container.RegisterSingleton<IAIController>(() => new AIController(
+                container.Resolve<IFactionService>(),
+                container.Resolve<IZoneService>(),
+                container.Resolve<IBattleSimulationService>(),
+                container.Resolve<IZoneDefenderAllocationService>(),
+                container.Resolve<IEventFeedService>(),
+                container.Resolve<IDictionary<string, IAIStrategy>>()));
         }
     }
 }
