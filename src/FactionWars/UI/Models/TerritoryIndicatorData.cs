@@ -72,6 +72,11 @@ namespace FactionWars.UI.Models
         public int EnemyDefenderCount { get; }
 
         /// <summary>
+        /// Number of enemy reserves remaining (for enemy zones during takeover).
+        /// </summary>
+        public int EnemyReserveCount { get; }
+
+        /// <summary>
         /// Creates a new territory indicator data instance.
         /// </summary>
         /// <param name="zoneName">The display name of the zone.</param>
@@ -84,6 +89,7 @@ namespace FactionWars.UI.Models
         /// <param name="reserveDefenderCount">Number of defenders in reserve waiting to spawn.</param>
         /// <param name="playerTroopCount">Number of player's troops in combat.</param>
         /// <param name="enemyDefenderCount">Number of enemy defenders in combat.</param>
+        /// <param name="enemyReserveCount">Number of enemy reserves remaining.</param>
         /// <exception cref="ArgumentNullException">Thrown if zoneName is null.</exception>
         /// <exception cref="ArgumentException">Thrown if zoneName is empty or whitespace.</exception>
         /// <exception cref="ArgumentOutOfRangeException">Thrown if controlPercentage is not between 0 and 100.</exception>
@@ -97,7 +103,8 @@ namespace FactionWars.UI.Models
             int deployedDefenderCount = 0,
             int reserveDefenderCount = 0,
             int playerTroopCount = 0,
-            int enemyDefenderCount = 0)
+            int enemyDefenderCount = 0,
+            int enemyReserveCount = 0)
         {
             if (zoneName == null)
                 throw new ArgumentNullException(nameof(zoneName));
@@ -117,6 +124,7 @@ namespace FactionWars.UI.Models
             ReserveDefenderCount = Math.Max(0, reserveDefenderCount);
             PlayerTroopCount = Math.Max(0, playerTroopCount);
             EnemyDefenderCount = Math.Max(0, enemyDefenderCount);
+            EnemyReserveCount = Math.Max(0, enemyReserveCount);
         }
     }
 }

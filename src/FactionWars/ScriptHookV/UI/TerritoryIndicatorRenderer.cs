@@ -12,9 +12,9 @@ namespace FactionWars.ScriptHookV.UI
     /// </summary>
     public class TerritoryIndicatorRenderer : ITerritoryIndicatorRenderer
     {
-        // Position constants - top right corner
+        // Position constants - right side, below weapon/ammo HUD
         private const float BoxX = 0.92f;       // Right side of screen
-        private const float BoxY = 0.02f;       // Near top
+        private const float BoxY = 0.76f;       // Below weapon/ammo HUD area
         private const float BoxWidth = 0.14f;   // Compact width
         private const float BoxPadding = 0.005f;
         private const float AccentBarWidth = 0.003f;
@@ -158,7 +158,9 @@ namespace FactionWars.ScriptHookV.UI
                 DrawProgressBar(BoxX, barY, barWidth, 0.008f, data.ControlPercentage, FriendlyAccent);
 
                 // Percentage and troop counts on same line
-                string statsText = $"{data.ControlPercentage:F0}%  |  {data.PlayerTroopCount} vs {data.EnemyDefenderCount}";
+                string statsText = data.EnemyReserveCount > 0
+                    ? $"{data.ControlPercentage:F0}%  |  You: {data.PlayerTroopCount}  Enemies: {data.EnemyDefenderCount} (+{data.EnemyReserveCount})"
+                    : $"{data.ControlPercentage:F0}%  |  You: {data.PlayerTroopCount}  Enemies: {data.EnemyDefenderCount}";
                 DrawTextLeft(statsText, textX, BoxY + 0.054f, DetailScale, Color.White);
             }
         }

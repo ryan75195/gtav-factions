@@ -112,10 +112,10 @@ namespace FactionWars.UI.Models
             float defenderControlPercent,
             int attackerPedCount,
             int defenderPedCount,
-            int defenderReserveCount,
             float reinforcementCooldownSeconds,
             bool isPlayerAttacker,
-            TimeSpan combatDuration)
+            TimeSpan combatDuration,
+            int defenderReserveCount = 0)
         {
             if (zoneId == null)
                 throw new ArgumentNullException(nameof(zoneId));
