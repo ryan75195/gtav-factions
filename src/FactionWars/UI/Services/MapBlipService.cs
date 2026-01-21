@@ -14,6 +14,11 @@ namespace FactionWars.UI.Services
     /// </summary>
     public class MapBlipService : IMapBlipService
     {
+        /// <summary>
+        /// GTA V blip sprite ID for skull and crossbones icon.
+        /// </summary>
+        private const int SkullBlipSprite = 84;
+
         private readonly IGameBridge _gameBridge;
         private readonly IZoneService _zoneService;
         private readonly IFactionRepository _factionRepository;
@@ -51,6 +56,9 @@ namespace FactionWars.UI.Services
 
             // Create new blip at zone center
             var blipHandle = _gameBridge.CreateBlip(zone.Center);
+
+            // Set skull and crossbones sprite for territory
+            _gameBridge.SetBlipSprite(blipHandle, SkullBlipSprite);
 
             // Set color based on faction ownership
             var blipColor = GetBlipColorForFaction(zone.OwnerFactionId);

@@ -12,6 +12,11 @@ namespace FactionWars.ScriptHookV.Managers
     /// </summary>
     public class MapBlipManager : IDisposable
     {
+        /// <summary>
+        /// GTA V blip sprite ID for skull and crossbones icon.
+        /// </summary>
+        private const int SkullBlipSprite = 84;
+
         private readonly IGameBridge _gameBridge;
         private readonly IZoneRepository _zoneRepository;
         private readonly IFactionService _factionService;
@@ -47,10 +52,11 @@ namespace FactionWars.ScriptHookV.Managers
             {
                 var blipHandle = _gameBridge.CreateBlip(zone.Center);
 
-                // Only track and color successful blip creation
+                // Only track and configure successful blip creation
                 if (blipHandle != -1)
                 {
                     _zoneBlips[zone.Id] = blipHandle;
+                    _gameBridge.SetBlipSprite(blipHandle, SkullBlipSprite);
                     var color = GetBlipColorForFaction(zone.OwnerFactionId);
                     _gameBridge.SetBlipColor(blipHandle, color);
                 }

@@ -353,6 +353,9 @@ namespace FactionWars.ScriptHookV.Managers
             // Give tier-appropriate weapon
             _gameBridge.GivePedWeapon(pedHandle, tierConfig.Weapon);
 
+            // Give pistol as secondary weapon for drive-by shooting from vehicles
+            _gameBridge.GivePedWeapon(pedHandle, "weapon_pistol");
+
             // Set shooting accuracy
             _gameBridge.SetPedAccuracy(pedHandle, tierConfig.Accuracy);
 

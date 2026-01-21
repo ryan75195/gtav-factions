@@ -106,6 +106,8 @@ namespace FactionWars.ScriptHookV.Managers
                     var pedHandle = _pedSpawningService.SpawnPed(model, spawnPos, _playerFactionId, zone.Id);
                     if (!pedHandle.IsValid) continue;
 
+                    // Set friendly relationship with player BEFORE configuring combat
+                    _gameBridge.SetPedAsFriendly(pedHandle.Handle);
                     ConfigureDefenderCombat(pedHandle.Handle, tierConfig);
                     _gameBridge.TaskPedWanderInArea(pedHandle.Handle, zone.Center, WanderRadius);
                     _pedBlipService.CreateBlipForPed(pedHandle.Handle, BlipColor.LightBlue);
@@ -181,6 +183,8 @@ namespace FactionWars.ScriptHookV.Managers
         private void ConfigureDefenderCombat(int pedHandle, DefenderTierConfig tierConfig)
         {
             _gameBridge.GivePedWeapon(pedHandle, tierConfig.Weapon);
+            // Give pistol as secondary weapon for drive-by shooting
+            _gameBridge.GivePedWeapon(pedHandle, "weapon_pistol");
             _gameBridge.SetPedAccuracy(pedHandle, tierConfig.Accuracy);
             _gameBridge.SetPedArmor(pedHandle, tierConfig.Armor);
             _gameBridge.SetPedHealth(pedHandle, tierConfig.Health);

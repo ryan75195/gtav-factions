@@ -60,6 +60,13 @@ namespace FactionWars.Core.Interfaces
         void SetBlipColor(int blipHandle, BlipColor color);
 
         /// <summary>
+        /// Sets the sprite (icon) of a blip.
+        /// </summary>
+        /// <param name="blipHandle">Handle of the blip.</param>
+        /// <param name="spriteId">Sprite ID (e.g., 84 for skull and crossbones).</param>
+        void SetBlipSprite(int blipHandle, int spriteId);
+
+        /// <summary>
         /// Shows a notification message to the player.
         /// </summary>
         /// <param name="message">Message to display.</param>
@@ -249,5 +256,13 @@ namespace FactionWars.Core.Interfaces
         /// <param name="center">Center point of the wander area.</param>
         /// <param name="radius">Radius of the wander area in meters.</param>
         void TaskPedWanderInArea(int pedHandle, Vector3 center, float radius);
+
+        /// <summary>
+        /// Makes a ped friendly to the player by setting them to the player's relationship group.
+        /// Unlike SetPedAsFollower, this does NOT make them follow the player or join the ped group.
+        /// Used for friendly zone defenders who should not attack the player or followers.
+        /// </summary>
+        /// <param name="pedHandle">Handle of the ped to make friendly.</param>
+        void SetPedAsFriendly(int pedHandle);
     }
 }

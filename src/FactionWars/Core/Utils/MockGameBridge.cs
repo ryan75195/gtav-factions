@@ -16,6 +16,7 @@ namespace FactionWars.Core.Utils
         private readonly List<int> _blipsCreated = new List<int>();
         private readonly List<int> _blipsDeleted = new List<int>();
         private readonly Dictionary<int, BlipColor> _blipColors = new Dictionary<int, BlipColor>();
+        private readonly Dictionary<int, int> _blipSprites = new Dictionary<int, int>();
 
         private int _nextPedHandle = 1;
         private int _nextBlipHandle = 1;
@@ -135,6 +136,23 @@ namespace FactionWars.Core.Utils
                 blip.Color = color;
             }
             _blipColors[blipHandle] = color;
+        }
+
+        public void SetBlipSprite(int blipHandle, int spriteId)
+        {
+            if (_blips.TryGetValue(blipHandle, out var blip))
+            {
+                blip.Sprite = spriteId;
+            }
+            _blipSprites[blipHandle] = spriteId;
+        }
+
+        /// <summary>
+        /// Gets the sprite ID that was set for a blip (for testing).
+        /// </summary>
+        public int GetBlipSprite(int blipHandle)
+        {
+            return _blipSprites.TryGetValue(blipHandle, out var sprite) ? sprite : 0;
         }
 
         public void ShowNotification(string message)
@@ -342,6 +360,15 @@ namespace FactionWars.Core.Utils
             // Mock implementation - no-op
         }
 
+        public void SetPedAsFriendly(int pedHandle)
+        {
+            if (_peds.TryGetValue(pedHandle, out var ped))
+            {
+                // In mock, we'll set them to the player relationship group
+                ped.RelationshipGroup = "PLAYER";
+            }
+        }
+
         // Additional helper methods for testing
 
         /// <summary>
@@ -539,6 +566,7 @@ namespace FactionWars.Core.Utils
         {
             public Vector3 Position { get; set; }
             public BlipColor Color { get; set; }
+            public int Sprite { get; set; }
         }
 
         private class VehicleState

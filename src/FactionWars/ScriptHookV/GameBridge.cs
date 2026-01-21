@@ -221,6 +221,22 @@ namespace FactionWars.ScriptHookV
         }
 
         /// <inheritdoc />
+        public void SetBlipSprite(int blipHandle, int spriteId)
+        {
+            try
+            {
+                var blip = new Blip(blipHandle);
+                if (!blip.Exists()) return;
+
+                blip.Sprite = (BlipSprite)spriteId;
+            }
+            catch
+            {
+                // Silently ignore
+            }
+        }
+
+        /// <inheritdoc />
         public void ShowNotification(string message)
         {
             try
@@ -865,6 +881,42 @@ namespace FactionWars.ScriptHookV
 
                 var gtaCenter = new GTA.Math.Vector3(center.X, center.Y, center.Z);
                 Function.Call(Hash.TASK_WANDER_IN_AREA, ped.Handle, gtaCenter.X, gtaCenter.Y, gtaCenter.Z, radius, 0f, 0f);
+            }
+            catch
+            {
+                // Silently ignore
+            }
+        }
+
+        /// <inheritdoc />
+        public void SetPedAsFriendly(int pedHandle)
+        {
+            try
+            {
+                var ped = Entity.FromHandle(pedHandle) as Ped;
+                if (ped == null || !ped.Exists())
+                    return;
+
+                var player = Game.Player.Character;
+                if (player == null || !player.Exists())
+                    return;
+
+                // Set relationship to the player's group so they are friendly with player and followers
+                var playerGroup = player.RelationshipGroup;
+                ped.RelationshipGroup = playerGroup;
+
+                // Ensure they hate the defender enemies group (hostile zone defenders)
+                var defenderEnemyGroup = World.AddRelationshipGroup("DEFENDER_ENEMIES");
+                playerGroup.SetRelationshipBetweenGroups(defenderEnemyGroup, Relationship.Hate, true);
+
+                // Configure combat attributes to help the player
+                ped.IsPersistent = true;
+                ped.KeepTaskWhenMarkedAsNoLongerNeeded = true;
+                ped.BlockPermanentEvents = false;
+
+                // Enable combat attributes
+                Function.Call(Hash.SET_PED_COMBAT_ATTRIBUTES, ped.Handle, 46, true); // Can fight armed peds
+                Function.Call(Hash.SET_PED_COMBAT_ATTRIBUTES, ped.Handle, 5, true);  // Can use cover
             }
             catch
             {
