@@ -175,6 +175,24 @@ namespace FactionWars.Combat.Models
             return false;
         }
 
+        /// <summary>
+        /// Adds troops of the specified tier to the defender.
+        /// Used when player allocates reinforcements during active battle.
+        /// </summary>
+        public void AddDefenderTroops(DefenderTier tier, int count)
+        {
+            if (count <= 0) return;
+
+            if (DefenderTroops.ContainsKey(tier))
+            {
+                DefenderTroops[tier] += count;
+            }
+            else
+            {
+                DefenderTroops[tier] = count;
+            }
+        }
+
         private static int GetTotalTroops(Dictionary<DefenderTier, int> troops)
         {
             int total = 0;
