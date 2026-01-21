@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Newtonsoft.Json;
 using FactionWars.Core.Interfaces;
+using FactionWars.ScriptHookV.Logging;
 using FactionWars.Territory.Interfaces;
 using FactionWars.Territory.Models;
 
@@ -36,11 +38,23 @@ namespace FactionWars.ScriptHookV.Data
                 throw new InvalidOperationException("Zones have already been loaded.");
             }
 
-            var zones = CreateDefaultZones();
+            var zones = CreateDefaultZones().ToList();
             foreach (var zone in zones)
             {
                 _zoneRepository.Add(zone);
             }
+
+            // Set up zone adjacencies after all zones are loaded
+            FileLogger.AI("Setting up zone adjacencies...");
+            SetupZoneAdjacencies();
+
+            // Log summary of adjacencies
+            int totalAdjacencies = 0;
+            foreach (var zone in _zoneRepository.GetAll())
+            {
+                totalAdjacencies += zone.AdjacentZoneIds.Count;
+            }
+            FileLogger.AI($"Zone adjacencies complete: {_zoneRepository.Count} zones, {totalAdjacencies} total adjacency links");
         }
 
         /// <summary>
@@ -152,6 +166,79 @@ namespace FactionWars.ScriptHookV.Data
             var zone = new Zone(id, name, center, radius, strategicValue);
             zone.Traits = traits;
             return zone;
+        }
+
+        /// <summary>
+        /// Sets up adjacency relationships between zones based on GTA V geography.
+        /// Adjacencies are bidirectional - if A borders B, then B borders A.
+        /// </summary>
+        private void SetupZoneAdjacencies()
+        {
+            // Los Santos Urban Core adjacencies
+            SetAdjacent("downtown", "vinewood", "pillbox_hill", "little_seoul", "mission_row", "strawberry");
+            SetAdjacent("vinewood", "downtown", "vinewood_hills", "rockford_hills", "mirror_park");
+            SetAdjacent("rockford_hills", "vinewood", "morningwood", "richman", "del_perro");
+            SetAdjacent("little_seoul", "downtown", "pillbox_hill", "vespucci", "la_puerta");
+            SetAdjacent("pillbox_hill", "downtown", "little_seoul", "mission_row", "strawberry");
+            SetAdjacent("mission_row", "downtown", "pillbox_hill", "strawberry", "rancho", "mirror_park");
+            SetAdjacent("strawberry", "downtown", "pillbox_hill", "mission_row", "davis", "rancho");
+            SetAdjacent("davis", "strawberry", "rancho", "cypress_flats", "terminal");
+            SetAdjacent("rancho", "mission_row", "strawberry", "davis", "east_los_santos", "cypress_flats");
+            SetAdjacent("la_puerta", "little_seoul", "vespucci", "terminal", "lsia");
+            SetAdjacent("vespucci", "little_seoul", "la_puerta", "del_perro", "morningwood");
+            SetAdjacent("del_perro", "vespucci", "morningwood", "rockford_hills", "richman");
+            SetAdjacent("morningwood", "vespucci", "del_perro", "rockford_hills");
+
+            // Port & Industrial adjacencies
+            SetAdjacent("port_of_los_santos", "elysian_island", "cypress_flats");
+            SetAdjacent("elysian_island", "port_of_los_santos", "terminal", "lsia");
+            SetAdjacent("cypress_flats", "davis", "rancho", "port_of_los_santos", "east_los_santos");
+            SetAdjacent("terminal", "davis", "la_puerta", "elysian_island", "lsia");
+
+            // Airport adjacencies
+            SetAdjacent("lsia", "la_puerta", "terminal", "elysian_island");
+
+            // Northern Suburbs adjacencies
+            SetAdjacent("vinewood_hills", "vinewood", "mirror_park", "harmony");
+            SetAdjacent("richman", "del_perro", "rockford_hills");
+            SetAdjacent("mirror_park", "vinewood", "mission_row", "vinewood_hills", "east_los_santos");
+            SetAdjacent("east_los_santos", "rancho", "mirror_park", "cypress_flats", "harmony");
+
+            // Blaine County - Sandy Shores Area adjacencies
+            SetAdjacent("sandy_shores", "trevor_airfield", "alamo_sea", "grapeseed", "grand_senora_desert");
+            SetAdjacent("harmony", "vinewood_hills", "east_los_santos", "alamo_sea", "grand_senora_desert");
+            SetAdjacent("grapeseed", "sandy_shores", "alamo_sea", "paleto_forest", "chiliad_wilderness");
+            SetAdjacent("alamo_sea", "sandy_shores", "harmony", "grapeseed", "chiliad_wilderness");
+
+            // Blaine County - Mount Chiliad Area adjacencies
+            SetAdjacent("paleto_bay", "paleto_forest", "chiliad_wilderness");
+            SetAdjacent("paleto_forest", "paleto_bay", "grapeseed", "chiliad_wilderness");
+            SetAdjacent("chiliad_wilderness", "paleto_bay", "paleto_forest", "grapeseed", "alamo_sea");
+
+            // Blaine County - Desert adjacencies
+            SetAdjacent("grand_senora_desert", "sandy_shores", "harmony", "trevor_airfield");
+            SetAdjacent("trevor_airfield", "sandy_shores", "grand_senora_desert");
+        }
+
+        /// <summary>
+        /// Helper to set up adjacency for a zone with multiple neighbors.
+        /// </summary>
+        private void SetAdjacent(string zoneId, params string[] adjacentIds)
+        {
+            var zone = _zoneRepository.GetById(zoneId);
+            if (zone == null) return;
+
+            foreach (var adjacentId in adjacentIds)
+            {
+                zone.AdjacentZoneIds.Add(adjacentId);
+
+                // Also add reverse adjacency
+                var adjacentZone = _zoneRepository.GetById(adjacentId);
+                if (adjacentZone != null)
+                {
+                    adjacentZone.AdjacentZoneIds.Add(zoneId);
+                }
+            }
         }
 
         /// <summary>

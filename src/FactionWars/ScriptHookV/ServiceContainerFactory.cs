@@ -391,10 +391,10 @@ namespace FactionWars.ScriptHookV
                     container.Resolve<IEventAlertService>(),
                     container.Resolve<IEventFeedService>()));
 
-            // Register AI budget service
+            // Register AI budget service - costs aligned with player DefenderTierService.Basic ($200)
             container.RegisterSingleton<IAIBudgetService>(() => new AIBudgetService(
                 costPerTroop: 50,
-                recruitCostPerTroop: 100));
+                recruitCostPerTroop: 200));
 
             // Register AI recruitment service
             container.RegisterSingleton<IAIRecruitmentService>(() => new AIRecruitmentService(
@@ -413,7 +413,7 @@ namespace FactionWars.ScriptHookV
                 container.Resolve<IZoneService>(),
                 container.Resolve<IBattleSimulationService>(),
                 container.Resolve<IZoneDefenderAllocationService>(),
-                container.Resolve<IEventFeedService>(),
+                container.Resolve<IGameBridge>(),
                 container.Resolve<IDictionary<string, IAIStrategy>>()));
         }
     }

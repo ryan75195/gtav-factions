@@ -271,5 +271,22 @@ namespace FactionWars.Core.Interfaces
         /// </summary>
         /// <param name="pedHandle">Handle of the ped to make friendly.</param>
         void SetPedAsFriendly(int pedHandle);
+
+        /// <summary>
+        /// Gets the ground Z coordinate at the specified X/Y position.
+        /// Uses GTA V's GET_GROUND_Z_FOR_3D_COORD native.
+        /// </summary>
+        /// <param name="x">X coordinate.</param>
+        /// <param name="y">Y coordinate.</param>
+        /// <param name="z">Starting Z coordinate for search.</param>
+        /// <returns>The ground Z coordinate, or the input Z if ground not found.</returns>
+        float GetGroundZ(float x, float y, float z);
+
+        /// <summary>
+        /// Sets a ped as hostile to the player's faction but allows wandering.
+        /// The ped will engage player and player's followers on sight while patrolling.
+        /// </summary>
+        /// <param name="pedHandle">The ped handle.</param>
+        void SetPedAsHostileWanderer(int pedHandle);
     }
 }

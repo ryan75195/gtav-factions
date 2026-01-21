@@ -385,6 +385,21 @@ namespace FactionWars.Core.Utils
             }
         }
 
+        public float GetGroundZ(float x, float y, float z)
+        {
+            // Mock just returns input Z
+            return z;
+        }
+
+        public void SetPedAsHostileWanderer(int pedHandle)
+        {
+            if (_peds.TryGetValue(pedHandle, out var ped))
+            {
+                ped.RelationshipGroup = "DEFENDER_ENEMIES";
+                ped.IsAttackingPlayer = true;
+            }
+        }
+
         // Additional helper methods for testing
 
         /// <summary>

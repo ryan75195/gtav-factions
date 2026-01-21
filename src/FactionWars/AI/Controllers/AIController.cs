@@ -7,8 +7,8 @@ using FactionWars.Core.Interfaces;
 using FactionWars.Core.Models;
 using FactionWars.Factions.Interfaces;
 using FactionWars.Factions.Models;
+using FactionWars.ScriptHookV.Logging;
 using FactionWars.Territory.Interfaces;
-using FactionWars.UI.Interfaces;
 
 namespace FactionWars.AI.Controllers
 {
@@ -23,13 +23,13 @@ namespace FactionWars.AI.Controllers
         private readonly IZoneService _zoneService;
         private readonly IBattleSimulationService _battleSimulationService;
         private readonly IZoneDefenderAllocationService _allocationService;
-        private readonly IEventFeedService _eventFeedService;
+        private readonly IGameBridge _gameBridge;
         private readonly IDictionary<string, IAIStrategy> _strategies;
 
         // Configuration
-        private const float DefaultDecisionIntervalSeconds = 30f;
+        private const float DefaultDecisionIntervalSeconds = 60f;  // Slowed from 30s for better pacing
         private const float DefaultRecruitmentIntervalSeconds = 60f;
-        private const int RecruitCostPerTroop = 100;
+        private const int RecruitCostPerTroop = 200;  // Aligned with player Basic tier cost
         private const int AttackCostPerTroop = 50;
         private const int MaxRecruitPerCycle = 5;
 
@@ -63,14 +63,14 @@ namespace FactionWars.AI.Controllers
             IZoneService zoneService,
             IBattleSimulationService battleSimulationService,
             IZoneDefenderAllocationService allocationService,
-            IEventFeedService eventFeedService,
+            IGameBridge gameBridge,
             IDictionary<string, IAIStrategy> strategies)
         {
             _factionService = factionService ?? throw new ArgumentNullException(nameof(factionService));
             _zoneService = zoneService ?? throw new ArgumentNullException(nameof(zoneService));
             _battleSimulationService = battleSimulationService ?? throw new ArgumentNullException(nameof(battleSimulationService));
             _allocationService = allocationService ?? throw new ArgumentNullException(nameof(allocationService));
-            _eventFeedService = eventFeedService ?? throw new ArgumentNullException(nameof(eventFeedService));
+            _gameBridge = gameBridge ?? throw new ArgumentNullException(nameof(gameBridge));
             _strategies = strategies ?? throw new ArgumentNullException(nameof(strategies));
 
             _isRunning = false;
@@ -115,6 +115,7 @@ namespace FactionWars.AI.Controllers
             if (_recruitmentTimer >= DefaultRecruitmentIntervalSeconds)
             {
                 _recruitmentTimer = 0f;
+                FileLogger.AI("=== AI Recruitment Cycle Started ===");
                 RecruitForAllAIFactions();
             }
 
@@ -123,6 +124,7 @@ namespace FactionWars.AI.Controllers
             if (_decisionTimer >= DefaultDecisionIntervalSeconds)
             {
                 _decisionTimer = 0f;
+                FileLogger.AI("=== AI Decision Cycle Started ===");
                 MakeDecisionsForAllAIFactions();
             }
         }
@@ -159,13 +161,18 @@ namespace FactionWars.AI.Controllers
 
         private void MakeDecisionsForAllAIFactions()
         {
-            var factions = _factionService.GetActiveFactions();
+            var factions = _factionService.GetActiveFactions().ToList();
+            FileLogger.AI($"Found {factions.Count} active factions, player faction: {_playerFactionId ?? "none"}");
 
             foreach (var faction in factions)
             {
                 if (faction.Id == _playerFactionId)
+                {
+                    FileLogger.AI($"  Skipping player faction: {faction.Id}");
                     continue;
+                }
 
+                FileLogger.AI($"  Processing AI faction: {faction.Id}");
                 MakeDecisionForFaction(faction.Id);
             }
         }
@@ -173,21 +180,36 @@ namespace FactionWars.AI.Controllers
         private void MakeDecisionForFaction(string factionId)
         {
             if (!_strategies.TryGetValue(factionId, out var strategy))
+            {
+                FileLogger.AI($"    No strategy found for faction: {factionId}");
                 return;
+            }
 
             var faction = _factionService.GetFaction(factionId);
             if (faction == null)
+            {
+                FileLogger.AI($"    Faction not found: {factionId}");
                 return;
+            }
 
             var factionState = _factionService.GetFactionState(factionId);
             if (factionState == null)
+            {
+                FileLogger.AI($"    Faction state not found: {factionId}");
                 return;
+            }
+
+            FileLogger.AI($"    {factionId} state: Cash=${factionState.Cash}, Troops={factionState.TroopCount}, Zones={factionState.ZoneCount}");
 
             var context = BuildAIContext(faction, factionState);
             var decisions = strategy.MakeDecisions(context);
 
+            FileLogger.AI($"    Strategy returned {decisions.Count} decision(s)");
+
             foreach (var decision in decisions)
             {
+                FileLogger.AI($"      Decision: {decision.DecisionType} -> {decision.TargetZoneId ?? "none"}, Priority={decision.Priority:F2}, Troops={decision.TroopsToCommit}");
+
                 if (decision.DecisionType == AIDecisionType.Attack)
                 {
                     ExecuteAttackDecision(factionId, decision);
@@ -213,19 +235,29 @@ namespace FactionWars.AI.Controllers
         private void ExecuteAttackDecision(string attackerFactionId, AIDecision decision)
         {
             if (decision.TargetZoneId == null)
+            {
+                FileLogger.AI($"      ExecuteAttack: No target zone specified");
                 return;
+            }
 
             // Check budget
             var state = _factionService.GetFactionState(attackerFactionId);
             if (state == null)
+            {
+                FileLogger.AI($"      ExecuteAttack: Could not get faction state");
                 return;
+            }
 
             int cost = decision.TroopsToCommit * AttackCostPerTroop;
             if (state.Cash < cost)
+            {
+                FileLogger.AI($"      ExecuteAttack: Insufficient funds (need ${cost}, have ${state.Cash})");
                 return;
+            }
 
             // Spend cash
             _factionService.SpendCash(attackerFactionId, cost);
+            FileLogger.AI($"      ExecuteAttack: {attackerFactionId} attacking {decision.TargetZoneId} with {decision.TroopsToCommit} troops (cost ${cost})");
 
             // Raise attack started event
             OnAttackStarted?.Invoke(this, new AIAttackEventArgs(
@@ -235,9 +267,13 @@ namespace FactionWars.AI.Controllers
 
             // Don't simulate if player is in the zone
             if (_playerZoneId == decision.TargetZoneId)
+            {
+                FileLogger.AI($"      ExecuteAttack: Player is in zone, skipping simulation");
                 return;
+            }
 
             // Simulate the battle
+            FileLogger.AI($"      ExecuteAttack: Simulating battle...");
             SimulateBattle(attackerFactionId, decision);
         }
 
@@ -245,11 +281,17 @@ namespace FactionWars.AI.Controllers
         {
             var zone = _zoneService.GetZone(decision.TargetZoneId!);
             if (zone == null)
+            {
+                FileLogger.AI($"      SimulateBattle: Zone not found: {decision.TargetZoneId}");
                 return;
+            }
 
             // Can't attack own zone
             if (zone.OwnerFactionId == attackerFactionId)
+            {
+                FileLogger.AI($"      SimulateBattle: Cannot attack own zone");
                 return;
+            }
 
             var attackerFaction = _factionService.GetFaction(attackerFactionId);
             var attackerFactionName = attackerFaction?.Name ?? attackerFactionId;
@@ -257,8 +299,18 @@ namespace FactionWars.AI.Controllers
             // Handle neutral zone capture
             if (zone.OwnerFactionId == null)
             {
+                FileLogger.AI($"      SimulateBattle: Capturing neutral zone {zone.Name}");
                 _zoneService.TransferZoneOwnership(decision.TargetZoneId!, attackerFactionId);
-                _eventFeedService.AddZoneCaptured(zone.Name, attackerFactionName);
+
+                // Allocate defenders to the newly captured zone
+                int defendersToAllocate = Math.Min(decision.TroopsToCommit / 2, 5);
+                if (defendersToAllocate > 0)
+                {
+                    _allocationService.SetAllocation(attackerFactionId, decision.TargetZoneId!, DefenderTier.Basic, defendersToAllocate);
+                    FileLogger.AI($"      SimulateBattle: Allocated {defendersToAllocate} defenders to {zone.Name}");
+                }
+
+                _gameBridge.ShowNotification($"~y~{attackerFactionName}~w~ captured ~b~{zone.Name}");
 
                 OnBattleResolved?.Invoke(this, new AIBattleResultEventArgs(
                     attackerFactionId, "neutral", decision.TargetZoneId!, true, 0, 0));
@@ -266,10 +318,12 @@ namespace FactionWars.AI.Controllers
             }
 
             var defenderFactionId = zone.OwnerFactionId;
+            FileLogger.AI($"      SimulateBattle: {attackerFactionId} vs {defenderFactionId} for {zone.Name}");
 
             // Build troop compositions
             var attackerTroops = new TroopComposition(decision.TroopsToCommit, 0, 0);
             var defenderTroops = BuildDefenderTroops(defenderFactionId, decision.TargetZoneId!);
+            FileLogger.AI($"      SimulateBattle: Attackers={attackerTroops.TotalCount}, Defenders={defenderTroops.TotalCount}");
 
             // Simulate battle
             var result = _battleSimulationService.SimulateBattle(
@@ -280,17 +334,19 @@ namespace FactionWars.AI.Controllers
                 defenderTroops);
 
             // Apply results
-            ApplyBattleResult(result);
+            ApplyBattleResult(result, decision.TroopsToCommit);
 
             // Notify
             var defenderFactionName = _factionService.GetFaction(defenderFactionId)?.Name ?? defenderFactionId;
             if (result.AttackerWon)
             {
-                _eventFeedService.AddZoneCaptured(zone.Name, attackerFactionName);
+                FileLogger.AI($"      SimulateBattle: {attackerFactionName} CAPTURED {zone.Name}!");
+                _gameBridge.ShowNotification($"~y~{attackerFactionName}~w~ captured ~b~{zone.Name}~w~ from ~r~{defenderFactionName}");
             }
             else
             {
-                _eventFeedService.AddCombatEnded(zone.Name, defenderFactionName, defenderWon: true);
+                FileLogger.AI($"      SimulateBattle: {defenderFactionName} DEFENDED {zone.Name}");
+                _gameBridge.ShowNotification($"~g~{defenderFactionName}~w~ defended ~b~{zone.Name}~w~ against ~r~{attackerFactionName}");
             }
 
             OnBattleResolved?.Invoke(this, new AIBattleResultEventArgs(
@@ -314,7 +370,7 @@ namespace FactionWars.AI.Controllers
                 allocation.GetTroopCount(DefenderTier.Heavy));
         }
 
-        private void ApplyBattleResult(BattleSimulationResult result)
+        private void ApplyBattleResult(BattleSimulationResult result, int attackingTroops)
         {
             int attackerCasualties = result.AttackerCasualties.TotalCount;
             if (attackerCasualties > 0)
@@ -331,6 +387,15 @@ namespace FactionWars.AI.Controllers
             if (result.AttackerWon)
             {
                 _zoneService.TransferZoneOwnership(result.ZoneId, result.AttackerFactionId);
+
+                // Allocate surviving troops as defenders
+                int survivors = attackingTroops - attackerCasualties;
+                int defendersToAllocate = Math.Min(survivors / 2, 5);
+                if (defendersToAllocate > 0)
+                {
+                    _allocationService.SetAllocation(result.AttackerFactionId, result.ZoneId, DefenderTier.Basic, defendersToAllocate);
+                    FileLogger.AI($"      ApplyBattleResult: Allocated {defendersToAllocate} defenders to {result.ZoneId}");
+                }
             }
         }
     }

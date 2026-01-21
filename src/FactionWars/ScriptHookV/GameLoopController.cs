@@ -456,8 +456,7 @@ namespace FactionWars.ScriptHookV
                 _combatHudRenderer.Draw();
             }
 
-            // Event feed disabled - was showing debug-like messages at bottom left
-            // To re-enable, uncomment:
+            // Event feed disabled - using native GTA V notifications instead
             // if (_eventFeedRenderer != null && _eventFeedService != null)
             // {
             //     _eventFeedRenderer.Render(_eventFeedService.Entries);

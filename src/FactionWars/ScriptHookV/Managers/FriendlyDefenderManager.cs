@@ -297,25 +297,27 @@ namespace FactionWars.ScriptHookV.Managers
             // Delete the ped entity
             _gameBridge.DeletePed(pedHandle);
 
-            // Decrement allocation
+            // Get allocation BEFORE decrementing to check for reserves
             var allocation = _allocationService.GetAllocation(_playerFactionId, zoneId);
-            if (allocation != null)
-            {
-                allocation.RemoveTroops(tier, 1);
-            }
 
             // Raise defender died event
             DefenderDied?.Invoke(this, new DefenderDiedEventArgs(zoneId, pedHandle, tier));
+
+            // Try to spawn replacement from reserve FIRST (before decrementing allocation)
+            // This way allocated > spawned check works correctly
+            bool replacementSpawned = TrySpawnReplacementFromReserve(zoneId, tier, allocation);
+
+            // Only decrement allocation if no replacement was spawned
+            // (meaning there was no reserve available)
+            if (!replacementSpawned && allocation != null)
+            {
+                allocation.RemoveTroops(tier, 1);
+            }
 
             // Check for territory loss (no spawned defenders AND no reserve)
             if (IsAllDefendersDead(zoneId, allocation))
             {
                 HandleTerritoryLost(zoneId);
-            }
-            else
-            {
-                // Try to spawn replacement from reserve
-                TrySpawnReplacement(zoneId, allocation);
             }
         }
 
@@ -345,31 +347,46 @@ namespace FactionWars.ScriptHookV.Managers
         }
 
         /// <summary>
-        /// Tries to spawn a replacement defender from the reserve.
+        /// Tries to spawn a replacement defender from the reserve for a specific tier.
+        /// Returns true if a replacement was spawned.
         /// </summary>
-        private void TrySpawnReplacement(string zoneId, ZoneDefenderAllocation? allocation)
+        private bool TrySpawnReplacementFromReserve(string zoneId, DefenderTier preferredTier, ZoneDefenderAllocation? allocation)
         {
-            if (allocation == null) return;
+            if (allocation == null) return false;
 
             var currentSpawned = GetSpawnedDefenderCount(zoneId);
-            if (currentSpawned >= MaxSpawnedDefenders) return;
+            if (currentSpawned >= MaxSpawnedDefenders) return false;
 
             var zone = _zoneService.GetZone(zoneId);
-            if (zone == null) return;
+            if (zone == null) return false;
 
-            // Find a tier with available troops in reserve
-            foreach (DefenderTier tier in Enum.GetValues(typeof(DefenderTier)))
+            // First try the same tier as the one that died
+            var allocatedCount = allocation.GetTroopCount(preferredTier);
+            var spawnedOfTier = GetSpawnedCountByTier(zoneId, preferredTier);
+
+            if (allocatedCount > spawnedOfTier)
             {
-                var allocatedCount = allocation.GetTroopCount(tier);
-                var spawnedOfTier = GetSpawnedCountByTier(zoneId, tier);
+                SpawnSingleDefender(zoneId, preferredTier, zone.Center);
+                return true;
+            }
 
-                // If we have more allocated than spawned, spawn from reserve
+            // If no reserve of that tier, try other tiers (highest first)
+            var tiersToTry = new[] { DefenderTier.Heavy, DefenderTier.Medium, DefenderTier.Basic };
+            foreach (var tier in tiersToTry)
+            {
+                if (tier == preferredTier) continue; // Already tried
+
+                allocatedCount = allocation.GetTroopCount(tier);
+                spawnedOfTier = GetSpawnedCountByTier(zoneId, tier);
+
                 if (allocatedCount > spawnedOfTier)
                 {
                     SpawnSingleDefender(zoneId, tier, zone.Center);
-                    break;
+                    return true;
                 }
             }
+
+            return false;
         }
 
         /// <summary>

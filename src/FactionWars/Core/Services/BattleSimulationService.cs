@@ -14,8 +14,9 @@ namespace FactionWars.Core.Services
         /// <summary>
         /// Defender advantage modifier (defenders have defensive position).
         /// Applied as a multiplier to defender strength in calculations.
+        /// Increased from 1.2f to 1.5f to make defense more viable.
         /// </summary>
-        private const float DefenderAdvantage = 1.2f;
+        private const float DefenderAdvantage = 1.5f;
 
         /// <summary>
         /// Resilience modifier for basic troops (higher = more casualties taken).

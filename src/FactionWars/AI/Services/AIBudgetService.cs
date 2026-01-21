@@ -8,7 +8,7 @@ namespace FactionWars.AI.Services
         private readonly int _costPerTroop;
         private readonly int _recruitCostPerTroop;
 
-        public AIBudgetService(int costPerTroop = 50, int recruitCostPerTroop = 100)
+        public AIBudgetService(int costPerTroop = 50, int recruitCostPerTroop = 200)
         {
             _costPerTroop = Math.Max(1, costPerTroop);
             _recruitCostPerTroop = Math.Max(1, recruitCostPerTroop);

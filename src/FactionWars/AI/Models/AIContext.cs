@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using FactionWars.Factions.Models;
+using FactionWars.ScriptHookV.Logging;
 using FactionWars.Territory.Models;
 
 namespace FactionWars.AI.Models
@@ -99,6 +100,63 @@ namespace FactionWars.AI.Models
         public IEnumerable<Zone> GetThreatenedZones()
         {
             return OwnedZones.Where(z => z.IsContested);
+        }
+
+        /// <summary>
+        /// Checks if a zone is adjacent to any territory owned by this faction.
+        /// </summary>
+        public bool IsAdjacentToOwnedTerritory(Zone zone)
+        {
+            if (zone == null) return false;
+
+            // A zone is attackable if any owned zone lists it as adjacent
+            foreach (var ownedZone in OwnedZones)
+            {
+                if (ownedZone.AdjacentZoneIds.Contains(zone.Id))
+                    return true;
+            }
+
+            // Or if the target zone lists any owned zone as adjacent
+            foreach (var ownedZone in OwnedZones)
+            {
+                if (zone.AdjacentZoneIds.Contains(ownedZone.Id))
+                    return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Gets non-owned zones that are adjacent to owned territory (valid attack targets).
+        /// </summary>
+        public IEnumerable<Zone> GetAdjacentAttackableZones()
+        {
+            var nonOwned = GetNonOwnedZones().ToList();
+            var adjacent = nonOwned.Where(IsAdjacentToOwnedTerritory).ToList();
+
+            FileLogger.AI($"        [Adjacency] {Faction.Id}: Owns {OwnedZones.Count} zones, {nonOwned.Count} non-owned, {adjacent.Count} adjacent attackable");
+
+            if (OwnedZones.Count > 0)
+            {
+                var ownedNames = string.Join(", ", OwnedZones.Select(z => z.Id));
+                FileLogger.AI($"        [Adjacency] Owned zones: {ownedNames}");
+            }
+
+            if (adjacent.Count > 0)
+            {
+                var adjacentNames = string.Join(", ", adjacent.Select(z => z.Id));
+                FileLogger.AI($"        [Adjacency] Adjacent targets: {adjacentNames}");
+            }
+            else if (OwnedZones.Count > 0)
+            {
+                // Debug why no adjacent zones found
+                foreach (var owned in OwnedZones)
+                {
+                    FileLogger.AI($"        [Adjacency] {owned.Id} has {owned.AdjacentZoneIds.Count} adjacencies: {string.Join(", ", owned.AdjacentZoneIds)}");
+                }
+            }
+
+            return adjacent;
         }
     }
 }

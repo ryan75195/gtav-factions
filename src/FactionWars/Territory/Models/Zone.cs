@@ -71,6 +71,12 @@ namespace FactionWars.Territory.Models
         public ZoneTrait Traits { get; set; }
 
         /// <summary>
+        /// IDs of zones that are adjacent to this zone (share a border or are within attack range).
+        /// Used to restrict expansion to connected territories.
+        /// </summary>
+        public ISet<string> AdjacentZoneIds { get; } = new HashSet<string>();
+
+        /// <summary>
         /// Creates a new circular zone with the specified properties.
         /// </summary>
         /// <param name="id">Unique identifier for the zone.</param>

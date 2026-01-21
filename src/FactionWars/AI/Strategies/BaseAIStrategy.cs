@@ -4,6 +4,7 @@ using System.Linq;
 using FactionWars.AI.Interfaces;
 using FactionWars.AI.Models;
 using FactionWars.Factions.Models;
+using FactionWars.ScriptHookV.Logging;
 using FactionWars.Territory.Models;
 
 namespace FactionWars.AI.Strategies
@@ -18,6 +19,7 @@ namespace FactionWars.AI.Strategies
         private readonly FactionType _factionType;
         private readonly float _aggressiveness;
         private readonly float _riskTolerance;
+        private readonly Random _random = new Random();
 
         /// <summary>
         /// Minimum troops required to consider an attack.
@@ -133,22 +135,44 @@ namespace FactionWars.AI.Strategies
             }
 
             // Priority 2: Attack targets based on aggressiveness
-            var potentialTargets = context.GetNonOwnedZones()
-                .OrderByDescending(z => EvaluateZone(z, context))
+            // Only attack zones adjacent to owned territory (territorial expansion)
+            // Use weighted random selection to add variety (higher-value zones more likely, but not guaranteed)
+            FileLogger.AI($"      [Strategy] Getting adjacent attackable zones for {context.Faction.Id}");
+            var potentialTargets = context.GetAdjacentAttackableZones()
+                .Where(z => ShouldAttack(z, context))
+                .Select(z => new { Zone = z, Score = EvaluateZone(z, context) })
+                .Where(x => x.Score > 0)
                 .ToList();
 
-            foreach (var zone in potentialTargets)
+            FileLogger.AI($"      [Strategy] Found {potentialTargets.Count} potential targets after filtering");
+            foreach (var target in potentialTargets)
             {
-                if (ShouldAttack(zone, context))
+                FileLogger.AI($"        - {target.Zone.Id} ({target.Zone.Name}): Score={target.Score:F3}, Owner={target.Zone.OwnerFactionId ?? "neutral"}");
+            }
+
+            if (potentialTargets.Count > 0)
+            {
+                // Weighted random selection based on evaluation scores
+                var selectedZone = SelectTargetByWeight(potentialTargets.Select(x => (x.Zone, x.Score)).ToList());
+                if (selectedZone != null)
                 {
-                    float priority = CalculateAttackPriority(zone, context);
-                    int troops = GetTroopsForAttack(zone, context);
+                    FileLogger.AI($"      [Strategy] Selected target: {selectedZone.Id} ({selectedZone.Name})");
+                    float priority = CalculateAttackPriority(selectedZone, context);
+                    int troops = GetTroopsForAttack(selectedZone, context);
+                    FileLogger.AI($"      [Strategy] Attack priority={priority:F2}, troops={troops}, minimum={MinimumAttackTroops}");
                     if (troops >= MinimumAttackTroops)
                     {
-                        decisions.Add(new AIDecision(AIDecisionType.Attack, zone.Id, priority, troops));
-                        break; // Only one attack at a time in base strategy
+                        decisions.Add(new AIDecision(AIDecisionType.Attack, selectedZone.Id, priority, troops));
+                    }
+                    else
+                    {
+                        FileLogger.AI($"      [Strategy] Not enough troops for attack (need {MinimumAttackTroops})");
                     }
                 }
+            }
+            else
+            {
+                FileLogger.AI($"      [Strategy] No valid attack targets found");
             }
 
             // Order by priority (highest first)
@@ -383,6 +407,38 @@ namespace FactionWars.AI.Strategies
             }
 
             return scores.Last().Zone;
+        }
+
+        /// <summary>
+        /// Selects a target zone using weighted random selection based on evaluation scores.
+        /// Higher scores have higher probability of being selected, but selection is not deterministic.
+        /// </summary>
+        private Zone? SelectTargetByWeight(IList<(Zone Zone, float Score)> targets)
+        {
+            if (targets == null || targets.Count == 0)
+                return null;
+
+            if (targets.Count == 1)
+                return targets[0].Zone;
+
+            // Square the scores to make high-value targets more likely while still allowing variety
+            var weightedTargets = targets.Select(t => (t.Zone, Weight: t.Score * t.Score)).ToList();
+            var totalWeight = weightedTargets.Sum(t => t.Weight);
+
+            if (totalWeight <= 0)
+                return targets[0].Zone;
+
+            var roll = _random.NextDouble() * totalWeight;
+            float cumulative = 0;
+
+            foreach (var item in weightedTargets)
+            {
+                cumulative += item.Weight;
+                if (roll <= cumulative)
+                    return item.Zone;
+            }
+
+            return weightedTargets.Last().Zone;
         }
 
         #endregion
