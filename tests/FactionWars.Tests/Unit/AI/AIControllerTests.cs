@@ -2,6 +2,7 @@ using FactionWars.AI.Controllers;
 using FactionWars.AI.Interfaces;
 using FactionWars.Core.Interfaces;
 using FactionWars.Factions.Interfaces;
+using FactionWars.Factions.Models;
 using FactionWars.Territory.Interfaces;
 using FactionWars.UI.Interfaces;
 using Moq;
@@ -67,6 +68,62 @@ namespace FactionWars.Tests.Unit.AI
             var controller = CreateController();
             controller.SetPlayerZone("vinewood");
             Assert.Equal("vinewood", controller.PlayerZoneId);
+        }
+
+        [Fact]
+        public void Update_After60Seconds_ShouldTriggerRecruitment()
+        {
+            // Arrange
+            var faction = new Faction("trevor", "Trevor", color: new FactionColor(255, 150, 0));
+            var factionState = new FactionState("trevor", 1000, 5);
+
+            _factionServiceMock.Setup(f => f.GetActiveFactions())
+                .Returns(new[] { faction });
+            _factionServiceMock.Setup(f => f.GetFactionState("trevor"))
+                .Returns(factionState);
+
+            var controller = CreateController();
+            controller.Start();
+
+            // Act - simulate 60 seconds
+            controller.Update(60f);
+
+            // Assert - should have recruited (1000 cash / 100 per troop = 10, capped at 5)
+            _factionServiceMock.Verify(f => f.RecruitTroops("trevor", 5), Times.Once);
+            _factionServiceMock.Verify(f => f.SpendCash("trevor", 500), Times.Once);
+        }
+
+        [Fact]
+        public void Update_WhenNotRunning_ShouldNotProcess()
+        {
+            var controller = CreateController();
+            // Don't call Start()
+
+            controller.Update(100f);
+
+            _factionServiceMock.Verify(f => f.GetActiveFactions(), Times.Never);
+        }
+
+        [Fact]
+        public void Update_ShouldSkipPlayerFaction()
+        {
+            var playerFaction = new Faction("michael", "Michael", color: new FactionColor(0, 100, 255));
+            var aiFaction = new Faction("trevor", "Trevor", color: new FactionColor(255, 150, 0));
+
+            _factionServiceMock.Setup(f => f.GetActiveFactions())
+                .Returns(new[] { playerFaction, aiFaction });
+            _factionServiceMock.Setup(f => f.GetFactionState("trevor"))
+                .Returns(new FactionState("trevor", 1000, 5));
+
+            var controller = CreateController();
+            controller.SetPlayerFactionId("michael");
+            controller.Start();
+
+            controller.Update(60f);
+
+            // Should recruit for trevor but not michael
+            _factionServiceMock.Verify(f => f.RecruitTroops("trevor", It.IsAny<int>()), Times.Once);
+            _factionServiceMock.Verify(f => f.RecruitTroops("michael", It.IsAny<int>()), Times.Never);
         }
 
         private AIController CreateController()
