@@ -272,10 +272,8 @@ namespace FactionWars.Combat.Services
             bool attackerWon = battle.AttackersWon;
 
             // Calculate total casualties (initial - remaining)
-            int initialAttackers = battle.AttackerTroops.Values.Sum();
-            int initialDefenders = battle.DefenderTroops.Values.Sum();
-            int attackerCasualties = initialAttackers - battle.TotalAttackerTroops;
-            int defenderCasualties = initialDefenders - battle.TotalDefenderTroops;
+            int attackerCasualties = battle.InitialAttackerTroops - battle.TotalAttackerTroops;
+            int defenderCasualties = battle.InitialDefenderTroops - battle.TotalDefenderTroops;
 
             // Apply remaining casualties to faction troop counts
             if (attackerCasualties > 0)

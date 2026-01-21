@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using FactionWars.Core.Models;
 
 namespace FactionWars.Combat.Models
@@ -39,6 +40,16 @@ namespace FactionWars.Combat.Models
         /// Defender troop counts by tier. Mutable during battle.
         /// </summary>
         public Dictionary<DefenderTier, int> DefenderTroops { get; }
+
+        /// <summary>
+        /// Initial attacker troop count at battle start.
+        /// </summary>
+        public int InitialAttackerTroops { get; }
+
+        /// <summary>
+        /// Initial defender troop count at battle start.
+        /// </summary>
+        public int InitialDefenderTroops { get; }
 
         /// <summary>
         /// When the battle started.
@@ -111,6 +122,8 @@ namespace FactionWars.Combat.Models
             ZoneId = zoneId ?? throw new ArgumentNullException(nameof(zoneId));
             AttackerTroops = new Dictionary<DefenderTier, int>(attackerTroops);
             DefenderTroops = new Dictionary<DefenderTier, int>(defenderTroops);
+            InitialAttackerTroops = attackerTroops.Values.Sum();
+            InitialDefenderTroops = defenderTroops.Values.Sum();
             StartTime = DateTime.UtcNow;
             Duration = duration;
             KillInterval = killInterval;
