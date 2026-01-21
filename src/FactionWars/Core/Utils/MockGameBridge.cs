@@ -388,6 +388,16 @@ namespace FactionWars.Core.Utils
         }
 
         /// <summary>
+        /// Sets a ped as dead. Alias for KillPed.
+        /// </summary>
+        public void SetPedDead(int pedHandle) => KillPed(pedHandle);
+
+        /// <summary>
+        /// Gets all currently spawned ped handles.
+        /// </summary>
+        public List<int> GetSpawnedPeds() => new List<int>(_peds.Keys);
+
+        /// <summary>
         /// Gets the relationship group of a ped.
         /// </summary>
         public string GetPedRelationshipGroup(int pedHandle)

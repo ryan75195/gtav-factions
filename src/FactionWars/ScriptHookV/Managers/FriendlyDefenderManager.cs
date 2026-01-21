@@ -1,17 +1,50 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using FactionWars.Combat.Interfaces;
 using FactionWars.Combat.Models;
 using FactionWars.Core.Interfaces;
 using FactionWars.Core.Models;
+using FactionWars.Territory.Interfaces;
 using FactionWars.Territory.Models;
 using FactionWars.UI.Interfaces;
 
 namespace FactionWars.ScriptHookV.Managers
 {
     /// <summary>
+    /// Event args for when a defender dies.
+    /// </summary>
+    public class DefenderDiedEventArgs : EventArgs
+    {
+        public string ZoneId { get; }
+        public int PedHandle { get; }
+        public DefenderTier Tier { get; }
+
+        public DefenderDiedEventArgs(string zoneId, int pedHandle, DefenderTier tier)
+        {
+            ZoneId = zoneId;
+            PedHandle = pedHandle;
+            Tier = tier;
+        }
+    }
+
+    /// <summary>
+    /// Event args for when a territory is lost (all defenders died).
+    /// </summary>
+    public class TerritoryLostEventArgs : EventArgs
+    {
+        public string ZoneId { get; }
+
+        public TerritoryLostEventArgs(string zoneId)
+        {
+            ZoneId = zoneId;
+        }
+    }
+
+    /// <summary>
     /// Manages friendly defenders that spawn when the player enters their own territory.
     /// Defenders patrol the zone independently (NOT as followers) and despawn when player exits.
+    /// Supports death detection, replacement spawning from reserve, and territory loss.
     /// </summary>
     public class FriendlyDefenderManager
     {
@@ -20,12 +53,30 @@ namespace FactionWars.ScriptHookV.Managers
         private readonly IPedSpawningService _pedSpawningService;
         private readonly IDefenderTierService _defenderTierService;
         private readonly IPedBlipService _pedBlipService;
+        private readonly IZoneService _zoneService;
         private string _playerFactionId;
 
         private readonly Dictionary<DefenderTier, string> _modelsByTier;
-        private readonly Dictionary<string, List<int>> _spawnedPedsByZone; // zoneId -> pedHandles
+        private readonly Dictionary<string, Dictionary<int, DefenderTier>> _spawnedPedTierByZone; // zoneId -> (pedHandle -> tier)
+        private string? _currentZoneId; // Track the zone the player is currently in
 
         private const float WanderRadius = 40f;
+
+        /// <summary>
+        /// Maximum number of defenders that can be spawned at once per zone.
+        /// Additional allocated troops are held in reserve.
+        /// </summary>
+        public const int MaxSpawnedDefenders = 12;
+
+        /// <summary>
+        /// Raised when a defender dies.
+        /// </summary>
+        public event EventHandler<DefenderDiedEventArgs>? DefenderDied;
+
+        /// <summary>
+        /// Raised when all defenders in a zone die and the territory is lost.
+        /// </summary>
+        public event EventHandler<TerritoryLostEventArgs>? TerritoryLost;
 
         /// <summary>
         /// Creates a new FriendlyDefenderManager instance.
@@ -35,6 +86,7 @@ namespace FactionWars.ScriptHookV.Managers
         /// <param name="pedSpawningService">Service for spawning peds.</param>
         /// <param name="defenderTierService">Service for defender tier configurations.</param>
         /// <param name="pedBlipService">Service for managing ped blips.</param>
+        /// <param name="zoneService">Service for zone operations.</param>
         /// <param name="playerFactionId">The player's current faction ID.</param>
         /// <exception cref="ArgumentNullException">Thrown if any parameter is null.</exception>
         public FriendlyDefenderManager(
@@ -43,6 +95,7 @@ namespace FactionWars.ScriptHookV.Managers
             IPedSpawningService pedSpawningService,
             IDefenderTierService defenderTierService,
             IPedBlipService pedBlipService,
+            IZoneService zoneService,
             string playerFactionId)
         {
             _gameBridge = gameBridge ?? throw new ArgumentNullException(nameof(gameBridge));
@@ -50,6 +103,7 @@ namespace FactionWars.ScriptHookV.Managers
             _pedSpawningService = pedSpawningService ?? throw new ArgumentNullException(nameof(pedSpawningService));
             _defenderTierService = defenderTierService ?? throw new ArgumentNullException(nameof(defenderTierService));
             _pedBlipService = pedBlipService ?? throw new ArgumentNullException(nameof(pedBlipService));
+            _zoneService = zoneService ?? throw new ArgumentNullException(nameof(zoneService));
             _playerFactionId = playerFactionId ?? throw new ArgumentNullException(nameof(playerFactionId));
 
             _modelsByTier = new Dictionary<DefenderTier, string>
@@ -59,7 +113,7 @@ namespace FactionWars.ScriptHookV.Managers
                 { DefenderTier.Heavy, "g_m_y_lost_03" }
             };
 
-            _spawnedPedsByZone = new Dictionary<string, List<int>>();
+            _spawnedPedTierByZone = new Dictionary<string, Dictionary<int, DefenderTier>>();
         }
 
         /// <summary>
@@ -77,18 +131,28 @@ namespace FactionWars.ScriptHookV.Managers
 
         /// <summary>
         /// Called when the player enters a zone. Spawns friendly defenders if the zone
-        /// belongs to the player's faction.
+        /// belongs to the player's faction. Respects MaxSpawnedDefenders limit.
         /// </summary>
         /// <param name="zone">The zone that was entered.</param>
         public void OnZoneEntered(Zone zone)
         {
             if (zone == null) return;
+
+            // Track current zone for immediate spawning when allocating
+            _currentZoneId = zone.Id;
+
             if (zone.OwnerFactionId != _playerFactionId) return;
 
             var allocation = _allocationService.GetAllocation(_playerFactionId, zone.Id);
             if (allocation == null) return;
 
-            var spawnedPeds = new List<int>();
+            // Initialize tracking for this zone
+            if (!_spawnedPedTierByZone.ContainsKey(zone.Id))
+            {
+                _spawnedPedTierByZone[zone.Id] = new Dictionary<int, DefenderTier>();
+            }
+
+            var totalSpawned = 0;
 
             foreach (DefenderTier tier in Enum.GetValues(typeof(DefenderTier)))
             {
@@ -98,11 +162,11 @@ namespace FactionWars.ScriptHookV.Managers
                 var model = _modelsByTier.TryGetValue(tier, out var m) ? m : "g_m_y_lost_01";
                 var tierConfig = _defenderTierService.GetTierConfig(tier);
 
-                for (int i = 0; i < count; i++)
+                for (int i = 0; i < count && totalSpawned < MaxSpawnedDefenders; i++)
                 {
                     if (!_pedSpawningService.CanSpawn()) break;
 
-                    var spawnPos = CalculateSpawnPosition(zone.Center, i, count);
+                    var spawnPos = CalculateSpawnPosition(zone.Center, totalSpawned, Math.Min(allocation.TotalTroops, MaxSpawnedDefenders));
                     var pedHandle = _pedSpawningService.SpawnPed(model, spawnPos, _playerFactionId, zone.Id);
                     if (!pedHandle.IsValid) continue;
 
@@ -111,12 +175,12 @@ namespace FactionWars.ScriptHookV.Managers
                     ConfigureDefenderCombat(pedHandle.Handle, tierConfig);
                     _gameBridge.TaskPedWanderInArea(pedHandle.Handle, zone.Center, WanderRadius);
                     _pedBlipService.CreateBlipForPed(pedHandle.Handle, BlipColor.LightBlue);
-                    spawnedPeds.Add(pedHandle.Handle);
+
+                    // Track ped with its tier
+                    _spawnedPedTierByZone[zone.Id][pedHandle.Handle] = tier;
+                    totalSpawned++;
                 }
             }
-
-            if (spawnedPeds.Count > 0)
-                _spawnedPedsByZone[zone.Id] = spawnedPeds;
         }
 
         /// <summary>
@@ -127,14 +191,19 @@ namespace FactionWars.ScriptHookV.Managers
         public void OnZoneExited(Zone zone)
         {
             if (zone == null) return;
-            if (!_spawnedPedsByZone.TryGetValue(zone.Id, out var peds)) return;
 
-            foreach (var pedHandle in peds)
+            // Clear current zone tracking
+            if (_currentZoneId == zone.Id)
+                _currentZoneId = null;
+
+            if (!_spawnedPedTierByZone.TryGetValue(zone.Id, out var pedTiers)) return;
+
+            foreach (var pedHandle in pedTiers.Keys)
             {
                 _pedBlipService.RemoveBlipForPed(pedHandle);
                 _gameBridge.DeletePed(pedHandle);
             }
-            _spawnedPedsByZone.Remove(zone.Id);
+            _spawnedPedTierByZone.Remove(zone.Id);
         }
 
         /// <summary>
@@ -142,15 +211,15 @@ namespace FactionWars.ScriptHookV.Managers
         /// </summary>
         public void DespawnAllDefenders()
         {
-            foreach (var zonePeds in _spawnedPedsByZone.Values)
+            foreach (var zonePedTiers in _spawnedPedTierByZone.Values)
             {
-                foreach (var pedHandle in zonePeds)
+                foreach (var pedHandle in zonePedTiers.Keys)
                 {
                     _pedBlipService.RemoveBlipForPed(pedHandle);
                     _gameBridge.DeletePed(pedHandle);
                 }
             }
-            _spawnedPedsByZone.Clear();
+            _spawnedPedTierByZone.Clear();
         }
 
         /// <summary>
@@ -160,7 +229,224 @@ namespace FactionWars.ScriptHookV.Managers
         /// <returns>The number of spawned defenders, or 0 if none.</returns>
         public int GetSpawnedDefenderCount(string zoneId)
         {
-            return _spawnedPedsByZone.TryGetValue(zoneId, out var peds) ? peds.Count : 0;
+            return _spawnedPedTierByZone.TryGetValue(zoneId, out var pedTiers) ? pedTiers.Count : 0;
+        }
+
+        /// <summary>
+        /// Gets the number of spawned defenders of a specific tier in a zone.
+        /// </summary>
+        /// <param name="zoneId">The zone ID.</param>
+        /// <param name="tier">The defender tier to count.</param>
+        /// <returns>The number of spawned defenders of that tier.</returns>
+        public int GetSpawnedCountByTier(string zoneId, DefenderTier tier)
+        {
+            if (!_spawnedPedTierByZone.TryGetValue(zoneId, out var pedTiers))
+                return 0;
+
+            return pedTiers.Values.Count(t => t == tier);
+        }
+
+        /// <summary>
+        /// Updates defender state. Should be called each game tick.
+        /// Checks for defender deaths, handles cleanup, spawns replacements, and triggers territory loss.
+        /// </summary>
+        public void Update()
+        {
+            var deadPeds = new List<(string zoneId, int pedHandle, DefenderTier tier)>();
+
+            // Check all spawned defenders for death
+            foreach (var kvp in _spawnedPedTierByZone)
+            {
+                var zoneId = kvp.Key;
+                var pedTiers = kvp.Value;
+
+                foreach (var pedKvp in pedTiers)
+                {
+                    var pedHandle = pedKvp.Key;
+                    var tier = pedKvp.Value;
+
+                    if (!_gameBridge.IsPedAlive(pedHandle))
+                    {
+                        deadPeds.Add((zoneId, pedHandle, tier));
+                    }
+                }
+            }
+
+            // Process each dead defender
+            foreach (var (zoneId, pedHandle, tier) in deadPeds)
+            {
+                HandleDefenderDeath(zoneId, pedHandle, tier);
+            }
+        }
+
+        /// <summary>
+        /// Handles the death of a defender, including blip removal, allocation decrement,
+        /// replacement spawning, and territory loss detection.
+        /// </summary>
+        private void HandleDefenderDeath(string zoneId, int pedHandle, DefenderTier tier)
+        {
+            // Remove from tracking
+            if (_spawnedPedTierByZone.TryGetValue(zoneId, out var pedTiers))
+            {
+                pedTiers.Remove(pedHandle);
+            }
+
+            // Remove blip
+            _pedBlipService.RemoveBlipForPed(pedHandle);
+
+            // Delete the ped entity
+            _gameBridge.DeletePed(pedHandle);
+
+            // Decrement allocation
+            var allocation = _allocationService.GetAllocation(_playerFactionId, zoneId);
+            if (allocation != null)
+            {
+                allocation.RemoveTroops(tier, 1);
+            }
+
+            // Raise defender died event
+            DefenderDied?.Invoke(this, new DefenderDiedEventArgs(zoneId, pedHandle, tier));
+
+            // Check for territory loss (no spawned defenders AND no reserve)
+            if (IsAllDefendersDead(zoneId, allocation))
+            {
+                HandleTerritoryLost(zoneId);
+            }
+            else
+            {
+                // Try to spawn replacement from reserve
+                TrySpawnReplacement(zoneId, allocation);
+            }
+        }
+
+        /// <summary>
+        /// Checks if all defenders are dead (no spawned and no reserve).
+        /// </summary>
+        private bool IsAllDefendersDead(string zoneId, ZoneDefenderAllocation? allocation)
+        {
+            var spawnedCount = GetSpawnedDefenderCount(zoneId);
+            if (spawnedCount > 0) return false;
+
+            if (allocation == null) return true;
+
+            return allocation.TotalTroops == 0;
+        }
+
+        /// <summary>
+        /// Handles territory loss when all defenders die.
+        /// </summary>
+        private void HandleTerritoryLost(string zoneId)
+        {
+            // Transfer zone to neutral
+            _zoneService.TransferZoneOwnership(zoneId, null);
+
+            // Raise event
+            TerritoryLost?.Invoke(this, new TerritoryLostEventArgs(zoneId));
+        }
+
+        /// <summary>
+        /// Tries to spawn a replacement defender from the reserve.
+        /// </summary>
+        private void TrySpawnReplacement(string zoneId, ZoneDefenderAllocation? allocation)
+        {
+            if (allocation == null) return;
+
+            var currentSpawned = GetSpawnedDefenderCount(zoneId);
+            if (currentSpawned >= MaxSpawnedDefenders) return;
+
+            var zone = _zoneService.GetZone(zoneId);
+            if (zone == null) return;
+
+            // Find a tier with available troops in reserve
+            foreach (DefenderTier tier in Enum.GetValues(typeof(DefenderTier)))
+            {
+                var allocatedCount = allocation.GetTroopCount(tier);
+                var spawnedOfTier = GetSpawnedCountByTier(zoneId, tier);
+
+                // If we have more allocated than spawned, spawn from reserve
+                if (allocatedCount > spawnedOfTier)
+                {
+                    SpawnSingleDefender(zoneId, tier, zone.Center);
+                    break;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Spawns a single defender of the specified tier.
+        /// </summary>
+        private void SpawnSingleDefender(string zoneId, DefenderTier tier, Vector3 center)
+        {
+            if (!_pedSpawningService.CanSpawn()) return;
+
+            var model = _modelsByTier.TryGetValue(tier, out var m) ? m : "g_m_y_lost_01";
+            var tierConfig = _defenderTierService.GetTierConfig(tier);
+
+            var currentSpawned = GetSpawnedDefenderCount(zoneId);
+            var spawnPos = CalculateSpawnPosition(center, currentSpawned, MaxSpawnedDefenders);
+            var pedHandle = _pedSpawningService.SpawnPed(model, spawnPos, _playerFactionId, zoneId);
+
+            if (!pedHandle.IsValid) return;
+
+            // Set friendly relationship with player BEFORE configuring combat
+            _gameBridge.SetPedAsFriendly(pedHandle.Handle);
+            ConfigureDefenderCombat(pedHandle.Handle, tierConfig);
+            _gameBridge.TaskPedWanderInArea(pedHandle.Handle, center, WanderRadius);
+            _pedBlipService.CreateBlipForPed(pedHandle.Handle, BlipColor.LightBlue);
+
+            // Track ped with its tier
+            if (!_spawnedPedTierByZone.ContainsKey(zoneId))
+            {
+                _spawnedPedTierByZone[zoneId] = new Dictionary<int, DefenderTier>();
+            }
+            _spawnedPedTierByZone[zoneId][pedHandle.Handle] = tier;
+        }
+
+        /// <summary>
+        /// Handles when troops are allocated to a zone. If the player is currently
+        /// in that zone (and it's their own zone), spawns the new defenders immediately.
+        /// Respects MaxSpawnedDefenders limit.
+        /// </summary>
+        /// <param name="factionId">The faction that allocated troops.</param>
+        /// <param name="zoneId">The zone troops were allocated to.</param>
+        /// <param name="tier">The tier of troops allocated.</param>
+        /// <param name="count">The number of troops allocated.</param>
+        /// <param name="zoneCenter">The center of the zone for spawn positioning.</param>
+        public void OnTroopsAllocated(string factionId, string zoneId, DefenderTier tier, int count, Vector3 zoneCenter)
+        {
+            // Only spawn if this is the player's faction and they're in this zone
+            if (factionId != _playerFactionId) return;
+            if (_currentZoneId != zoneId) return;
+
+            var model = _modelsByTier.TryGetValue(tier, out var m) ? m : "g_m_y_lost_01";
+            var tierConfig = _defenderTierService.GetTierConfig(tier);
+
+            // Get existing spawned peds for this zone to calculate spawn positions
+            if (!_spawnedPedTierByZone.TryGetValue(zoneId, out var existingPedTiers))
+            {
+                existingPedTiers = new Dictionary<int, DefenderTier>();
+                _spawnedPedTierByZone[zoneId] = existingPedTiers;
+            }
+
+            var startIndex = existingPedTiers.Count;
+
+            for (int i = 0; i < count && existingPedTiers.Count < MaxSpawnedDefenders; i++)
+            {
+                if (!_pedSpawningService.CanSpawn()) break;
+
+                var spawnPos = CalculateSpawnPosition(zoneCenter, startIndex + i, MaxSpawnedDefenders);
+                var pedHandle = _pedSpawningService.SpawnPed(model, spawnPos, _playerFactionId, zoneId);
+                if (!pedHandle.IsValid) continue;
+
+                // Set friendly relationship with player BEFORE configuring combat
+                _gameBridge.SetPedAsFriendly(pedHandle.Handle);
+                ConfigureDefenderCombat(pedHandle.Handle, tierConfig);
+                _gameBridge.TaskPedWanderInArea(pedHandle.Handle, zoneCenter, WanderRadius);
+                _pedBlipService.CreateBlipForPed(pedHandle.Handle, BlipColor.LightBlue);
+
+                // Track ped with its tier
+                existingPedTiers[pedHandle.Handle] = tier;
+            }
         }
 
         /// <summary>
@@ -182,9 +468,10 @@ namespace FactionWars.ScriptHookV.Managers
         /// </summary>
         private void ConfigureDefenderCombat(int pedHandle, DefenderTierConfig tierConfig)
         {
-            _gameBridge.GivePedWeapon(pedHandle, tierConfig.Weapon);
-            // Give pistol as secondary weapon for drive-by shooting
+            // Give pistol first as secondary weapon for drive-by shooting
             _gameBridge.GivePedWeapon(pedHandle, "weapon_pistol");
+            // Give tier-appropriate weapon last so it becomes the equipped/primary weapon
+            _gameBridge.GivePedWeapon(pedHandle, tierConfig.Weapon);
             _gameBridge.SetPedAccuracy(pedHandle, tierConfig.Accuracy);
             _gameBridge.SetPedArmor(pedHandle, tierConfig.Armor);
             _gameBridge.SetPedHealth(pedHandle, tierConfig.Health);

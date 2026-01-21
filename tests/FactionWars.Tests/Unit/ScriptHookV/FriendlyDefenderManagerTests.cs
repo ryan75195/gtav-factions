@@ -4,6 +4,7 @@ using FactionWars.Core.Interfaces;
 using FactionWars.Core.Models;
 using FactionWars.Core.Utils;
 using FactionWars.ScriptHookV.Managers;
+using FactionWars.Territory.Interfaces;
 using FactionWars.Territory.Models;
 using FactionWars.UI.Interfaces;
 using Moq;
@@ -22,6 +23,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
         private Mock<IPedSpawningService> _pedSpawningServiceMock = null!;
         private Mock<IDefenderTierService> _defenderTierServiceMock = null!;
         private Mock<IPedBlipService> _pedBlipServiceMock = null!;
+        private Mock<IZoneService> _zoneServiceMock = null!;
         private FriendlyDefenderManager _manager = null!;
 
         private const string PlayerFactionId = "michael";
@@ -35,6 +37,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             _pedSpawningServiceMock = new Mock<IPedSpawningService>();
             _defenderTierServiceMock = new Mock<IDefenderTierService>();
             _pedBlipServiceMock = new Mock<IPedBlipService>();
+            _zoneServiceMock = new Mock<IZoneService>();
 
             // Setup default mock behaviors
             _pedSpawningServiceMock.Setup(p => p.CanSpawn()).Returns(true);
@@ -53,6 +56,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
                 _pedSpawningServiceMock.Object,
                 _defenderTierServiceMock.Object,
                 _pedBlipServiceMock.Object,
+                _zoneServiceMock.Object,
                 PlayerFactionId);
         }
 
@@ -222,6 +226,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
                 _pedSpawningServiceMock.Object,
                 _defenderTierServiceMock.Object,
                 _pedBlipServiceMock.Object,
+                _zoneServiceMock.Object,
                 PlayerFactionId));
         }
 
@@ -238,6 +243,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
                 _pedSpawningServiceMock.Object,
                 _defenderTierServiceMock.Object,
                 _pedBlipServiceMock.Object,
+                _zoneServiceMock.Object,
                 null!));
         }
 

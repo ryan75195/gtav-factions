@@ -328,6 +328,9 @@ namespace FactionWars.ScriptHookV
             // Update follower manager (updates follower positions and behavior)
             _followerManager?.Update(CurrentPlayerFactionId ?? "");
 
+            // Update friendly defender manager (death detection, replacement spawning)
+            _friendlyDefenderManager?.Update();
+
             // Update and draw HUD elements
             UpdateAndDrawHud();
         }
@@ -479,11 +482,22 @@ namespace FactionWars.ScriptHookV
                 pedSpawningService,
                 defenderTierService,
                 pedBlipService,
+                _zoneService,
                 CurrentPlayerFactionId ?? "");
 
             // Subscribe to zone events for friendly defender spawning
             _territoryManager.ZoneEntered += (sender, zone) => _friendlyDefenderManager.OnZoneEntered(zone);
             _territoryManager.ZoneExited += (sender, zone) => _friendlyDefenderManager.OnZoneExited(zone);
+
+            // Subscribe to troop allocation events for immediate spawning when player is in zone
+            allocationService.TroopsAllocated += (sender, e) =>
+            {
+                var zone = _zoneService?.GetZone(e.ZoneId);
+                if (zone != null)
+                {
+                    _friendlyDefenderManager.OnTroopsAllocated(e.FactionId, e.ZoneId, e.Tier, e.Count, zone.Center);
+                }
+            };
 
             // Initialize combat manager for combat encounters
             var pedPool = _container.Resolve<IPedPool>();
