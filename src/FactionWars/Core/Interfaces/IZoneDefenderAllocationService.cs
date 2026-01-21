@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using FactionWars.Core.Models;
 using FactionWars.Factions.Models;
@@ -5,12 +6,35 @@ using FactionWars.Factions.Models;
 namespace FactionWars.Core.Interfaces
 {
     /// <summary>
+    /// Event args for when troops are allocated to a zone.
+    /// </summary>
+    public class TroopsAllocatedEventArgs : EventArgs
+    {
+        public string FactionId { get; }
+        public string ZoneId { get; }
+        public DefenderTier Tier { get; }
+        public int Count { get; }
+
+        public TroopsAllocatedEventArgs(string factionId, string zoneId, DefenderTier tier, int count)
+        {
+            FactionId = factionId;
+            ZoneId = zoneId;
+            Tier = tier;
+            Count = count;
+        }
+    }
+
+    /// <summary>
     /// Service for managing the allocation of defender troops from a faction's
     /// reserve pool to specific zones. This enables strategic distribution of
     /// forces across controlled territory.
     /// </summary>
     public interface IZoneDefenderAllocationService
     {
+        /// <summary>
+        /// Raised when troops are allocated to a zone.
+        /// </summary>
+        event EventHandler<TroopsAllocatedEventArgs>? TroopsAllocated;
         /// <summary>
         /// Allocates troops from a faction's reserve pool to a specific zone.
         /// </summary>

@@ -9,6 +9,7 @@ using FactionWars.Factions.Models;
 using FactionWars.ScriptHookV;
 using FactionWars.ScriptHookV.Managers;
 using FactionWars.Territory.Interfaces;
+using FactionWars.Tests.Mocks;
 using FactionWars.UI.Interfaces;
 using Moq;
 using Xunit;
@@ -24,7 +25,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             var gameBridge = new Mock<IGameBridge>().Object;
 
             // Act
-            var container = ServiceContainerFactory.Create(gameBridge);
+            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
 
             // Assert
             Assert.NotNull(container);
@@ -38,7 +39,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             var gameBridge = new Mock<IGameBridge>().Object;
 
             // Act
-            var container = ServiceContainerFactory.Create(gameBridge);
+            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
 
             // Assert
             var resolved = container.Resolve<IGameBridge>();
@@ -52,7 +53,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             var gameBridge = new Mock<IGameBridge>().Object;
 
             // Act
-            var container = ServiceContainerFactory.Create(gameBridge);
+            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
 
             // Assert
             Assert.True(container.IsRegistered<ITimeProvider>());
@@ -65,7 +66,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             var gameBridge = new Mock<IGameBridge>().Object;
 
             // Act
-            var container = ServiceContainerFactory.Create(gameBridge);
+            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
 
             // Assert
             Assert.True(container.IsRegistered<IZoneRepository>());
@@ -78,7 +79,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             var gameBridge = new Mock<IGameBridge>().Object;
 
             // Act
-            var container = ServiceContainerFactory.Create(gameBridge);
+            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
 
             // Assert
             Assert.True(container.IsRegistered<IZoneService>());
@@ -91,7 +92,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             var gameBridge = new Mock<IGameBridge>().Object;
 
             // Act
-            var container = ServiceContainerFactory.Create(gameBridge);
+            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
 
             // Assert
             Assert.True(container.IsRegistered<IFactionRepository>());
@@ -104,7 +105,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             var gameBridge = new Mock<IGameBridge>().Object;
 
             // Act
-            var container = ServiceContainerFactory.Create(gameBridge);
+            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
 
             // Assert
             Assert.True(container.IsRegistered<IFactionService>());
@@ -117,7 +118,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             var gameBridge = new Mock<IGameBridge>().Object;
 
             // Act
-            var container = ServiceContainerFactory.Create(gameBridge);
+            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
 
             // Assert
             Assert.True(container.IsRegistered<IFactionRelationshipRepository>());
@@ -130,7 +131,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             var gameBridge = new Mock<IGameBridge>().Object;
 
             // Act
-            var container = ServiceContainerFactory.Create(gameBridge);
+            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
 
             // Assert
             Assert.True(container.IsRegistered<IFactionRelationshipService>());
@@ -143,7 +144,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             var gameBridge = new Mock<IGameBridge>().Object;
 
             // Act
-            var container = ServiceContainerFactory.Create(gameBridge);
+            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
 
             // Assert
             Assert.True(container.IsRegistered<IPedPool>());
@@ -156,7 +157,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             var gameBridge = new Mock<IGameBridge>().Object;
 
             // Act
-            var container = ServiceContainerFactory.Create(gameBridge);
+            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
 
             // Assert
             Assert.True(container.IsRegistered<IPedSpawningService>());
@@ -169,7 +170,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             var gameBridge = new Mock<IGameBridge>().Object;
 
             // Act
-            var container = ServiceContainerFactory.Create(gameBridge);
+            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
 
             // Assert
             Assert.True(container.IsRegistered<IPedDespawnService>());
@@ -182,7 +183,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             var gameBridge = new Mock<IGameBridge>().Object;
 
             // Act
-            var container = ServiceContainerFactory.Create(gameBridge);
+            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
 
             // Assert
             Assert.True(container.IsRegistered<IControlPercentageCalculator>());
@@ -195,7 +196,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             var gameBridge = new Mock<IGameBridge>().Object;
 
             // Act
-            var container = ServiceContainerFactory.Create(gameBridge);
+            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
 
             // Assert
             Assert.True(container.IsRegistered<ITakeoverDetector>());
@@ -208,7 +209,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             var gameBridge = new Mock<IGameBridge>().Object;
 
             // Act
-            var container = ServiceContainerFactory.Create(gameBridge);
+            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
 
             // Assert
             Assert.True(container.IsRegistered<ICombatResultHandler>());
@@ -221,7 +222,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             var gameBridge = new Mock<IGameBridge>().Object;
 
             // Act
-            var container = ServiceContainerFactory.Create(gameBridge);
+            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
 
             // Assert
             Assert.True(container.IsRegistered<IResourceTickService>());
@@ -234,7 +235,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             var gameBridge = new Mock<IGameBridge>().Object;
 
             // Act
-            var container = ServiceContainerFactory.Create(gameBridge);
+            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
 
             // Assert
             Assert.True(container.IsRegistered<ISupplyLineService>());
@@ -247,7 +248,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             var gameBridge = new Mock<IGameBridge>().Object;
 
             // Act
-            var container = ServiceContainerFactory.Create(gameBridge);
+            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
 
             // Assert
             Assert.True(container.IsRegistered<IMapBlipService>());
@@ -260,7 +261,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             var gameBridge = new Mock<IGameBridge>().Object;
 
             // Act
-            var container = ServiceContainerFactory.Create(gameBridge);
+            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
 
             // Assert
             Assert.True(container.IsRegistered<INotificationService>());
@@ -273,7 +274,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             var gameBridge = new Mock<IGameBridge>().Object;
 
             // Act
-            var container = ServiceContainerFactory.Create(gameBridge);
+            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
 
             // Assert
             Assert.True(container.IsRegistered<IPlayerFactionDetector>());
@@ -284,7 +285,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
         {
             // Arrange
             var gameBridge = new Mock<IGameBridge>().Object;
-            var container = ServiceContainerFactory.Create(gameBridge);
+            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
 
             // Act
             var detector1 = container.Resolve<IPlayerFactionDetector>();
@@ -299,7 +300,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
         {
             // Arrange
             var gameBridge = new Mock<IGameBridge>().Object;
-            var container = ServiceContainerFactory.Create(gameBridge);
+            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
 
             // Act
             var zoneRepo1 = container.Resolve<IZoneRepository>();
@@ -314,7 +315,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
         {
             // Arrange
             var gameBridge = new Mock<IGameBridge>().Object;
-            var container = ServiceContainerFactory.Create(gameBridge);
+            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
 
             // Act
             var repo1 = container.Resolve<IFactionRepository>();
@@ -338,7 +339,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             var gameBridge = new Mock<IGameBridge>().Object;
 
             // Act
-            var container = ServiceContainerFactory.Create(gameBridge);
+            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
 
             // Assert
             Assert.True(container.IsRegistered<IPedRecyclingService>());
@@ -349,7 +350,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
         {
             // Arrange
             var gameBridge = new Mock<IGameBridge>().Object;
-            var container = ServiceContainerFactory.Create(gameBridge);
+            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
 
             // Act
             var service1 = container.Resolve<IPedRecyclingService>();
@@ -366,7 +367,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             var gameBridge = new Mock<IGameBridge>().Object;
 
             // Act
-            var container = ServiceContainerFactory.Create(gameBridge);
+            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
 
             // Assert
             Assert.True(container.IsRegistered<IWaveSpawnerService>());
@@ -377,7 +378,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
         {
             // Arrange
             var gameBridge = new Mock<IGameBridge>().Object;
-            var container = ServiceContainerFactory.Create(gameBridge);
+            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
 
             // Act
             var service1 = container.Resolve<IWaveSpawnerService>();
@@ -394,7 +395,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             var gameBridge = new Mock<IGameBridge>().Object;
 
             // Act
-            var container = ServiceContainerFactory.Create(gameBridge);
+            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
 
             // Assert
             Assert.True(container.IsRegistered<IDictionary<string, IAIStrategy>>());
@@ -405,7 +406,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
         {
             // Arrange
             var gameBridge = new Mock<IGameBridge>().Object;
-            var container = ServiceContainerFactory.Create(gameBridge);
+            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
 
             // Act
             var strategies1 = container.Resolve<IDictionary<string, IAIStrategy>>();
@@ -420,7 +421,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
         {
             // Arrange
             var gameBridge = new Mock<IGameBridge>().Object;
-            var container = ServiceContainerFactory.Create(gameBridge);
+            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
 
             // Act
             var strategies = container.Resolve<IDictionary<string, IAIStrategy>>();
@@ -435,7 +436,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
         {
             // Arrange
             var gameBridge = new Mock<IGameBridge>().Object;
-            var container = ServiceContainerFactory.Create(gameBridge);
+            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
 
             // Act
             var strategies = container.Resolve<IDictionary<string, IAIStrategy>>();
@@ -450,7 +451,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
         {
             // Arrange
             var gameBridge = new Mock<IGameBridge>().Object;
-            var container = ServiceContainerFactory.Create(gameBridge);
+            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
 
             // Act
             var strategies = container.Resolve<IDictionary<string, IAIStrategy>>();
@@ -465,7 +466,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
         {
             // Arrange
             var gameBridge = new Mock<IGameBridge>().Object;
-            var container = ServiceContainerFactory.Create(gameBridge);
+            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
 
             // Act
             var strategies = container.Resolve<IDictionary<string, IAIStrategy>>();
@@ -481,7 +482,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             var gameBridge = new Mock<IGameBridge>().Object;
 
             // Act
-            var container = ServiceContainerFactory.Create(gameBridge);
+            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
 
             // Assert
             Assert.True(container.IsRegistered<IZoneEvaluationService>());
@@ -492,7 +493,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
         {
             // Arrange
             var gameBridge = new Mock<IGameBridge>().Object;
-            var container = ServiceContainerFactory.Create(gameBridge);
+            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
 
             // Act
             var service1 = container.Resolve<IZoneEvaluationService>();
@@ -509,7 +510,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             var gameBridge = new Mock<IGameBridge>().Object;
 
             // Act
-            var container = ServiceContainerFactory.Create(gameBridge);
+            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
 
             // Assert
             Assert.True(container.IsRegistered<IResourceAllocationService>());
@@ -520,7 +521,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
         {
             // Arrange
             var gameBridge = new Mock<IGameBridge>().Object;
-            var container = ServiceContainerFactory.Create(gameBridge);
+            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
 
             // Act
             var service1 = container.Resolve<IResourceAllocationService>();
@@ -537,7 +538,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             var gameBridge = new Mock<IGameBridge>().Object;
 
             // Act
-            var container = ServiceContainerFactory.Create(gameBridge);
+            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
 
             // Assert
             Assert.True(container.IsRegistered<IAggressionResponseService>());
@@ -548,7 +549,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
         {
             // Arrange
             var gameBridge = new Mock<IGameBridge>().Object;
-            var container = ServiceContainerFactory.Create(gameBridge);
+            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
 
             // Act
             var service1 = container.Resolve<IAggressionResponseService>();
@@ -565,7 +566,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             var gameBridge = new Mock<IGameBridge>().Object;
 
             // Act
-            var container = ServiceContainerFactory.Create(gameBridge);
+            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
 
             // Assert
             Assert.True(container.IsRegistered<INotificationRenderer>());
@@ -576,7 +577,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
         {
             // Arrange
             var gameBridge = new Mock<IGameBridge>().Object;
-            var container = ServiceContainerFactory.Create(gameBridge);
+            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
 
             // Act
             var renderer1 = container.Resolve<INotificationRenderer>();
@@ -591,7 +592,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
         {
             // Arrange
             var gameBridge = new Mock<IGameBridge>().Object;
-            var container = ServiceContainerFactory.Create(gameBridge);
+            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
 
             // Act
             var service1 = container.Resolve<INotificationService>();
@@ -608,7 +609,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             var gameBridge = new Mock<IGameBridge>().Object;
 
             // Act
-            var container = ServiceContainerFactory.Create(gameBridge);
+            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
 
             // Assert
             Assert.True(container.IsRegistered<IPersistenceService>());
@@ -619,7 +620,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
         {
             // Arrange
             var gameBridge = new Mock<IGameBridge>().Object;
-            var container = ServiceContainerFactory.Create(gameBridge);
+            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
 
             // Act
             var service1 = container.Resolve<IPersistenceService>();
@@ -636,7 +637,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             var gameBridge = new Mock<IGameBridge>().Object;
 
             // Act
-            var container = ServiceContainerFactory.Create(gameBridge);
+            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
 
             // Assert
             Assert.True(container.IsRegistered<ISaveSlotManager>());
@@ -650,7 +651,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
         {
             // Arrange
             var gameBridge = new Mock<IGameBridge>().Object;
-            var container = ServiceContainerFactory.Create(gameBridge);
+            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
 
             // Act
             var service1 = container.Resolve<ISaveSlotManager>();
@@ -667,7 +668,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             var gameBridge = new Mock<IGameBridge>().Object;
 
             // Act
-            var container = ServiceContainerFactory.Create(gameBridge);
+            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
 
             // Assert
             Assert.True(container.IsRegistered<FactionWars.ScriptHookV.Persistence.IGameStateManager>());
@@ -680,7 +681,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
         {
             // Arrange
             var gameBridge = new Mock<IGameBridge>().Object;
-            var container = ServiceContainerFactory.Create(gameBridge);
+            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
 
             // Act
             var service1 = container.Resolve<FactionWars.ScriptHookV.Persistence.IGameStateManager>();
@@ -697,7 +698,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             var gameBridge = new Mock<IGameBridge>().Object;
 
             // Act
-            var container = ServiceContainerFactory.Create(gameBridge);
+            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
 
             // Assert
             Assert.True(container.IsRegistered<IGameStateCoordinator>());
@@ -711,7 +712,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
         {
             // Arrange
             var gameBridge = new Mock<IGameBridge>().Object;
-            var container = ServiceContainerFactory.Create(gameBridge);
+            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
 
             // Act
             var service1 = container.Resolve<IGameStateCoordinator>();
@@ -728,7 +729,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             var gameBridge = new Mock<IGameBridge>().Object;
 
             // Act
-            var container = ServiceContainerFactory.Create(gameBridge);
+            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
 
             // Assert
             Assert.True(container.IsRegistered<IAutoSaveService>());
@@ -741,7 +742,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
         {
             // Arrange
             var gameBridge = new Mock<IGameBridge>().Object;
-            var container = ServiceContainerFactory.Create(gameBridge);
+            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
 
             // Act
             var service1 = container.Resolve<IAutoSaveService>();
@@ -756,7 +757,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
         {
             // Arrange
             var gameBridge = new Mock<IGameBridge>().Object;
-            var container = ServiceContainerFactory.Create(gameBridge);
+            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
 
             // Act
             var autoSaveService = container.Resolve<IAutoSaveService>();
@@ -772,7 +773,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
         {
             // Arrange
             var gameBridge = new Mock<IGameBridge>().Object;
-            var container = ServiceContainerFactory.Create(gameBridge);
+            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
 
             // Act
             var autoSaveService = container.Resolve<IAutoSaveService>();

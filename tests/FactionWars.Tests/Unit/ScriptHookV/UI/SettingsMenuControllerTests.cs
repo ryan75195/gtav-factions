@@ -1,6 +1,8 @@
 using FactionWars.Core.Interfaces;
 using FactionWars.Persistence.Models;
 using FactionWars.ScriptHookV.UI;
+using FactionWars.Tests.Mocks;
+using FactionWars.UI.Interfaces;
 using FactionWars.UI.Models;
 using Moq;
 using System;
@@ -14,14 +16,14 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
     /// </summary>
     public class SettingsMenuControllerTests
     {
-        private readonly NativeUIMenuProvider _menuProvider;
+        private readonly MockMenuProvider _menuProvider;
         private readonly Mock<ISaveSlotManager> _saveSlotManagerMock;
         private readonly Mock<IGameStateCoordinator> _gameStateCoordinatorMock;
         private readonly SettingsMenuController _controller;
 
         public SettingsMenuControllerTests()
         {
-            _menuProvider = new NativeUIMenuProvider();
+            _menuProvider = new MockMenuProvider();
             _saveSlotManagerMock = new Mock<ISaveSlotManager>();
             _gameStateCoordinatorMock = new Mock<IGameStateCoordinator>();
 

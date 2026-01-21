@@ -58,6 +58,7 @@ namespace FactionWars.ScriptHookV
         private EventFeedRenderer? _eventFeedRenderer;
         private IEventFeedService? _eventFeedService;
         private IZoneService? _zoneService;
+        private IZoneDefenderAllocationService? _allocationService;
         private DateTime _lastTickTime;
         private bool _isInitialized;
         private bool _characterSwitchInitialized;
@@ -363,13 +364,51 @@ namespace FactionWars.ScriptHookV
                     bool isContested = _combatManager?.IsInCombat == true &&
                                        _combatManager.CurrentEncounter?.ZoneId == currentZone.Id;
 
+                    // Get deployed and reserve counts for player-owned zones
+                    int deployedCount = 0;
+                    int reserveCount = 0;
+                    int playerTroopCount = 0;
+                    int enemyDefenderCount = 0;
+
+                    if (isPlayerOwned && _friendlyDefenderManager != null)
+                    {
+                        deployedCount = _friendlyDefenderManager.GetSpawnedDefenderCount(currentZone.Id);
+
+                        // Get total allocation as reserve
+                        if (_allocationService != null && playerFactionId != null)
+                        {
+                            var allocation = _allocationService.GetAllocation(playerFactionId, currentZone.Id);
+                            if (allocation != null)
+                            {
+                                int totalAllocated = allocation.GetTroopCount(DefenderTier.Basic)
+                                                  + allocation.GetTroopCount(DefenderTier.Medium)
+                                                  + allocation.GetTroopCount(DefenderTier.Heavy);
+                                reserveCount = Math.Max(0, totalAllocated - deployedCount);
+                            }
+                        }
+                    }
+                    else if (isContested && _combatManager != null)
+                    {
+                        // Get combat troop counts for enemy zone takeover
+                        var encounter = _combatManager.CurrentEncounter;
+                        if (encounter != null)
+                        {
+                            playerTroopCount = encounter.AttackerPedCount;
+                            enemyDefenderCount = encounter.DefenderPedCount;
+                        }
+                    }
+
                     var territoryData = new TerritoryIndicatorData(
                         currentZone.Name,
                         ownerFactionName,
                         ownerColor,
                         currentZone.ControlPercentage,
                         isContested,
-                        isPlayerOwned);
+                        isPlayerOwned,
+                        deployedDefenderCount: deployedCount,
+                        reserveDefenderCount: reserveCount,
+                        playerTroopCount: playerTroopCount,
+                        enemyDefenderCount: enemyDefenderCount);
 
                     _territoryIndicatorRenderer.Render(territoryData);
                 }
@@ -476,6 +515,7 @@ namespace FactionWars.ScriptHookV
 
             // Initialize friendly defender manager for spawning defenders in player-owned zones
             var allocationService = _container.Resolve<IZoneDefenderAllocationService>();
+            _allocationService = allocationService;
             _friendlyDefenderManager = new FriendlyDefenderManager(
                 _gameBridge,
                 allocationService,

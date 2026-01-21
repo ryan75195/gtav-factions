@@ -4,8 +4,10 @@ using FactionWars.Economy.Models;
 using FactionWars.Factions.Interfaces;
 using FactionWars.Factions.Models;
 using FactionWars.ScriptHookV.UI;
+using FactionWars.Tests.Mocks;
 using FactionWars.Territory.Interfaces;
 using FactionWars.Territory.Models;
+using FactionWars.UI.Interfaces;
 using FactionWars.UI.Models;
 using Moq;
 using System;
@@ -19,7 +21,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
     /// </summary>
     public class ResourcesMenuControllerTests
     {
-        private readonly NativeUIMenuProvider _menuProvider;
+        private readonly MockMenuProvider _menuProvider;
         private readonly Mock<IFactionService> _factionServiceMock;
         private readonly Mock<IZoneService> _zoneServiceMock;
         private readonly Mock<IPlayerContext> _playerContextMock;
@@ -33,7 +35,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
 
         public ResourcesMenuControllerTests()
         {
-            _menuProvider = new NativeUIMenuProvider();
+            _menuProvider = new MockMenuProvider();
             _factionServiceMock = new Mock<IFactionService>();
             _zoneServiceMock = new Mock<IZoneService>();
             _playerContextMock = new Mock<IPlayerContext>();

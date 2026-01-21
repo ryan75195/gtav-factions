@@ -1,4 +1,5 @@
 using FactionWars.ScriptHookV.UI;
+using FactionWars.Tests.Mocks;
 using FactionWars.UI.Interfaces;
 using FactionWars.UI.Models;
 using System;
@@ -12,12 +13,12 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
     public class MainMenuControllerTests
     {
         private const int F7KeyCode = 118;
-        private readonly NativeUIMenuProvider _menuProvider;
+        private readonly MockMenuProvider _menuProvider;
         private readonly MainMenuController _controller;
 
         public MainMenuControllerTests()
         {
-            _menuProvider = new NativeUIMenuProvider();
+            _menuProvider = new MockMenuProvider();
             _controller = new MainMenuController(_menuProvider);
         }
 

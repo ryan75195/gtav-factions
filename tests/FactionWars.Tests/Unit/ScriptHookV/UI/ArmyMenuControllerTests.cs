@@ -5,6 +5,8 @@ using FactionWars.Economy.Models;
 using FactionWars.Factions.Interfaces;
 using FactionWars.Factions.Models;
 using FactionWars.ScriptHookV.UI;
+using FactionWars.Tests.Mocks;
+using FactionWars.UI.Interfaces;
 using FactionWars.UI.Models;
 using Moq;
 using System;
@@ -18,7 +20,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
     /// </summary>
     public class ArmyMenuControllerTests
     {
-        private readonly NativeUIMenuProvider _menuProvider;
+        private readonly MockMenuProvider _menuProvider;
         private readonly Mock<IFactionService> _factionServiceMock;
         private readonly Mock<ITroopPurchaseService> _purchaseServiceMock;
         private readonly Mock<IFollowerService> _followerServiceMock;
@@ -32,7 +34,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
 
         public ArmyMenuControllerTests()
         {
-            _menuProvider = new NativeUIMenuProvider();
+            _menuProvider = new MockMenuProvider();
             _factionServiceMock = new Mock<IFactionService>();
             _purchaseServiceMock = new Mock<ITroopPurchaseService>();
             _followerServiceMock = new Mock<IFollowerService>();

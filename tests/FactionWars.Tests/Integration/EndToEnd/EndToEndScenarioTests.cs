@@ -25,6 +25,7 @@ using FactionWars.Territory.Interfaces;
 using FactionWars.Territory.Models;
 using FactionWars.Territory.Repositories;
 using FactionWars.Territory.Services;
+using FactionWars.Tests.Mocks;
 using FactionWars.UI.Interfaces;
 using FactionWars.UI.Models;
 using FactionWars.UI.Services;
@@ -2367,7 +2368,7 @@ namespace FactionWars.Tests.Integration.EndToEnd
             gameBridge.PlayerPosition = new Vector3(100, 100, 0);
             gameBridge.PlayerMoney = 50000; // Plenty of money for followers
 
-            var container = ServiceContainerFactory.Create(gameBridge);
+            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
             var controller = new GameLoopController(container);
 
             // Initialize by calling first tick
@@ -2442,7 +2443,7 @@ namespace FactionWars.Tests.Integration.EndToEnd
             gameBridge.PlayerCharacterModel = "player_zero"; // Michael
             gameBridge.PlayerPosition = new Vector3(100, 100, 0);
 
-            var container = ServiceContainerFactory.Create(gameBridge);
+            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
             var controller = new GameLoopController(container);
 
             var factionHistory = new List<(string? old, string? @new)>();
@@ -2484,7 +2485,7 @@ namespace FactionWars.Tests.Integration.EndToEnd
             gameBridge.PlayerPosition = new Vector3(100, 100, 0);
             gameBridge.PlayerMoney = 100000;
 
-            var container = ServiceContainerFactory.Create(gameBridge);
+            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
             var controller = new GameLoopController(container);
             controller.OnTick();
 
@@ -2544,7 +2545,7 @@ namespace FactionWars.Tests.Integration.EndToEnd
             gameBridge.PlayerPosition = new Vector3(100, 100, 0);
             gameBridge.PlayerMoney = 50000;
 
-            var container = ServiceContainerFactory.Create(gameBridge);
+            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
             var controller = new GameLoopController(container);
 
             var followerService = container.Resolve<IFollowerService>();
@@ -2592,7 +2593,7 @@ namespace FactionWars.Tests.Integration.EndToEnd
             gameBridge.PlayerPosition = new Vector3(100, 100, 0);
             gameBridge.PlayerMoney = 50000;
 
-            var container = ServiceContainerFactory.Create(gameBridge);
+            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
             var controller = new GameLoopController(container);
 
             // Initialize by calling first tick
@@ -2702,7 +2703,7 @@ namespace FactionWars.Tests.Integration.EndToEnd
             gameBridge.PlayerCharacterModel = "player_zero";
             gameBridge.PlayerPosition = new Vector3(100, 100, 0);
 
-            var container = ServiceContainerFactory.Create(gameBridge);
+            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
             var controller = new GameLoopController(container);
             controller.OnTick();
 
@@ -2755,7 +2756,7 @@ namespace FactionWars.Tests.Integration.EndToEnd
             gameBridge.PlayerCharacterModel = "player_zero"; // Michael is player
             gameBridge.PlayerPosition = new Vector3(100, 100, 0);
 
-            var container = ServiceContainerFactory.Create(gameBridge);
+            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
             var controller = new GameLoopController(container);
             controller.OnTick();
 
@@ -2808,7 +2809,7 @@ namespace FactionWars.Tests.Integration.EndToEnd
             gameBridge.PlayerCharacterModel = "player_zero";
             gameBridge.PlayerPosition = new Vector3(100, 100, 0);
 
-            var container = ServiceContainerFactory.Create(gameBridge);
+            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
             var controller = new GameLoopController(container);
             controller.OnTick();
 
@@ -2876,7 +2877,7 @@ namespace FactionWars.Tests.Integration.EndToEnd
             gameBridge.PlayerPosition = new Vector3(100, 100, 0);
             gameBridge.PlayerMoney = 10000;
 
-            var container = ServiceContainerFactory.Create(gameBridge);
+            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
             var controller = new GameLoopController(container);
             controller.OnTick();
 

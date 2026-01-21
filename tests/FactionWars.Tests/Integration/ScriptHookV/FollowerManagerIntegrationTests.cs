@@ -102,9 +102,9 @@ namespace FactionWars.Tests.Integration.ScriptHookV
             Assert.True(result.Success);
             var pedHandle = result.Follower!.PedHandle;
 
-            // Basic tier should have a pistol
+            // Basic tier should have a pistol (GTA V native weapon name)
             var weapon = _gameBridge.GetPedWeapon(pedHandle);
-            Assert.Equal("Pistol", weapon);
+            Assert.Equal("WEAPON_PISTOL", weapon);
         }
 
         [Fact]
@@ -117,9 +117,9 @@ namespace FactionWars.Tests.Integration.ScriptHookV
             Assert.True(result.Success);
             var pedHandle = result.Follower!.PedHandle;
 
-            // Medium tier should have an SMG
+            // Medium tier should have an SMG (GTA V native weapon name)
             var weapon = _gameBridge.GetPedWeapon(pedHandle);
-            Assert.Equal("SMG", weapon);
+            Assert.Equal("WEAPON_SMG", weapon);
         }
 
         [Fact]
@@ -132,9 +132,9 @@ namespace FactionWars.Tests.Integration.ScriptHookV
             Assert.True(result.Success);
             var pedHandle = result.Follower!.PedHandle;
 
-            // Heavy tier should have a Carbine
+            // Heavy tier should have a Carbine (GTA V native weapon name)
             var weapon = _gameBridge.GetPedWeapon(pedHandle);
-            Assert.Equal("Carbine", weapon);
+            Assert.Equal("WEAPON_CARBINERIFLE", weapon);
         }
 
         [Fact]
@@ -159,10 +159,10 @@ namespace FactionWars.Tests.Integration.ScriptHookV
             var mediumResult = _followerManager.RecruitFollower(MichaelFactionId, DefenderTier.Medium);
             var heavyResult = _followerManager.RecruitFollower(MichaelFactionId, DefenderTier.Heavy);
 
-            // Assert
-            Assert.Equal(0, _gameBridge.GetPedArmor(basicResult.Follower!.PedHandle));
-            Assert.Equal(50, _gameBridge.GetPedArmor(mediumResult.Follower!.PedHandle));
-            Assert.Equal(100, _gameBridge.GetPedArmor(heavyResult.Follower!.PedHandle));
+            // Assert - armor values match DefenderTierService config
+            Assert.Equal(50, _gameBridge.GetPedArmor(basicResult.Follower!.PedHandle));
+            Assert.Equal(100, _gameBridge.GetPedArmor(mediumResult.Follower!.PedHandle));
+            Assert.Equal(200, _gameBridge.GetPedArmor(heavyResult.Follower!.PedHandle));
         }
 
         [Fact]
@@ -173,10 +173,10 @@ namespace FactionWars.Tests.Integration.ScriptHookV
             var mediumResult = _followerManager.RecruitFollower(MichaelFactionId, DefenderTier.Medium);
             var heavyResult = _followerManager.RecruitFollower(MichaelFactionId, DefenderTier.Heavy);
 
-            // Assert
-            Assert.Equal(100, _gameBridge.GetPedHealth(basicResult.Follower!.PedHandle));
-            Assert.Equal(150, _gameBridge.GetPedHealth(mediumResult.Follower!.PedHandle));
-            Assert.Equal(200, _gameBridge.GetPedHealth(heavyResult.Follower!.PedHandle));
+            // Assert - health values match DefenderTierService config
+            Assert.Equal(200, _gameBridge.GetPedHealth(basicResult.Follower!.PedHandle));
+            Assert.Equal(350, _gameBridge.GetPedHealth(mediumResult.Follower!.PedHandle));
+            Assert.Equal(500, _gameBridge.GetPedHealth(heavyResult.Follower!.PedHandle));
         }
 
         [Fact]
@@ -367,9 +367,9 @@ namespace FactionWars.Tests.Integration.ScriptHookV
             // Verify recruitment deducted cost and follower is configured
             Assert.Equal(9000, _gameBridge.PlayerMoney); // Heavy costs 1000
             Assert.Contains(pedHandle, _gameBridge.FollowingPeds);
-            Assert.Equal("Carbine", _gameBridge.GetPedWeapon(pedHandle));
-            Assert.Equal(200, _gameBridge.GetPedHealth(pedHandle));
-            Assert.Equal(100, _gameBridge.GetPedArmor(pedHandle));
+            Assert.Equal("WEAPON_CARBINERIFLE", _gameBridge.GetPedWeapon(pedHandle));
+            Assert.Equal(500, _gameBridge.GetPedHealth(pedHandle));
+            Assert.Equal(200, _gameBridge.GetPedArmor(pedHandle));
 
             // Step 2: Player enters vehicle, follower follows
             var vehicleHandle = _gameBridge.SetPlayerInVehicle(4);

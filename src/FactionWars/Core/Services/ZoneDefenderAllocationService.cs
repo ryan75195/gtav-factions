@@ -15,6 +15,9 @@ namespace FactionWars.Core.Services
     {
         private readonly IZoneDefenderAllocationRepository _repository;
 
+        /// <inheritdoc />
+        public event EventHandler<TroopsAllocatedEventArgs>? TroopsAllocated;
+
         /// <summary>
         /// Creates a new zone defender allocation service.
         /// </summary>
@@ -58,6 +61,9 @@ namespace FactionWars.Core.Services
                 allocation.AddTroops(tier, count);
                 _repository.Update(allocation);
             }
+
+            // Raise event so listeners can spawn defenders immediately if player is in zone
+            TroopsAllocated?.Invoke(this, new TroopsAllocatedEventArgs(factionState.FactionId, zoneId, tier, count));
 
             return true;
         }

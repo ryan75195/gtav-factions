@@ -8,7 +8,9 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
 {
     /// <summary>
     /// Tests for NativeUIMenuProvider implementing IMenuProvider.
+    /// These tests require the NativeUI library which is only available in the GTA V runtime.
     /// </summary>
+    [Trait("Category", "RequiresNativeUI")]
     public class NativeUIMenuProviderTests
     {
         private readonly NativeUIMenuProvider _provider;

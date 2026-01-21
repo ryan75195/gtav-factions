@@ -350,11 +350,11 @@ namespace FactionWars.ScriptHookV.Managers
         /// <param name="tierConfig">The tier configuration to apply.</param>
         private void ConfigureFollowerCombat(int pedHandle, DefenderTierConfig tierConfig)
         {
-            // Give tier-appropriate weapon
-            _gameBridge.GivePedWeapon(pedHandle, tierConfig.Weapon);
-
-            // Give pistol as secondary weapon for drive-by shooting from vehicles
+            // Give pistol first as secondary weapon for drive-by shooting from vehicles
             _gameBridge.GivePedWeapon(pedHandle, "weapon_pistol");
+
+            // Give tier-appropriate weapon last so it becomes the equipped/primary weapon
+            _gameBridge.GivePedWeapon(pedHandle, tierConfig.Weapon);
 
             // Set shooting accuracy
             _gameBridge.SetPedAccuracy(pedHandle, tierConfig.Accuracy);
