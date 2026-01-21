@@ -25,6 +25,7 @@ namespace FactionWars.ScriptHookV.Managers
         private readonly IDefenderTierService _defenderTierService;
         private readonly IPedBlipService _pedBlipService;
         private readonly IZoneService _zoneService;
+        private readonly IActiveBattleManager? _activeBattleManager;
 
         private readonly Dictionary<DefenderTier, string> _modelsByTier;
         private readonly Dictionary<string, Dictionary<int, DefenderTier>> _spawnedPedTierByZone;
@@ -46,7 +47,8 @@ namespace FactionWars.ScriptHookV.Managers
             IPedSpawningService pedSpawningService,
             IDefenderTierService defenderTierService,
             IPedBlipService pedBlipService,
-            IZoneService zoneService)
+            IZoneService zoneService,
+            IActiveBattleManager? activeBattleManager = null)
         {
             _gameBridge = gameBridge ?? throw new ArgumentNullException(nameof(gameBridge));
             _allocationService = allocationService ?? throw new ArgumentNullException(nameof(allocationService));
@@ -54,6 +56,7 @@ namespace FactionWars.ScriptHookV.Managers
             _defenderTierService = defenderTierService ?? throw new ArgumentNullException(nameof(defenderTierService));
             _pedBlipService = pedBlipService ?? throw new ArgumentNullException(nameof(pedBlipService));
             _zoneService = zoneService ?? throw new ArgumentNullException(nameof(zoneService));
+            _activeBattleManager = activeBattleManager;
 
             // Enemy faction ped models (different from player's faction)
             _modelsByTier = new Dictionary<DefenderTier, string>
@@ -237,18 +240,23 @@ namespace FactionWars.ScriptHookV.Managers
             _pedBlipService.RemoveBlipForPed(pedHandle);
             _gameBridge.DeletePed(pedHandle);
 
-            // Get allocation before decrementing
+            // Get allocation and ALWAYS decrement when a defender dies
             var allocation = _allocationService.GetAllocation(enemyFactionId, zoneId);
-
-            // Try to spawn replacement first
-            bool replacementSpawned = TrySpawnReplacement(zoneId, tier, enemyFactionId, allocation);
-
-            // Only decrement allocation if no replacement spawned
-            if (!replacementSpawned && allocation != null)
+            if (allocation != null)
             {
                 allocation.RemoveTroops(tier, 1);
-                FileLogger.Combat($"EnemyDefenderManager: Decremented {tier} allocation in {zoneId}");
+                FileLogger.Combat($"EnemyDefenderManager: Decremented {tier} allocation in {zoneId}, remaining: {allocation.TotalTroops}");
             }
+
+            // Report kill to active battle manager if battle is ongoing and player is present
+            var battle = _activeBattleManager?.GetBattleForZone(zoneId);
+            if (battle != null && battle.IsPlayerPresent)
+            {
+                _activeBattleManager?.ReportTroopKilled(zoneId, enemyFactionId, tier);
+            }
+
+            // Try to spawn replacement from remaining reserves
+            TrySpawnReplacement(zoneId, tier, enemyFactionId, allocation);
         }
 
         /// <summary>
@@ -351,8 +359,8 @@ namespace FactionWars.ScriptHookV.Managers
             // Set as hostile wanderer - will engage player and followers on sight
             _gameBridge.SetPedAsHostileWanderer(pedHandle);
 
-            // Give wander task using zone's radius
-            _gameBridge.TaskPedWanderInArea(pedHandle, zoneCenter, wanderRadius);
+            // CRITICAL: Task to attack player immediately so they engage right away
+            _gameBridge.SetPedToAttackPlayer(pedHandle);
         }
 
         /// <summary>
