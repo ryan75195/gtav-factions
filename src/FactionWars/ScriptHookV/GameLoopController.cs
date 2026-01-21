@@ -46,6 +46,7 @@ namespace FactionWars.ScriptHookV
         private AIDecisionExecutor? _aiDecisionExecutor;
         private VictoryManager? _victoryManager;
         private FriendlyDefenderManager? _friendlyDefenderManager;
+        private IAIController? _aiController;
         private IAutoSaveService? _autoSaveService;
         private MainMenuController? _mainMenuController;
         private ArmyMenuController? _armyMenuController;
@@ -72,6 +73,10 @@ namespace FactionWars.ScriptHookV
         private float _threatDecayTimer = 0f;
         private const float ThreatDecayInterval = 60f;  // Decay every 60 seconds
         private const float ThreatDecayRate = 0.1f;     // 10% decay per interval
+
+        // AI recruitment tracking
+        private float _aiRecruitmentTimer = 0f;
+        private const float AIRecruitmentInterval = 60f;  // Recruit every 60 seconds (sync with resource ticks)
 
         // Neutral zone claim state
         private Zone? _currentNeutralZone;
@@ -311,17 +316,8 @@ namespace FactionWars.ScriptHookV
                 }
             }
 
-            // Update AI manager (makes decisions for non-player factions)
-            _aiManager?.Update(deltaTime);
-
-            // Decay AI threat levels over time
-            _threatDecayTimer += deltaTime;
-            if (_threatDecayTimer >= ThreatDecayInterval)
-            {
-                _threatDecayTimer = 0f;
-                var aggressionService = _container.Resolve<IAggressionResponseService>();
-                aggressionService.DecayThreatLevels(ThreatDecayRate);
-            }
+            // Update AI controller (handles decisions, recruitment, battles)
+            _aiController?.Update(deltaTime);
 
             // Update victory manager (checks for 100% control)
             _victoryManager?.Update(deltaTime);
@@ -460,12 +456,13 @@ namespace FactionWars.ScriptHookV
                 _combatHudRenderer.Draw();
             }
 
-            // Render event feed
-            if (_eventFeedRenderer != null && _eventFeedService != null)
-            {
-                _eventFeedRenderer.Render(_eventFeedService.Entries);
-                _eventFeedRenderer.Draw();
-            }
+            // Event feed disabled - was showing debug-like messages at bottom left
+            // To re-enable, uncomment:
+            // if (_eventFeedRenderer != null && _eventFeedService != null)
+            // {
+            //     _eventFeedRenderer.Render(_eventFeedService.Entries);
+            //     _eventFeedRenderer.Draw();
+            // }
         }
 
         /// <summary>
@@ -578,6 +575,11 @@ namespace FactionWars.ScriptHookV
 
             // Initialize AI decision executor
             _aiDecisionExecutor = _container.Resolve<AIDecisionExecutor>();
+
+            // Initialize consolidated AI controller
+            _aiController = _container.Resolve<IAIController>();
+            _aiController.SetPlayerFactionId(CurrentPlayerFactionId);
+            _aiController.Start();
 
             // Initialize victory manager for victory condition checking
             var victoryConditionService = _container.Resolve<IVictoryConditionService>();
@@ -779,6 +781,10 @@ namespace FactionWars.ScriptHookV
             }
             _aiManager = null;
 
+            // Stop consolidated AI controller
+            _aiController?.Stop();
+            _aiController = null;
+
             // Stop victory manager
             _victoryManager?.Stop();
             _victoryManager = null;
@@ -820,6 +826,7 @@ namespace FactionWars.ScriptHookV
             // Update managers with new faction
             _economyManager?.SetPlayerFactionId(newFactionId);
             _aiManager?.SetPlayerFactionId(newFactionId);
+            _aiController?.SetPlayerFactionId(newFactionId);
 
             // Show notification to player
             var newCharacterName = GetCharacterDisplayName(newFactionId);
@@ -860,6 +867,7 @@ namespace FactionWars.ScriptHookV
 
             // Tell battle simulator to skip battles in player's current zone
             _backgroundBattleSimulator?.SetPlayerZone(zone.Id);
+            _aiController?.SetPlayerZone(zone.Id);
 
             FileLogger.Zone($"Zone: {zone.Name} (ID: {zone.Id})");
             FileLogger.Zone($"Zone Owner: {zone.OwnerFactionId ?? "NULL/NONE"}");
@@ -950,6 +958,7 @@ namespace FactionWars.ScriptHookV
         {
             // Clear player zone tracking
             _backgroundBattleSimulator?.SetPlayerZone(null);
+            _aiController?.SetPlayerZone(null);
 
             if (_combatManager == null || zone == null)
                 return;
