@@ -193,6 +193,24 @@ namespace FactionWars.Combat.Models
             }
         }
 
+        /// <summary>
+        /// Adds troops of the specified tier to the attacker.
+        /// Used to restore despawned attackers when player re-enters a battle zone.
+        /// </summary>
+        public void AddAttackerTroops(DefenderTier tier, int count)
+        {
+            if (count <= 0) return;
+
+            if (AttackerTroops.ContainsKey(tier))
+            {
+                AttackerTroops[tier] += count;
+            }
+            else
+            {
+                AttackerTroops[tier] = count;
+            }
+        }
+
         private static int GetTotalTroops(Dictionary<DefenderTier, int> troops)
         {
             int total = 0;

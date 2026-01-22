@@ -51,9 +51,11 @@ namespace FactionWars.ScriptHookV.Managers
         private readonly IGameBridge _gameBridge;
         private readonly IZoneDefenderAllocationService _allocationService;
         private readonly IPedSpawningService _pedSpawningService;
+        private readonly IPedDespawnService _pedDespawnService;
         private readonly IDefenderTierService _defenderTierService;
         private readonly IPedBlipService _pedBlipService;
         private readonly IZoneService _zoneService;
+        private readonly IActiveBattleManager? _activeBattleManager;
         private string _playerFactionId;
 
         private readonly Dictionary<DefenderTier, string> _modelsByTier;
@@ -88,23 +90,28 @@ namespace FactionWars.ScriptHookV.Managers
         /// <param name="pedBlipService">Service for managing ped blips.</param>
         /// <param name="zoneService">Service for zone operations.</param>
         /// <param name="playerFactionId">The player's current faction ID.</param>
-        /// <exception cref="ArgumentNullException">Thrown if any parameter is null.</exception>
+        /// <param name="activeBattleManager">Optional active battle manager to sync kills during battles.</param>
+        /// <exception cref="ArgumentNullException">Thrown if any required parameter is null.</exception>
         public FriendlyDefenderManager(
             IGameBridge gameBridge,
             IZoneDefenderAllocationService allocationService,
             IPedSpawningService pedSpawningService,
+            IPedDespawnService pedDespawnService,
             IDefenderTierService defenderTierService,
             IPedBlipService pedBlipService,
             IZoneService zoneService,
-            string playerFactionId)
+            string playerFactionId,
+            IActiveBattleManager? activeBattleManager = null)
         {
             _gameBridge = gameBridge ?? throw new ArgumentNullException(nameof(gameBridge));
             _allocationService = allocationService ?? throw new ArgumentNullException(nameof(allocationService));
             _pedSpawningService = pedSpawningService ?? throw new ArgumentNullException(nameof(pedSpawningService));
+            _pedDespawnService = pedDespawnService ?? throw new ArgumentNullException(nameof(pedDespawnService));
             _defenderTierService = defenderTierService ?? throw new ArgumentNullException(nameof(defenderTierService));
             _pedBlipService = pedBlipService ?? throw new ArgumentNullException(nameof(pedBlipService));
             _zoneService = zoneService ?? throw new ArgumentNullException(nameof(zoneService));
             _playerFactionId = playerFactionId ?? throw new ArgumentNullException(nameof(playerFactionId));
+            _activeBattleManager = activeBattleManager;
 
             _modelsByTier = new Dictionary<DefenderTier, string>
             {
@@ -201,7 +208,7 @@ namespace FactionWars.ScriptHookV.Managers
             foreach (var pedHandle in pedTiers.Keys)
             {
                 _pedBlipService.RemoveBlipForPed(pedHandle);
-                _gameBridge.DeletePed(pedHandle);
+                _pedDespawnService.DespawnPed(pedHandle);
             }
             _spawnedPedTierByZone.Remove(zone.Id);
         }
@@ -216,7 +223,7 @@ namespace FactionWars.ScriptHookV.Managers
                 foreach (var pedHandle in zonePedTiers.Keys)
                 {
                     _pedBlipService.RemoveBlipForPed(pedHandle);
-                    _gameBridge.DeletePed(pedHandle);
+                    _pedDespawnService.DespawnPed(pedHandle);
                 }
             }
             _spawnedPedTierByZone.Clear();
@@ -296,6 +303,14 @@ namespace FactionWars.ScriptHookV.Managers
 
             // Delete the ped entity
             _gameBridge.DeletePed(pedHandle);
+
+            // Report kill to active battle manager if battle is ongoing and player is present
+            // This syncs the battle state with the actual ped deaths
+            var battle = _activeBattleManager?.GetBattleForZone(zoneId);
+            if (battle != null && battle.IsPlayerPresent)
+            {
+                _activeBattleManager?.ReportTroopKilled(zoneId, _playerFactionId, tier);
+            }
 
             // Get allocation BEFORE decrementing to check for reserves
             var allocation = _allocationService.GetAllocation(_playerFactionId, zoneId);
@@ -468,8 +483,8 @@ namespace FactionWars.ScriptHookV.Managers
 
         /// <summary>
         /// Calculates the spawn position for a defender based on the zone center and
-        /// the defender's index in the spawn sequence. Uses GetGroundZ to ensure
-        /// spawning at ground level rather than on rooftops.
+        /// the defender's index in the spawn sequence. Uses navmesh-based safe coordinates
+        /// to ensure spawning at ground level rather than on rooftops.
         /// </summary>
         private Vector3 CalculateSpawnPosition(Vector3 center, int index, int totalCount)
         {
@@ -477,8 +492,10 @@ namespace FactionWars.ScriptHookV.Managers
             var distance = 30f + (index % 3) * 10f;
             var x = center.X + (float)(Math.Cos(angle) * distance);
             var y = center.Y + (float)(Math.Sin(angle) * distance);
-            var z = _gameBridge.GetGroundZ(x, y, center.Z);
-            return new Vector3(x, y, z);
+
+            // Use navmesh-based safe coordinate to avoid rooftop spawns
+            var targetPos = new Vector3(x, y, center.Z);
+            return _gameBridge.GetSafeCoordForPed(targetPos);
         }
 
         /// <summary>

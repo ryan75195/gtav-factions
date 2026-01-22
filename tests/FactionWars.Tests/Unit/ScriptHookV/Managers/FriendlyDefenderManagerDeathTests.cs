@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using FactionWars.Combat.Interfaces;
 using FactionWars.Combat.Models;
 using FactionWars.Core.Interfaces;
@@ -21,6 +22,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         private MockGameBridge _gameBridge = null!;
         private Mock<IZoneDefenderAllocationService> _allocationServiceMock = null!;
         private Mock<IPedSpawningService> _pedSpawningServiceMock = null!;
+        private Mock<IPedDespawnService> _pedDespawnServiceMock = null!;
         private Mock<IDefenderTierService> _defenderTierServiceMock = null!;
         private Mock<IPedBlipService> _pedBlipServiceMock = null!;
         private Mock<IZoneService> _zoneServiceMock = null!;
@@ -34,6 +36,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             _gameBridge = new MockGameBridge();
             _allocationServiceMock = new Mock<IZoneDefenderAllocationService>();
             _pedSpawningServiceMock = new Mock<IPedSpawningService>();
+            _pedDespawnServiceMock = new Mock<IPedDespawnService>();
             _defenderTierServiceMock = new Mock<IDefenderTierService>();
             _pedBlipServiceMock = new Mock<IPedBlipService>();
             _zoneServiceMock = new Mock<IZoneService>();
@@ -53,6 +56,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
                 _gameBridge,
                 _allocationServiceMock.Object,
                 _pedSpawningServiceMock.Object,
+                _pedDespawnServiceMock.Object,
                 _defenderTierServiceMock.Object,
                 _pedBlipServiceMock.Object,
                 _zoneServiceMock.Object,
@@ -359,6 +363,97 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             Assert.Equal(2, _manager.GetSpawnedCountByTier(TestZoneId, DefenderTier.Basic));
             Assert.Equal(1, _manager.GetSpawnedCountByTier(TestZoneId, DefenderTier.Medium));
             Assert.Equal(1, _manager.GetSpawnedCountByTier(TestZoneId, DefenderTier.Heavy));
+        }
+
+        [Fact]
+        public void Update_WhenDefenderDiesDuringActiveBattle_ShouldReportTroopKilled()
+        {
+            // Arrange
+            var gameBridge = new MockGameBridge();
+            var allocationServiceMock = new Mock<IZoneDefenderAllocationService>();
+            var pedSpawningServiceMock = new Mock<IPedSpawningService>();
+            var pedDespawnServiceMock = new Mock<IPedDespawnService>();
+            var defenderTierServiceMock = new Mock<IDefenderTierService>();
+            var pedBlipServiceMock = new Mock<IPedBlipService>();
+            var zoneServiceMock = new Mock<IZoneService>();
+            var activeBattleManagerMock = new Mock<IActiveBattleManager>();
+
+            pedSpawningServiceMock.Setup(p => p.CanSpawn()).Returns(true);
+            pedSpawningServiceMock.Setup(p => p.SpawnPed(It.IsAny<string>(), It.IsAny<Vector3>(), It.IsAny<string>(), It.IsAny<string>()))
+                .Returns(() => new PedHandle(gameBridge.CreatePed("test", new Vector3(0, 0, 0))));
+
+            defenderTierServiceMock.Setup(d => d.GetTierConfig(It.IsAny<DefenderTier>()))
+                .Returns(new DefenderTierConfig(DefenderTier.Basic, 200, 100, 0, "weapon_pistol", 0.5f, 1.0f));
+
+            pedBlipServiceMock.Setup(p => p.CreateBlipForPed(It.IsAny<int>(), It.IsAny<BlipColor>()))
+                .Returns(1);
+
+            var zone = new Zone(TestZoneId, "Test Zone", new Vector3(100, 100, 0), 150f, 1);
+            zone.OwnerFactionId = PlayerFactionId;
+
+            var allocation = new ZoneDefenderAllocation(PlayerFactionId, TestZoneId);
+            allocation.AddTroops(DefenderTier.Basic, 1);
+
+            allocationServiceMock.Setup(a => a.GetAllocation(PlayerFactionId, TestZoneId))
+                .Returns(allocation);
+
+            // Setup an active battle where player is defending
+            var battleMock = new Mock<ActiveBattle>();
+            activeBattleManagerMock.Setup(b => b.GetBattleForZone(TestZoneId))
+                .Returns(CreateActiveBattle(PlayerFactionId));
+
+            var manager = new FriendlyDefenderManager(
+                gameBridge,
+                allocationServiceMock.Object,
+                pedSpawningServiceMock.Object,
+                pedDespawnServiceMock.Object,
+                defenderTierServiceMock.Object,
+                pedBlipServiceMock.Object,
+                zoneServiceMock.Object,
+                PlayerFactionId,
+                activeBattleManagerMock.Object);
+
+            manager.OnZoneEntered(zone);
+
+            // Get the spawned ped and kill it
+            var spawnedPedHandle = gameBridge.GetSpawnedPeds()[0];
+            gameBridge.SetPedDead(spawnedPedHandle);
+
+            // Act
+            manager.Update();
+
+            // Assert - ReportTroopKilled should be called
+            activeBattleManagerMock.Verify(
+                b => b.ReportTroopKilled(TestZoneId, PlayerFactionId, DefenderTier.Basic),
+                Times.Once);
+        }
+
+        private ActiveBattle CreateActiveBattle(string defenderFactionId)
+        {
+            var attackerTroops = new Dictionary<DefenderTier, int>
+            {
+                { DefenderTier.Basic, 5 },
+                { DefenderTier.Medium, 0 },
+                { DefenderTier.Heavy, 0 }
+            };
+            var defenderTroops = new Dictionary<DefenderTier, int>
+            {
+                { DefenderTier.Basic, 3 },
+                { DefenderTier.Medium, 0 },
+                { DefenderTier.Heavy, 0 }
+            };
+
+            var battle = new ActiveBattle(
+                "enemy_faction",
+                defenderFactionId,
+                TestZoneId,
+                attackerTroops,
+                defenderTroops,
+                duration: 120f,
+                killInterval: 10f);
+
+            battle.IsPlayerPresent = true;
+            return battle;
         }
     }
 }

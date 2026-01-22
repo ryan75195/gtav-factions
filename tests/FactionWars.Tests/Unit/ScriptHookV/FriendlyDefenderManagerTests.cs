@@ -21,6 +21,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
         private MockGameBridge _gameBridge = null!;
         private Mock<IZoneDefenderAllocationService> _allocationServiceMock = null!;
         private Mock<IPedSpawningService> _pedSpawningServiceMock = null!;
+        private Mock<IPedDespawnService> _pedDespawnServiceMock = null!;
         private Mock<IDefenderTierService> _defenderTierServiceMock = null!;
         private Mock<IPedBlipService> _pedBlipServiceMock = null!;
         private Mock<IZoneService> _zoneServiceMock = null!;
@@ -35,6 +36,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             _gameBridge = new MockGameBridge();
             _allocationServiceMock = new Mock<IZoneDefenderAllocationService>();
             _pedSpawningServiceMock = new Mock<IPedSpawningService>();
+            _pedDespawnServiceMock = new Mock<IPedDespawnService>();
             _defenderTierServiceMock = new Mock<IDefenderTierService>();
             _pedBlipServiceMock = new Mock<IPedBlipService>();
             _zoneServiceMock = new Mock<IZoneService>();
@@ -54,6 +56,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
                 _gameBridge,
                 _allocationServiceMock.Object,
                 _pedSpawningServiceMock.Object,
+                _pedDespawnServiceMock.Object,
                 _defenderTierServiceMock.Object,
                 _pedBlipServiceMock.Object,
                 _zoneServiceMock.Object,
@@ -224,6 +227,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
                 null!,
                 _allocationServiceMock.Object,
                 _pedSpawningServiceMock.Object,
+                _pedDespawnServiceMock.Object,
                 _defenderTierServiceMock.Object,
                 _pedBlipServiceMock.Object,
                 _zoneServiceMock.Object,
@@ -241,6 +245,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
                 _gameBridge,
                 _allocationServiceMock.Object,
                 _pedSpawningServiceMock.Object,
+                _pedDespawnServiceMock.Object,
                 _defenderTierServiceMock.Object,
                 _pedBlipServiceMock.Object,
                 _zoneServiceMock.Object,

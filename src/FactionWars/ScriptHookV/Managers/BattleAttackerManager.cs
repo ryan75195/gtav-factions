@@ -21,6 +21,7 @@ namespace FactionWars.ScriptHookV.Managers
         private readonly IGameBridge _gameBridge;
         private readonly IActiveBattleManager _activeBattleManager;
         private readonly IPedSpawningService _pedSpawningService;
+        private readonly IPedDespawnService _pedDespawnService;
         private readonly IDefenderTierService _defenderTierService;
         private readonly IPedBlipService _pedBlipService;
         private readonly IZoneService _zoneService;
@@ -28,6 +29,7 @@ namespace FactionWars.ScriptHookV.Managers
 
         private readonly Dictionary<DefenderTier, string> _modelsByTier;
         private readonly Dictionary<string, Dictionary<int, DefenderTier>> _spawnedPedTierByZone;
+        private readonly Dictionary<string, Dictionary<DefenderTier, int>> _despawnedAttackersByZone;
         private string? _currentBattleZoneId;
 
         private const float MinSpawnRadiusFraction = 0.3f;  // Min 30% of zone radius
@@ -44,6 +46,7 @@ namespace FactionWars.ScriptHookV.Managers
             IGameBridge gameBridge,
             IActiveBattleManager activeBattleManager,
             IPedSpawningService pedSpawningService,
+            IPedDespawnService pedDespawnService,
             IDefenderTierService defenderTierService,
             IPedBlipService pedBlipService,
             IZoneService zoneService,
@@ -52,6 +55,7 @@ namespace FactionWars.ScriptHookV.Managers
             _gameBridge = gameBridge ?? throw new ArgumentNullException(nameof(gameBridge));
             _activeBattleManager = activeBattleManager ?? throw new ArgumentNullException(nameof(activeBattleManager));
             _pedSpawningService = pedSpawningService ?? throw new ArgumentNullException(nameof(pedSpawningService));
+            _pedDespawnService = pedDespawnService ?? throw new ArgumentNullException(nameof(pedDespawnService));
             _defenderTierService = defenderTierService ?? throw new ArgumentNullException(nameof(defenderTierService));
             _pedBlipService = pedBlipService ?? throw new ArgumentNullException(nameof(pedBlipService));
             _zoneService = zoneService ?? throw new ArgumentNullException(nameof(zoneService));
@@ -66,6 +70,7 @@ namespace FactionWars.ScriptHookV.Managers
             };
 
             _spawnedPedTierByZone = new Dictionary<string, Dictionary<int, DefenderTier>>();
+            _despawnedAttackersByZone = new Dictionary<string, Dictionary<DefenderTier, int>>();
         }
 
         /// <summary>
@@ -77,16 +82,32 @@ namespace FactionWars.ScriptHookV.Managers
         {
             if (zone == null) return;
 
+            FileLogger.Combat($"BattleAttackerManager: OnPlayerZoneEntered called for zone {zone.Id}, playerFactionId={_playerFactionId}");
+
             // Get battle for this zone
             var battle = _activeBattleManager.GetBattleForZone(zone.Id);
-            if (battle == null) return;
+            if (battle == null)
+            {
+                FileLogger.Combat($"BattleAttackerManager: No active battle found for zone {zone.Id}");
+                return;
+            }
+
+            FileLogger.Combat($"BattleAttackerManager: Found battle - Attacker={battle.AttackerFactionId}, Defender={battle.DefenderFactionId}, AttackerTroops={battle.TotalAttackerTroops}, DefenderTroops={battle.TotalDefenderTroops}");
 
             // Only spawn attackers if player is the defender (their zone is being attacked)
-            if (battle.DefenderFactionId != _playerFactionId) return;
+            if (battle.DefenderFactionId != _playerFactionId)
+            {
+                FileLogger.Combat($"BattleAttackerManager: Player ({_playerFactionId}) is not the defender ({battle.DefenderFactionId}), skipping");
+                return;
+            }
 
             FileLogger.Combat($"BattleAttackerManager: Player entered defended zone {zone.Id} under attack by {battle.AttackerFactionId}");
 
             _currentBattleZoneId = zone.Id;
+
+            // Restore any previously despawned attackers to the battle
+            // This handles the case where player exits, background sim depletes troops, then player re-enters
+            RestoreDespawnedAttackersToBattle(zone.Id, battle);
 
             // Initialize tracking for this zone
             if (!_spawnedPedTierByZone.ContainsKey(zone.Id))
@@ -97,6 +118,12 @@ namespace FactionWars.ScriptHookV.Managers
             var totalSpawned = 0;
             var random = new Random();
 
+            // Log per-tier values for debugging
+            battle.AttackerTroops.TryGetValue(DefenderTier.Heavy, out var heavyCount);
+            battle.AttackerTroops.TryGetValue(DefenderTier.Medium, out var mediumCount);
+            battle.AttackerTroops.TryGetValue(DefenderTier.Basic, out var basicCount);
+            FileLogger.Combat($"BattleAttackerManager: Per-tier attacker counts (after restore) - Heavy={heavyCount}, Medium={mediumCount}, Basic={basicCount}");
+
             // Spawn attackers based on battle.AttackerTroops
             foreach (DefenderTier tier in new[] { DefenderTier.Heavy, DefenderTier.Medium, DefenderTier.Basic })
             {
@@ -105,13 +132,22 @@ namespace FactionWars.ScriptHookV.Managers
                 var model = _modelsByTier.TryGetValue(tier, out var m) ? m : "g_m_y_famca_01";
                 var tierConfig = _defenderTierService.GetTierConfig(tier);
 
+                FileLogger.Combat($"BattleAttackerManager: Attempting to spawn {count} {tier} attackers (totalSpawned={totalSpawned}, max={MaxSpawnedAttackers})");
                 for (int i = 0; i < count && totalSpawned < MaxSpawnedAttackers; i++)
                 {
-                    if (!_pedSpawningService.CanSpawn()) break;
+                    if (!_pedSpawningService.CanSpawn())
+                    {
+                        FileLogger.Combat($"BattleAttackerManager: CanSpawn() returned false, breaking");
+                        break;
+                    }
 
                     var spawnPos = CalculateRandomSpawnPosition(zone.Center, zone.Radius, random);
                     var pedHandle = _pedSpawningService.SpawnPed(model, spawnPos, battle.AttackerFactionId, zone.Id);
-                    if (!pedHandle.IsValid) continue;
+                    if (!pedHandle.IsValid)
+                    {
+                        FileLogger.Combat($"BattleAttackerManager: SpawnPed returned invalid handle");
+                        continue;
+                    }
 
                     // Configure as hostile attacker
                     ConfigureAttacker(pedHandle.Handle, tierConfig, zone.Center, zone.Radius);
@@ -128,6 +164,7 @@ namespace FactionWars.ScriptHookV.Managers
 
         /// <summary>
         /// Called when the player exits a zone. Despawns all attackers in that zone.
+        /// Tracks despawned attackers so they can be restored if player re-enters.
         /// </summary>
         /// <param name="zone">The zone that was exited.</param>
         public void OnPlayerZoneExited(Zone zone)
@@ -141,10 +178,14 @@ namespace FactionWars.ScriptHookV.Managers
 
             if (!_spawnedPedTierByZone.TryGetValue(zone.Id, out var pedTiers)) return;
 
+            // Track despawned attackers by tier so we can restore them if player re-enters
+            // These attackers were despawned (not killed) so they should still exist for the battle
+            TrackDespawnedAttackers(zone.Id, pedTiers);
+
             foreach (var pedHandle in pedTiers.Keys)
             {
                 _pedBlipService.RemoveBlipForPed(pedHandle);
-                _gameBridge.DeletePed(pedHandle);
+                _pedDespawnService.DespawnPed(pedHandle);
             }
             _spawnedPedTierByZone.Remove(zone.Id);
         }
@@ -159,7 +200,7 @@ namespace FactionWars.ScriptHookV.Managers
                 foreach (var pedHandle in zonePedTiers.Keys)
                 {
                     _pedBlipService.RemoveBlipForPed(pedHandle);
-                    _gameBridge.DeletePed(pedHandle);
+                    _pedDespawnService.DespawnPed(pedHandle);
                 }
             }
             _spawnedPedTierByZone.Clear();
@@ -245,7 +286,7 @@ namespace FactionWars.ScriptHookV.Managers
 
             // Remove blip and delete ped
             _pedBlipService.RemoveBlipForPed(pedHandle);
-            _gameBridge.DeletePed(pedHandle);
+            _pedDespawnService.DespawnPed(pedHandle);
 
             // Report kill to active battle manager
             var battle = _activeBattleManager.GetBattleForZone(zoneId);
@@ -333,7 +374,8 @@ namespace FactionWars.ScriptHookV.Managers
 
         /// <summary>
         /// Calculates a random spawn position around the zone center at ground level.
-        /// Uses the zone's full radius for spawn area.
+        /// Uses the zone's full radius for spawn area and navmesh-based safe coordinates
+        /// to avoid spawning on rooftops.
         /// </summary>
         private Vector3 CalculateRandomSpawnPosition(Vector3 center, float zoneRadius, Random random)
         {
@@ -342,8 +384,10 @@ namespace FactionWars.ScriptHookV.Managers
             var distance = minRadius + (float)(random.NextDouble() * (zoneRadius - minRadius));
             var x = center.X + (float)(Math.Cos(angle) * distance);
             var y = center.Y + (float)(Math.Sin(angle) * distance);
-            var z = _gameBridge.GetGroundZ(x, y, center.Z);
-            return new Vector3(x, y, z);
+
+            // Use navmesh-based safe coordinate to avoid rooftop spawns
+            var targetPos = new Vector3(x, y, center.Z);
+            return _gameBridge.GetSafeCoordForPed(targetPos);
         }
 
         /// <summary>
@@ -364,6 +408,59 @@ namespace FactionWars.ScriptHookV.Managers
 
             // CRITICAL: Task to attack player immediately so they engage right away
             _gameBridge.SetPedToAttackPlayer(pedHandle);
+        }
+
+        /// <summary>
+        /// Tracks despawned attackers by tier so they can be restored if player re-enters.
+        /// </summary>
+        private void TrackDespawnedAttackers(string zoneId, Dictionary<int, DefenderTier> pedTiers)
+        {
+            if (!_despawnedAttackersByZone.ContainsKey(zoneId))
+            {
+                _despawnedAttackersByZone[zoneId] = new Dictionary<DefenderTier, int>
+                {
+                    { DefenderTier.Basic, 0 },
+                    { DefenderTier.Medium, 0 },
+                    { DefenderTier.Heavy, 0 }
+                };
+            }
+
+            // Count attackers by tier that are being despawned
+            foreach (var tier in pedTiers.Values)
+            {
+                _despawnedAttackersByZone[zoneId][tier]++;
+            }
+
+            var basic = _despawnedAttackersByZone[zoneId][DefenderTier.Basic];
+            var medium = _despawnedAttackersByZone[zoneId][DefenderTier.Medium];
+            var heavy = _despawnedAttackersByZone[zoneId][DefenderTier.Heavy];
+            FileLogger.Combat($"BattleAttackerManager: Tracked despawned attackers in {zoneId} - Basic={basic}, Medium={medium}, Heavy={heavy}");
+        }
+
+        /// <summary>
+        /// Restores previously despawned attackers to the battle's attacker troop counts.
+        /// This fixes the bug where background simulation depletes troops while player is away,
+        /// causing no attackers to spawn when player re-enters.
+        /// </summary>
+        private void RestoreDespawnedAttackersToBattle(string zoneId, ActiveBattle battle)
+        {
+            if (!_despawnedAttackersByZone.TryGetValue(zoneId, out var despawnedCounts))
+            {
+                return;
+            }
+
+            foreach (var tier in new[] { DefenderTier.Basic, DefenderTier.Medium, DefenderTier.Heavy })
+            {
+                var count = despawnedCounts[tier];
+                if (count > 0)
+                {
+                    battle.AddAttackerTroops(tier, count);
+                    FileLogger.Combat($"BattleAttackerManager: Restored {count} {tier} attackers to battle in {zoneId}");
+                }
+            }
+
+            // Clear the despawned tracking for this zone since we've restored them
+            _despawnedAttackersByZone.Remove(zoneId);
         }
     }
 }

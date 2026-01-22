@@ -534,6 +534,7 @@ namespace FactionWars.ScriptHookV
             // Initialize follower manager for bodyguard management
             var followerService = _container.Resolve<IFollowerService>();
             var pedSpawningService = _container.Resolve<IPedSpawningService>();
+            var pedDespawnService = _container.Resolve<IPedDespawnService>();
             var defenderTierService = _container.Resolve<IDefenderTierService>();
             var pedBlipService = _container.Resolve<IPedBlipService>();
             _followerManager = new FollowerManager(_gameBridge, followerService, pedSpawningService, defenderTierService, pedBlipService);
@@ -542,6 +543,9 @@ namespace FactionWars.ScriptHookV
             _zoneService = _container.Resolve<IZoneService>();
             _territoryManager = new TerritoryManager(_gameBridge, _zoneService);
 
+            // Initialize active battle manager early so it can be passed to defender managers
+            _activeBattleManager = _container.Resolve<IActiveBattleManager>();
+
             // Initialize friendly defender manager for spawning defenders in player-owned zones
             var allocationService = _container.Resolve<IZoneDefenderAllocationService>();
             _allocationService = allocationService;
@@ -549,10 +553,12 @@ namespace FactionWars.ScriptHookV
                 _gameBridge,
                 allocationService,
                 pedSpawningService,
+                pedDespawnService,
                 defenderTierService,
                 pedBlipService,
                 _zoneService,
-                CurrentPlayerFactionId ?? "");
+                CurrentPlayerFactionId ?? "",
+                _activeBattleManager);
 
             // Subscribe to zone events for friendly defender spawning
             _territoryManager.ZoneEntered += (sender, zone) => _friendlyDefenderManager.OnZoneEntered(zone);
@@ -583,10 +589,10 @@ namespace FactionWars.ScriptHookV
                 }
             };
 
-            // Initialize active battle manager for timed AI battles (must be before EnemyDefenderManager)
-            _activeBattleManager = _container.Resolve<IActiveBattleManager>();
+            // Subscribe to active battle manager events
             _activeBattleManager.OnKill += OnBattleKill;
             _activeBattleManager.OnBattleEnded += OnBattleEnded;
+            _activeBattleManager.OnBattleStarted += OnBattleStarted;
 
             // Initialize battle HUD renderer
             _battleHudRenderer = new BattleHudRenderer();
@@ -601,19 +607,21 @@ namespace FactionWars.ScriptHookV
                 _zoneService,
                 _activeBattleManager);
 
+            // Initialize combat manager dependencies (needed by multiple managers)
+            var pedPool = _container.Resolve<IPedPool>();
+
             // Initialize battle attacker manager for spawning attackers when player defends their zone
             _battleAttackerManager = new BattleAttackerManager(
                 _gameBridge,
                 _activeBattleManager,
                 pedSpawningService,
+                pedDespawnService,
                 defenderTierService,
                 pedBlipService,
                 _zoneService,
                 CurrentPlayerFactionId ?? "");
 
             // Initialize combat manager for combat encounters
-            var pedPool = _container.Resolve<IPedPool>();
-            var pedDespawnService = _container.Resolve<IPedDespawnService>();
             var spawnPositionCalculator = _container.Resolve<ISpawnPositionCalculator>();
             var controlCalculator = _container.Resolve<IControlPercentageCalculator>();
             var takeoverDetector = _container.Resolve<ITakeoverDetector>();
@@ -880,6 +888,7 @@ namespace FactionWars.ScriptHookV
             {
                 _activeBattleManager.OnKill -= OnBattleKill;
                 _activeBattleManager.OnBattleEnded -= OnBattleEnded;
+                _activeBattleManager.OnBattleStarted -= OnBattleStarted;
             }
             _activeBattleManager = null;
             _battleHudRenderer = null;
@@ -1218,6 +1227,27 @@ namespace FactionWars.ScriptHookV
             {
                 _gameBridge.ShowNotification($"~g~[{defenderName}]~w~ defended ~b~{e.ZoneName}~w~ against ~r~[{attackerName}]");
             }
+        }
+
+        /// <summary>
+        /// Handles battle started events. If player is in the zone being attacked
+        /// and is the defender, spawns enemy attackers immediately.
+        /// </summary>
+        private void OnBattleStarted(object? sender, ActiveBattle battle)
+        {
+            // Check if player is in this zone
+            var currentZone = _territoryManager?.CurrentZone;
+            if (currentZone == null || currentZone.Id != battle.ZoneId)
+                return;
+
+            // Check if player is the defender
+            if (battle.DefenderFactionId != CurrentPlayerFactionId)
+                return;
+
+            FileLogger.Combat($"OnBattleStarted: Player is in zone {battle.ZoneId} as defender, triggering attacker spawn");
+
+            // Spawn attackers immediately since player is already in zone
+            _battleAttackerManager?.OnPlayerZoneEntered(currentZone);
         }
 
         /// <summary>
