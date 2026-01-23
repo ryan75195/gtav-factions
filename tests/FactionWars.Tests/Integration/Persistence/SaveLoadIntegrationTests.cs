@@ -595,14 +595,16 @@ namespace FactionWars.Tests.Integration.Persistence
             // Arrange: Create world with specific reserve pool values
             var world = CreateCompleteGameWorld();
 
-            // Add troops to reserve pool by tier
+            // After consolidation, initialTroopCount in CreateCompleteGameWorld adds to Basic tier
+            // Michael starts with 30 Basic, Trevor with 25 Basic, Franklin with 20 Basic
+            // Add more troops to reserve pool by tier
             var michaelState = world.FactionService.GetFactionState(MichaelFactionId)!;
-            michaelState.AddReserveTroops(DefenderTier.Basic, 100);
+            michaelState.AddReserveTroops(DefenderTier.Basic, 70);   // 30 + 70 = 100
             michaelState.AddReserveTroops(DefenderTier.Medium, 50);
             michaelState.AddReserveTroops(DefenderTier.Heavy, 25);
 
             var trevorState = world.FactionService.GetFactionState(TrevorFactionId)!;
-            trevorState.AddReserveTroops(DefenderTier.Basic, 80);
+            trevorState.AddReserveTroops(DefenderTier.Basic, 55);    // 25 + 55 = 80
             trevorState.AddReserveTroops(DefenderTier.Medium, 40);
             trevorState.AddReserveTroops(DefenderTier.Heavy, 20);
 
@@ -628,9 +630,11 @@ namespace FactionWars.Tests.Integration.Persistence
         [Fact]
         public void Integrity_SaveLoadCycle_EmptyReservePool_PreservesZeroValues()
         {
-            // Arrange: Create world with empty reserve pools
+            // Arrange: Create world with empty reserve pools (Medium/Heavy only)
             var world = CreateCompleteGameWorld();
-            // Faction states are created with 0 reserves by default
+            // After consolidation, initialTroopCount goes to Basic tier
+            // CreateCompleteGameWorld initializes Michael with 30 Basic
+            // So we test that Medium and Heavy (which are 0) are preserved
 
             // Act: Save and restore
             var gameState = CreateGameStateSnapshot(world);
@@ -639,9 +643,9 @@ namespace FactionWars.Tests.Integration.Persistence
             var loadedState = _persistenceService.Load(filePath);
             var restoredWorld = RestoreGameWorld(loadedState);
 
-            // Assert: Zero values are preserved
+            // Assert: Zero values for Medium and Heavy are preserved
             var restoredMichaelState = restoredWorld.FactionService.GetFactionState(MichaelFactionId)!;
-            Assert.Equal(0, restoredMichaelState.GetReserveTroops(DefenderTier.Basic));
+            Assert.Equal(30, restoredMichaelState.GetReserveTroops(DefenderTier.Basic)); // From initialTroopCount
             Assert.Equal(0, restoredMichaelState.GetReserveTroops(DefenderTier.Medium));
             Assert.Equal(0, restoredMichaelState.GetReserveTroops(DefenderTier.Heavy));
         }
@@ -1297,7 +1301,9 @@ namespace FactionWars.Tests.Integration.Persistence
             // Restore faction states
             foreach (var stateData in gameState.FactionStates)
             {
-                factionService.InitializeFactionState(stateData.FactionId, stateData.Cash, stateData.TroopCount);
+                // After consolidation, TroopCount is computed from reserve pool
+                // So we pass 0 for initialTroops and restore reserve pool separately
+                factionService.InitializeFactionState(stateData.FactionId, stateData.Cash, 0);
                 var state = factionService.GetFactionState(stateData.FactionId);
                 if (state != null)
                 {
@@ -1307,7 +1313,7 @@ namespace FactionWars.Tests.Integration.Persistence
                     {
                         state.AddZone(zoneId);
                     }
-                    // Restore reserve pool by tier
+                    // Restore reserve pool by tier (this is the source of truth for TroopCount)
                     foreach (var kvp in stateData.ReservePool)
                     {
                         state.AddReserveTroops(kvp.Key, kvp.Value);

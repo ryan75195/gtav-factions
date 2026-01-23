@@ -186,39 +186,43 @@ namespace FactionWars.Tests.Unit.Factions
         }
 
         [Fact]
-        public void FactionState_ShouldAllowSettingTroopCount()
+        public void FactionState_TroopCount_ShouldReflectReservePool()
         {
-            // Arrange
+            // Arrange - After consolidation, TroopCount is computed from reserve pool
             var state = new FactionState("faction_michael");
 
-            // Act
-            state.TroopCount = 50;
+            // Act - Add troops through reserve pool
+            state.AddReserveTroops(DefenderTier.Basic, 30);
+            state.AddReserveTroops(DefenderTier.Medium, 20);
 
-            // Assert
+            // Assert - TroopCount reflects total reserve
             Assert.Equal(50, state.TroopCount);
         }
 
         [Fact]
-        public void FactionState_ShouldNotAllowNegativeTroopCount()
+        public void FactionState_TroopCount_ShouldUpdateWhenReservePoolChanges()
         {
-            // Arrange
+            // Arrange - After consolidation, TroopCount is read-only computed property
             var state = new FactionState("faction_michael");
+            state.AddReserveTroops(DefenderTier.Basic, 10);
 
-            // Act
-            state.TroopCount = -5;
+            // Act - Remove some from reserve
+            state.RemoveReserveTroops(DefenderTier.Basic, 3);
 
-            // Assert - Should clamp to 0
-            Assert.Equal(0, state.TroopCount);
+            // Assert - TroopCount reflects change
+            Assert.Equal(7, state.TroopCount);
         }
 
         [Fact]
         public void FactionState_ShouldAllowInitialTroopCount()
         {
             // Arrange & Act
+            // After consolidation, initialTroopCount adds to Basic tier reserve
             var state = new FactionState("faction_michael", initialTroopCount: 20);
 
-            // Assert
+            // Assert - TroopCount is computed from reserve pool
             Assert.Equal(20, state.TroopCount);
+            Assert.Equal(20, state.GetReserveTroops(DefenderTier.Basic));
         }
 
         #endregion
@@ -448,16 +452,17 @@ namespace FactionWars.Tests.Unit.Factions
         #region Troop Operations
 
         [Fact]
-        public void FactionState_RecruitTroops_ShouldIncreaseTroopCount()
+        public void FactionState_RecruitTroops_ShouldAddToBasicReserve()
         {
-            // Arrange
+            // Arrange - After consolidation, RecruitTroops adds to Basic tier reserve
             var state = new FactionState("faction_michael", initialTroopCount: 10);
 
             // Act
             state.RecruitTroops(5);
 
-            // Assert
+            // Assert - TroopCount reflects reserve pool, Basic tier increased
             Assert.Equal(15, state.TroopCount);
+            Assert.Equal(15, state.GetReserveTroops(DefenderTier.Basic));
         }
 
         [Fact]
@@ -471,22 +476,43 @@ namespace FactionWars.Tests.Unit.Factions
         }
 
         [Fact]
-        public void FactionState_LoseTroops_ShouldDecreaseTroopCount()
+        public void FactionState_LoseTroops_ShouldRemoveFromBasicFirst()
         {
-            // Arrange
-            var state = new FactionState("faction_michael", initialTroopCount: 20);
+            // Arrange - After consolidation, LoseTroops removes Basic first
+            var state = new FactionState("faction_michael");
+            state.AddReserveTroops(DefenderTier.Basic, 10);
+            state.AddReserveTroops(DefenderTier.Medium, 5);
 
             // Act
-            state.LoseTroops(5);
+            state.LoseTroops(8);
+
+            // Assert - 8 removed from Basic (10->2), Medium unchanged
+            Assert.Equal(7, state.TroopCount);
+            Assert.Equal(2, state.GetReserveTroops(DefenderTier.Basic));
+            Assert.Equal(5, state.GetReserveTroops(DefenderTier.Medium));
+        }
+
+        [Fact]
+        public void FactionState_LoseTroops_ShouldOverflowToMediumTier()
+        {
+            // Arrange - When Basic is depleted, overflow to Medium
+            var state = new FactionState("faction_michael");
+            state.AddReserveTroops(DefenderTier.Basic, 5);
+            state.AddReserveTroops(DefenderTier.Medium, 10);
+
+            // Act - Lose 8 troops (5 from Basic, 3 from Medium)
+            state.LoseTroops(8);
 
             // Assert
-            Assert.Equal(15, state.TroopCount);
+            Assert.Equal(7, state.TroopCount);
+            Assert.Equal(0, state.GetReserveTroops(DefenderTier.Basic));
+            Assert.Equal(7, state.GetReserveTroops(DefenderTier.Medium));
         }
 
         [Fact]
         public void FactionState_LoseTroops_ShouldClampToZero()
         {
-            // Arrange
+            // Arrange - After consolidation, LoseTroops removes from reserve pool
             var state = new FactionState("faction_michael", initialTroopCount: 10);
 
             // Act
@@ -494,6 +520,7 @@ namespace FactionWars.Tests.Unit.Factions
 
             // Assert - Should clamp to 0, not go negative
             Assert.Equal(0, state.TroopCount);
+            Assert.Equal(0, state.GetReserveTroops(DefenderTier.Basic));
         }
 
         [Fact]
@@ -532,17 +559,18 @@ namespace FactionWars.Tests.Unit.Factions
         #region Military Strength
 
         [Fact]
-        public void FactionState_MilitaryStrength_ShouldCombineTroopsAndWeapons()
+        public void FactionState_MilitaryStrength_ShouldCombineReserveAndWeapons()
         {
-            // Arrange
-            var state = new FactionState("faction_michael", initialTroopCount: 10);
+            // Arrange - After consolidation, MilitaryStrength uses TotalReserveTroops
+            var state = new FactionState("faction_michael");
+            state.AddReserveTroops(DefenderTier.Basic, 10);
             state.Weapons = 5;
 
             // Act
             var strength = state.MilitaryStrength;
 
-            // Assert - Strength = TroopCount + (Weapons * WeaponMultiplier)
-            // With default weapon multiplier of 2: 10 + (5 * 2) = 20
+            // Assert - Strength = TotalReserveTroops + (Weapons * WeaponMultiplier)
+            // 10 + (5 * 2) = 20
             Assert.Equal(20, strength);
         }
 
@@ -557,13 +585,16 @@ namespace FactionWars.Tests.Unit.Factions
         }
 
         [Fact]
-        public void FactionState_MilitaryStrength_ShouldScaleWithTroops()
+        public void FactionState_MilitaryStrength_ShouldScaleWithAllTiers()
         {
-            // Arrange
-            var state = new FactionState("faction_michael", initialTroopCount: 50);
+            // Arrange - After consolidation, all tiers contribute to strength
+            var state = new FactionState("faction_michael");
+            state.AddReserveTroops(DefenderTier.Basic, 20);
+            state.AddReserveTroops(DefenderTier.Medium, 20);
+            state.AddReserveTroops(DefenderTier.Heavy, 10);
 
-            // Act & Assert
-            Assert.Equal(50, state.MilitaryStrength); // No weapons, just troops
+            // Act & Assert - 50 total reserve troops, no weapons
+            Assert.Equal(50, state.MilitaryStrength);
         }
 
         #endregion
@@ -772,16 +803,17 @@ namespace FactionWars.Tests.Unit.Factions
         }
 
         [Fact]
-        public void FactionState_ReservePool_ShouldBeIndependentFromTroopCount()
+        public void FactionState_TroopCount_ShouldEqualTotalReserveTroops()
         {
-            // Arrange
-            var state = new FactionState("faction_michael", initialTroopCount: 50);
+            // Arrange - After consolidation, TroopCount is computed from reserve pool
+            var state = new FactionState("faction_michael");
             state.AddReserveTroops(DefenderTier.Basic, 10);
+            state.AddReserveTroops(DefenderTier.Medium, 5);
+            state.AddReserveTroops(DefenderTier.Heavy, 2);
 
-            // Act & Assert
-            Assert.Equal(50, state.TroopCount);
-            Assert.Equal(10, state.GetReserveTroops(DefenderTier.Basic));
-            Assert.Equal(10, state.TotalReserveTroops);
+            // Act & Assert - TroopCount should equal sum of all reserve troops
+            Assert.Equal(17, state.TroopCount);
+            Assert.Equal(state.TotalReserveTroops, state.TroopCount);
         }
 
         [Fact]

@@ -98,7 +98,8 @@ namespace FactionWars.ScriptHookV.UI
 
             var factionName = faction?.Name ?? "Unknown";
             var totalZones = _zoneService.GetAllZones().Count();
-            var zonesOwned = factionState?.ZoneCount ?? 0;
+            // Use ZoneService.GetZoneCount for accurate count (FactionState.ZoneCount can be stale)
+            var zonesOwned = factionId != null ? _zoneService.GetZoneCount(factionId) : 0;
             var cash = factionState?.Cash ?? 0;
             var totalReserveTroops = factionState?.TotalReserveTroops ?? 0;
             var militaryStrength = factionState?.MilitaryStrength ?? 0;

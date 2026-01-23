@@ -112,9 +112,11 @@ namespace FactionWars.ScriptHookV
 
         private static void RegisterDomainServices(ServiceContainer container)
         {
-            // Zone service depends on zone repository
+            // Zone service depends on zone repository and faction repository (for syncing zone ownership)
             container.RegisterSingleton<IZoneService>(() =>
-                new ZoneService(container.Resolve<IZoneRepository>()));
+                new ZoneService(
+                    container.Resolve<IZoneRepository>(),
+                    container.Resolve<IFactionRepository>()));
 
             // Faction service depends on faction repository
             container.RegisterSingleton<IFactionService>(() =>

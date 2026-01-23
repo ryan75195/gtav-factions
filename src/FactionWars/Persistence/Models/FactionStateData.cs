@@ -40,16 +40,25 @@ namespace FactionWars.Persistence.Models
         /// </summary>
         public FactionState ToFactionState()
         {
-            var state = new FactionState(FactionId, Cash, TroopCount);
+            // After consolidation, TroopCount is computed from reserve pool.
+            // For backwards compatibility: if ReservePool is empty but TroopCount > 0,
+            // use TroopCount to initialize Basic tier (legacy save migration).
+            var hasReservePool = ReservePool != null && ReservePool.Count > 0;
+            var initialTroops = hasReservePool ? 0 : TroopCount;
+
+            var state = new FactionState(FactionId, Cash, initialTroops);
             state.RecruitmentPoints = RecruitmentPoints;
             state.Weapons = Weapons;
             foreach (var zoneId in OwnedZoneIds)
             {
                 state.AddZone(zoneId);
             }
-            foreach (var kvp in ReservePool)
+            if (hasReservePool)
             {
-                state.AddReserveTroops(kvp.Key, kvp.Value);
+                foreach (var kvp in ReservePool)
+                {
+                    state.AddReserveTroops(kvp.Key, kvp.Value);
+                }
             }
             return state;
         }

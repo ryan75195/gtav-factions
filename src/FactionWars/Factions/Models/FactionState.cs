@@ -18,7 +18,6 @@ namespace FactionWars.Factions.Models
         private int _cash;
         private int _recruitmentPoints;
         private int _weapons;
-        private int _troopCount;
 
         /// <summary>
         /// The ID of the faction this state belongs to.
@@ -57,13 +56,9 @@ namespace FactionWars.Factions.Models
 
         /// <summary>
         /// Current number of troops in the faction's army.
-        /// Automatically clamped to non-negative values.
+        /// Computed from the total reserve pool across all tiers.
         /// </summary>
-        public int TroopCount
-        {
-            get => _troopCount;
-            set => _troopCount = Math.Max(0, value);
-        }
+        public int TroopCount => TotalReserveTroops;
 
         /// <summary>
         /// Read-only collection of zone IDs owned by this faction.
@@ -79,7 +74,7 @@ namespace FactionWars.Factions.Models
         /// Calculated military strength combining troops and weapons.
         /// Weapons provide a multiplier to effective strength.
         /// </summary>
-        public int MilitaryStrength => _troopCount + (_weapons * WeaponMultiplier);
+        public int MilitaryStrength => TotalReserveTroops + (_weapons * WeaponMultiplier);
 
         /// <summary>
         /// Creates a new faction state with optional initial values.
@@ -100,12 +95,11 @@ namespace FactionWars.Factions.Models
             _ownedZoneIds = new HashSet<string>();
             _reservePool = new Dictionary<DefenderTier, int>
             {
-                { DefenderTier.Basic, 0 },
+                { DefenderTier.Basic, Math.Max(0, initialTroopCount) },
                 { DefenderTier.Medium, 0 },
                 { DefenderTier.Heavy, 0 }
             };
             _cash = Math.Max(0, initialCash);
-            _troopCount = Math.Max(0, initialTroopCount);
             _recruitmentPoints = 0;
             _weapons = 0;
         }
@@ -205,6 +199,7 @@ namespace FactionWars.Factions.Models
 
         /// <summary>
         /// Recruits additional troops into the faction's army.
+        /// Troops are added to the Basic tier reserve pool.
         /// </summary>
         /// <param name="count">The number of troops to recruit (must be non-negative).</param>
         /// <exception cref="ArgumentOutOfRangeException">Thrown if count is negative.</exception>
@@ -213,11 +208,12 @@ namespace FactionWars.Factions.Models
             if (count < 0)
                 throw new ArgumentOutOfRangeException(nameof(count), "Count cannot be negative.");
 
-            _troopCount += count;
+            AddReserveTroops(DefenderTier.Basic, count);
         }
 
         /// <summary>
         /// Reduces the faction's troop count (e.g., due to combat losses).
+        /// Troops are removed from the reserve pool in tier order: Basic first, then Medium, then Heavy.
         /// The troop count will not go below zero.
         /// </summary>
         /// <param name="count">The number of troops lost (must be non-negative).</param>
@@ -227,7 +223,19 @@ namespace FactionWars.Factions.Models
             if (count < 0)
                 throw new ArgumentOutOfRangeException(nameof(count), "Count cannot be negative.");
 
-            _troopCount = Math.Max(0, _troopCount - count);
+            var remaining = count;
+            var tierOrder = new[] { DefenderTier.Basic, DefenderTier.Medium, DefenderTier.Heavy };
+
+            foreach (var tier in tierOrder)
+            {
+                if (remaining <= 0)
+                    break;
+
+                var available = _reservePool.TryGetValue(tier, out var current) ? current : 0;
+                var toRemove = Math.Min(remaining, available);
+                _reservePool[tier] = available - toRemove;
+                remaining -= toRemove;
+            }
         }
 
         /// <summary>
@@ -237,7 +245,7 @@ namespace FactionWars.Factions.Models
         /// <returns>True if the faction has enough troops, false otherwise.</returns>
         public bool HasTroops(int count)
         {
-            return _troopCount >= count;
+            return TotalReserveTroops >= count;
         }
 
         #endregion
@@ -351,7 +359,7 @@ namespace FactionWars.Factions.Models
 
         public override string ToString()
         {
-            return $"FactionState[{FactionId}]: Cash={_cash}, Troops={_troopCount}, Zones={ZoneCount}";
+            return $"FactionState[{FactionId}]: Cash={_cash}, Troops={TotalReserveTroops}, Zones={ZoneCount}";
         }
     }
 }

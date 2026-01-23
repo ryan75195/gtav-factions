@@ -47,7 +47,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
             _factionServiceMock.Setup(f => f.GetFaction(PlayerFactionId)).Returns(faction);
 
             // Setup default faction state with reserves
-            var factionState = new FactionState(PlayerFactionId, 10000, 50);
+            // After consolidation, initialTroopCount goes to Basic tier, so we use reserve pool only
+            var factionState = new FactionState(PlayerFactionId, 10000);
             factionState.AddReserveTroops(DefenderTier.Basic, 20);
             factionState.AddReserveTroops(DefenderTier.Medium, 15);
             factionState.AddReserveTroops(DefenderTier.Heavy, 10);
@@ -261,7 +262,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
         {
             // Arrange
             _zoneServiceMock.Setup(z => z.GetZonesByOwner(PlayerFactionId)).Returns(new List<Zone>());
-            var emptyState = new FactionState(PlayerFactionId, 10000, 50);
+            var emptyState = new FactionState(PlayerFactionId, 10000);
             _factionServiceMock.Setup(f => f.GetFactionState(PlayerFactionId)).Returns(emptyState);
 
             // Act
@@ -474,7 +475,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
         public void OnAllocate_WhenNoReserveTroops_ShouldDisableAllocateButton()
         {
             // Arrange
-            var emptyState = new FactionState(PlayerFactionId, 10000, 50);
+            // After consolidation, don't use initialTroopCount to get truly empty reserves
+            var emptyState = new FactionState(PlayerFactionId, 10000);
             // No reserve troops added
             emptyState.AddZone("zone_downtown");
             _factionServiceMock.Setup(f => f.GetFactionState(PlayerFactionId)).Returns(emptyState);

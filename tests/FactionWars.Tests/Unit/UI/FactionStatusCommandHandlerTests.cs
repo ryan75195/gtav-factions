@@ -1,10 +1,14 @@
+using FactionWars.Core.Interfaces;
 using FactionWars.Factions.Interfaces;
 using FactionWars.Factions.Models;
+using FactionWars.Territory.Interfaces;
+using FactionWars.Territory.Models;
 using FactionWars.UI.Handlers;
 using FactionWars.UI.Interfaces;
 using FactionWars.UI.Models;
 using Moq;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using Xunit;
 
@@ -19,11 +23,15 @@ namespace FactionWars.Tests.Unit.UI
         #region Test Setup
 
         private readonly Mock<IFactionService> _factionServiceMock;
+        private readonly Mock<IZoneService> _zoneServiceMock;
+        private readonly Mock<IZoneDefenderAllocationService> _allocationServiceMock;
         private readonly Mock<IStatusDisplayService> _statusDisplayMock;
 
         public FactionStatusCommandHandlerTests()
         {
             _factionServiceMock = new Mock<IFactionService>();
+            _zoneServiceMock = new Mock<IZoneService>();
+            _allocationServiceMock = new Mock<IZoneDefenderAllocationService>();
             _statusDisplayMock = new Mock<IStatusDisplayService>();
         }
 
@@ -31,21 +39,40 @@ namespace FactionWars.Tests.Unit.UI
         {
             return new FactionStatusCommandHandler(
                 _factionServiceMock.Object,
+                _zoneServiceMock.Object,
+                _allocationServiceMock.Object,
                 _statusDisplayMock.Object);
         }
 
         private void SetupPlayerFaction(string factionId = "michael_faction")
         {
             var faction = new Faction(factionId, "Michael's Crew", "Michael De Santa");
-            var state = new FactionState(factionId, 50000, 25);
+            // After consolidation, initialTroopCount goes to Basic tier, so we just use reserve pool
+            var state = new FactionState(factionId, 50000);
             state.AddZone("zone_1");
             state.AddZone("zone_2");
             state.Weapons = 10;
             state.RecruitmentPoints = 100;
+            // Add reserve troops for the player (15 basic, 10 medium) = 25 total reserve
+            state.AddReserveTroops(FactionWars.Core.Models.DefenderTier.Basic, 15);
+            state.AddReserveTroops(FactionWars.Core.Models.DefenderTier.Medium, 10);
+
+            // Create zone objects for the zone service mock
+            var center = new Vector3(0, 0, 0);
+            var zone1 = new Zone("zone_1", "Zone 1", center);
+            zone1.OwnerFactionId = factionId;
+            var zone2 = new Zone("zone_2", "Zone 2", center);
+            zone2.OwnerFactionId = factionId;
+            var zones = new List<Zone> { zone1, zone2 };
 
             _statusDisplayMock.Setup(s => s.GetPlayerFactionId()).Returns(factionId);
             _factionServiceMock.Setup(s => s.GetFaction(factionId)).Returns(faction);
             _factionServiceMock.Setup(s => s.GetFactionState(factionId)).Returns(state);
+            // Zone service returns accurate zone count and zone list
+            _zoneServiceMock.Setup(s => s.GetZoneCount(factionId)).Returns(2);
+            _zoneServiceMock.Setup(s => s.GetZonesByOwner(factionId)).Returns(zones);
+            // Allocation service returns allocated troops (5 deployed to zones)
+            _allocationServiceMock.Setup(s => s.GetTotalAllocatedTroops(factionId)).Returns(5);
         }
 
         #endregion
@@ -57,7 +84,23 @@ namespace FactionWars.Tests.Unit.UI
         {
             // Act & Assert
             Assert.Throws<ArgumentNullException>(() =>
-                new FactionStatusCommandHandler(null!, _statusDisplayMock.Object));
+                new FactionStatusCommandHandler(null!, _zoneServiceMock.Object, _allocationServiceMock.Object, _statusDisplayMock.Object));
+        }
+
+        [Fact]
+        public void Constructor_WithNullZoneService_ThrowsArgumentNullException()
+        {
+            // Act & Assert
+            Assert.Throws<ArgumentNullException>(() =>
+                new FactionStatusCommandHandler(_factionServiceMock.Object, null!, _allocationServiceMock.Object, _statusDisplayMock.Object));
+        }
+
+        [Fact]
+        public void Constructor_WithNullAllocationService_ThrowsArgumentNullException()
+        {
+            // Act & Assert
+            Assert.Throws<ArgumentNullException>(() =>
+                new FactionStatusCommandHandler(_factionServiceMock.Object, _zoneServiceMock.Object, null!, _statusDisplayMock.Object));
         }
 
         [Fact]
@@ -65,7 +108,7 @@ namespace FactionWars.Tests.Unit.UI
         {
             // Act & Assert
             Assert.Throws<ArgumentNullException>(() =>
-                new FactionStatusCommandHandler(_factionServiceMock.Object, null!));
+                new FactionStatusCommandHandler(_factionServiceMock.Object, _zoneServiceMock.Object, _allocationServiceMock.Object, null!));
         }
 
         [Fact]
@@ -94,16 +137,18 @@ namespace FactionWars.Tests.Unit.UI
             handler.HandleCommand(command);
 
             // Assert
+            // TroopCount = ReserveTroops (15+10=25) + AllocatedTroops (5) = 30
+            // MilitaryStrength = TotalTroops (30) + Weapons (10) * 2 = 50
             _statusDisplayMock.Verify(s => s.ShowFactionStatus(
                 It.Is<FactionStatusInfo>(info =>
                     info.FactionName == "Michael's Crew" &&
                     info.LeaderName == "Michael De Santa" &&
                     info.Cash == 50000 &&
-                    info.TroopCount == 25 &&
+                    info.TroopCount == 30 &&
                     info.ZoneCount == 2 &&
                     info.Weapons == 10 &&
                     info.RecruitmentPoints == 100 &&
-                    info.MilitaryStrength == 45)), // 25 + (10 * 2)
+                    info.MilitaryStrength == 50)), // 30 + (10 * 2)
                 Times.Once);
         }
 
@@ -154,12 +199,13 @@ namespace FactionWars.Tests.Unit.UI
             handler.HandleCommand(command);
 
             // Assert
+            // TroopCount = ReserveTroops (25) + AllocatedTroops (5) = 30
             _statusDisplayMock.Verify(s => s.ShowResourceStatus(
                 It.Is<ResourceStatusInfo>(info =>
                     info.Cash == 50000 &&
                     info.Weapons == 10 &&
                     info.RecruitmentPoints == 100 &&
-                    info.TroopCount == 25)),
+                    info.TroopCount == 30)),
                 Times.Once);
         }
 

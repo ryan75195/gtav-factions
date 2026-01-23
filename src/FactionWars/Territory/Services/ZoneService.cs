@@ -1,4 +1,5 @@
 using FactionWars.Core.Interfaces;
+using FactionWars.Factions.Interfaces;
 using FactionWars.Territory.Interfaces;
 using FactionWars.Territory.Models;
 using System;
@@ -13,6 +14,7 @@ namespace FactionWars.Territory.Services
     public class ZoneService : IZoneService
     {
         private readonly IZoneRepository _repository;
+        private readonly IFactionRepository? _factionRepository;
 
         /// <summary>
         /// Creates a new ZoneService instance.
@@ -20,8 +22,20 @@ namespace FactionWars.Territory.Services
         /// <param name="repository">The zone repository.</param>
         /// <exception cref="ArgumentNullException">Thrown if repository is null.</exception>
         public ZoneService(IZoneRepository repository)
+            : this(repository, null)
+        {
+        }
+
+        /// <summary>
+        /// Creates a new ZoneService instance with faction repository for syncing zone ownership.
+        /// </summary>
+        /// <param name="repository">The zone repository.</param>
+        /// <param name="factionRepository">Optional faction repository for keeping FactionState in sync.</param>
+        /// <exception cref="ArgumentNullException">Thrown if repository is null.</exception>
+        public ZoneService(IZoneRepository repository, IFactionRepository? factionRepository)
         {
             _repository = repository ?? throw new ArgumentNullException(nameof(repository));
+            _factionRepository = factionRepository;
         }
 
         /// <inheritdoc />
@@ -107,12 +121,49 @@ namespace FactionWars.Territory.Services
             if (zone == null)
                 return false;
 
+            var previousOwner = zone.OwnerFactionId;
+
             zone.OwnerFactionId = newOwnerFactionId;
             zone.ControlPercentage = 100f;
             zone.IsContested = false;
 
             _repository.Update(zone);
+
+            // Sync FactionState zone lists if faction repository is available
+            SyncFactionStateZones(zoneId, previousOwner, newOwnerFactionId);
+
             return true;
+        }
+
+        /// <summary>
+        /// Syncs FactionState zone lists when zone ownership changes.
+        /// </summary>
+        private void SyncFactionStateZones(string zoneId, string? previousOwner, string? newOwner)
+        {
+            if (_factionRepository == null)
+                return;
+
+            // Remove zone from previous owner's state
+            if (previousOwner != null)
+            {
+                var previousState = _factionRepository.GetState(previousOwner);
+                if (previousState != null)
+                {
+                    previousState.RemoveZone(zoneId);
+                    _factionRepository.SetState(previousState);
+                }
+            }
+
+            // Add zone to new owner's state
+            if (newOwner != null)
+            {
+                var newState = _factionRepository.GetState(newOwner);
+                if (newState != null)
+                {
+                    newState.AddZone(zoneId);
+                    _factionRepository.SetState(newState);
+                }
+            }
         }
 
         /// <inheritdoc />

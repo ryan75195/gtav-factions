@@ -587,7 +587,8 @@ namespace FactionWars.Tests.Unit.Core
 
         private FactionState CreateFactionStateWithReserves(int basic = 0, int medium = 0, int heavy = 0)
         {
-            var state = new FactionState("test-faction", 10000, 50);
+            // After consolidation, initialTroopCount goes to Basic tier, so we don't use it
+            var state = new FactionState("test-faction", 10000);
             state.AddReserveTroops(DefenderTier.Basic, basic);
             state.AddReserveTroops(DefenderTier.Medium, medium);
             state.AddReserveTroops(DefenderTier.Heavy, heavy);
