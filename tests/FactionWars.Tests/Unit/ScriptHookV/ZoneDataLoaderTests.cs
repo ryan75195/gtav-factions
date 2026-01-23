@@ -392,5 +392,66 @@ namespace FactionWars.Tests.Unit.ScriptHookV
         }
 
         #endregion
+
+        #region LoadFromFile Tests
+
+        [Fact]
+        public void LoadFromFile_WhenFileExists_ShouldLoadZones()
+        {
+            // Arrange
+            var zoneRepository = new InMemoryZoneRepository();
+            var loader = new ZoneDataLoader(zoneRepository);
+            var tempDir = Path.Combine(Path.GetTempPath(), "ZoneDataLoaderTest_" + Guid.NewGuid());
+            Directory.CreateDirectory(tempDir);
+            var zonesFile = Path.Combine(tempDir, "zones.json");
+
+            var json = @"{
+                ""zones"": [
+                    {
+                        ""id"": ""test1"",
+                        ""name"": ""Test Zone 1"",
+                        ""centerX"": 100.0,
+                        ""centerY"": 200.0,
+                        ""centerZ"": 30.0,
+                        ""radius"": 150.0,
+                        ""strategicValue"": 5,
+                        ""traits"": [""Commercial""]
+                    }
+                ]
+            }";
+            File.WriteAllText(zonesFile, json);
+
+            try
+            {
+                // Act
+                bool loaded = loader.LoadFromFile(zonesFile);
+
+                // Assert
+                Assert.True(loaded);
+                Assert.Equal(1, zoneRepository.Count);
+                Assert.NotNull(zoneRepository.GetById("test1"));
+            }
+            finally
+            {
+                Directory.Delete(tempDir, true);
+            }
+        }
+
+        [Fact]
+        public void LoadFromFile_WhenFileDoesNotExist_ShouldReturnFalse()
+        {
+            // Arrange
+            var zoneRepository = new InMemoryZoneRepository();
+            var loader = new ZoneDataLoader(zoneRepository);
+
+            // Act
+            bool loaded = loader.LoadFromFile("/nonexistent/path/zones.json");
+
+            // Assert
+            Assert.False(loaded);
+            Assert.Equal(0, zoneRepository.Count);
+        }
+
+        #endregion
     }
 }

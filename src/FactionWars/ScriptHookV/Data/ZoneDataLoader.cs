@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -79,6 +80,46 @@ namespace FactionWars.ScriptHookV.Data
             {
                 var zone = CreateZoneFromDto(dto);
                 _zoneRepository.Add(zone);
+            }
+        }
+
+        /// <summary>
+        /// Loads zones from a JSON file.
+        /// </summary>
+        /// <param name="filePath">Path to the zones.json file.</param>
+        /// <returns>True if file was loaded, false if file doesn't exist.</returns>
+        public bool LoadFromFile(string filePath)
+        {
+            if (!File.Exists(filePath))
+            {
+                FileLogger.Info($"Zones file not found: {filePath}");
+                return false;
+            }
+
+            try
+            {
+                var json = File.ReadAllText(filePath);
+                var wrapper = JsonConvert.DeserializeObject<ZonesFileWrapper>(json);
+
+                if (wrapper?.Zones == null || wrapper.Zones.Count == 0)
+                {
+                    FileLogger.Warn($"Zones file is empty or invalid: {filePath}");
+                    return false;
+                }
+
+                foreach (var dto in wrapper.Zones)
+                {
+                    var zone = CreateZoneFromDto(dto);
+                    _zoneRepository.Add(zone);
+                }
+
+                FileLogger.Info($"Loaded {wrapper.Zones.Count} zones from {filePath}");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error($"Failed to load zones from {filePath}", ex);
+                return false;
             }
         }
 
@@ -288,6 +329,14 @@ namespace FactionWars.ScriptHookV.Data
 
             // Adjacent zone IDs (optional - if not provided, computed by proximity)
             public List<string>? AdjacentZones { get; set; }
+        }
+
+        /// <summary>
+        /// Wrapper for the zones.json file format.
+        /// </summary>
+        private class ZonesFileWrapper
+        {
+            public List<ZoneDto> Zones { get; set; } = new List<ZoneDto>();
         }
     }
 }
