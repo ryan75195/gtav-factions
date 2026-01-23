@@ -268,12 +268,75 @@ namespace FactionWars.ScriptHookV.Data
         }
 
         /// <summary>
-        /// Sets up adjacency relationships between zones based on GTA V geography.
-        /// Adjacencies are bidirectional - if A borders B, then B borders A.
-        /// Can be called after loading zones from a save to restore adjacency data.
+        /// Sets up adjacency relationships between zones.
+        /// Uses hardcoded adjacencies for default zones, proximity-based for custom zones.
         /// </summary>
         /// <param name="zoneRepository">The zone repository containing loaded zones.</param>
         public static void SetupZoneAdjacencies(IZoneRepository zoneRepository)
+        {
+            // Check if we have the default zones by looking for known zone IDs
+            var downtown = zoneRepository.GetById("downtown");
+            var vinewood = zoneRepository.GetById("vinewood");
+
+            // If we have the default zone IDs, use hardcoded adjacencies
+            if (downtown != null && vinewood != null && zoneRepository.Count >= 30)
+            {
+                SetupDefaultAdjacencies(zoneRepository);
+            }
+            else
+            {
+                // Custom zones - compute adjacencies by proximity
+                FileLogger.Info("Using proximity-based adjacency computation for custom zones");
+                ComputeAdjacenciesByProximity(zoneRepository);
+            }
+        }
+
+        /// <summary>
+        /// Computes zone adjacencies based on proximity (overlapping or close zones).
+        /// Used when loading custom zones from JSON that don't have explicit adjacencies.
+        /// </summary>
+        /// <param name="zoneRepository">The zone repository containing loaded zones.</param>
+        /// <param name="proximityMultiplier">Zones are adjacent if distance &lt; (radius1 + radius2) * multiplier. Default 1.2.</param>
+        public static void ComputeAdjacenciesByProximity(IZoneRepository zoneRepository, float proximityMultiplier = 1.2f)
+        {
+            var zones = zoneRepository.GetAll().ToList();
+
+            for (int i = 0; i < zones.Count; i++)
+            {
+                for (int j = i + 1; j < zones.Count; j++)
+                {
+                    var zone1 = zones[i];
+                    var zone2 = zones[j];
+
+                    float distance = CalculateDistance(zone1.Center, zone2.Center);
+                    float threshold = (zone1.Radius + zone2.Radius) * proximityMultiplier;
+
+                    if (distance < threshold)
+                    {
+                        if (!zone1.AdjacentZoneIds.Contains(zone2.Id))
+                            zone1.AdjacentZoneIds.Add(zone2.Id);
+                        if (!zone2.AdjacentZoneIds.Contains(zone1.Id))
+                            zone2.AdjacentZoneIds.Add(zone1.Id);
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Calculates the 2D distance between two points (ignoring Z coordinate).
+        /// </summary>
+        private static float CalculateDistance(Vector3 a, Vector3 b)
+        {
+            float dx = a.X - b.X;
+            float dy = a.Y - b.Y;
+            // Ignore Z for 2D map distance
+            return (float)Math.Sqrt(dx * dx + dy * dy);
+        }
+
+        /// <summary>
+        /// Sets up hardcoded adjacencies for the default 31 zones.
+        /// </summary>
+        private static void SetupDefaultAdjacencies(IZoneRepository zoneRepository)
         {
             // Los Santos Urban Core adjacencies
             SetAdjacent(zoneRepository, "downtown", "vinewood", "pillbox_hill", "little_seoul", "mission_row", "strawberry");

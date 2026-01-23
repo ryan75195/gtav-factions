@@ -529,5 +529,39 @@ namespace FactionWars.Tests.Unit.ScriptHookV
         }
 
         #endregion
+
+        #region ComputeAdjacenciesByProximity Tests
+
+        [Fact]
+        public void ComputeAdjacenciesByProximity_ShouldConnectNearbyZones()
+        {
+            // Arrange
+            var zoneRepository = new InMemoryZoneRepository();
+
+            // Create two zones that are close enough to be adjacent (distance < (r1 + r2) * 1.2)
+            // Zone 1: center at (0, 0), radius 100
+            // Zone 2: center at (200, 0), radius 100
+            // Distance = 200, threshold = (100 + 100) * 1.2 = 240
+            // Since 200 < 240, they should be adjacent
+            var zone1 = new Zone("zone1", "Zone 1", new Vector3(0, 0, 30), 100, 1);
+            var zone2 = new Zone("zone2", "Zone 2", new Vector3(200, 0, 30), 100, 1);
+            // Zone 3 is too far away
+            var zone3 = new Zone("zone3", "Zone 3", new Vector3(500, 0, 30), 100, 1);
+
+            zoneRepository.Add(zone1);
+            zoneRepository.Add(zone2);
+            zoneRepository.Add(zone3);
+
+            // Act
+            ZoneDataLoader.ComputeAdjacenciesByProximity(zoneRepository);
+
+            // Assert
+            Assert.Contains("zone2", zone1.AdjacentZoneIds);
+            Assert.Contains("zone1", zone2.AdjacentZoneIds);
+            Assert.DoesNotContain("zone3", zone1.AdjacentZoneIds); // Too far
+            Assert.DoesNotContain("zone1", zone3.AdjacentZoneIds);
+        }
+
+        #endregion
     }
 }
