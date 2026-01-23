@@ -1,3 +1,4 @@
+using FactionWars.Core.Models;
 using FactionWars.Factions.Models;
 using FactionWars.Territory.Models;
 using System;
@@ -57,6 +58,11 @@ namespace FactionWars.Persistence.Models
         public List<RelationshipData> Relationships { get; set; } = new List<RelationshipData>();
 
         /// <summary>
+        /// Zone defender allocations (troop deployments to zones).
+        /// </summary>
+        public List<ZoneDefenderAllocationData> Allocations { get; set; } = new List<ZoneDefenderAllocationData>();
+
+        /// <summary>
         /// Creates a new GameState with current timestamps.
         /// </summary>
         public GameState()
@@ -80,7 +86,8 @@ namespace FactionWars.Persistence.Models
             IEnumerable<Faction> factions,
             IEnumerable<FactionState> factionStates,
             IEnumerable<Zone> zones,
-            IEnumerable<FactionRelationship> relationships)
+            IEnumerable<FactionRelationship> relationships,
+            IEnumerable<ZoneDefenderAllocation>? allocations = null)
         {
             var gameState = new GameState();
 
@@ -102,6 +109,14 @@ namespace FactionWars.Persistence.Models
             foreach (var relationship in relationships)
             {
                 gameState.Relationships.Add(RelationshipData.FromFactionRelationship(relationship));
+            }
+
+            if (allocations != null)
+            {
+                foreach (var allocation in allocations)
+                {
+                    gameState.Allocations.Add(ZoneDefenderAllocationData.FromAllocation(allocation));
+                }
             }
 
             return gameState;

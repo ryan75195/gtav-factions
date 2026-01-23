@@ -1,5 +1,7 @@
 using FactionWars.Core.Interfaces;
 using FactionWars.Territory.Models;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace FactionWars.Persistence.Models
 {
@@ -19,6 +21,7 @@ namespace FactionWars.Persistence.Models
         public float ControlPercentage { get; set; }
         public bool IsContested { get; set; }
         public ZoneTrait Traits { get; set; } = ZoneTrait.None;
+        public List<string> AdjacentZoneIds { get; set; } = new List<string>();
 
         /// <summary>
         /// Creates a ZoneData from a Zone model.
@@ -37,7 +40,8 @@ namespace FactionWars.Persistence.Models
                 OwnerFactionId = zone.OwnerFactionId,
                 ControlPercentage = zone.ControlPercentage,
                 IsContested = zone.IsContested,
-                Traits = zone.Traits
+                Traits = zone.Traits,
+                AdjacentZoneIds = zone.AdjacentZoneIds.ToList()
             };
         }
 
@@ -57,6 +61,10 @@ namespace FactionWars.Persistence.Models
             zone.ControlPercentage = ControlPercentage;
             zone.IsContested = IsContested;
             zone.Traits = Traits;
+            foreach (var adjacentId in AdjacentZoneIds)
+            {
+                zone.AdjacentZoneIds.Add(adjacentId);
+            }
             return zone;
         }
     }

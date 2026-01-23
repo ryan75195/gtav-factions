@@ -11,8 +11,8 @@ namespace FactionWars.AI.Strategies
     /// Franklin's approach is opportunistic, mobile, and flexible.
     ///
     /// Characteristics:
-    /// - Medium aggressiveness (0.6): Balanced, opportunistic approach
-    /// - Medium risk tolerance (0.6): Takes calculated risks for opportunities
+    /// - Medium aggressiveness (default 0.6): Balanced, opportunistic approach
+    /// - Medium risk tolerance (default 0.6): Takes calculated risks for opportunities
     /// - Opportunistic focus: Targets easy wins (neutral zones, uncontested territories)
     /// - Mobility bonuses: Efficient troop usage, maintains reserves
     /// - Flexibility: Avoids overcommitting to losing battles
@@ -20,14 +20,14 @@ namespace FactionWars.AI.Strategies
     public class FranklinAIStrategy : BaseAIStrategy
     {
         /// <summary>
-        /// Franklin's aggressiveness - medium, balanced opportunistic approach.
+        /// Default aggressiveness - medium, balanced opportunistic approach.
         /// </summary>
-        private const float FranklinAggressiveness = 0.6f;
+        private const float DefaultAggressiveness = 0.6f;
 
         /// <summary>
-        /// Franklin's risk tolerance - medium, takes calculated risks.
+        /// Default risk tolerance - medium, takes calculated risks.
         /// </summary>
-        private const float FranklinRiskTolerance = 0.6f;
+        private const float DefaultRiskTolerance = 0.6f;
 
         /// <summary>
         /// Bonus multiplier applied to neutral (easy target) zones.
@@ -54,10 +54,12 @@ namespace FactionWars.AI.Strategies
         private const float MaxTroopCommitmentRatio = 0.7f;
 
         /// <summary>
-        /// Creates a new Franklin AI Strategy with his characteristic opportunistic approach.
+        /// Creates a new Franklin AI Strategy with configurable parameters.
         /// </summary>
-        public FranklinAIStrategy()
-            : base(FactionType.Franklin, FranklinAggressiveness, FranklinRiskTolerance)
+        /// <param name="aggressiveness">Aggressiveness level (0-1). Default is 0.6.</param>
+        /// <param name="riskTolerance">Risk tolerance level (0-1). Default is 0.6.</param>
+        public FranklinAIStrategy(float aggressiveness = DefaultAggressiveness, float riskTolerance = DefaultRiskTolerance)
+            : base(FactionType.Franklin, aggressiveness, riskTolerance)
         {
         }
 

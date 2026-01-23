@@ -11,22 +11,22 @@ namespace FactionWars.AI.Strategies
     /// Trevor's approach is aggressive, combat-focused, and risk-tolerant.
     ///
     /// Characteristics:
-    /// - High aggressiveness (0.85): Attack-first mentality
-    /// - High risk tolerance (0.8): Willing to take big chances
+    /// - High aggressiveness (default 0.85): Attack-first mentality
+    /// - High risk tolerance (default 0.8): Willing to take big chances
     /// - Combat focus: Prefers fighting enemies over taking neutral zones
     /// - Lower concern for strategic value: Will attack any target
     /// </summary>
     public class TrevorAIStrategy : BaseAIStrategy
     {
         /// <summary>
-        /// Trevor's aggressiveness - very high, attack-first approach.
+        /// Default aggressiveness - very high, attack-first approach.
         /// </summary>
-        private const float TrevorAggressiveness = 0.85f;
+        private const float DefaultAggressiveness = 0.85f;
 
         /// <summary>
-        /// Trevor's risk tolerance - high, willing to take chances.
+        /// Default risk tolerance - high, willing to take chances.
         /// </summary>
-        private const float TrevorRiskTolerance = 0.8f;
+        private const float DefaultRiskTolerance = 0.8f;
 
         /// <summary>
         /// Combat bonus multiplier for enemy-controlled zones.
@@ -41,10 +41,12 @@ namespace FactionWars.AI.Strategies
         private const float MinimumAttackThreshold = 0.2f;
 
         /// <summary>
-        /// Creates a new Trevor AI Strategy with his characteristic aggressive approach.
+        /// Creates a new Trevor AI Strategy with configurable parameters.
         /// </summary>
-        public TrevorAIStrategy()
-            : base(FactionType.Trevor, TrevorAggressiveness, TrevorRiskTolerance)
+        /// <param name="aggressiveness">Aggressiveness level (0-1). Default is 0.85.</param>
+        /// <param name="riskTolerance">Risk tolerance level (0-1). Default is 0.8.</param>
+        public TrevorAIStrategy(float aggressiveness = DefaultAggressiveness, float riskTolerance = DefaultRiskTolerance)
+            : base(FactionType.Trevor, aggressiveness, riskTolerance)
         {
         }
 

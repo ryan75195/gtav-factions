@@ -204,16 +204,16 @@ namespace FactionWars.Tests.Unit.ScriptHookV
         }
 
         [Fact]
-        public void OnPlayerZoneEntered_AfterExitAndReenter_WithBackgroundSimDepletion_ShouldSpawnAttackers()
+        public void OnPlayerZoneEntered_AfterExitAndReenter_WithBackgroundSimDepletion_ShouldRespectBattleState()
         {
             // Arrange
-            // This test reproduces the bug where:
+            // This test verifies that when background simulation kills attackers while player is away,
+            // re-entering the zone respects the current battle state:
             // 1. Player enters zone, 5 attackers spawn
-            // 2. Player exits zone, attackers despawn
-            // 3. Background simulation runs and depletes battle.AttackerTroops
+            // 2. Player exits zone, attackers despawn (but battle count stays at 5)
+            // 3. Background simulation runs and depletes battle.AttackerTroops (kills them in simulation)
             // 4. Player re-enters zone
-            // BUG: No attackers spawn because battle.AttackerTroops is now 0
-            // EXPECTED: Attackers should spawn because player never killed them
+            // EXPECTED: No attackers spawn because they were killed by background sim
 
             var zone = new Zone("downtown", "Downtown", new Vector3(0, 0, 0), 100f) { OwnerFactionId = "player" };
             var attackerTroops = new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 5 } };
@@ -238,15 +238,15 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             manager.OnPlayerZoneExited(zone);
             Assert.Equal(0, manager.GetSpawnedAttackerCount("downtown"));
 
-            // Simulate background battle depleting attacker troops (this happens when player is away)
-            // The background simulation would call battle.RemoveAttackerTroop() repeatedly
+            // Simulate background battle killing all attacker troops (defenders won while player away)
+            // The background simulation calls battle.RemoveAttackerTroop() for each simulated kill
             battle.RemoveAttackerTroop(DefenderTier.Basic);
             battle.RemoveAttackerTroop(DefenderTier.Basic);
             battle.RemoveAttackerTroop(DefenderTier.Basic);
             battle.RemoveAttackerTroop(DefenderTier.Basic);
             battle.RemoveAttackerTroop(DefenderTier.Basic);
 
-            // Now battle.AttackerTroops[Basic] == 0 due to background sim
+            // Now battle.AttackerTroops[Basic] == 0 - defenders won in background
             Assert.Equal(0, battle.TotalAttackerTroops);
 
             // Reset spawn tracking for re-entry
@@ -256,13 +256,53 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             // Act 3: Player re-enters zone
             manager.OnPlayerZoneEntered(zone);
 
-            // Assert: Attackers SHOULD spawn because:
-            // - The previous physical attackers were only despawned, not killed
-            // - The background simulation's troop depletion should be restored/ignored for spawning
-            // - Player should face the same number of attackers they would have faced before exiting
-            Assert.True(manager.GetSpawnedAttackerCount("downtown") > 0,
-                "Attackers should spawn when re-entering zone even if background sim depleted troops. " +
-                "The player never killed these attackers - they were only despawned on zone exit.");
+            // Assert: No attackers spawn because they were killed by background sim
+            // The ZoneBattle state is the source of truth - if attackers are 0, they're gone
+            Assert.Equal(0, manager.GetSpawnedAttackerCount("downtown"));
+        }
+
+        [Fact]
+        public void OnPlayerZoneEntered_AfterExitAndReenter_WithNoBackgroundSim_ShouldRespawnSameCount()
+        {
+            // Arrange
+            // This test verifies that when player exits and re-enters quickly (no background sim runs),
+            // the same number of attackers spawn because ZoneBattle state is unchanged.
+
+            var zone = new Zone("downtown", "Downtown", new Vector3(0, 0, 0), 100f) { OwnerFactionId = "player" };
+            var attackerTroops = new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 5 } };
+            var defenderTroops = new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 3 } };
+            var battle = new ZoneBattle("enemy", "player", "downtown", attackerTroops, defenderTroops, "player");
+
+            _battleManagerMock.Setup(b => b.GetBattleForZone("downtown")).Returns(battle);
+            _pedSpawningMock.Setup(p => p.CanSpawn()).Returns(true);
+
+            int pedHandle = 100;
+            _pedSpawningMock.Setup(p => p.SpawnPed(It.IsAny<string>(), It.IsAny<Vector3>(), "enemy", "downtown"))
+                .Returns(() => new PedHandle(pedHandle++));
+            _gameBridgeMock.Setup(g => g.GetSafeCoordForPed(It.IsAny<Vector3>())).Returns(new Vector3(0, 0, 0));
+
+            var manager = CreateManager("player");
+
+            // Act 1: Player enters zone - attackers spawn
+            manager.OnPlayerZoneEntered(zone);
+            Assert.Equal(5, manager.GetSpawnedAttackerCount("downtown"));
+
+            // Act 2: Player exits zone - attackers despawn (but battle state unchanged)
+            manager.OnPlayerZoneExited(zone);
+            Assert.Equal(0, manager.GetSpawnedAttackerCount("downtown"));
+
+            // No background sim runs - battle.AttackerTroops still has 5
+            Assert.Equal(5, battle.TotalAttackerTroops);
+
+            // Reset spawn tracking for re-entry
+            _pedSpawningMock.Invocations.Clear();
+            pedHandle = 200;
+
+            // Act 3: Player re-enters zone immediately
+            manager.OnPlayerZoneEntered(zone);
+
+            // Assert: Same 5 attackers spawn because ZoneBattle state is unchanged
+            Assert.Equal(5, manager.GetSpawnedAttackerCount("downtown"));
         }
 
         private BattleAttackerManager CreateManager(string playerFactionId)

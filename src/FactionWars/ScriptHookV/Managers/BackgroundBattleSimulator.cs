@@ -120,6 +120,14 @@ namespace FactionWars.ScriptHookV.Managers
                 // Neutral zone - automatic capture with no combat
                 _zoneService.TransferZoneOwnership(decision.TargetZoneId, attackerFactionId);
 
+                // Allocate defenders to the newly captured zone
+                // Always allocate at least 1 defender to prevent "owned with 0 defenders" state
+                int defendersToAllocate = decision.TroopsToCommit > 0 ? Math.Max(1, Math.Min((decision.TroopsToCommit + 1) / 2, 5)) : 0;
+                if (defendersToAllocate > 0)
+                {
+                    _allocationService.SetAllocation(attackerFactionId, decision.TargetZoneId, DefenderTier.Basic, defendersToAllocate);
+                }
+
                 // Notify UI of capture
                 _eventFeedService.AddZoneCaptured(zone.Name, attackerFactionName);
                 _eventAlertService.RaiseZoneCaptured(zone.Name, attackerFactionName);
@@ -154,7 +162,7 @@ namespace FactionWars.ScriptHookV.Managers
                 defenderTroops);
 
             // Apply the results
-            ApplyBattleResult(result);
+            ApplyBattleResult(result, decision.TroopsToCommit);
 
             // Notify UI of battle result
             if (result.AttackerWon)
@@ -202,7 +210,9 @@ namespace FactionWars.ScriptHookV.Managers
         /// <summary>
         /// Applies the battle result to the game state.
         /// </summary>
-        private void ApplyBattleResult(BattleSimulationResult result)
+        /// <param name="result">The battle simulation result.</param>
+        /// <param name="attackingTroops">The number of attacking troops committed to the battle.</param>
+        private void ApplyBattleResult(BattleSimulationResult result, int attackingTroops)
         {
             // Apply attacker casualties
             int attackerCasualtiesCount = result.AttackerCasualties.TotalCount;
@@ -222,6 +232,15 @@ namespace FactionWars.ScriptHookV.Managers
             if (result.AttackerWon)
             {
                 _zoneService.TransferZoneOwnership(result.ZoneId, result.AttackerFactionId);
+
+                // Allocate surviving troops as defenders
+                // Always allocate at least 1 defender to prevent "owned with 0 defenders" state
+                int survivors = attackingTroops - attackerCasualtiesCount;
+                int defendersToAllocate = survivors > 0 ? Math.Max(1, Math.Min((survivors + 1) / 2, 5)) : 0;
+                if (defendersToAllocate > 0)
+                {
+                    _allocationService.SetAllocation(result.AttackerFactionId, result.ZoneId, DefenderTier.Basic, defendersToAllocate);
+                }
             }
         }
     }

@@ -10,6 +10,7 @@ using FactionWars.Factions.Models;
 using FactionWars.ScriptHookV.Logging;
 using FactionWars.Territory.Interfaces;
 using FactionWars.Combat.Interfaces;
+using FactionWars.Combat.Models;
 
 namespace FactionWars.AI.Controllers
 {
@@ -26,7 +27,7 @@ namespace FactionWars.AI.Controllers
         private readonly IZoneDefenderAllocationService _allocationService;
         private readonly IGameBridge _gameBridge;
         private readonly IDictionary<string, IAIStrategy> _strategies;
-        private readonly IActiveBattleManager _activeBattleManager;
+        private readonly IZoneBattleManager _zoneBattleManager;
 
         // Configuration
         private const float DefaultDecisionIntervalSeconds = 60f;  // Slowed from 30s for better pacing
@@ -67,7 +68,7 @@ namespace FactionWars.AI.Controllers
             IZoneDefenderAllocationService allocationService,
             IGameBridge gameBridge,
             IDictionary<string, IAIStrategy> strategies,
-            IActiveBattleManager activeBattleManager)
+            IZoneBattleManager zoneBattleManager)
         {
             _factionService = factionService ?? throw new ArgumentNullException(nameof(factionService));
             _zoneService = zoneService ?? throw new ArgumentNullException(nameof(zoneService));
@@ -75,7 +76,7 @@ namespace FactionWars.AI.Controllers
             _allocationService = allocationService ?? throw new ArgumentNullException(nameof(allocationService));
             _gameBridge = gameBridge ?? throw new ArgumentNullException(nameof(gameBridge));
             _strategies = strategies ?? throw new ArgumentNullException(nameof(strategies));
-            _activeBattleManager = activeBattleManager ?? throw new ArgumentNullException(nameof(activeBattleManager));
+            _zoneBattleManager = zoneBattleManager ?? throw new ArgumentNullException(nameof(zoneBattleManager));
 
             _isRunning = false;
             _decisionTimer = 0f;
@@ -269,19 +270,14 @@ namespace FactionWars.AI.Controllers
                 decision.TargetZoneId,
                 decision.TroopsToCommit));
 
-            // Don't simulate if player is in the zone
-            if (_playerZoneId == decision.TargetZoneId)
-            {
-                FileLogger.AI($"      ExecuteAttack: Player is in zone, skipping simulation");
-                return;
-            }
-
-            // Simulate the battle
-            FileLogger.AI($"      ExecuteAttack: Simulating battle...");
-            SimulateBattle(attackerFactionId, decision);
+            // Always start the battle (creates ActiveBattle for timed simulation)
+            // Even if player is in zone - the battle needs to exist for attacker spawning
+            bool playerInZone = _playerZoneId == decision.TargetZoneId;
+            FileLogger.AI($"      ExecuteAttack: Starting battle (player in zone: {playerInZone})...");
+            SimulateBattle(attackerFactionId, decision, playerInZone);
         }
 
-        private void SimulateBattle(string attackerFactionId, AIDecision decision)
+        private void SimulateBattle(string attackerFactionId, AIDecision decision, bool playerInZone = false)
         {
             var zone = _zoneService.GetZone(decision.TargetZoneId!);
             if (zone == null)
@@ -297,6 +293,13 @@ namespace FactionWars.AI.Controllers
                 return;
             }
 
+            // Skip if a battle already exists in this zone
+            if (_zoneBattleManager.GetBattleForZone(decision.TargetZoneId!) != null)
+            {
+                FileLogger.AI($"      SimulateBattle: Battle already in progress in {decision.TargetZoneId}, skipping");
+                return;
+            }
+
             var attackerFaction = _factionService.GetFaction(attackerFactionId);
             var attackerFactionName = attackerFaction?.Name ?? attackerFactionId;
 
@@ -307,7 +310,8 @@ namespace FactionWars.AI.Controllers
                 _zoneService.TransferZoneOwnership(decision.TargetZoneId!, attackerFactionId);
 
                 // Allocate defenders to the newly captured zone
-                int defendersToAllocate = Math.Min(decision.TroopsToCommit / 2, 5);
+                // Always allocate at least 1 defender to prevent "owned with 0 defenders" state
+                int defendersToAllocate = decision.TroopsToCommit > 0 ? Math.Max(1, Math.Min((decision.TroopsToCommit + 1) / 2, 5)) : 0;
                 if (defendersToAllocate > 0)
                 {
                     _allocationService.SetAllocation(attackerFactionId, decision.TargetZoneId!, DefenderTier.Basic, defendersToAllocate);
@@ -334,16 +338,26 @@ namespace FactionWars.AI.Controllers
 
             var defenderTroopDict = BuildDefenderTroopsDictionary(defenderFactionId, decision.TargetZoneId!);
 
+            FileLogger.AI($"      SimulateBattle: AttackerTroops={decision.TroopsToCommit} Basic, DefenderTroops={defenderTroopDict[DefenderTier.Basic]}B/{defenderTroopDict[DefenderTier.Medium]}M/{defenderTroopDict[DefenderTier.Heavy]}H");
+
             // Start timed battle instead of instant simulation
-            _activeBattleManager.StartBattle(
+            var battle = _zoneBattleManager.StartBattle(
+                decision.TargetZoneId!,
                 attackerFactionId,
                 defenderFactionId,
-                decision.TargetZoneId!,
                 attackerTroopDict,
                 defenderTroopDict);
 
-            FileLogger.AI($"      SimulateBattle: Started timed battle for {zone.Name}");
-            return; // Battle resolution handled by ActiveBattleManager
+            FileLogger.AI($"      SimulateBattle: Started timed battle {battle.Id} for {zone.Name}, TotalAttackers={battle.TotalAttackerTroops}, TotalDefenders={battle.TotalDefenderTroops}");
+
+            // If player is already in the zone, mark battle as player-present to pause tick simulation
+            if (playerInZone)
+            {
+                _zoneBattleManager.OnPlayerEnteredZone(zone);
+                FileLogger.AI($"      SimulateBattle: Player is in zone, marked battle as player-present");
+            }
+
+            return; // Battle resolution handled by ZoneBattleManager
         }
 
         private TroopComposition BuildDefenderTroops(string defenderFactionId, string zoneId)
@@ -397,8 +411,9 @@ namespace FactionWars.AI.Controllers
                 _zoneService.TransferZoneOwnership(result.ZoneId, result.AttackerFactionId);
 
                 // Allocate surviving troops as defenders
+                // Always allocate at least 1 defender to prevent "owned with 0 defenders" state
                 int survivors = attackingTroops - attackerCasualties;
-                int defendersToAllocate = Math.Min(survivors / 2, 5);
+                int defendersToAllocate = survivors > 0 ? Math.Max(1, Math.Min((survivors + 1) / 2, 5)) : 0;
                 if (defendersToAllocate > 0)
                 {
                     _allocationService.SetAllocation(result.AttackerFactionId, result.ZoneId, DefenderTier.Basic, defendersToAllocate);

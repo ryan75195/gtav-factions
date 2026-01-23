@@ -11,22 +11,22 @@ namespace FactionWars.AI.Strategies
     /// Michael's approach is calculated, focused on high-value targets and strong defense.
     ///
     /// Characteristics:
-    /// - Low aggressiveness (0.3): Takes a calculated, methodical approach
-    /// - Low risk tolerance (0.3): Prefers safe, reliable operations
+    /// - Low aggressiveness (default 0.3): Takes a calculated, methodical approach
+    /// - Low risk tolerance (default 0.3): Prefers safe, reliable operations
     /// - High-value focus: Strongly prioritizes strategic value when evaluating zones
     /// - Defense-oriented: Protects valuable holdings before expanding
     /// </summary>
     public class MichaelAIStrategy : BaseAIStrategy
     {
         /// <summary>
-        /// Michael's aggressiveness - low, calculated approach.
+        /// Default aggressiveness - low, calculated approach.
         /// </summary>
-        private const float MichaelAggressiveness = 0.3f;
+        private const float DefaultAggressiveness = 0.3f;
 
         /// <summary>
-        /// Michael's risk tolerance - low, prefers safe operations.
+        /// Default risk tolerance - low, prefers safe operations.
         /// </summary>
-        private const float MichaelRiskTolerance = 0.3f;
+        private const float DefaultRiskTolerance = 0.3f;
 
         /// <summary>
         /// Bonus multiplier applied to high-value zone evaluation.
@@ -40,10 +40,12 @@ namespace FactionWars.AI.Strategies
         private const float HighValueThreshold = 0.6f;
 
         /// <summary>
-        /// Creates a new Michael AI Strategy with his characteristic calculated approach.
+        /// Creates a new Michael AI Strategy with configurable parameters.
         /// </summary>
-        public MichaelAIStrategy()
-            : base(FactionType.Michael, MichaelAggressiveness, MichaelRiskTolerance)
+        /// <param name="aggressiveness">Aggressiveness level (0-1). Default is 0.3.</param>
+        /// <param name="riskTolerance">Risk tolerance level (0-1). Default is 0.3.</param>
+        public MichaelAIStrategy(float aggressiveness = DefaultAggressiveness, float riskTolerance = DefaultRiskTolerance)
+            : base(FactionType.Michael, aggressiveness, riskTolerance)
         {
         }
 

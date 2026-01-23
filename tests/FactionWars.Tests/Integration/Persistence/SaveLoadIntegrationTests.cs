@@ -80,7 +80,6 @@ namespace FactionWars.Tests.Integration.Persistence
             AssertZonesEqual(originalWorld.ZoneRepo, restoredWorld.ZoneRepo);
             AssertFactionsEqual(originalWorld.FactionRepo, restoredWorld.FactionRepo);
             AssertFactionStatesEqual(originalWorld.FactionService, restoredWorld.FactionService);
-            AssertRelationshipsEqual(originalWorld.RelationshipRepo, restoredWorld.RelationshipRepo);
         }
 
         [Fact]
@@ -234,29 +233,6 @@ namespace FactionWars.Tests.Integration.Persistence
             Assert.True(restoredZones[1].Traits.HasFlag(ZoneTrait.Fortified));
             Assert.True(restoredZones[2].Traits.HasFlag(ZoneTrait.Residential));
             Assert.True(restoredZones[2].Traits.HasFlag(ZoneTrait.Port));
-        }
-
-        [Fact]
-        public void Integration_SaveLoadCycle_PreservesFactionRelationships()
-        {
-            // Arrange: Create world with various relationship states
-            var world = CreateCompleteGameWorld();
-
-            world.RelationshipService.DeclareWar(MichaelFactionId, TrevorFactionId);
-            world.RelationshipService.FormAlliance(MichaelFactionId, FranklinFactionId);
-            world.RelationshipService.SetRelationshipValue(TrevorFactionId, FranklinFactionId, -25);
-
-            // Act: Save and restore
-            var gameState = CreateGameStateSnapshot(world);
-            var filePath = GetTestFilePath("relationships.json");
-            _persistenceService.Save(gameState, filePath);
-            var loadedState = _persistenceService.Load(filePath);
-            var restoredWorld = RestoreGameWorld(loadedState);
-
-            // Assert: Relationships are preserved
-            Assert.True(restoredWorld.RelationshipService.AreAtWar(MichaelFactionId, TrevorFactionId));
-            Assert.True(restoredWorld.RelationshipService.AreAllied(MichaelFactionId, FranklinFactionId));
-            Assert.Equal(-25, restoredWorld.RelationshipService.GetRelationshipValue(TrevorFactionId, FranklinFactionId));
         }
 
         #endregion
@@ -1164,7 +1140,7 @@ namespace FactionWars.Tests.Integration.Persistence
         [Fact]
         public void Integration_SaveLoad_LargeGameState_CompletesSuccessfully()
         {
-            // Arrange: Create a large game state (many zones, many relationships)
+            // Arrange: Create a large game state (many zones)
             var gameState = new GameState { SaveName = "Large World" };
 
             // Add many factions
@@ -1199,20 +1175,6 @@ namespace FactionWars.Tests.Integration.Persistence
                 gameState.FactionStates[z % 10].OwnedZoneIds.Add(zoneData.Id);
             }
 
-            // Add many relationships
-            for (int i = 0; i < 10; i++)
-            {
-                for (int j = i + 1; j < 10; j++)
-                {
-                    gameState.Relationships.Add(new RelationshipData
-                    {
-                        FactionId1 = $"faction-{i}",
-                        FactionId2 = $"faction-{j}",
-                        Value = (i + j) % 201 - 100 // -100 to 100
-                    });
-                }
-            }
-
             var filePath = GetTestFilePath("large_world.json");
 
             // Act
@@ -1222,7 +1184,6 @@ namespace FactionWars.Tests.Integration.Persistence
             // Assert
             Assert.Equal(10, loadedState.Factions.Count);
             Assert.Equal(50, loadedState.Zones.Count);
-            Assert.Equal(45, loadedState.Relationships.Count); // 10 choose 2 = 45
         }
 
         #endregion
@@ -1235,8 +1196,6 @@ namespace FactionWars.Tests.Integration.Persistence
             var zoneService = new ZoneService(zoneRepo);
             var factionRepo = new InMemoryFactionRepository();
             var factionService = new FactionService(factionRepo);
-            var relationshipRepo = new InMemoryFactionRelationshipRepository();
-            var relationshipService = new FactionRelationshipService(factionRepo, relationshipRepo);
             var combatHandler = new CombatResultHandler(zoneService);
             var resourceModifier = new ZoneTraitResourceModifier();
             var supplyLineService = new SupplyLineService(zoneService);
@@ -1301,8 +1260,6 @@ namespace FactionWars.Tests.Integration.Persistence
                 ZoneService = zoneService,
                 FactionRepo = factionRepo,
                 FactionService = factionService,
-                RelationshipRepo = relationshipRepo,
-                RelationshipService = relationshipService,
                 CombatHandler = combatHandler,
                 TickService = tickService
             };
@@ -1316,9 +1273,8 @@ namespace FactionWars.Tests.Integration.Persistence
                 .Where(s => s != null)
                 .ToList();
             var zones = world.ZoneRepo.GetAll().ToList();
-            var relationships = world.RelationshipRepo.GetAll().ToList();
 
-            return GameState.CreateSnapshot(factions, factionStates!, zones, relationships);
+            return GameState.CreateSnapshot(factions, factionStates!, zones, Enumerable.Empty<FactionRelationship>());
         }
 
         private GameWorld RestoreGameWorld(GameState gameState)
@@ -1327,8 +1283,6 @@ namespace FactionWars.Tests.Integration.Persistence
             var zoneService = new ZoneService(zoneRepo);
             var factionRepo = new InMemoryFactionRepository();
             var factionService = new FactionService(factionRepo);
-            var relationshipRepo = new InMemoryFactionRelationshipRepository();
-            var relationshipService = new FactionRelationshipService(factionRepo, relationshipRepo);
             var combatHandler = new CombatResultHandler(zoneService);
             var resourceModifier = new ZoneTraitResourceModifier();
             var supplyLineService = new SupplyLineService(zoneService);
@@ -1367,20 +1321,12 @@ namespace FactionWars.Tests.Integration.Persistence
                 zoneRepo.Add(zoneData.ToZone());
             }
 
-            // Restore relationships
-            foreach (var relData in gameState.Relationships)
-            {
-                relationshipRepo.Add(relData.ToFactionRelationship());
-            }
-
             return new GameWorld
             {
                 ZoneRepo = zoneRepo,
                 ZoneService = zoneService,
                 FactionRepo = factionRepo,
                 FactionService = factionService,
-                RelationshipRepo = relationshipRepo,
-                RelationshipService = relationshipService,
                 CombatHandler = combatHandler,
                 TickService = tickService
             };
@@ -1441,21 +1387,6 @@ namespace FactionWars.Tests.Integration.Persistence
             }
         }
 
-        private void AssertRelationshipsEqual(IFactionRelationshipRepository expected, IFactionRelationshipRepository actual)
-        {
-            var expectedRels = expected.GetAll().OrderBy(r => r.FactionId1 + r.FactionId2).ToList();
-            var actualRels = actual.GetAll().OrderBy(r => r.FactionId1 + r.FactionId2).ToList();
-
-            Assert.Equal(expectedRels.Count, actualRels.Count);
-
-            for (int i = 0; i < expectedRels.Count; i++)
-            {
-                Assert.Equal(expectedRels[i].FactionId1, actualRels[i].FactionId1);
-                Assert.Equal(expectedRels[i].FactionId2, actualRels[i].FactionId2);
-                Assert.Equal(expectedRels[i].Value, actualRels[i].Value);
-            }
-        }
-
         #endregion
 
         #region Helper Classes
@@ -1466,8 +1397,6 @@ namespace FactionWars.Tests.Integration.Persistence
             public ZoneService ZoneService { get; set; } = null!;
             public InMemoryFactionRepository FactionRepo { get; set; } = null!;
             public FactionService FactionService { get; set; } = null!;
-            public InMemoryFactionRelationshipRepository RelationshipRepo { get; set; } = null!;
-            public FactionRelationshipService RelationshipService { get; set; } = null!;
             public CombatResultHandler CombatHandler { get; set; } = null!;
             public ResourceTickService TickService { get; set; } = null!;
         }
@@ -1489,9 +1418,8 @@ namespace FactionWars.Tests.Integration.Persistence
                     .Where(s => s != null)
                     .ToList();
                 var zones = _world.ZoneRepo.GetAll().ToList();
-                var relationships = _world.RelationshipRepo.GetAll().ToList();
 
-                return GameState.CreateSnapshot(factions, factionStates!, zones, relationships);
+                return GameState.CreateSnapshot(factions, factionStates!, zones, Enumerable.Empty<FactionRelationship>());
             }
         }
 

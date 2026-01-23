@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using FactionWars.Core.Interfaces;
 
 namespace FactionWars.Core.Utils
@@ -391,6 +392,12 @@ namespace FactionWars.Core.Utils
             return z;
         }
 
+        public Vector3 GetSafeCoordForPed(Vector3 position)
+        {
+            // Mock just returns the position with original Z (simulating ground level)
+            return position;
+        }
+
         public void SetPedAsHostileWanderer(int pedHandle)
         {
             if (_peds.TryGetValue(pedHandle, out var ped))
@@ -398,6 +405,11 @@ namespace FactionWars.Core.Utils
                 ped.RelationshipGroup = "DEFENDER_ENEMIES";
                 ped.IsAttackingPlayer = true;
             }
+        }
+
+        public string GetScriptsDirectory()
+        {
+            return Path.GetTempPath();
         }
 
         // Additional helper methods for testing

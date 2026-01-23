@@ -288,5 +288,20 @@ namespace FactionWars.Core.Interfaces
         /// </summary>
         /// <param name="pedHandle">The ped handle.</param>
         void SetPedAsHostileWanderer(int pedHandle);
+
+        /// <summary>
+        /// Gets a safe coordinate for spawning a pedestrian at the specified position.
+        /// Uses GTA V's navmesh to find a position that is walkable (not on rooftops).
+        /// Falls back to GetGroundZ if no safe coordinate is found.
+        /// </summary>
+        /// <param name="position">The desired spawn position.</param>
+        /// <returns>A safe spawn position at ground level, or the original position if none found.</returns>
+        Vector3 GetSafeCoordForPed(Vector3 position);
+
+        /// <summary>
+        /// Gets the path to the GTA V scripts directory where the mod is installed.
+        /// </summary>
+        /// <returns>The full path to the scripts directory.</returns>
+        string GetScriptsDirectory();
     }
 }

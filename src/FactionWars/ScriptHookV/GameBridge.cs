@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using FactionWars.Core.Interfaces;
 using FactionWars.ScriptHookV.Logging;
 using GTA;
@@ -133,9 +134,9 @@ namespace FactionWars.ScriptHookV
                     ped.Delete();
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // Silently ignore - ped may already be gone
+                FileLogger.Error($"DeletePed exception for ped {pedHandle}", ex);
             }
         }
 
@@ -147,8 +148,9 @@ namespace FactionWars.ScriptHookV
                 var ped = Entity.FromHandle(pedHandle) as Ped;
                 return ped != null && ped.Exists() && ped.IsAlive;
             }
-            catch
+            catch (Exception ex)
             {
+                FileLogger.Error($"IsPedAlive exception for ped {pedHandle}", ex);
                 return false;
             }
         }
@@ -165,9 +167,9 @@ namespace FactionWars.ScriptHookV
                 var groupHash = World.AddRelationshipGroup(groupName);
                 ped.RelationshipGroup = groupHash;
             }
-            catch
+            catch (Exception ex)
             {
-                // Silently ignore
+                FileLogger.Error($"SetPedRelationshipGroup exception for ped {pedHandle}, group {groupName}", ex);
             }
         }
 
@@ -683,9 +685,9 @@ namespace FactionWars.ScriptHookV
                     ped.Weapons.Select(weapon);
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // Silently ignore
+                FileLogger.Error($"GivePedWeapon exception for ped {pedHandle}, weapon {weaponName}", ex);
             }
         }
 
@@ -701,9 +703,9 @@ namespace FactionWars.ScriptHookV
                 int gtaAccuracy = (int)(accuracy * 100f);
                 ped.Accuracy = Math.Max(0, Math.Min(100, gtaAccuracy));
             }
-            catch
+            catch (Exception ex)
             {
-                // Silently ignore
+                FileLogger.Error($"SetPedAccuracy exception for ped {pedHandle}", ex);
             }
         }
 
@@ -717,9 +719,9 @@ namespace FactionWars.ScriptHookV
 
                 ped.Armor = Math.Max(0, armor);
             }
-            catch
+            catch (Exception ex)
             {
-                // Silently ignore
+                FileLogger.Error($"SetPedArmor exception for ped {pedHandle}", ex);
             }
         }
 
@@ -771,9 +773,9 @@ namespace FactionWars.ScriptHookV
                 // Make them engage in combat when in combat with someone
                 ped.CanSwitchWeapons = true;
             }
-            catch
+            catch (Exception ex)
             {
-                // Silently ignore
+                FileLogger.Error($"SetPedCombatAttributes exception for ped {pedHandle}", ex);
             }
         }
 
@@ -958,11 +960,67 @@ namespace FactionWars.ScriptHookV
                     return outArg.GetResult<float>();
                 }
 
+                FileLogger.Warn($"GetGroundZ: No ground found at ({x:F1}, {y:F1}, {z:F1}), returning input Z");
                 return z;
             }
-            catch
+            catch (Exception ex)
             {
+                FileLogger.Error($"GetGroundZ exception at ({x:F1}, {y:F1}, {z:F1})", ex);
                 return z;
+            }
+        }
+
+        /// <inheritdoc />
+        public DomainVector3 GetSafeCoordForPed(DomainVector3 position)
+        {
+            try
+            {
+                // GET_SAFE_COORD_FOR_PED uses navmesh to find walkable ground positions
+                // Native signature: BOOL GET_SAFE_COORD_FOR_PED(float x, float y, float z, BOOL onGround, Vector3* outPosition, int flags)
+                var outCoord = new OutputArgument();
+                bool found = Function.Call<bool>(
+                    Hash.GET_SAFE_COORD_FOR_PED,
+                    position.X, position.Y, position.Z,
+                    true,       // onGround - only return ground-level positions
+                    outCoord,   // Vector3 output
+                    0);         // flags - pedestrian mode
+
+                if (found)
+                {
+                    var result = outCoord.GetResult<GTA.Math.Vector3>();
+                    FileLogger.Spawn($"GetSafeCoordForPed: Found safe coord ({result.X:F1}, {result.Y:F1}, {result.Z:F1}) for input ({position.X:F1}, {position.Y:F1}, {position.Z:F1})");
+                    return new DomainVector3(result.X, result.Y, result.Z);
+                }
+
+                // Fallback: try GET_CLOSEST_VEHICLE_NODE_WITH_HEADING which often has better coverage
+                // Native signature: BOOL GET_CLOSEST_VEHICLE_NODE_WITH_HEADING(float x, float y, float z, Vector3* outPosition, float* outHeading, int nodeType, float p7, int p8)
+                var outNodeCoord = new OutputArgument();
+                var outHeading = new OutputArgument();
+                found = Function.Call<bool>(
+                    Hash.GET_CLOSEST_VEHICLE_NODE_WITH_HEADING,
+                    position.X, position.Y, position.Z,
+                    outNodeCoord,
+                    outHeading,
+                    1,      // nodeType - any road
+                    3.0f,   // p7
+                    0);     // p8
+
+                if (found)
+                {
+                    var nodeResult = outNodeCoord.GetResult<GTA.Math.Vector3>();
+                    FileLogger.Spawn($"GetSafeCoordForPed: Using vehicle node ({nodeResult.X:F1}, {nodeResult.Y:F1}, {nodeResult.Z:F1}) as fallback");
+                    return new DomainVector3(nodeResult.X, nodeResult.Y, nodeResult.Z);
+                }
+
+                // Final fallback: use GetGroundZ
+                FileLogger.Warn($"GetSafeCoordForPed: No safe coord found, using GetGroundZ fallback");
+                var groundZ = GetGroundZ(position.X, position.Y, position.Z);
+                return new DomainVector3(position.X, position.Y, groundZ);
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error("GetSafeCoordForPed exception", ex);
+                return position;
             }
         }
 
@@ -1012,6 +1070,14 @@ namespace FactionWars.ScriptHookV
             {
                 FileLogger.Error("SetPedAsHostileWanderer exception", ex);
             }
+        }
+
+        /// <inheritdoc />
+        public string GetScriptsDirectory()
+        {
+            // ScriptHookVDotNet runs with GTA V installation folder as working directory
+            // The scripts folder is a subdirectory of that
+            return Path.Combine(Environment.CurrentDirectory, "scripts");
         }
 
         /// <summary>

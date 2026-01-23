@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using FactionWars.Core.Interfaces;
 using FactionWars.ScriptHookV;
 using FactionWars.Tests.Mocks;
@@ -14,11 +15,18 @@ namespace FactionWars.Tests.Unit.ScriptHookV
     /// </summary>
     public class FactionWarsScriptTests
     {
+        private static Mock<IGameBridge> CreateMockGameBridge()
+        {
+            var mock = new Mock<IGameBridge>();
+            mock.Setup(x => x.GetScriptsDirectory()).Returns(Path.GetTempPath());
+            return mock;
+        }
+
         [Fact]
         public void GameLoopController_Constructor_WithValidContainer_ShouldNotThrow()
         {
             // Arrange
-            var mockGameBridge = new Mock<IGameBridge>();
+            var mockGameBridge = CreateMockGameBridge();
             var container = ServiceContainerFactory.Create(mockGameBridge.Object, new MockMenuProvider());
 
             // Act & Assert - should not throw
@@ -37,7 +45,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
         public void GameLoopController_OnTick_ShouldNotThrowOnFirstCall()
         {
             // Arrange
-            var mockGameBridge = new Mock<IGameBridge>();
+            var mockGameBridge = CreateMockGameBridge();
             var container = ServiceContainerFactory.Create(mockGameBridge.Object, new MockMenuProvider());
             var controller = new GameLoopController(container);
 
@@ -49,7 +57,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
         public void GameLoopController_OnKeyDown_ShouldNotThrowWithValidKey()
         {
             // Arrange
-            var mockGameBridge = new Mock<IGameBridge>();
+            var mockGameBridge = CreateMockGameBridge();
             var container = ServiceContainerFactory.Create(mockGameBridge.Object, new MockMenuProvider());
             var controller = new GameLoopController(container);
 
@@ -61,7 +69,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
         public void GameLoopController_IsInitialized_ShouldBeTrueAfterConstruction()
         {
             // Arrange
-            var mockGameBridge = new Mock<IGameBridge>();
+            var mockGameBridge = CreateMockGameBridge();
             var container = ServiceContainerFactory.Create(mockGameBridge.Object, new MockMenuProvider());
 
             // Act
@@ -75,7 +83,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
         public void GameLoopController_ServiceContainer_ShouldBeAccessible()
         {
             // Arrange
-            var mockGameBridge = new Mock<IGameBridge>();
+            var mockGameBridge = CreateMockGameBridge();
             var container = ServiceContainerFactory.Create(mockGameBridge.Object, new MockMenuProvider());
 
             // Act
@@ -89,7 +97,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
         public void GameLoopController_OnAbort_ShouldSetIsInitializedToFalse()
         {
             // Arrange
-            var mockGameBridge = new Mock<IGameBridge>();
+            var mockGameBridge = CreateMockGameBridge();
             var container = ServiceContainerFactory.Create(mockGameBridge.Object, new MockMenuProvider());
             var controller = new GameLoopController(container);
 

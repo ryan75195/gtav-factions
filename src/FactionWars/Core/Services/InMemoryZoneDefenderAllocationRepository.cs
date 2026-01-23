@@ -84,5 +84,11 @@ namespace FactionWars.Core.Services
         {
             return _allocations.Values.ToList();
         }
+
+        /// <inheritdoc />
+        public void Clear()
+        {
+            _allocations.Clear();
+        }
     }
 }

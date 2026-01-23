@@ -17,7 +17,6 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Persistence
         private readonly Mock<ISaveSlotManager> _mockSaveSlotManager;
         private readonly Mock<IZoneRepository> _mockZoneRepository;
         private readonly Mock<IFactionRepository> _mockFactionRepository;
-        private readonly Mock<IFactionRelationshipRepository> _mockRelationshipRepository;
         private readonly Mock<IZoneDefenderAllocationRepository> _mockAllocationRepository;
         private readonly GameStateManager _sut;
 
@@ -26,14 +25,12 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Persistence
             _mockSaveSlotManager = new Mock<ISaveSlotManager>();
             _mockZoneRepository = new Mock<IZoneRepository>();
             _mockFactionRepository = new Mock<IFactionRepository>();
-            _mockRelationshipRepository = new Mock<IFactionRelationshipRepository>();
             _mockAllocationRepository = new Mock<IZoneDefenderAllocationRepository>();
 
             _sut = new GameStateManager(
                 _mockSaveSlotManager.Object,
                 _mockZoneRepository.Object,
                 _mockFactionRepository.Object,
-                _mockRelationshipRepository.Object,
                 _mockAllocationRepository.Object);
         }
 
@@ -47,7 +44,6 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Persistence
                     null!,
                     _mockZoneRepository.Object,
                     _mockFactionRepository.Object,
-                    _mockRelationshipRepository.Object,
                     _mockAllocationRepository.Object));
         }
 
@@ -59,7 +55,6 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Persistence
                     _mockSaveSlotManager.Object,
                     null!,
                     _mockFactionRepository.Object,
-                    _mockRelationshipRepository.Object,
                     _mockAllocationRepository.Object));
         }
 
@@ -70,19 +65,6 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Persistence
                 new GameStateManager(
                     _mockSaveSlotManager.Object,
                     _mockZoneRepository.Object,
-                    null!,
-                    _mockRelationshipRepository.Object,
-                    _mockAllocationRepository.Object));
-        }
-
-        [Fact]
-        public void Constructor_WithNullRelationshipRepository_ThrowsArgumentNullException()
-        {
-            Assert.Throws<ArgumentNullException>(() =>
-                new GameStateManager(
-                    _mockSaveSlotManager.Object,
-                    _mockZoneRepository.Object,
-                    _mockFactionRepository.Object,
                     null!,
                     _mockAllocationRepository.Object));
         }
@@ -95,7 +77,6 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Persistence
                     _mockSaveSlotManager.Object,
                     _mockZoneRepository.Object,
                     _mockFactionRepository.Object,
-                    _mockRelationshipRepository.Object,
                     null!));
         }
 
@@ -136,12 +117,9 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Persistence
             {
                 new FactionState("faction1")
             };
-            var relationships = new List<FactionRelationship>();
-
             _mockZoneRepository.Setup(r => r.GetAll()).Returns(zones);
             _mockFactionRepository.Setup(r => r.GetAll()).Returns(factions);
             _mockFactionRepository.Setup(r => r.GetAllStates()).Returns(factionStates);
-            _mockRelationshipRepository.Setup(r => r.GetAll()).Returns(relationships);
 
             // Simulate a game being loaded
             _sut.NewGame();
@@ -323,9 +301,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Persistence
             // Act
             _sut.LoadFromSlot(0);
 
-            // Assert
-            _mockRelationshipRepository.Verify(r => r.Clear(), Times.Once);
-            _mockRelationshipRepository.Verify(r => r.Add(It.IsAny<FactionRelationship>()), Times.Once);
+            // Assert - relationships no longer stored/restored
         }
 
         [Fact]
@@ -485,7 +461,6 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Persistence
             // Assert
             _mockZoneRepository.Verify(r => r.Clear(), Times.Once);
             _mockFactionRepository.Verify(r => r.Clear(), Times.Once);
-            _mockRelationshipRepository.Verify(r => r.Clear(), Times.Once);
         }
 
         #endregion
@@ -497,7 +472,6 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Persistence
             _mockZoneRepository.Setup(r => r.GetAll()).Returns(new List<Zone>());
             _mockFactionRepository.Setup(r => r.GetAll()).Returns(new List<Faction>());
             _mockFactionRepository.Setup(r => r.GetAllStates()).Returns(new List<FactionState>());
-            _mockRelationshipRepository.Setup(r => r.GetAll()).Returns(new List<FactionRelationship>());
         }
 
         private static GameState CreateTestGameState()

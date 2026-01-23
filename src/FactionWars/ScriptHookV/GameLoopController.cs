@@ -381,6 +381,11 @@ namespace FactionWars.ScriptHookV
                     bool isContested = _combatManager?.IsInCombat == true &&
                                        _combatManager.CurrentEncounter?.ZoneId == currentZone.Id;
 
+                    // Check if there's an active battle in this zone
+                    var activeBattle = _zoneBattleManager?.GetBattleForZone(currentZone.Id);
+                    bool isDefendingBattle = activeBattle != null &&
+                                             activeBattle.DefenderFactionId == playerFactionId;
+
                     // Get deployed and reserve counts for player-owned zones
                     int deployedCount = 0;
                     int reserveCount = 0;
@@ -388,7 +393,23 @@ namespace FactionWars.ScriptHookV
                     int enemyDefenderCount = 0;
                     int enemyReserveCount = 0;
 
-                    if (isPlayerOwned && _friendlyDefenderManager != null)
+                    if (isDefendingBattle && activeBattle != null)
+                    {
+                        // Player is defending their zone - use battle troop counts
+                        // Show spawned defenders from FriendlyDefenderManager as "deployed"
+                        deployedCount = _friendlyDefenderManager?.GetSpawnedDefenderCount(currentZone.Id) ?? 0;
+
+                        // Reserve = battle's defender troops minus spawned (what can still spawn)
+                        reserveCount = Math.Max(0, activeBattle.TotalDefenderTroops - deployedCount);
+
+                        // Also populate enemy attacker counts for the Territory HUD
+                        enemyDefenderCount = _battleAttackerManager?.GetSpawnedAttackerCount(currentZone.Id) ?? 0;
+                        enemyReserveCount = Math.Max(0, activeBattle.TotalAttackerTroops - enemyDefenderCount);
+
+                        // Mark as contested since there's a battle
+                        isContested = true;
+                    }
+                    else if (isPlayerOwned && _friendlyDefenderManager != null)
                     {
                         deployedCount = _friendlyDefenderManager.GetSpawnedDefenderCount(currentZone.Id);
 
@@ -568,6 +589,18 @@ namespace FactionWars.ScriptHookV
             // Subscribe to zone events for friendly defender spawning
             _territoryManager.ZoneEntered += (sender, zone) => _friendlyDefenderManager.OnZoneEntered(zone);
             _territoryManager.ZoneExited += (sender, zone) => _friendlyDefenderManager.OnZoneExited(zone);
+
+            // Subscribe to defender death events to sync with ZoneBattleManager
+            _friendlyDefenderManager.DefenderDied += (sender, e) =>
+            {
+                // If there's an active battle in this zone where player is defender,
+                // report the kill to the battle manager to keep troop counts in sync
+                var battle = _zoneBattleManager?.GetBattleForZone(e.ZoneId);
+                if (battle != null && battle.DefenderFactionId == CurrentPlayerFactionId)
+                {
+                    _zoneBattleManager?.ReportTroopKilled(e.ZoneId, CurrentPlayerFactionId!, e.Tier);
+                }
+            };
 
             // Subscribe battle attacker manager to zone events
             _territoryManager.ZoneEntered += (sender, zone) => _battleAttackerManager?.OnPlayerZoneEntered(zone);

@@ -1,19 +1,5 @@
 # Project Configuration
 
-## Workflow
-
-Always use the superpowers skills for development work:
-
-- **superpowers:brainstorming** - Before any creative work or new features
-- **superpowers:writing-plans** - When you have specs/requirements for multi-step tasks
-- **superpowers:executing-plans** - To implement plans task-by-task with review checkpoints
-- **superpowers:subagent-driven-development** - For executing plans with parallel subagents
-- **superpowers:test-driven-development** - Write tests first, always
-- **superpowers:systematic-debugging** - For any bug, test failure, or unexpected behavior
-- **superpowers:verification-before-completion** - Before claiming work is done
-- **superpowers:requesting-code-review** - When completing major features
-- **superpowers:finishing-a-development-branch** - When implementation is complete
-
 ## Deployment
 
 GTA V installation path: `E:\SteamLibrary\steamapps\common\Grand Theft Auto V\`
@@ -24,3 +10,15 @@ To deploy, copy the compiled DLL:
 ```bash
 cp "C:/Users/ryan7/programming/gtav-factions/src/FactionWars/bin/Debug/net48/FactionWars.dll" "E:/SteamLibrary/steamapps/common/Grand Theft Auto V/scripts/"
 ```
+
+## Debugging
+
+Mod logs are stored in the user's Documents folder:
+
+```
+C:\Users\ryan7\Documents\FactionWars\Logs\
+```
+
+Each game session creates a new timestamped log file (e.g., `FactionWars_2026-01-22_14-30-00.log`).
+
+When debugging in-game issues, read the most recent log file to see what happened during gameplay. The logger supports levels: INFO, DEBUG, WARN, ERROR, COMBAT, ZONE, SPAWN, and AI.

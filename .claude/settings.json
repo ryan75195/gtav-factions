@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -Command \"[Console]::Error.WriteLine('━━━ Superpowers Active ━━━'); Write-Output '{\\\"hookSpecificOutput\\\":{\\\"hookEventName\\\":\\\"UserPromptSubmit\\\",\\\"additionalContext\\\":\\\"IMPORTANT: You MUST use the Skill tool to invoke the appropriate workflow skill BEFORE taking action when these conditions apply:\\n\\n- systematic-debugging: INVOKE IMMEDIATELY when something fails, behaves unexpectedly, or tests dont pass. Do NOT attempt fixes without this skill.\\n- test-driven-development: INVOKE IMMEDIATELY when writing new code or fixing bugs. Write failing test first.\\n- writing-plans: INVOKE IMMEDIATELY when task has multiple steps or architectural decisions. Plan before coding.\\n- brainstorming: INVOKE IMMEDIATELY when requirements unclear, multiple approaches exist, or design decisions needed.\\n- verification-before-completion: INVOKE IMMEDIATELY when about to say done/fixed/complete. Verify first.\\n- requesting-code-review: INVOKE when significant work is complete, before merging.\\n\\nTo invoke: Use the Skill tool with skill parameter (e.g., skill: superpowers:test-driven-development). These skills provide essential workflows - skipping them leads to poor outcomes.\\\"}}'\""
+          }
+        ]
+      }
+    ]
+  }
+}

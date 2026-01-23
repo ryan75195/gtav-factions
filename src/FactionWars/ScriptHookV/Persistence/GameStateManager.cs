@@ -2,9 +2,12 @@ using FactionWars.Core.Interfaces;
 using FactionWars.Factions.Interfaces;
 using FactionWars.Factions.Models;
 using FactionWars.Persistence.Models;
+using FactionWars.ScriptHookV.Data;
+using FactionWars.ScriptHookV.Logging;
 using FactionWars.Territory.Interfaces;
 using FactionWars.Territory.Models;
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace FactionWars.ScriptHookV.Persistence
@@ -18,7 +21,7 @@ namespace FactionWars.ScriptHookV.Persistence
         private readonly ISaveSlotManager _saveSlotManager;
         private readonly IZoneRepository _zoneRepository;
         private readonly IFactionRepository _factionRepository;
-        private readonly IFactionRelationshipRepository _relationshipRepository;
+        private readonly IZoneDefenderAllocationRepository _allocationRepository;
 
         private bool _hasGameLoaded;
         private string? _currentSaveName;
@@ -46,17 +49,17 @@ namespace FactionWars.ScriptHookV.Persistence
         /// <param name="saveSlotManager">The save slot manager for persistence operations.</param>
         /// <param name="zoneRepository">The zone repository.</param>
         /// <param name="factionRepository">The faction repository.</param>
-        /// <param name="relationshipRepository">The faction relationship repository.</param>
+        /// <param name="allocationRepository">The zone defender allocation repository.</param>
         public GameStateManager(
             ISaveSlotManager saveSlotManager,
             IZoneRepository zoneRepository,
             IFactionRepository factionRepository,
-            IFactionRelationshipRepository relationshipRepository)
+            IZoneDefenderAllocationRepository allocationRepository)
         {
             _saveSlotManager = saveSlotManager ?? throw new ArgumentNullException(nameof(saveSlotManager));
             _zoneRepository = zoneRepository ?? throw new ArgumentNullException(nameof(zoneRepository));
             _factionRepository = factionRepository ?? throw new ArgumentNullException(nameof(factionRepository));
-            _relationshipRepository = relationshipRepository ?? throw new ArgumentNullException(nameof(relationshipRepository));
+            _allocationRepository = allocationRepository ?? throw new ArgumentNullException(nameof(allocationRepository));
 
             _hasGameLoaded = false;
             _currentSaveName = null;
@@ -76,7 +79,8 @@ namespace FactionWars.ScriptHookV.Persistence
                 _factionRepository.GetAll(),
                 _factionRepository.GetAllStates(),
                 _zoneRepository.GetAll(),
-                _relationshipRepository.GetAll());
+                Enumerable.Empty<FactionRelationship>(),
+                _allocationRepository.GetAll());
 
             gameState.TotalPlayTimeSeconds = _totalPlayTimeSeconds;
             gameState.SaveName = _currentSaveName ?? "Unnamed Save";
@@ -231,13 +235,24 @@ namespace FactionWars.ScriptHookV.Persistence
             // Clear existing data
             _zoneRepository.Clear();
             _factionRepository.Clear();
-            _relationshipRepository.Clear();
+            _allocationRepository.Clear();
 
             // Apply zones
             foreach (var zoneData in gameState.Zones)
             {
                 var zone = zoneData.ToZone();
                 _zoneRepository.Add(zone);
+            }
+
+            // Migration: Re-setup adjacencies if save file is missing them (pre-adjacency-persistence saves)
+            var firstZone = _zoneRepository.GetAll().FirstOrDefault();
+            if (firstZone != null && firstZone.AdjacentZoneIds.Count == 0)
+            {
+                FileLogger.AI("Migrating save: Setting up zone adjacencies (missing from save file)...");
+                ZoneDataLoader.SetupZoneAdjacencies(_zoneRepository);
+
+                int totalAdjacencies = _zoneRepository.GetAll().Sum(z => z.AdjacentZoneIds.Count);
+                FileLogger.AI($"Migration complete: {totalAdjacencies} adjacency links restored");
             }
 
             // Apply factions
@@ -254,11 +269,16 @@ namespace FactionWars.ScriptHookV.Persistence
                 _factionRepository.SetState(state);
             }
 
-            // Apply relationships
-            foreach (var relationshipData in gameState.Relationships)
+            // Note: Relationships from save files are ignored (feature removed)
+
+            // Apply zone defender allocations (troop deployments)
+            if (gameState.Allocations != null)
             {
-                var relationship = relationshipData.ToFactionRelationship();
-                _relationshipRepository.Add(relationship);
+                foreach (var allocationData in gameState.Allocations)
+                {
+                    var allocation = allocationData.ToAllocation();
+                    _allocationRepository.Add(allocation);
+                }
             }
         }
     }

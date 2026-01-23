@@ -55,5 +55,10 @@ namespace FactionWars.Core.Interfaces
         /// </summary>
         /// <returns>A list of all allocations.</returns>
         IReadOnlyList<ZoneDefenderAllocation> GetAll();
+
+        /// <summary>
+        /// Clears all allocations from the repository.
+        /// </summary>
+        void Clear();
     }
 }

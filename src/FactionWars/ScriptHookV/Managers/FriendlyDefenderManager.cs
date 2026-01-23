@@ -55,7 +55,6 @@ namespace FactionWars.ScriptHookV.Managers
         private readonly IDefenderTierService _defenderTierService;
         private readonly IPedBlipService _pedBlipService;
         private readonly IZoneService _zoneService;
-        private readonly IActiveBattleManager? _activeBattleManager;
         private string _playerFactionId;
 
         private readonly Dictionary<DefenderTier, string> _modelsByTier;
@@ -90,7 +89,6 @@ namespace FactionWars.ScriptHookV.Managers
         /// <param name="pedBlipService">Service for managing ped blips.</param>
         /// <param name="zoneService">Service for zone operations.</param>
         /// <param name="playerFactionId">The player's current faction ID.</param>
-        /// <param name="activeBattleManager">Optional active battle manager to sync kills during battles.</param>
         /// <exception cref="ArgumentNullException">Thrown if any required parameter is null.</exception>
         public FriendlyDefenderManager(
             IGameBridge gameBridge,
@@ -100,8 +98,7 @@ namespace FactionWars.ScriptHookV.Managers
             IDefenderTierService defenderTierService,
             IPedBlipService pedBlipService,
             IZoneService zoneService,
-            string playerFactionId,
-            IActiveBattleManager? activeBattleManager = null)
+            string playerFactionId)
         {
             _gameBridge = gameBridge ?? throw new ArgumentNullException(nameof(gameBridge));
             _allocationService = allocationService ?? throw new ArgumentNullException(nameof(allocationService));
@@ -111,7 +108,6 @@ namespace FactionWars.ScriptHookV.Managers
             _pedBlipService = pedBlipService ?? throw new ArgumentNullException(nameof(pedBlipService));
             _zoneService = zoneService ?? throw new ArgumentNullException(nameof(zoneService));
             _playerFactionId = playerFactionId ?? throw new ArgumentNullException(nameof(playerFactionId));
-            _activeBattleManager = activeBattleManager;
 
             _modelsByTier = new Dictionary<DefenderTier, string>
             {
@@ -303,14 +299,6 @@ namespace FactionWars.ScriptHookV.Managers
 
             // Delete the ped entity
             _gameBridge.DeletePed(pedHandle);
-
-            // Report kill to active battle manager if battle is ongoing and player is present
-            // This syncs the battle state with the actual ped deaths
-            var battle = _activeBattleManager?.GetBattleForZone(zoneId);
-            if (battle != null && battle.IsPlayerPresent)
-            {
-                _activeBattleManager?.ReportTroopKilled(zoneId, _playerFactionId, tier);
-            }
 
             // Get allocation BEFORE decrementing to check for reserves
             var allocation = _allocationService.GetAllocation(_playerFactionId, zoneId);

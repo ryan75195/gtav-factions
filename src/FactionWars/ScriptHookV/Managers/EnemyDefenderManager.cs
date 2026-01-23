@@ -25,7 +25,6 @@ namespace FactionWars.ScriptHookV.Managers
         private readonly IDefenderTierService _defenderTierService;
         private readonly IPedBlipService _pedBlipService;
         private readonly IZoneService _zoneService;
-        private readonly IActiveBattleManager? _activeBattleManager;
 
         private readonly Dictionary<DefenderTier, string> _modelsByTier;
         private readonly Dictionary<string, Dictionary<int, DefenderTier>> _spawnedPedTierByZone;
@@ -47,8 +46,7 @@ namespace FactionWars.ScriptHookV.Managers
             IPedSpawningService pedSpawningService,
             IDefenderTierService defenderTierService,
             IPedBlipService pedBlipService,
-            IZoneService zoneService,
-            IActiveBattleManager? activeBattleManager = null)
+            IZoneService zoneService)
         {
             _gameBridge = gameBridge ?? throw new ArgumentNullException(nameof(gameBridge));
             _allocationService = allocationService ?? throw new ArgumentNullException(nameof(allocationService));
@@ -56,7 +54,6 @@ namespace FactionWars.ScriptHookV.Managers
             _defenderTierService = defenderTierService ?? throw new ArgumentNullException(nameof(defenderTierService));
             _pedBlipService = pedBlipService ?? throw new ArgumentNullException(nameof(pedBlipService));
             _zoneService = zoneService ?? throw new ArgumentNullException(nameof(zoneService));
-            _activeBattleManager = activeBattleManager;
 
             // Enemy faction ped models (different from player's faction)
             _modelsByTier = new Dictionary<DefenderTier, string>
@@ -248,13 +245,6 @@ namespace FactionWars.ScriptHookV.Managers
                 FileLogger.Combat($"EnemyDefenderManager: Decremented {tier} allocation in {zoneId}, remaining: {allocation.TotalTroops}");
             }
 
-            // Report kill to active battle manager if battle is ongoing and player is present
-            var battle = _activeBattleManager?.GetBattleForZone(zoneId);
-            if (battle != null && battle.IsPlayerPresent)
-            {
-                _activeBattleManager?.ReportTroopKilled(zoneId, enemyFactionId, tier);
-            }
-
             // Try to spawn replacement from remaining reserves
             TrySpawnReplacement(zoneId, tier, enemyFactionId, allocation);
         }
@@ -330,7 +320,8 @@ namespace FactionWars.ScriptHookV.Managers
 
         /// <summary>
         /// Calculates a random spawn position around the zone center at ground level.
-        /// Uses the zone's full radius for spawn area.
+        /// Uses the zone's full radius for spawn area and navmesh-based safe coordinates
+        /// to avoid spawning on rooftops.
         /// </summary>
         private Vector3 CalculateRandomSpawnPosition(Vector3 center, float zoneRadius, Random random)
         {
@@ -339,8 +330,10 @@ namespace FactionWars.ScriptHookV.Managers
             var distance = minRadius + (float)(random.NextDouble() * (zoneRadius - minRadius));
             var x = center.X + (float)(Math.Cos(angle) * distance);
             var y = center.Y + (float)(Math.Sin(angle) * distance);
-            var z = _gameBridge.GetGroundZ(x, y, center.Z);
-            return new Vector3(x, y, z);
+
+            // Use navmesh-based safe coordinate to avoid rooftop spawns
+            var targetPos = new Vector3(x, y, center.Z);
+            return _gameBridge.GetSafeCoordForPed(targetPos);
         }
 
         /// <summary>

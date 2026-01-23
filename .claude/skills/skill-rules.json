@@ -1,0 +1,211 @@
+{
+  "version": "2.0.0",
+  "workflows": {
+    "bug-fix": {
+      "name": "Bug Fix Workflow",
+      "description": "Diagnose root cause → Write failing test → Fix → Verify",
+      "priority": "critical",
+      "sequence": [
+        "superpowers:systematic-debugging",
+        "superpowers:test-driven-development",
+        "superpowers:verification-before-completion"
+      ],
+      "triggers": {
+        "keywords": [
+          "bug",
+          "broken",
+          "failing",
+          "not working",
+          "doesn't work",
+          "error",
+          "diagnose",
+          "investigate",
+          "debug",
+          "fix this",
+          "why is",
+          "why does",
+          "why doesn't",
+          "what's wrong",
+          "issue",
+          "problem",
+          "crash",
+          "exception"
+        ],
+        "intentPatterns": [
+          "test.*fail",
+          "not.*spawn",
+          "not.*work",
+          "doesn't.*appear",
+          "won't.*load",
+          "fix.*bug",
+          "debug.*issue"
+        ]
+      }
+    },
+    "feature-development": {
+      "name": "Feature Development Workflow",
+      "description": "Brainstorm → Plan → Execute with TDD → Verify → Review",
+      "priority": "high",
+      "sequence": [
+        "superpowers:brainstorming",
+        "superpowers:writing-plans",
+        "superpowers:subagent-driven-development",
+        "superpowers:verification-before-completion",
+        "superpowers:requesting-code-review"
+      ],
+      "triggers": {
+        "keywords": [
+          "new feature",
+          "add feature",
+          "implement feature",
+          "build feature",
+          "create feature",
+          "design",
+          "architecture",
+          "system"
+        ],
+        "intentPatterns": [
+          "add.*new",
+          "implement.*system",
+          "build.*complete",
+          "create.*full",
+          "want.*feature"
+        ]
+      }
+    },
+    "quick-implementation": {
+      "name": "Quick Implementation Workflow",
+      "description": "Write failing test → Implement → Verify",
+      "priority": "high",
+      "sequence": [
+        "superpowers:test-driven-development",
+        "superpowers:verification-before-completion"
+      ],
+      "triggers": {
+        "keywords": [
+          "implement",
+          "add method",
+          "add function",
+          "create class",
+          "new method",
+          "new class",
+          "write code",
+          "code this"
+        ],
+        "intentPatterns": [
+          "add.*to.*class",
+          "implement.*method",
+          "create.*service",
+          "build.*manager",
+          "make.*work"
+        ]
+      }
+    },
+    "refactoring": {
+      "name": "Refactoring Workflow",
+      "description": "Plan changes → Execute with tests → Verify → Review",
+      "priority": "high",
+      "sequence": [
+        "superpowers:writing-plans",
+        "superpowers:test-driven-development",
+        "superpowers:verification-before-completion",
+        "superpowers:requesting-code-review"
+      ],
+      "triggers": {
+        "keywords": [
+          "refactor",
+          "rewrite",
+          "restructure",
+          "reorganize",
+          "clean up",
+          "improve code",
+          "overhaul"
+        ],
+        "intentPatterns": [
+          "refactor.*code",
+          "clean.*up",
+          "improve.*structure"
+        ]
+      }
+    },
+    "completion": {
+      "name": "Completion Workflow",
+      "description": "Verify all tests pass → Review → Finish branch",
+      "priority": "high",
+      "sequence": [
+        "superpowers:verification-before-completion",
+        "superpowers:requesting-code-review",
+        "superpowers:finishing-a-development-branch"
+      ],
+      "triggers": {
+        "keywords": [
+          "done",
+          "finished",
+          "complete",
+          "ready to commit",
+          "looks good",
+          "ship it",
+          "wrap up",
+          "finalize"
+        ],
+        "intentPatterns": [
+          "is.*it.*done",
+          "are.*we.*done",
+          "ready.*to.*merge",
+          "can.*we.*commit"
+        ]
+      }
+    },
+    "code-review": {
+      "name": "Code Review Workflow",
+      "description": "Request review → Address feedback → Finish branch",
+      "priority": "medium",
+      "sequence": [
+        "superpowers:requesting-code-review",
+        "superpowers:receiving-code-review",
+        "superpowers:finishing-a-development-branch"
+      ],
+      "triggers": {
+        "keywords": [
+          "review",
+          "check my code",
+          "look over",
+          "feedback",
+          "pr",
+          "pull request"
+        ],
+        "intentPatterns": [
+          "can.*you.*review",
+          "please.*check",
+          "create.*pr",
+          "open.*pull.*request"
+        ]
+      }
+    },
+    "exploration": {
+      "name": "Exploration Workflow",
+      "description": "Brainstorm ideas and approaches",
+      "priority": "medium",
+      "sequence": [
+        "superpowers:brainstorming"
+      ],
+      "triggers": {
+        "keywords": [
+          "how should",
+          "what approach",
+          "ideas for",
+          "think about",
+          "consider",
+          "explore",
+          "options"
+        ],
+        "intentPatterns": [
+          "what.*best.*way",
+          "how.*would.*you",
+          "should.*i.*use",
+          "what.*approach"
+        ]
+      }
+    }
+  }
+}

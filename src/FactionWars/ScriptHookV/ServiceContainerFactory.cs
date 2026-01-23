@@ -8,6 +8,7 @@ using FactionWars.AI.Strategies;
 using FactionWars.Combat.Interfaces;
 using FactionWars.Combat.Pools;
 using FactionWars.Combat.Services;
+using FactionWars.Configuration;
 using FactionWars.Core.Interfaces;
 using FactionWars.Core.Services;
 using FactionWars.Economy.Interfaces;
@@ -35,16 +36,6 @@ namespace FactionWars.ScriptHookV
     public static class ServiceContainerFactory
     {
         /// <summary>
-        /// Default tick interval for resource generation in seconds.
-        /// </summary>
-        private const int DefaultResourceTickInterval = 60;
-
-        /// <summary>
-        /// Default save directory for game saves (relative to user's documents folder).
-        /// </summary>
-        private const string DefaultSaveDirectoryName = "FactionWars";
-
-        /// <summary>
         /// Creates a fully configured ServiceContainer with all services wired together.
         /// </summary>
         /// <param name="gameBridge">The game bridge implementation for native calls.</param>
@@ -57,6 +48,16 @@ namespace FactionWars.ScriptHookV
                 throw new ArgumentNullException(nameof(gameBridge));
 
             var container = new ServiceContainer();
+
+            // Load configuration first - other services depend on it
+            var configPath = Path.Combine(
+                gameBridge.GetScriptsDirectory(),
+                "FactionWars",
+                "config.json");
+            var configLoader = new ConfigLoader(configPath);
+            var config = configLoader.Load();
+            container.Register<IConfigLoader>(configLoader);
+            container.Register(config);
 
             // Register core infrastructure
             RegisterCoreServices(container, gameBridge);
@@ -105,10 +106,6 @@ namespace FactionWars.ScriptHookV
             // Faction repository - singleton
             container.RegisterSingleton<IFactionRepository>(() => new InMemoryFactionRepository());
 
-            // Faction relationship repository - singleton
-            container.RegisterSingleton<IFactionRelationshipRepository>(() =>
-                new InMemoryFactionRelationshipRepository());
-
             // Ped pool - singleton (tracks all spawned peds)
             container.RegisterSingleton<IPedPool>(() => new InMemoryPedPool());
         }
@@ -122,12 +119,6 @@ namespace FactionWars.ScriptHookV
             // Faction service depends on faction repository
             container.RegisterSingleton<IFactionService>(() =>
                 new FactionService(container.Resolve<IFactionRepository>()));
-
-            // Faction relationship service depends on faction repository and relationship repository
-            container.RegisterSingleton<IFactionRelationshipService>(() =>
-                new FactionRelationshipService(
-                    container.Resolve<IFactionRepository>(),
-                    container.Resolve<IFactionRelationshipRepository>()));
 
             // Defender tier service - manages defender tier configurations
             container.RegisterSingleton<IDefenderTierService>(() =>
@@ -197,13 +188,6 @@ namespace FactionWars.ScriptHookV
             container.RegisterSingleton<IWaveSpawnerService>(() =>
                 new WaveSpawnerService());
 
-            // Reinforcement service - manages reinforcement waves during combat
-            container.RegisterSingleton<IReinforcementService>(() =>
-                new ReinforcementService(
-                    container.Resolve<IPedSpawningService>(),
-                    container.Resolve<ITimeProvider>(),
-                    new ReinforcementConfig()));
-
             // Defender scaling service - scales zone troops to spawnable peds
             container.RegisterSingleton<IDefenderScalingService>(() =>
                 new DefenderScalingService());
@@ -215,16 +199,15 @@ namespace FactionWars.ScriptHookV
                     container.Resolve<IPedPool>(),
                     container.Resolve<IZoneDefenderAllocationRepository>()));
 
-            // Active battle manager - manages timed AI territorial battles
-            container.RegisterSingleton<IActiveBattleManager>(() =>
-                new ActiveBattleManager(
-                    container.Resolve<IFactionService>(),
-                    container.Resolve<IZoneService>(),
-                    container.Resolve<IZoneDefenderAllocationService>()));
+            // Zone battle manager - unified manager for battle lifecycle
+            container.RegisterSingleton<IZoneBattleManager>(() =>
+                new ZoneBattleManager());
         }
 
         private static void RegisterPersistenceServices(ServiceContainer container)
         {
+            var config = container.Resolve<GameConfig>();
+
             // JSON persistence service - handles JSON serialization/deserialization of game state
             container.RegisterSingleton<IPersistenceService>(() =>
                 new JsonPersistenceService());
@@ -234,10 +217,11 @@ namespace FactionWars.ScriptHookV
             container.RegisterSingleton<ISaveSlotManager>(() =>
             {
                 var documentsPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-                var saveDirectory = Path.Combine(documentsPath, DefaultSaveDirectoryName, "Saves");
+                var saveDirectory = Path.Combine(documentsPath, config.Persistence.SaveDirectoryName, "Saves");
                 return new SaveSlotManager(
                     container.Resolve<IPersistenceService>(),
-                    saveDirectory);
+                    saveDirectory,
+                    config.Persistence.MaxSaveSlots);
             });
 
             // Game state manager - coordinates save/load between domain repositories and persistence
@@ -246,7 +230,7 @@ namespace FactionWars.ScriptHookV
                     container.Resolve<ISaveSlotManager>(),
                     container.Resolve<IZoneRepository>(),
                     container.Resolve<IFactionRepository>(),
-                    container.Resolve<IFactionRelationshipRepository>()));
+                    container.Resolve<IZoneDefenderAllocationRepository>()));
 
             // Game state coordinator - provides simplified interface for UI save/load operations
             container.RegisterSingleton<IGameStateCoordinator>(() =>
@@ -256,16 +240,19 @@ namespace FactionWars.ScriptHookV
             container.RegisterSingleton<IAutoSaveService>(() =>
             {
                 var documentsPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-                var saveDirectory = Path.Combine(documentsPath, DefaultSaveDirectoryName, "Saves");
+                var saveDirectory = Path.Combine(documentsPath, config.Persistence.SaveDirectoryName, "Saves");
                 return new AutoSaveService(
                     container.Resolve<IPersistenceService>(),
                     container.Resolve<IGameStateManager>(),
-                    saveDirectory);
+                    saveDirectory,
+                    TimeSpan.FromSeconds(config.Persistence.AutoSaveIntervalSeconds));
             });
         }
 
         private static void RegisterEconomyServices(ServiceContainer container)
         {
+            var config = container.Resolve<GameConfig>();
+
             // Zone trait resource modifier - no dependencies
             container.RegisterSingleton<IZoneTraitResourceModifier>(() =>
                 new ZoneTraitResourceModifier());
@@ -281,7 +268,7 @@ namespace FactionWars.ScriptHookV
                     container.Resolve<IZoneService>(),
                     container.Resolve<IZoneTraitResourceModifier>(),
                     container.Resolve<ISupplyLineService>(),
-                    DefaultResourceTickInterval));
+                    config.Economy.ResourceTickIntervalSeconds));
 
             // Troop purchase service depends on game bridge, defender tier service, and faction service
             container.RegisterSingleton<ITroopPurchaseService>(() =>
@@ -303,13 +290,6 @@ namespace FactionWars.ScriptHookV
                 container.RegisterSingleton<IMenuProvider>(() =>
                     new NativeUIMenuProvider());
             }
-
-            // Map blip service depends on game bridge, zone service, and faction repository
-            container.RegisterSingleton<IMapBlipService>(() =>
-                new MapBlipService(
-                    container.Resolve<IGameBridge>(),
-                    container.Resolve<IZoneService>(),
-                    container.Resolve<IFactionRepository>()));
 
             // Ped blip service - manages minimap blips for peds (followers, defenders)
             container.RegisterSingleton<IPedBlipService>(() =>
@@ -333,16 +313,6 @@ namespace FactionWars.ScriptHookV
                     container.Resolve<IFactionRepository>(),
                     container.Resolve<ITerritoryIndicatorRenderer>()));
 
-            // Combat HUD renderer - ScriptHookV implementation for combat HUD
-            container.RegisterSingleton<ICombatHudRenderer>(() =>
-                new CombatHudRenderer());
-
-            // Combat HUD service - manages combat HUD display
-            container.RegisterSingleton<ICombatHudService>(() =>
-                new CombatHudService(
-                    container.Resolve<IReinforcementService>(),
-                    container.Resolve<ICombatHudRenderer>()));
-
             // Faction color service - manages faction color assignments
             container.RegisterSingleton<IFactionColorService>(() =>
                 new FactionColorService());
@@ -359,30 +329,20 @@ namespace FactionWars.ScriptHookV
 
         private static void RegisterAIServices(ServiceContainer container)
         {
+            var config = container.Resolve<GameConfig>();
+
             // AI strategies dictionary - maps faction IDs to their strategies
             container.RegisterSingleton<IDictionary<string, IAIStrategy>>(() =>
                 new Dictionary<string, IAIStrategy>
                 {
-                    { "michael", new MichaelAIStrategy() },
-                    { "trevor", new TrevorAIStrategy() },
-                    { "franklin", new FranklinAIStrategy() }
+                    { "michael", new MichaelAIStrategy(config.AI.MichaelAggressiveness, config.AI.MichaelRiskTolerance) },
+                    { "trevor", new TrevorAIStrategy(config.AI.TrevorAggressiveness, config.AI.TrevorRiskTolerance) },
+                    { "franklin", new FranklinAIStrategy(config.AI.FranklinAggressiveness, config.AI.FranklinRiskTolerance) }
                 });
-
-            // Zone evaluation service - calculates zone attractiveness for AI decisions
-            container.RegisterSingleton<IZoneEvaluationService>(() =>
-                new ZoneEvaluationService());
-
-            // Resource allocation service - determines troop/cash distribution for operations
-            container.RegisterSingleton<IResourceAllocationService>(() =>
-                new ResourceAllocationService());
 
             // Aggression response service - tracks aggression and determines AI responses
             container.RegisterSingleton<IAggressionResponseService>(() =>
                 new AggressionResponseService());
-
-            // AI difficulty service - manages AI difficulty settings and scaling
-            container.RegisterSingleton<IAIDifficultyService>(() =>
-                new AIDifficultyService());
 
             // Battle simulation service - simulates AI vs AI battles
             container.RegisterSingleton<IBattleSimulationService>(() =>
@@ -398,10 +358,10 @@ namespace FactionWars.ScriptHookV
                     container.Resolve<IEventAlertService>(),
                     container.Resolve<IEventFeedService>()));
 
-            // Register AI budget service - costs aligned with player DefenderTierService.Basic ($200)
+            // Register AI budget service - costs from config
             container.RegisterSingleton<IAIBudgetService>(() => new AIBudgetService(
-                costPerTroop: 50,
-                recruitCostPerTroop: 200));
+                costPerTroop: config.AI.AttackCostPerTroop,
+                recruitCostPerTroop: config.AI.RecruitCostPerTroop));
 
             // Register AI recruitment service
             container.RegisterSingleton<IAIRecruitmentService>(() => new AIRecruitmentService(
@@ -422,7 +382,7 @@ namespace FactionWars.ScriptHookV
                 container.Resolve<IZoneDefenderAllocationService>(),
                 container.Resolve<IGameBridge>(),
                 container.Resolve<IDictionary<string, IAIStrategy>>(),
-                container.Resolve<IActiveBattleManager>()));
+                container.Resolve<IZoneBattleManager>()));
         }
     }
 }
