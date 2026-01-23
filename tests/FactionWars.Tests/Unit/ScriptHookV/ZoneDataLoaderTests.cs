@@ -314,6 +314,36 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             Assert.ThrowsAny<Exception>(() => loader.LoadFromJson("not valid json"));
         }
 
+        [Fact]
+        public void LoadFromJson_WithArrayTraits_ShouldParseCorrectly()
+        {
+            // Arrange
+            var zoneRepository = new InMemoryZoneRepository();
+            var loader = new ZoneDataLoader(zoneRepository);
+            var json = @"[
+                {
+                    ""id"": ""test_zone"",
+                    ""name"": ""Test Zone"",
+                    ""centerX"": 100.0,
+                    ""centerY"": 200.0,
+                    ""centerZ"": 30.0,
+                    ""radius"": 150.0,
+                    ""strategicValue"": 5,
+                    ""traits"": [""Commercial"", ""HighValue""],
+                    ""initialOwner"": ""michael""
+                }
+            ]";
+
+            // Act
+            loader.LoadFromJson(json);
+
+            // Assert
+            var zone = zoneRepository.GetById("test_zone");
+            Assert.NotNull(zone);
+            Assert.True(zone.Traits.HasFlag(ZoneTrait.Commercial));
+            Assert.True(zone.Traits.HasFlag(ZoneTrait.HighValue));
+        }
+
         #endregion
 
         #region Known Zone Tests

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using FactionWars.Core.Interfaces;
 using FactionWars.ScriptHookV.Logging;
 using FactionWars.Territory.Interfaces;
@@ -46,7 +47,7 @@ namespace FactionWars.ScriptHookV.Data
 
             // Set up zone adjacencies after all zones are loaded
             FileLogger.AI("Setting up zone adjacencies...");
-            SetupZoneAdjacencies();
+            SetupZoneAdjacencies(_zoneRepository);
 
             // Log summary of adjacencies
             int totalAdjacencies = 0;
@@ -85,17 +86,37 @@ namespace FactionWars.ScriptHookV.Data
         {
             var center = new Vector3(dto.CenterX, dto.CenterY, dto.CenterZ);
             var zone = new Zone(dto.Id, dto.Name, center, dto.Radius, dto.StrategicValue);
-            zone.Traits = ParseTraits(dto.Traits);
+            zone.Traits = ParseTraits(dto.TraitsRaw);
             return zone;
         }
 
-        private static ZoneTrait ParseTraits(string? traits)
+        private static ZoneTrait ParseTraits(object? traitsRaw)
         {
-            if (string.IsNullOrWhiteSpace(traits))
+            if (traitsRaw == null)
                 return ZoneTrait.None;
 
             ZoneTrait result = ZoneTrait.None;
-            var parts = traits!.Split(new[] { ',', '|' }, StringSplitOptions.RemoveEmptyEntries);
+
+            // Handle JArray (from JSON array)
+            if (traitsRaw is JArray jArray)
+            {
+                foreach (var item in jArray)
+                {
+                    var traitStr = item.ToString().Trim();
+                    if (Enum.TryParse<ZoneTrait>(traitStr, true, out var trait))
+                    {
+                        result |= trait;
+                    }
+                }
+                return result;
+            }
+
+            // Handle string (comma-separated)
+            var traitsString = traitsRaw.ToString();
+            if (string.IsNullOrWhiteSpace(traitsString))
+                return ZoneTrait.None;
+
+            var parts = traitsString.Split(new[] { ',', '|' }, StringSplitOptions.RemoveEmptyEntries);
             foreach (var part in parts)
             {
                 if (Enum.TryParse<ZoneTrait>(part.Trim(), true, out var trait))
@@ -171,70 +192,75 @@ namespace FactionWars.ScriptHookV.Data
         /// <summary>
         /// Sets up adjacency relationships between zones based on GTA V geography.
         /// Adjacencies are bidirectional - if A borders B, then B borders A.
+        /// Can be called after loading zones from a save to restore adjacency data.
         /// </summary>
-        private void SetupZoneAdjacencies()
+        /// <param name="zoneRepository">The zone repository containing loaded zones.</param>
+        public static void SetupZoneAdjacencies(IZoneRepository zoneRepository)
         {
             // Los Santos Urban Core adjacencies
-            SetAdjacent("downtown", "vinewood", "pillbox_hill", "little_seoul", "mission_row", "strawberry");
-            SetAdjacent("vinewood", "downtown", "vinewood_hills", "rockford_hills", "mirror_park");
-            SetAdjacent("rockford_hills", "vinewood", "morningwood", "richman", "del_perro");
-            SetAdjacent("little_seoul", "downtown", "pillbox_hill", "vespucci", "la_puerta");
-            SetAdjacent("pillbox_hill", "downtown", "little_seoul", "mission_row", "strawberry");
-            SetAdjacent("mission_row", "downtown", "pillbox_hill", "strawberry", "rancho", "mirror_park");
-            SetAdjacent("strawberry", "downtown", "pillbox_hill", "mission_row", "davis", "rancho");
-            SetAdjacent("davis", "strawberry", "rancho", "cypress_flats", "terminal");
-            SetAdjacent("rancho", "mission_row", "strawberry", "davis", "east_los_santos", "cypress_flats");
-            SetAdjacent("la_puerta", "little_seoul", "vespucci", "terminal", "lsia");
-            SetAdjacent("vespucci", "little_seoul", "la_puerta", "del_perro", "morningwood");
-            SetAdjacent("del_perro", "vespucci", "morningwood", "rockford_hills", "richman");
-            SetAdjacent("morningwood", "vespucci", "del_perro", "rockford_hills");
+            SetAdjacent(zoneRepository, "downtown", "vinewood", "pillbox_hill", "little_seoul", "mission_row", "strawberry");
+            SetAdjacent(zoneRepository, "vinewood", "downtown", "vinewood_hills", "rockford_hills", "mirror_park");
+            SetAdjacent(zoneRepository, "rockford_hills", "vinewood", "morningwood", "richman", "del_perro");
+            SetAdjacent(zoneRepository, "little_seoul", "downtown", "pillbox_hill", "vespucci", "la_puerta");
+            SetAdjacent(zoneRepository, "pillbox_hill", "downtown", "little_seoul", "mission_row", "strawberry");
+            SetAdjacent(zoneRepository, "mission_row", "downtown", "pillbox_hill", "strawberry", "rancho", "mirror_park");
+            SetAdjacent(zoneRepository, "strawberry", "downtown", "pillbox_hill", "mission_row", "davis", "rancho");
+            SetAdjacent(zoneRepository, "davis", "strawberry", "rancho", "cypress_flats", "terminal");
+            SetAdjacent(zoneRepository, "rancho", "mission_row", "strawberry", "davis", "east_los_santos", "cypress_flats");
+            SetAdjacent(zoneRepository, "la_puerta", "little_seoul", "vespucci", "terminal", "lsia");
+            SetAdjacent(zoneRepository, "vespucci", "little_seoul", "la_puerta", "del_perro", "morningwood");
+            SetAdjacent(zoneRepository, "del_perro", "vespucci", "morningwood", "rockford_hills", "richman");
+            SetAdjacent(zoneRepository, "morningwood", "vespucci", "del_perro", "rockford_hills");
 
             // Port & Industrial adjacencies
-            SetAdjacent("port_of_los_santos", "elysian_island", "cypress_flats");
-            SetAdjacent("elysian_island", "port_of_los_santos", "terminal", "lsia");
-            SetAdjacent("cypress_flats", "davis", "rancho", "port_of_los_santos", "east_los_santos");
-            SetAdjacent("terminal", "davis", "la_puerta", "elysian_island", "lsia");
+            SetAdjacent(zoneRepository, "port_of_los_santos", "elysian_island", "cypress_flats");
+            SetAdjacent(zoneRepository, "elysian_island", "port_of_los_santos", "terminal", "lsia");
+            SetAdjacent(zoneRepository, "cypress_flats", "davis", "rancho", "port_of_los_santos", "east_los_santos");
+            SetAdjacent(zoneRepository, "terminal", "davis", "la_puerta", "elysian_island", "lsia");
 
             // Airport adjacencies
-            SetAdjacent("lsia", "la_puerta", "terminal", "elysian_island");
+            SetAdjacent(zoneRepository, "lsia", "la_puerta", "terminal", "elysian_island");
 
             // Northern Suburbs adjacencies
-            SetAdjacent("vinewood_hills", "vinewood", "mirror_park", "harmony");
-            SetAdjacent("richman", "del_perro", "rockford_hills");
-            SetAdjacent("mirror_park", "vinewood", "mission_row", "vinewood_hills", "east_los_santos");
-            SetAdjacent("east_los_santos", "rancho", "mirror_park", "cypress_flats", "harmony");
+            SetAdjacent(zoneRepository, "vinewood_hills", "vinewood", "mirror_park", "harmony");
+            SetAdjacent(zoneRepository, "richman", "del_perro", "rockford_hills");
+            SetAdjacent(zoneRepository, "mirror_park", "vinewood", "mission_row", "vinewood_hills", "east_los_santos");
+            SetAdjacent(zoneRepository, "east_los_santos", "rancho", "mirror_park", "cypress_flats", "harmony");
 
             // Blaine County - Sandy Shores Area adjacencies
-            SetAdjacent("sandy_shores", "trevor_airfield", "alamo_sea", "grapeseed", "grand_senora_desert");
-            SetAdjacent("harmony", "vinewood_hills", "east_los_santos", "alamo_sea", "grand_senora_desert");
-            SetAdjacent("grapeseed", "sandy_shores", "alamo_sea", "paleto_forest", "chiliad_wilderness");
-            SetAdjacent("alamo_sea", "sandy_shores", "harmony", "grapeseed", "chiliad_wilderness");
+            SetAdjacent(zoneRepository, "sandy_shores", "trevor_airfield", "alamo_sea", "grapeseed", "grand_senora_desert");
+            SetAdjacent(zoneRepository, "harmony", "vinewood_hills", "east_los_santos", "alamo_sea", "grand_senora_desert");
+            SetAdjacent(zoneRepository, "grapeseed", "sandy_shores", "alamo_sea", "paleto_forest", "chiliad_wilderness");
+            SetAdjacent(zoneRepository, "alamo_sea", "sandy_shores", "harmony", "grapeseed", "chiliad_wilderness");
 
             // Blaine County - Mount Chiliad Area adjacencies
-            SetAdjacent("paleto_bay", "paleto_forest", "chiliad_wilderness");
-            SetAdjacent("paleto_forest", "paleto_bay", "grapeseed", "chiliad_wilderness");
-            SetAdjacent("chiliad_wilderness", "paleto_bay", "paleto_forest", "grapeseed", "alamo_sea");
+            SetAdjacent(zoneRepository, "paleto_bay", "paleto_forest", "chiliad_wilderness");
+            SetAdjacent(zoneRepository, "paleto_forest", "paleto_bay", "grapeseed", "chiliad_wilderness");
+            SetAdjacent(zoneRepository, "chiliad_wilderness", "paleto_bay", "paleto_forest", "grapeseed", "alamo_sea");
 
             // Blaine County - Desert adjacencies
-            SetAdjacent("grand_senora_desert", "sandy_shores", "harmony", "trevor_airfield");
-            SetAdjacent("trevor_airfield", "sandy_shores", "grand_senora_desert");
+            SetAdjacent(zoneRepository, "grand_senora_desert", "sandy_shores", "harmony", "trevor_airfield");
+            SetAdjacent(zoneRepository, "trevor_airfield", "sandy_shores", "grand_senora_desert");
         }
 
         /// <summary>
         /// Helper to set up adjacency for a zone with multiple neighbors.
         /// </summary>
-        private void SetAdjacent(string zoneId, params string[] adjacentIds)
+        private static void SetAdjacent(IZoneRepository zoneRepository, string zoneId, params string[] adjacentIds)
         {
-            var zone = _zoneRepository.GetById(zoneId);
+            var zone = zoneRepository.GetById(zoneId);
             if (zone == null) return;
 
             foreach (var adjacentId in adjacentIds)
             {
-                zone.AdjacentZoneIds.Add(adjacentId);
+                if (!zone.AdjacentZoneIds.Contains(adjacentId))
+                {
+                    zone.AdjacentZoneIds.Add(adjacentId);
+                }
 
                 // Also add reverse adjacency
-                var adjacentZone = _zoneRepository.GetById(adjacentId);
-                if (adjacentZone != null)
+                var adjacentZone = zoneRepository.GetById(adjacentId);
+                if (adjacentZone != null && !adjacentZone.AdjacentZoneIds.Contains(zoneId))
                 {
                     adjacentZone.AdjacentZoneIds.Add(zoneId);
                 }
@@ -253,7 +279,15 @@ namespace FactionWars.ScriptHookV.Data
             public float CenterZ { get; set; }
             public float Radius { get; set; } = 150f;
             public int StrategicValue { get; set; } = 1;
-            public string? Traits { get; set; }
+
+            // Support both string (comma-separated) and array formats
+            [JsonProperty("traits")]
+            public object? TraitsRaw { get; set; }
+
+            public string? InitialOwner { get; set; }
+
+            // Adjacent zone IDs (optional - if not provided, computed by proximity)
+            public List<string>? AdjacentZones { get; set; }
         }
     }
 }
