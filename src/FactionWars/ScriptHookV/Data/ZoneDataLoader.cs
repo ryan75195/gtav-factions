@@ -84,6 +84,43 @@ namespace FactionWars.ScriptHookV.Data
         }
 
         /// <summary>
+        /// Loads zones from file if it exists, otherwise loads default hardcoded zones.
+        /// Also sets up zone adjacencies after loading.
+        /// </summary>
+        /// <param name="zonesFilePath">Path to the zones.json file.</param>
+        public void LoadZonesWithFallback(string zonesFilePath)
+        {
+            if (_zoneRepository.Count > 0)
+            {
+                throw new InvalidOperationException("Zones have already been loaded.");
+            }
+
+            bool loadedFromFile = LoadFromFile(zonesFilePath);
+
+            if (!loadedFromFile)
+            {
+                FileLogger.Info("Loading default zones (no zones.json found)");
+                var zones = CreateDefaultZones().ToList();
+                foreach (var zone in zones)
+                {
+                    _zoneRepository.Add(zone);
+                }
+            }
+
+            // Set up zone adjacencies after all zones are loaded
+            FileLogger.AI("Setting up zone adjacencies...");
+            SetupZoneAdjacencies(_zoneRepository);
+
+            // Log summary
+            int totalAdjacencies = 0;
+            foreach (var zone in _zoneRepository.GetAll())
+            {
+                totalAdjacencies += zone.AdjacentZoneIds.Count;
+            }
+            FileLogger.AI($"Zone loading complete: {_zoneRepository.Count} zones, {totalAdjacencies} total adjacency links");
+        }
+
+        /// <summary>
         /// Loads zones from a JSON file.
         /// </summary>
         /// <param name="filePath">Path to the zones.json file.</param>

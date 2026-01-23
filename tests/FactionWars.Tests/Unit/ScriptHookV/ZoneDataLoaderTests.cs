@@ -453,5 +453,81 @@ namespace FactionWars.Tests.Unit.ScriptHookV
         }
 
         #endregion
+
+        #region LoadZonesWithFallback Tests
+
+        [Fact]
+        public void LoadZonesWithFallback_WhenFileExists_ShouldLoadFromFile()
+        {
+            // Arrange
+            var zoneRepository = new InMemoryZoneRepository();
+            var loader = new ZoneDataLoader(zoneRepository);
+            var tempDir = Path.Combine(Path.GetTempPath(), "ZoneDataLoaderTest_" + Guid.NewGuid());
+            Directory.CreateDirectory(tempDir);
+            var zonesFile = Path.Combine(tempDir, "zones.json");
+
+            var json = @"{""zones"": [{""id"": ""custom"", ""name"": ""Custom Zone"", ""centerX"": 0, ""centerY"": 0, ""centerZ"": 0, ""radius"": 100, ""strategicValue"": 1, ""traits"": []}]}";
+            File.WriteAllText(zonesFile, json);
+
+            try
+            {
+                // Act
+                loader.LoadZonesWithFallback(zonesFile);
+
+                // Assert
+                Assert.Equal(1, zoneRepository.Count);
+                Assert.NotNull(zoneRepository.GetById("custom"));
+                Assert.Null(zoneRepository.GetById("downtown")); // Default zone should NOT exist
+            }
+            finally
+            {
+                Directory.Delete(tempDir, true);
+            }
+        }
+
+        [Fact]
+        public void LoadZonesWithFallback_WhenFileDoesNotExist_ShouldLoadDefaults()
+        {
+            // Arrange
+            var zoneRepository = new InMemoryZoneRepository();
+            var loader = new ZoneDataLoader(zoneRepository);
+
+            // Act
+            loader.LoadZonesWithFallback("/nonexistent/zones.json");
+
+            // Assert
+            Assert.True(zoneRepository.Count > 0);
+            Assert.NotNull(zoneRepository.GetById("downtown")); // Default zone should exist
+        }
+
+        [Fact]
+        public void LoadZonesWithFallback_WhenZonesAlreadyLoaded_ShouldThrow()
+        {
+            // Arrange
+            var zoneRepository = new InMemoryZoneRepository();
+            var loader = new ZoneDataLoader(zoneRepository);
+            loader.LoadDefaultZones(); // Load zones first
+
+            // Act & Assert
+            Assert.Throws<InvalidOperationException>(() => loader.LoadZonesWithFallback("/some/path/zones.json"));
+        }
+
+        [Fact]
+        public void LoadZonesWithFallback_ShouldSetupAdjacencies()
+        {
+            // Arrange
+            var zoneRepository = new InMemoryZoneRepository();
+            var loader = new ZoneDataLoader(zoneRepository);
+
+            // Act
+            loader.LoadZonesWithFallback("/nonexistent/zones.json");
+
+            // Assert - downtown should have adjacencies set up
+            var downtown = zoneRepository.GetById("downtown");
+            Assert.NotNull(downtown);
+            Assert.True(downtown!.AdjacentZoneIds.Count > 0);
+        }
+
+        #endregion
     }
 }
