@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using FactionWars.AI.Interfaces;
 using FactionWars.AI.Models;
 using FactionWars.Combat.Interfaces;
@@ -62,7 +63,7 @@ namespace FactionWars.ScriptHookV
         private IEventFeedService? _eventFeedService;
         private IZoneService? _zoneService;
         private IZoneDefenderAllocationService? _allocationService;
-        private IActiveBattleManager? _activeBattleManager;
+        private IZoneBattleManager? _zoneBattleManager;
         private BattleHudRenderer? _battleHudRenderer;
         private int _currentBattleHudIndex = 0;
         private const int BattleCycleKeyCode = 0x42; // B key
@@ -325,8 +326,8 @@ namespace FactionWars.ScriptHookV
             // Update AI controller (handles decisions, recruitment, battles)
             _aiController?.Update(deltaTime);
 
-            // Update active battle manager (timed AI battles)
-            _activeBattleManager?.Tick(deltaTime);
+            // Update zone battle manager (unified battle lifecycle)
+            _zoneBattleManager?.Tick(deltaTime);
 
             // Update victory manager (checks for 100% control)
             _victoryManager?.Update(deltaTime);
@@ -465,10 +466,10 @@ namespace FactionWars.ScriptHookV
         /// </summary>
         private void UpdateAndDrawBattleHud()
         {
-            if (_activeBattleManager == null || _battleHudRenderer == null)
+            if (_zoneBattleManager == null || _battleHudRenderer == null)
                 return;
 
-            var battles = _activeBattleManager.ActiveBattles;
+            var battles = _zoneBattleManager.GetAllActiveBattles();
             if (battles.Count == 0)
             {
                 _battleHudRenderer.Hide();
@@ -506,9 +507,11 @@ namespace FactionWars.ScriptHookV
             FileLogger.Separator("INITIALIZATION START");
             FileLogger.Info("InitializeGameData() called");
 
-            // Load zones first
-            FileLogger.Info("Loading default zones...");
-            _zoneDataLoader.LoadDefaultZones();
+            // Load zones from file if exists, otherwise use defaults
+            var scriptsDir = _gameBridge.GetScriptsDirectory();
+            var zonesFilePath = Path.Combine(scriptsDir, "FactionWars", "zones.json");
+            FileLogger.Info($"Looking for zones at: {zonesFilePath}");
+            _zoneDataLoader.LoadZonesWithFallback(zonesFilePath);
             FileLogger.Info($"Loaded {_zoneRepository.Count} zones");
 
             // Then initialize factions with their starting conditions
@@ -543,8 +546,11 @@ namespace FactionWars.ScriptHookV
             _zoneService = _container.Resolve<IZoneService>();
             _territoryManager = new TerritoryManager(_gameBridge, _zoneService);
 
-            // Initialize active battle manager early so it can be passed to defender managers
-            _activeBattleManager = _container.Resolve<IActiveBattleManager>();
+            // Initialize zone battle manager and subscribe to its events for domain operations
+            _zoneBattleManager = _container.Resolve<IZoneBattleManager>();
+            _zoneBattleManager.BattleEnded += OnZoneBattleEnded;
+            _zoneBattleManager.TroopKilled += OnZoneBattleTroopKilled;
+            _zoneBattleManager.BattleStarted += OnZoneBattleStarted;
 
             // Initialize friendly defender manager for spawning defenders in player-owned zones
             var allocationService = _container.Resolve<IZoneDefenderAllocationService>();
@@ -557,8 +563,7 @@ namespace FactionWars.ScriptHookV
                 defenderTierService,
                 pedBlipService,
                 _zoneService,
-                CurrentPlayerFactionId ?? "",
-                _activeBattleManager);
+                CurrentPlayerFactionId ?? "");
 
             // Subscribe to zone events for friendly defender spawning
             _territoryManager.ZoneEntered += (sender, zone) => _friendlyDefenderManager.OnZoneEntered(zone);
@@ -581,18 +586,13 @@ namespace FactionWars.ScriptHookV
                 // If there's an active battle in this zone where player is defender, add troops to battle
                 if (e.FactionId == CurrentPlayerFactionId)
                 {
-                    var battle = _activeBattleManager?.GetBattleForZone(e.ZoneId);
+                    var battle = _zoneBattleManager?.GetBattleForZone(e.ZoneId);
                     if (battle != null && battle.DefenderFactionId == e.FactionId)
                     {
-                        _activeBattleManager?.AddDefenderTroops(e.ZoneId, e.Tier, e.Count);
+                        battle.AddDefenderTroops(e.Tier, e.Count);
                     }
                 }
             };
-
-            // Subscribe to active battle manager events
-            _activeBattleManager.OnKill += OnBattleKill;
-            _activeBattleManager.OnBattleEnded += OnBattleEnded;
-            _activeBattleManager.OnBattleStarted += OnBattleStarted;
 
             // Initialize battle HUD renderer
             _battleHudRenderer = new BattleHudRenderer();
@@ -604,8 +604,7 @@ namespace FactionWars.ScriptHookV
                 pedSpawningService,
                 defenderTierService,
                 pedBlipService,
-                _zoneService,
-                _activeBattleManager);
+                _zoneService);
 
             // Initialize combat manager dependencies (needed by multiple managers)
             var pedPool = _container.Resolve<IPedPool>();
@@ -613,7 +612,7 @@ namespace FactionWars.ScriptHookV
             // Initialize battle attacker manager for spawning attackers when player defends their zone
             _battleAttackerManager = new BattleAttackerManager(
                 _gameBridge,
-                _activeBattleManager,
+                _zoneBattleManager,
                 pedSpawningService,
                 pedDespawnService,
                 defenderTierService,
@@ -804,9 +803,9 @@ namespace FactionWars.ScriptHookV
             }
 
             // Handle battle HUD cycle key (B)
-            if (keyCode == BattleCycleKeyCode && _activeBattleManager != null)
+            if (keyCode == BattleCycleKeyCode && _zoneBattleManager != null)
             {
-                var battles = _activeBattleManager.ActiveBattles;
+                var battles = _zoneBattleManager.GetAllActiveBattles();
                 if (battles.Count > 1)
                 {
                     _currentBattleHudIndex = (_currentBattleHudIndex + 1) % battles.Count;
@@ -883,14 +882,14 @@ namespace FactionWars.ScriptHookV
             _victoryManager?.Stop();
             _victoryManager = null;
 
-            // Cleanup active battle manager
-            if (_activeBattleManager != null)
+            // Cleanup zone battle manager
+            if (_zoneBattleManager != null)
             {
-                _activeBattleManager.OnKill -= OnBattleKill;
-                _activeBattleManager.OnBattleEnded -= OnBattleEnded;
-                _activeBattleManager.OnBattleStarted -= OnBattleStarted;
+                _zoneBattleManager.BattleEnded -= OnZoneBattleEnded;
+                _zoneBattleManager.TroopKilled -= OnZoneBattleTroopKilled;
+                _zoneBattleManager.BattleStarted -= OnZoneBattleStarted;
             }
-            _activeBattleManager = null;
+            _zoneBattleManager = null;
             _battleHudRenderer = null;
             _currentBattleHudIndex = 0;
 
@@ -1044,8 +1043,8 @@ namespace FactionWars.ScriptHookV
                 _gameBridge.ShowNotification($"~g~{zone.Name} is YOUR territory");
             }
 
-            // Notify active battle manager that player entered this zone
-            _activeBattleManager?.OnPlayerEnterZone(zone.Id);
+            // Notify zone battle manager that player entered this zone
+            _zoneBattleManager?.OnPlayerEnteredZone(zone);
         }
 
         /// <summary>
@@ -1058,8 +1057,8 @@ namespace FactionWars.ScriptHookV
             _backgroundBattleSimulator?.SetPlayerZone(null);
             _aiController?.SetPlayerZone(null);
 
-            // Notify active battle manager that player exited this zone
-            _activeBattleManager?.OnPlayerExitZone(zone.Id);
+            // Notify zone battle manager that player exited this zone
+            _zoneBattleManager?.OnPlayerExitedZone(zone);
 
             if (_combatManager == null || zone == null)
                 return;
@@ -1193,39 +1192,79 @@ namespace FactionWars.ScriptHookV
         }
 
         /// <summary>
-        /// Handles kill events from active AI battles for the kill feed.
+        /// Handles troop killed events from ZoneBattleManager for the kill feed.
         /// </summary>
-        private void OnBattleKill(object? sender, BattleKillEvent e)
+        private void OnZoneBattleTroopKilled(ZoneBattle battle, DefenderTier tier, string side)
         {
-            var killerFaction = _factionService.GetFaction(e.KillerFactionId);
-            var victimFaction = _factionService.GetFaction(e.VictimFactionId);
+            // Determine killer and victim based on who got killed
+            string killerFactionId = side == "attacker" ? battle.DefenderFactionId : battle.AttackerFactionId;
+            string victimFactionId = side == "attacker" ? battle.AttackerFactionId : battle.DefenderFactionId;
 
-            string killerName = killerFaction?.Name ?? e.KillerFactionId;
-            string victimName = victimFaction?.Name ?? e.VictimFactionId;
+            var killerFaction = _factionService.GetFaction(killerFactionId);
+            var victimFaction = _factionService.GetFaction(victimFactionId);
 
-            // Format: "[Ballas] Heavy killed [Grove St] Basic in Davis"
-            string message = $"~y~[{killerName}]~w~ {e.KillerTier} killed ~r~[{victimName}]~w~ {e.VictimTier} in {e.ZoneName}";
+            string killerName = killerFaction?.Name ?? killerFactionId;
+            string victimName = victimFaction?.Name ?? victimFactionId;
+
+            var zone = _zoneService?.GetZone(battle.ZoneId);
+            string zoneName = zone?.Name ?? battle.ZoneId;
+
+            // Format: "[Ballas] killed [Grove St] Basic in Davis"
+            string message = $"~y~[{killerName}]~w~ killed ~r~[{victimName}]~w~ {tier} in {zoneName}";
             _gameBridge.ShowNotification(message);
         }
 
         /// <summary>
-        /// Handles battle ended events from active AI battles.
+        /// Handles battle ended events from ZoneBattleManager.
+        /// Performs domain operations: applies casualties, transfers zone ownership, allocates defenders.
         /// </summary>
-        private void OnBattleEnded(object? sender, BattleEndedEvent e)
+        private void OnZoneBattleEnded(ZoneBattle battle, BattleOutcome outcome)
         {
-            var attackerFaction = _factionService.GetFaction(e.AttackerFactionId);
-            var defenderFaction = _factionService.GetFaction(e.DefenderFactionId);
+            // Calculate casualties
+            int attackerCasualties = battle.InitialAttackerTroops - battle.TotalAttackerTroops;
+            int defenderCasualties = battle.InitialDefenderTroops - battle.TotalDefenderTroops;
 
-            string attackerName = attackerFaction?.Name ?? e.AttackerFactionId;
-            string defenderName = defenderFaction?.Name ?? e.DefenderFactionId;
-
-            if (e.AttackerWon)
+            // Apply casualties to faction troop counts
+            if (attackerCasualties > 0)
             {
-                _gameBridge.ShowNotification($"~g~[{attackerName}]~w~ captured ~b~{e.ZoneName}~w~ from ~r~[{defenderName}]");
+                _factionService.LoseTroops(battle.AttackerFactionId, attackerCasualties);
+            }
+            if (defenderCasualties > 0)
+            {
+                _factionService.LoseTroops(battle.DefenderFactionId, defenderCasualties);
+            }
+
+            // Transfer zone ownership if attackers won
+            if (outcome == BattleOutcome.AttackersWon && _zoneService != null)
+            {
+                _zoneService.TransferZoneOwnership(battle.ZoneId, battle.AttackerFactionId);
+
+                // Allocate surviving attackers as defenders
+                int survivors = battle.TotalAttackerTroops;
+                int toAllocate = survivors > 0 ? Math.Max(1, Math.Min((survivors + 1) / 2, 5)) : 0;
+                if (toAllocate > 0)
+                {
+                    _allocationService?.SetAllocation(battle.AttackerFactionId, battle.ZoneId, DefenderTier.Basic, toAllocate);
+                }
+            }
+
+            // Show notification
+            var attackerFaction = _factionService.GetFaction(battle.AttackerFactionId);
+            var defenderFaction = _factionService.GetFaction(battle.DefenderFactionId);
+            string attackerName = attackerFaction?.Name ?? battle.AttackerFactionId;
+            string defenderName = defenderFaction?.Name ?? battle.DefenderFactionId;
+            var zone = _zoneService?.GetZone(battle.ZoneId);
+            string zoneName = zone?.Name ?? battle.ZoneId;
+
+            if (outcome == BattleOutcome.AttackersWon)
+            {
+                _gameBridge.ShowNotification($"~g~[{attackerName}]~w~ captured ~b~{zoneName}~w~ from ~r~[{defenderName}]");
+                FileLogger.Combat($"OnZoneBattleEnded: {attackerName} captured {zoneName} from {defenderName}");
             }
             else
             {
-                _gameBridge.ShowNotification($"~g~[{defenderName}]~w~ defended ~b~{e.ZoneName}~w~ against ~r~[{attackerName}]");
+                _gameBridge.ShowNotification($"~g~[{defenderName}]~w~ defended ~b~{zoneName}~w~ against ~r~[{attackerName}]");
+                FileLogger.Combat($"OnZoneBattleEnded: {defenderName} defended {zoneName} against {attackerName}");
             }
         }
 
@@ -1233,7 +1272,7 @@ namespace FactionWars.ScriptHookV
         /// Handles battle started events. If player is in the zone being attacked
         /// and is the defender, spawns enemy attackers immediately.
         /// </summary>
-        private void OnBattleStarted(object? sender, ActiveBattle battle)
+        private void OnZoneBattleStarted(ZoneBattle battle)
         {
             // Check if player is in this zone
             var currentZone = _territoryManager?.CurrentZone;
@@ -1244,7 +1283,7 @@ namespace FactionWars.ScriptHookV
             if (battle.DefenderFactionId != CurrentPlayerFactionId)
                 return;
 
-            FileLogger.Combat($"OnBattleStarted: Player is in zone {battle.ZoneId} as defender, triggering attacker spawn");
+            FileLogger.Combat($"OnZoneBattleStarted: Player is in zone {battle.ZoneId} as defender, triggering attacker spawn");
 
             // Spawn attackers immediately since player is already in zone
             _battleAttackerManager?.OnPlayerZoneEntered(currentZone);
