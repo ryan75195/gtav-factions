@@ -17,7 +17,7 @@ namespace FactionWars.Tests.Unit.Combat
         #region Basic Calculation
 
         [Fact]
-        public void Calculate_WithNoPeds_ShouldReturnZeroForBoth()
+        public void Calculate_WithNoPeds_ShouldReturn50ForBoth()
         {
             // Arrange
             int attackerCount = 0;
@@ -26,9 +26,9 @@ namespace FactionWars.Tests.Unit.Combat
             // Act
             var result = _calculator.Calculate(attackerCount, defenderCount);
 
-            // Assert
-            Assert.Equal(0f, result.AttackerPercentage);
-            Assert.Equal(0f, result.DefenderPercentage);
+            // Assert - returns 50/50 neutral state when no peds to prevent immediate victory
+            Assert.Equal(50f, result.AttackerPercentage);
+            Assert.Equal(50f, result.DefenderPercentage);
         }
 
         [Fact]
@@ -141,7 +141,7 @@ namespace FactionWars.Tests.Unit.Combat
         }
 
         [Fact]
-        public void Calculate_WithBothNegative_ShouldReturnZeroForBoth()
+        public void Calculate_WithBothNegative_ShouldReturn50ForBoth()
         {
             // Arrange
             int attackerCount = -5;
@@ -150,9 +150,9 @@ namespace FactionWars.Tests.Unit.Combat
             // Act
             var result = _calculator.Calculate(attackerCount, defenderCount);
 
-            // Assert
-            Assert.Equal(0f, result.AttackerPercentage);
-            Assert.Equal(0f, result.DefenderPercentage);
+            // Assert - negative values clamped to zero, resulting in 50/50 neutral state
+            Assert.Equal(50f, result.AttackerPercentage);
+            Assert.Equal(50f, result.DefenderPercentage);
         }
 
         [Fact]
@@ -206,13 +206,13 @@ namespace FactionWars.Tests.Unit.Combat
         }
 
         [Fact]
-        public void Calculate_WithZeroPeds_PercentagesShouldSumToZero()
+        public void Calculate_WithZeroPeds_PercentagesShouldSumTo100()
         {
             // Act
             var result = _calculator.Calculate(0, 0);
 
-            // Assert
-            Assert.Equal(0f, result.AttackerPercentage + result.DefenderPercentage);
+            // Assert - returns 50/50 neutral state (sums to 100)
+            Assert.Equal(100f, result.AttackerPercentage + result.DefenderPercentage);
         }
 
         #endregion
@@ -314,7 +314,7 @@ namespace FactionWars.Tests.Unit.Combat
         }
 
         [Fact]
-        public void CalculateForEncounter_WithZeroPeds_ShouldReturnZeroForBoth()
+        public void CalculateForEncounter_WithZeroPeds_ShouldReturn50ForBoth()
         {
             // Arrange
             var encounter = new CombatEncounter("enc_1", "zone_1", "faction_a", "faction_b");
@@ -322,9 +322,9 @@ namespace FactionWars.Tests.Unit.Combat
             // Act
             var result = _calculator.CalculateForEncounter(encounter);
 
-            // Assert
-            Assert.Equal(0f, result.AttackerPercentage);
-            Assert.Equal(0f, result.DefenderPercentage);
+            // Assert - returns 50/50 neutral state when no peds
+            Assert.Equal(50f, result.AttackerPercentage);
+            Assert.Equal(50f, result.DefenderPercentage);
         }
 
         [Fact]
@@ -355,20 +355,20 @@ namespace FactionWars.Tests.Unit.Combat
         }
 
         [Fact]
-        public void ApplyToEncounter_WithNoPeds_ShouldSetBothToZero()
+        public void ApplyToEncounter_WithNoPeds_ShouldSetBothTo50()
         {
             // Arrange
             var encounter = new CombatEncounter("enc_1", "zone_1", "faction_a", "faction_b");
-            // Manually set percentages to non-zero values initially
-            encounter.AttackerControlPercentage = 50f;
-            encounter.DefenderControlPercentage = 50f;
+            // Manually set percentages to non-standard values initially
+            encounter.AttackerControlPercentage = 75f;
+            encounter.DefenderControlPercentage = 25f;
 
             // Act
             _calculator.ApplyToEncounter(encounter);
 
-            // Assert
-            Assert.Equal(0f, encounter.AttackerControlPercentage);
-            Assert.Equal(0f, encounter.DefenderControlPercentage);
+            // Assert - returns 50/50 neutral state when no peds
+            Assert.Equal(50f, encounter.AttackerControlPercentage);
+            Assert.Equal(50f, encounter.DefenderControlPercentage);
         }
 
         [Fact]

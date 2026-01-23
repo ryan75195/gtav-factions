@@ -128,7 +128,7 @@ namespace FactionWars.Tests.Integration.Combat
         }
 
         [Fact]
-        public void EndCombat_AttackerVictory_CapturesZone()
+        public void EndCombat_AttackerVictory_NeutralizesZone()
         {
             // Arrange
             var zone = CreateAndAddZone("zone-1", "Downtown", TrevorFactionId);
@@ -139,11 +139,11 @@ namespace FactionWars.Tests.Integration.Combat
             // Act
             _combatManager.EndCombat(CombatStatus.AttackerVictory);
 
-            // Assert
+            // Assert - zone becomes neutral, attacker must claim it separately
             Assert.False(_combatManager.IsInCombat);
             var updatedZone = _zoneRepository.GetById(zone.Id);
-            Assert.Equal(MichaelFactionId, updatedZone!.OwnerFactionId);
-            Assert.Equal(100f, updatedZone.ControlPercentage);
+            Assert.Null(updatedZone!.OwnerFactionId); // Neutral
+            Assert.Equal(0f, updatedZone.ControlPercentage);
         }
 
         [Fact]
@@ -399,15 +399,15 @@ namespace FactionWars.Tests.Integration.Combat
             var encounter = _combatManager.StartCombat(zone, MichaelFactionId);
 
             // Spawn some peds for each faction
-            SpawnPedsForFaction(MichaelFactionId, zone.Id, 5); // 5 attackers
-            SpawnPedsForFaction(TrevorFactionId, zone.Id, 5);  // 5 defenders
+            SpawnPedsForFaction(MichaelFactionId, zone.Id, 5); // 5 attackers from pool
+            SpawnPedsForFaction(TrevorFactionId, zone.Id, 6);  // 6 defenders
 
             // Act
             _combatManager.Update();
 
-            // Assert - 50/50 split
-            Assert.Equal(5, encounter.AttackerPedCount);
-            Assert.Equal(5, encounter.DefenderPedCount);
+            // Assert - attackerCount = 1 (player) + 5 (peds) = 6, defenders = 6
+            Assert.Equal(6, encounter.AttackerPedCount); // Includes player
+            Assert.Equal(6, encounter.DefenderPedCount);
             Assert.Equal(50f, encounter.AttackerControlPercentage);
             Assert.Equal(50f, encounter.DefenderControlPercentage);
         }
@@ -429,23 +429,23 @@ namespace FactionWars.Tests.Integration.Combat
             // Act
             _combatManager.Update();
 
-            // Assert
+            // Assert - zone becomes neutral after attacker victory
             Assert.True(combatEnded);
             Assert.False(_combatManager.IsInCombat);
             var updatedZone = _zoneRepository.GetById(zone.Id);
-            Assert.Equal(MichaelFactionId, updatedZone!.OwnerFactionId);
+            Assert.Null(updatedZone!.OwnerFactionId); // Neutral
         }
 
         [Fact]
-        public void Update_EndsWithDefenderVictory_WhenAllAttackersEliminated()
+        public void Update_ContinuesCombat_WhenPlayerIsOnlyAttacker()
         {
             // Arrange
             var zone = CreateAndAddZone("zone-1", "Downtown", TrevorFactionId);
             _combatManager.StartCombat(zone, MichaelFactionId);
 
-            // Only defenders present (attackers eliminated)
+            // Only defenders present (no attacker peds, but player counts as 1)
             SpawnPedsForFaction(TrevorFactionId, zone.Id, 5);
-            // No attackers
+            // No attacker peds - but player is always counted as +1
 
             bool combatEnded = false;
             _combatManager.CombatEnded += (sender, e) => combatEnded = true;
@@ -453,11 +453,10 @@ namespace FactionWars.Tests.Integration.Combat
             // Act
             _combatManager.Update();
 
-            // Assert
-            Assert.True(combatEnded);
-            Assert.False(_combatManager.IsInCombat);
-            var updatedZone = _zoneRepository.GetById(zone.Id);
-            Assert.Equal(TrevorFactionId, updatedZone!.OwnerFactionId);
+            // Assert - Combat continues because player is still alive (1 vs 5)
+            // Player can retreat or die to end combat, but attackers are never "eliminated" while in combat
+            Assert.False(combatEnded);
+            Assert.True(_combatManager.IsInCombat);
         }
 
         [Fact]
@@ -637,11 +636,11 @@ namespace FactionWars.Tests.Integration.Combat
             // Step 7: Update - attacker wins
             _combatManager.Update();
 
-            // Assert: Zone captured by Michael
+            // Assert: Zone neutralized (attacker must claim it separately)
             Assert.False(_combatManager.IsInCombat);
             var updatedZone = _zoneRepository.GetById(zone.Id);
-            Assert.Equal(MichaelFactionId, updatedZone!.OwnerFactionId);
-            Assert.Equal(100f, updatedZone.ControlPercentage);
+            Assert.Null(updatedZone!.OwnerFactionId); // Neutral
+            Assert.Equal(0f, updatedZone.ControlPercentage);
         }
 
         [Fact]
@@ -681,7 +680,7 @@ namespace FactionWars.Tests.Integration.Combat
         }
 
         [Fact]
-        public void FullFlow_DefendersRepelAttacker_ZoneRemainsSafe()
+        public void FullFlow_PlayerRetreats_ZoneRemainsSafe()
         {
             // Arrange: Zone owned by Trevor
             var zone = CreateAndAddZone("zone-1", "Downtown", TrevorFactionId);
@@ -692,23 +691,17 @@ namespace FactionWars.Tests.Integration.Combat
             // Step 2: Strong defenders
             SpawnPedsForFaction(TrevorFactionId, zone.Id, 10);
 
-            // Step 3: Weak attacker
+            // Step 3: Weak attacker peds
             SpawnPedsForFaction(MichaelFactionId, zone.Id, 1);
 
             // Step 4: Update - combat in progress
             _combatManager.Update();
             Assert.True(_combatManager.IsInCombat);
 
-            // Step 5: Attackers eliminated
-            foreach (var ped in _pedPool.GetByFaction(MichaelFactionId).ToList())
-            {
-                _pedPool.Remove(ped);
-            }
+            // Step 5: Player retreats (player is always counted as attacker, can't be eliminated)
+            _combatManager.Retreat();
 
-            // Step 6: Update - defender victory
-            _combatManager.Update();
-
-            // Assert: Zone still owned by Trevor
+            // Assert: Zone still owned by Trevor after player retreats
             Assert.False(_combatManager.IsInCombat);
             var updatedZone = _zoneRepository.GetById(zone.Id);
             Assert.Equal(TrevorFactionId, updatedZone!.OwnerFactionId);

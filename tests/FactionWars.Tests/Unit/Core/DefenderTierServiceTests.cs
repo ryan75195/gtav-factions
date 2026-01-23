@@ -25,9 +25,9 @@ namespace FactionWars.Tests.Unit.Core
             // Assert
             Assert.Equal(DefenderTier.Basic, config.Tier);
             Assert.Equal(200, config.Cost);
-            Assert.Equal(100, config.Health);
-            Assert.Equal(0, config.Armor);
-            Assert.Equal("Pistol", config.Weapon);
+            Assert.Equal(200, config.Health);
+            Assert.Equal(50, config.Armor);
+            Assert.Equal("WEAPON_PISTOL", config.Weapon);
             Assert.Equal(0.3f, config.Accuracy, 2);
         }
 
@@ -40,9 +40,9 @@ namespace FactionWars.Tests.Unit.Core
             // Assert
             Assert.Equal(DefenderTier.Medium, config.Tier);
             Assert.Equal(500, config.Cost);
-            Assert.Equal(150, config.Health);
-            Assert.Equal(50, config.Armor);
-            Assert.Equal("SMG", config.Weapon);
+            Assert.Equal(350, config.Health);
+            Assert.Equal(100, config.Armor);
+            Assert.Equal("WEAPON_SMG", config.Weapon);
             Assert.Equal(0.5f, config.Accuracy, 2);
         }
 
@@ -55,9 +55,9 @@ namespace FactionWars.Tests.Unit.Core
             // Assert
             Assert.Equal(DefenderTier.Heavy, config.Tier);
             Assert.Equal(1000, config.Cost);
-            Assert.Equal(200, config.Health);
-            Assert.Equal(100, config.Armor);
-            Assert.Equal("Carbine", config.Weapon);
+            Assert.Equal(500, config.Health);
+            Assert.Equal(200, config.Armor);
+            Assert.Equal("WEAPON_CARBINERIFLE", config.Weapon);
             Assert.Equal(0.7f, config.Accuracy, 2);
         }
 

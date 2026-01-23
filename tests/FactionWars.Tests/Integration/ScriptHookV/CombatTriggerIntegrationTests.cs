@@ -215,11 +215,21 @@ namespace FactionWars.Tests.Integration.ScriptHookV
             // Step 5: Combat update - attacker victory
             _combatManager.Update();
 
-            // Assert: Combat ended, zone captured by Michael
+            // Assert: Combat ended, zone is now neutral (neutralization on attacker victory)
             Assert.False(_combatManager.IsInCombat);
-            var capturedZone = _zoneRepository.GetById("zone-1");
-            Assert.Equal(MichaelFactionId, capturedZone!.OwnerFactionId);
-            Assert.Equal(100f, capturedZone.ControlPercentage);
+            var neutralizedZone = _zoneRepository.GetById("zone-1");
+            Assert.Null(neutralizedZone!.OwnerFactionId);
+            Assert.Equal(0f, neutralizedZone.ControlPercentage);
+
+            // Step 6: Player claims the neutral zone
+            neutralizedZone.OwnerFactionId = MichaelFactionId;
+            neutralizedZone.ControlPercentage = 100f;
+            _zoneRepository.Update(neutralizedZone);
+
+            // Assert: Zone is now owned by Michael
+            var claimedZone = _zoneRepository.GetById("zone-1");
+            Assert.Equal(MichaelFactionId, claimedZone!.OwnerFactionId);
+            Assert.Equal(100f, claimedZone.ControlPercentage);
         }
 
         [Fact]

@@ -36,7 +36,7 @@ namespace FactionWars.Tests.Integration.Combat
         #region Attacker Victory Pipeline Tests
 
         [Fact]
-        public void AttackerVictory_TransfersZoneOwnership_WhenDefenderLosesAllControl()
+        public void AttackerVictory_NeutralizesZone_WhenDefenderLosesAllControl()
         {
             // Arrange: Set up a zone owned by Trevor
             var zone = CreateAndAddZone("zone-vinewood", "Vinewood", TrevorFactionId, 100f);
@@ -56,22 +56,22 @@ namespace FactionWars.Tests.Integration.Combat
             // Act: Process the combat result
             var result = _combatResultHandler.ProcessCombatResult(encounter);
 
-            // Assert: Zone is now owned by Michael
+            // Assert: Zone is now neutral (attacker must claim it separately)
             Assert.True(result.IsSuccess);
-            Assert.Equal(CombatResultOutcome.ZoneCaptured, result.Outcome);
-            Assert.Equal(MichaelFactionId, result.NewOwnerFactionId);
+            Assert.Equal(CombatResultOutcome.ZoneNeutralized, result.Outcome);
+            Assert.Null(result.NewOwnerFactionId); // No owner until claimed
             Assert.Equal(TrevorFactionId, result.PreviousOwnerFactionId);
 
             // Verify zone state was actually updated in repository
             var updatedZone = _zoneRepository.GetById(zone.Id);
             Assert.NotNull(updatedZone);
-            Assert.Equal(MichaelFactionId, updatedZone!.OwnerFactionId);
-            Assert.Equal(100f, updatedZone.ControlPercentage);
+            Assert.Null(updatedZone!.OwnerFactionId); // Neutral
+            Assert.Equal(0f, updatedZone.ControlPercentage);
             Assert.False(updatedZone.IsContested);
         }
 
         [Fact]
-        public void AttackerVictory_UpdatesFactionZoneCounts_WhenOwnershipTransfers()
+        public void AttackerVictory_NeutralizesZone_ReducesDefenderCount()
         {
             // Arrange: Create multiple zones with different owners
             CreateAndAddZone("zone-1", "Downtown", TrevorFactionId, 100f);
@@ -93,9 +93,9 @@ namespace FactionWars.Tests.Integration.Combat
             // Act
             _combatResultHandler.ProcessCombatResult(encounter);
 
-            // Assert: Zone counts reflect the transfer
+            // Assert: Zone becomes neutral (defender loses zone, attacker doesn't gain until claim)
             Assert.Equal(1, _zoneService.GetZoneCount(TrevorFactionId));
-            Assert.Equal(2, _zoneService.GetZoneCount(MichaelFactionId));
+            Assert.Equal(1, _zoneService.GetZoneCount(MichaelFactionId)); // No change until claimed
         }
 
         [Fact]
@@ -124,7 +124,7 @@ namespace FactionWars.Tests.Integration.Combat
         }
 
         [Fact]
-        public void AttackerVictory_SetsControlTo100Percent_ForNewOwner()
+        public void AttackerVictory_SetsControlTo0Percent_ForNeutralZone()
         {
             // Arrange: Zone at partial control
             var zone = CreateAndAddZone("zone-vinewood", "Vinewood", TrevorFactionId, 30f);
@@ -139,9 +139,9 @@ namespace FactionWars.Tests.Integration.Combat
             // Act
             _combatResultHandler.ProcessCombatResult(encounter);
 
-            // Assert: Control is now 100%
+            // Assert: Control is now 0% (neutral zone, awaiting claim)
             var updatedZone = _zoneRepository.GetById(zone.Id);
-            Assert.Equal(100f, updatedZone!.ControlPercentage);
+            Assert.Equal(0f, updatedZone!.ControlPercentage);
         }
 
         #endregion
@@ -339,7 +339,7 @@ namespace FactionWars.Tests.Integration.Combat
         #region Multi-Zone Combat Scenarios
 
         [Fact]
-        public void SequentialCombats_CorrectlyUpdateMultipleZones_WhenFactionExpandsTerritory()
+        public void SequentialCombats_NeutralizesZones_WhenAttackerWins()
         {
             // Arrange: Trevor owns 3 zones, Michael attacks them sequentially
             var zone1 = CreateAndAddZone("zone-1", "Downtown", TrevorFactionId, 100f);
@@ -350,13 +350,13 @@ namespace FactionWars.Tests.Integration.Combat
             Assert.Equal(3, _zoneService.GetZoneCount(TrevorFactionId));
             Assert.Equal(0, _zoneService.GetZoneCount(MichaelFactionId));
 
-            // First combat: Michael wins zone-1
+            // First combat: Michael wins zone-1 (zone becomes neutral)
             var combat1 = new CombatEncounter("combat-1", zone1.Id, MichaelFactionId, TrevorFactionId);
             combat1.End(CombatStatus.AttackerVictory);
             _combatResultHandler.ProcessCombatResult(combat1);
 
             Assert.Equal(2, _zoneService.GetZoneCount(TrevorFactionId));
-            Assert.Equal(1, _zoneService.GetZoneCount(MichaelFactionId));
+            Assert.Equal(0, _zoneService.GetZoneCount(MichaelFactionId)); // Zone is neutral, not captured
 
             // Second combat: Trevor defends zone-2
             var combat2 = new CombatEncounter("combat-2", zone2.Id, MichaelFactionId, TrevorFactionId);
@@ -364,50 +364,50 @@ namespace FactionWars.Tests.Integration.Combat
             _combatResultHandler.ProcessCombatResult(combat2);
 
             Assert.Equal(2, _zoneService.GetZoneCount(TrevorFactionId));
-            Assert.Equal(1, _zoneService.GetZoneCount(MichaelFactionId));
+            Assert.Equal(0, _zoneService.GetZoneCount(MichaelFactionId));
 
-            // Third combat: Michael wins zone-3
+            // Third combat: Michael wins zone-3 (zone becomes neutral)
             var combat3 = new CombatEncounter("combat-3", zone3.Id, MichaelFactionId, TrevorFactionId);
             combat3.End(CombatStatus.AttackerVictory);
             _combatResultHandler.ProcessCombatResult(combat3);
 
-            // Assert: Final state
+            // Assert: Final state - zones are neutralized, not captured
             Assert.Equal(1, _zoneService.GetZoneCount(TrevorFactionId));
-            Assert.Equal(2, _zoneService.GetZoneCount(MichaelFactionId));
-            Assert.Equal(MichaelFactionId, _zoneRepository.GetById(zone1.Id)!.OwnerFactionId);
+            Assert.Equal(0, _zoneService.GetZoneCount(MichaelFactionId)); // Zones are neutral
+            Assert.Null(_zoneRepository.GetById(zone1.Id)!.OwnerFactionId); // Neutral
             Assert.Equal(TrevorFactionId, _zoneRepository.GetById(zone2.Id)!.OwnerFactionId);
-            Assert.Equal(MichaelFactionId, _zoneRepository.GetById(zone3.Id)!.OwnerFactionId);
+            Assert.Null(_zoneRepository.GetById(zone3.Id)!.OwnerFactionId); // Neutral
         }
 
         [Fact]
-        public void ThreeFactionWar_CorrectlyTracksOwnership_WhenAllFactionsCompete()
+        public void ThreeFactionWar_NeutralizesZones_WhenAttackerWins()
         {
             // Arrange: Each faction starts with one zone
             var michaelZone = CreateAndAddZone("zone-michael", "Rockford Hills", MichaelFactionId, 100f);
             var trevorZone = CreateAndAddZone("zone-trevor", "Sandy Shores", TrevorFactionId, 100f);
             var franklinZone = CreateAndAddZone("zone-franklin", "Strawberry", FranklinFactionId, 100f);
 
-            // Franklin attacks Trevor's zone and wins
+            // Franklin attacks Trevor's zone and wins (zone becomes neutral)
             var combat1 = new CombatEncounter("combat-1", trevorZone.Id, FranklinFactionId, TrevorFactionId);
             combat1.End(CombatStatus.AttackerVictory);
             _combatResultHandler.ProcessCombatResult(combat1);
 
             Assert.Equal(0, _zoneService.GetZoneCount(TrevorFactionId));
-            Assert.Equal(2, _zoneService.GetZoneCount(FranklinFactionId));
+            Assert.Equal(1, _zoneService.GetZoneCount(FranklinFactionId)); // Still only original zone
 
-            // Michael attacks Franklin's original zone and wins
+            // Michael attacks Franklin's original zone and wins (zone becomes neutral)
             var combat2 = new CombatEncounter("combat-2", franklinZone.Id, MichaelFactionId, FranklinFactionId);
             combat2.End(CombatStatus.AttackerVictory);
             _combatResultHandler.ProcessCombatResult(combat2);
 
-            // Assert: Final state
-            Assert.Equal(2, _zoneService.GetZoneCount(MichaelFactionId)); // original + conquered from Franklin
-            Assert.Equal(1, _zoneService.GetZoneCount(FranklinFactionId)); // conquered from Trevor
-            Assert.Equal(0, _zoneService.GetZoneCount(TrevorFactionId)); // lost all
+            // Assert: Final state - conquered zones are neutral
+            Assert.Equal(1, _zoneService.GetZoneCount(MichaelFactionId)); // Only original zone
+            Assert.Equal(0, _zoneService.GetZoneCount(FranklinFactionId)); // Lost original zone
+            Assert.Equal(0, _zoneService.GetZoneCount(TrevorFactionId)); // Lost all
 
             Assert.Equal(MichaelFactionId, _zoneRepository.GetById(michaelZone.Id)!.OwnerFactionId);
-            Assert.Equal(FranklinFactionId, _zoneRepository.GetById(trevorZone.Id)!.OwnerFactionId);
-            Assert.Equal(MichaelFactionId, _zoneRepository.GetById(franklinZone.Id)!.OwnerFactionId);
+            Assert.Null(_zoneRepository.GetById(trevorZone.Id)!.OwnerFactionId); // Neutral
+            Assert.Null(_zoneRepository.GetById(franklinZone.Id)!.OwnerFactionId); // Neutral
         }
 
         #endregion
@@ -415,7 +415,7 @@ namespace FactionWars.Tests.Integration.Combat
         #region Neutral Zone Combat Tests
 
         [Fact]
-        public void AttackerVictory_CaputresNeutralZone_WhenNoExistingOwner()
+        public void AttackerVictory_LeavesNeutralZoneNeutral_WhenAlreadyNeutral()
         {
             // Arrange: Neutral zone (no owner)
             var zone = CreateAndAddZone("zone-neutral", "Neutral Territory", null, 0f);
@@ -429,14 +429,14 @@ namespace FactionWars.Tests.Integration.Combat
             encounter.End(CombatStatus.AttackerVictory);
 
             // Note: This test assumes the handler can work with any defender ID
-            // The actual zone transfer is what matters
+            // Victory neutralizes the zone - but it was already neutral
             var result = _combatResultHandler.ProcessCombatResult(encounter);
 
-            // Assert: Zone now owned by Michael
+            // Assert: Zone remains neutral (attacker must claim it separately)
             Assert.True(result.IsSuccess);
             var updatedZone = _zoneRepository.GetById(zone.Id);
-            Assert.Equal(MichaelFactionId, updatedZone!.OwnerFactionId);
-            Assert.Equal(100f, updatedZone.ControlPercentage);
+            Assert.Null(updatedZone!.OwnerFactionId); // Still neutral
+            Assert.Equal(0f, updatedZone.ControlPercentage);
         }
 
         #endregion
@@ -444,7 +444,7 @@ namespace FactionWars.Tests.Integration.Combat
         #region Territory Value Integration Tests
 
         [Fact]
-        public void AttackerVictory_UpdatesFactionTerritoryValue_WhenHighValueZoneCaptured()
+        public void AttackerVictory_NeutralizesZone_DefenderLosesTerritoryValue()
         {
             // Arrange: High-value zone owned by Trevor
             var highValueZone = new Zone("zone-hv", "Diamond Casino", new Vector3(0, 0, 0), 200f, 10);
@@ -461,14 +461,14 @@ namespace FactionWars.Tests.Integration.Combat
             Assert.Equal(10, _zoneService.GetFactionTerritoryValue(TrevorFactionId));
             Assert.Equal(1, _zoneService.GetFactionTerritoryValue(MichaelFactionId));
 
-            // Michael captures the high-value zone
+            // Michael wins combat (zone becomes neutral, not captured)
             var encounter = new CombatEncounter("combat-1", highValueZone.Id, MichaelFactionId, TrevorFactionId);
             encounter.End(CombatStatus.AttackerVictory);
             _combatResultHandler.ProcessCombatResult(encounter);
 
-            // Assert: Territory values updated
+            // Assert: Defender loses territory value, attacker doesn't gain until claim
             Assert.Equal(0, _zoneService.GetFactionTerritoryValue(TrevorFactionId));
-            Assert.Equal(11, _zoneService.GetFactionTerritoryValue(MichaelFactionId)); // 1 + 10
+            Assert.Equal(1, _zoneService.GetFactionTerritoryValue(MichaelFactionId)); // No change until claimed
         }
 
         #endregion

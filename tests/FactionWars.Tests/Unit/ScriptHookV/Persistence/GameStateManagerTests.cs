@@ -18,6 +18,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Persistence
         private readonly Mock<IZoneRepository> _mockZoneRepository;
         private readonly Mock<IFactionRepository> _mockFactionRepository;
         private readonly Mock<IFactionRelationshipRepository> _mockRelationshipRepository;
+        private readonly Mock<IZoneDefenderAllocationRepository> _mockAllocationRepository;
         private readonly GameStateManager _sut;
 
         public GameStateManagerTests()
@@ -26,12 +27,14 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Persistence
             _mockZoneRepository = new Mock<IZoneRepository>();
             _mockFactionRepository = new Mock<IFactionRepository>();
             _mockRelationshipRepository = new Mock<IFactionRelationshipRepository>();
+            _mockAllocationRepository = new Mock<IZoneDefenderAllocationRepository>();
 
             _sut = new GameStateManager(
                 _mockSaveSlotManager.Object,
                 _mockZoneRepository.Object,
                 _mockFactionRepository.Object,
-                _mockRelationshipRepository.Object);
+                _mockRelationshipRepository.Object,
+                _mockAllocationRepository.Object);
         }
 
         #region Constructor Tests
@@ -44,7 +47,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Persistence
                     null!,
                     _mockZoneRepository.Object,
                     _mockFactionRepository.Object,
-                    _mockRelationshipRepository.Object));
+                    _mockRelationshipRepository.Object,
+                    _mockAllocationRepository.Object));
         }
 
         [Fact]
@@ -55,7 +59,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Persistence
                     _mockSaveSlotManager.Object,
                     null!,
                     _mockFactionRepository.Object,
-                    _mockRelationshipRepository.Object));
+                    _mockRelationshipRepository.Object,
+                    _mockAllocationRepository.Object));
         }
 
         [Fact]
@@ -66,7 +71,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Persistence
                     _mockSaveSlotManager.Object,
                     _mockZoneRepository.Object,
                     null!,
-                    _mockRelationshipRepository.Object));
+                    _mockRelationshipRepository.Object,
+                    _mockAllocationRepository.Object));
         }
 
         [Fact]
@@ -77,6 +83,19 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Persistence
                     _mockSaveSlotManager.Object,
                     _mockZoneRepository.Object,
                     _mockFactionRepository.Object,
+                    null!,
+                    _mockAllocationRepository.Object));
+        }
+
+        [Fact]
+        public void Constructor_WithNullAllocationRepository_ThrowsArgumentNullException()
+        {
+            Assert.Throws<ArgumentNullException>(() =>
+                new GameStateManager(
+                    _mockSaveSlotManager.Object,
+                    _mockZoneRepository.Object,
+                    _mockFactionRepository.Object,
+                    _mockRelationshipRepository.Object,
                     null!));
         }
 

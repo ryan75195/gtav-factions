@@ -70,15 +70,15 @@ namespace FactionWars.Tests.Integration.Combat
             encounter.End(CombatStatus.AttackerVictory);
             var combatResult = _combatResultHandler.ProcessCombatResult(encounter);
 
-            // Assert final state
+            // Assert final state - zone is neutralized, not captured
             Assert.True(combatResult.IsSuccess);
-            Assert.Equal(CombatResultOutcome.ZoneCaptured, combatResult.Outcome);
-            Assert.Equal(MichaelFactionId, combatResult.NewOwnerFactionId);
+            Assert.Equal(CombatResultOutcome.ZoneNeutralized, combatResult.Outcome);
+            Assert.Null(combatResult.NewOwnerFactionId); // Neutral until claimed
 
             // Verify zone was actually updated
             var updatedZone = _zoneRepository.GetById(zone.Id);
-            Assert.Equal(MichaelFactionId, updatedZone!.OwnerFactionId);
-            Assert.Equal(100f, updatedZone.ControlPercentage);
+            Assert.Null(updatedZone!.OwnerFactionId); // Neutral
+            Assert.Equal(0f, updatedZone.ControlPercentage);
             Assert.False(updatedZone.IsContested);
         }
 
@@ -107,8 +107,8 @@ namespace FactionWars.Tests.Integration.Combat
             var combatResult = _combatResultHandler.ProcessCombatResult(encounter);
 
             Assert.True(combatResult.IsSuccess);
-            Assert.Equal(CombatResultOutcome.ZoneCaptured, combatResult.Outcome);
-            Assert.Equal(MichaelFactionId, _zoneRepository.GetById(zone.Id)!.OwnerFactionId);
+            Assert.Equal(CombatResultOutcome.ZoneNeutralized, combatResult.Outcome);
+            Assert.Null(_zoneRepository.GetById(zone.Id)!.OwnerFactionId); // Zone is neutral
         }
 
         #endregion
@@ -298,7 +298,7 @@ namespace FactionWars.Tests.Integration.Combat
             var combatResult = _combatResultHandler.ProcessCombatResult(encounter);
 
             Assert.True(combatResult.IsSuccess);
-            Assert.Equal(MichaelFactionId, _zoneRepository.GetById(zone.Id)!.OwnerFactionId);
+            Assert.Null(_zoneRepository.GetById(zone.Id)!.OwnerFactionId); // Zone is neutral
         }
 
         [Fact]
@@ -389,14 +389,14 @@ namespace FactionWars.Tests.Integration.Combat
             _combatResultHandler.ProcessCombatResult(encounter1);
             _combatResultHandler.ProcessCombatResult(encounter2);
 
-            // Verify final state
-            Assert.Equal(MichaelFactionId, _zoneRepository.GetById(zone1.Id)!.OwnerFactionId);
+            // Verify final state - zone1 is neutral after attacker victory
+            Assert.Null(_zoneRepository.GetById(zone1.Id)!.OwnerFactionId); // Neutral
             Assert.Equal(TrevorFactionId, _zoneRepository.GetById(zone2.Id)!.OwnerFactionId);
             Assert.Equal(MichaelFactionId, _zoneRepository.GetById(zone3.Id)!.OwnerFactionId);
 
-            // Verify territory counts
-            Assert.Equal(2, _zoneService.GetZoneCount(MichaelFactionId));
-            Assert.Equal(1, _zoneService.GetZoneCount(TrevorFactionId));
+            // Verify territory counts - zone1 is neutral, not captured
+            Assert.Equal(1, _zoneService.GetZoneCount(MichaelFactionId)); // Only original zone3
+            Assert.Equal(1, _zoneService.GetZoneCount(TrevorFactionId)); // Kept zone2
             Assert.Equal(0, _zoneService.GetZoneCount(FranklinFactionId));
         }
 
@@ -432,7 +432,7 @@ namespace FactionWars.Tests.Integration.Combat
             encounter.End(CombatStatus.AttackerVictory);
             var combatResult = _combatResultHandler.ProcessCombatResult(encounter);
 
-            Assert.Equal(CombatResultOutcome.ZoneCaptured, combatResult.Outcome);
+            Assert.Equal(CombatResultOutcome.ZoneNeutralized, combatResult.Outcome);
         }
 
         #endregion
@@ -452,13 +452,13 @@ namespace FactionWars.Tests.Integration.Combat
 
             _controlCalculator.ApplyToEncounter(encounter);
 
-            // When both are zero, both percentages are 0
-            Assert.Equal(0f, encounter.AttackerControlPercentage);
-            Assert.Equal(0f, encounter.DefenderControlPercentage);
+            // When both are zero, percentages are 50/50 (neutral state to prevent premature victory)
+            Assert.Equal(50f, encounter.AttackerControlPercentage);
+            Assert.Equal(50f, encounter.DefenderControlPercentage);
 
-            // This is a defender victory (attacker at 0% equals 0% default threshold)
+            // This is in-progress - neither side has won (both at 50%)
             var result = _takeoverDetector.CheckTakeover(encounter);
-            Assert.Equal(TakeoverStatus.DefenderVictory, result.Status);
+            Assert.Equal(TakeoverStatus.InProgress, result.Status);
         }
 
         [Fact]
@@ -486,9 +486,9 @@ namespace FactionWars.Tests.Integration.Combat
             encounter.End(CombatStatus.AttackerVictory);
             _combatResultHandler.ProcessCombatResult(encounter);
 
-            // Verify territory value transferred
+            // Verify territory value: Trevor loses, Michael doesn't gain until claiming
             Assert.Equal(0, _zoneService.GetFactionTerritoryValue(TrevorFactionId));
-            Assert.Equal(10, _zoneService.GetFactionTerritoryValue(MichaelFactionId));
+            Assert.Equal(0, _zoneService.GetFactionTerritoryValue(MichaelFactionId)); // Zone is neutral
         }
 
         #endregion

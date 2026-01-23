@@ -118,6 +118,12 @@ namespace FactionWars.Tests.Integration.Persistence
             encounter.End(CombatStatus.AttackerVictory);
             world.CombatHandler.ProcessCombatResult(encounter);
 
+            // Zone is now neutral after victory - Michael claims it
+            var neutralZone = world.ZoneRepo.GetById(trevorZone.Id)!;
+            neutralZone.OwnerFactionId = MichaelFactionId;
+            neutralZone.ControlPercentage = 100f;
+            world.ZoneRepo.Update(neutralZone);
+
             // Update faction zone tracking
             world.FactionService.RemoveZoneFromFaction(TrevorFactionId, trevorZone.Id);
             world.FactionService.AddZoneToFaction(MichaelFactionId, trevorZone.Id);
@@ -1015,6 +1021,12 @@ namespace FactionWars.Tests.Integration.Persistence
             controlCalc.ApplyToEncounter(encounter);
             encounter.End(CombatStatus.AttackerVictory);
             restoredWorld.CombatHandler.ProcessCombatResult(encounter);
+
+            // Zone is now neutral after victory - Michael claims it
+            var neutralZone = restoredWorld.ZoneRepo.GetById(lastFranklinZone.Id)!;
+            neutralZone.OwnerFactionId = MichaelFactionId;
+            neutralZone.ControlPercentage = 100f;
+            restoredWorld.ZoneRepo.Update(neutralZone);
 
             // Update faction tracking
             restoredWorld.FactionService.RemoveZoneFromFaction(FranklinFactionId, lastFranklinZone.Id);

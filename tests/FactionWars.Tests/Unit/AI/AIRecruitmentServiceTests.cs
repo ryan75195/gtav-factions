@@ -16,7 +16,7 @@ namespace FactionWars.Tests.Unit.AI
             var factionState = new FactionState("test", initialCash: 1000, initialTroopCount: 5);
             mockFactionService.Setup(f => f.GetFactionState("test")).Returns(factionState);
             mockFactionService.Setup(f => f.RecruitTroops("test", It.IsAny<int>())).Returns(true);
-            mockFactionService.Setup(f => f.AddCash("test", It.IsAny<int>())).Returns(true);
+            mockFactionService.Setup(f => f.SpendCash("test", It.IsAny<int>())).Returns(true);
 
             var budgetService = new AIBudgetService(costPerTroop: 50, recruitCostPerTroop: 100);
             var service = new AIRecruitmentService(mockFactionService.Object, budgetService);
@@ -25,7 +25,7 @@ namespace FactionWars.Tests.Unit.AI
 
             Assert.Equal(5, recruited);
             mockFactionService.Verify(f => f.RecruitTroops("test", 5), Times.Once);
-            mockFactionService.Verify(f => f.AddCash("test", -500), Times.Once);
+            mockFactionService.Verify(f => f.SpendCash("test", 500), Times.Once);
         }
 
         [Fact]

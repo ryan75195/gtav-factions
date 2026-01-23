@@ -145,6 +145,10 @@ namespace FactionWars.Tests.Unit.AI
             var ownedZone = CreateTestZone("owned", ownerFactionId: faction.Id, strategicValue: 5);
             var enemyZone = CreateTestZone("enemy", ownerFactionId: "enemy-faction", strategicValue: 5);
 
+            // Set up adjacency so AI can attack the enemy zone from owned zone
+            ownedZone.AdjacentZoneIds.Add(enemyZone.Id);
+            enemyZone.AdjacentZoneIds.Add(ownedZone.Id);
+
             var ownedZones = new List<Zone> { ownedZone };
             var allZones = new List<Zone> { ownedZone, enemyZone };
             var enemyFactions = new List<Faction> { CreateTestFaction(FactionType.Michael, "enemy-faction") };
@@ -166,6 +170,10 @@ namespace FactionWars.Tests.Unit.AI
 
             var ownedZone = CreateTestZone("owned", ownerFactionId: faction.Id, strategicValue: 5);
             var enemyZone = CreateTestZone("enemy", ownerFactionId: "enemy-faction", strategicValue: 5);
+
+            // Set up adjacency so AI can attack the enemy zone from owned zone
+            ownedZone.AdjacentZoneIds.Add(enemyZone.Id);
+            enemyZone.AdjacentZoneIds.Add(ownedZone.Id);
 
             var ownedZones = new List<Zone> { ownedZone };
             var allZones = new List<Zone> { ownedZone, enemyZone };

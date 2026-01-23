@@ -255,17 +255,18 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             _pedPoolMock.Setup(p => p.GetByFactionAndZone("attacker", "zone1")).Returns(attackerPeds);
             _pedPoolMock.Setup(p => p.GetByFactionAndZone("defender", "zone1")).Returns(defenderPeds);
 
-            _controlCalculatorMock.Setup(c => c.Calculate(1, 2))
-                .Returns(new ControlPercentageResult(33.3f, 66.7f, 3));
+            // attackerCount = 1 (player) + 0 (followers) + 1 (attackerPeds) = 2
+            _controlCalculatorMock.Setup(c => c.Calculate(2, 2))
+                .Returns(new ControlPercentageResult(50f, 50f, 4));
 
-            _takeoverDetectorMock.Setup(t => t.CheckTakeover(33.3f, 66.7f, "attacker", "defender"))
-                .Returns(TakeoverResult.InProgress(33.3f, 66.7f));
+            _takeoverDetectorMock.Setup(t => t.CheckTakeover(50f, 50f, "attacker", "defender"))
+                .Returns(TakeoverResult.InProgress(50f, 50f));
 
             // Act
             _manager.Update();
 
-            // Assert
-            Assert.Equal(1, encounter.AttackerPedCount);
+            // Assert - attackerCount includes player (1) + attackerPeds (1) = 2
+            Assert.Equal(2, encounter.AttackerPedCount);
             Assert.Equal(2, encounter.DefenderPedCount);
         }
 
@@ -283,18 +284,19 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             _pedPoolMock.Setup(p => p.GetByFactionAndZone("attacker", "zone1")).Returns(attackerPeds);
             _pedPoolMock.Setup(p => p.GetByFactionAndZone("defender", "zone1")).Returns(defenderPeds);
 
-            _controlCalculatorMock.Setup(c => c.Calculate(2, 1))
-                .Returns(new ControlPercentageResult(66.7f, 33.3f, 3));
+            // attackerCount = 1 (player) + 0 (followers) + 2 (attackerPeds) = 3
+            _controlCalculatorMock.Setup(c => c.Calculate(3, 1))
+                .Returns(new ControlPercentageResult(75f, 25f, 4));
 
-            _takeoverDetectorMock.Setup(t => t.CheckTakeover(66.7f, 33.3f, "attacker", "defender"))
-                .Returns(TakeoverResult.InProgress(66.7f, 33.3f));
+            _takeoverDetectorMock.Setup(t => t.CheckTakeover(75f, 25f, "attacker", "defender"))
+                .Returns(TakeoverResult.InProgress(75f, 25f));
 
             // Act
             _manager.Update();
 
             // Assert
-            Assert.Equal(66.7f, encounter.AttackerControlPercentage);
-            Assert.Equal(33.3f, encounter.DefenderControlPercentage);
+            Assert.Equal(75f, encounter.AttackerControlPercentage);
+            Assert.Equal(25f, encounter.DefenderControlPercentage);
         }
 
         [Fact]
@@ -311,8 +313,9 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             _pedPoolMock.Setup(p => p.GetByFactionAndZone("attacker", "zone1")).Returns(attackerPeds);
             _pedPoolMock.Setup(p => p.GetByFactionAndZone("defender", "zone1")).Returns(defenderPeds);
 
-            _controlCalculatorMock.Setup(c => c.Calculate(1, 0))
-                .Returns(new ControlPercentageResult(100f, 0f, 1));
+            // attackerCount = 1 (player) + 0 (followers) + 1 (attackerPeds) = 2
+            _controlCalculatorMock.Setup(c => c.Calculate(2, 0))
+                .Returns(new ControlPercentageResult(100f, 0f, 2));
 
             _takeoverDetectorMock.Setup(t => t.CheckTakeover(100f, 0f, "attacker", "defender"))
                 .Returns(TakeoverResult.AttackerVictory("attacker", 100f, 0f));
@@ -338,16 +341,22 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             _manager.StartCombat(zone, "attacker");
 
             var attackerPeds = System.Array.Empty<PedHandle>();
-            var defenderPeds = new[] { new PedHandle(1, "defender", default, "model", "zone1") };
+            var defenderPeds = new[] { new PedHandle(1, "defender", default, "model", "zone1"),
+                                       new PedHandle(2, "defender", default, "model", "zone1"),
+                                       new PedHandle(3, "defender", default, "model", "zone1"),
+                                       new PedHandle(4, "defender", default, "model", "zone1"),
+                                       new PedHandle(5, "defender", default, "model", "zone1") };
 
             _pedPoolMock.Setup(p => p.GetByFactionAndZone("attacker", "zone1")).Returns(attackerPeds);
             _pedPoolMock.Setup(p => p.GetByFactionAndZone("defender", "zone1")).Returns(defenderPeds);
 
-            _controlCalculatorMock.Setup(c => c.Calculate(0, 1))
-                .Returns(new ControlPercentageResult(0f, 100f, 1));
+            // attackerCount = 1 (player) + 0 (followers) + 0 (attackerPeds) = 1
+            // defenderCount = 5, so ratio is 1 vs 5 = 16.7% vs 83.3%
+            _controlCalculatorMock.Setup(c => c.Calculate(1, 5))
+                .Returns(new ControlPercentageResult(16.7f, 83.3f, 6));
 
-            _takeoverDetectorMock.Setup(t => t.CheckTakeover(0f, 100f, "attacker", "defender"))
-                .Returns(TakeoverResult.DefenderVictory("defender", 0f, 100f));
+            _takeoverDetectorMock.Setup(t => t.CheckTakeover(16.7f, 83.3f, "attacker", "defender"))
+                .Returns(TakeoverResult.DefenderVictory("defender", 16.7f, 83.3f));
 
             _combatResultHandlerMock.Setup(h => h.ProcessCombatResult(It.IsAny<CombatEncounter>()))
                 .Returns(CombatProcessingResult.Success(CombatResultOutcome.ZoneDefended, "zone1", "defender", "attacker"));
@@ -908,19 +917,20 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             _pedPoolMock.Setup(p => p.GetByFactionAndZone("attacker", "zone1")).Returns(attackerPeds);
             _pedPoolMock.Setup(p => p.GetByFactionAndZone("defender", "zone1")).Returns(defenderPeds);
 
-            _controlCalculatorMock.Setup(c => c.Calculate(1, 1))
-                .Returns(new ControlPercentageResult(50f, 50f, 2));
+            // attackerCount = 1 (player) + 0 (followers) + 1 (attackerPeds) = 2
+            _controlCalculatorMock.Setup(c => c.Calculate(2, 1))
+                .Returns(new ControlPercentageResult(66.7f, 33.3f, 3));
 
-            _takeoverDetectorMock.Setup(t => t.CheckTakeover(50f, 50f, "attacker", "defender"))
-                .Returns(TakeoverResult.InProgress(50f, 50f));
+            _takeoverDetectorMock.Setup(t => t.CheckTakeover(66.7f, 33.3f, "attacker", "defender"))
+                .Returns(TakeoverResult.InProgress(66.7f, 33.3f));
 
             // Act
             _manager.Update();
 
             // Assert - combat should continue
             Assert.True(_manager.IsInCombat);
-            Assert.Equal(50f, encounter.AttackerControlPercentage);
-            Assert.Equal(50f, encounter.DefenderControlPercentage);
+            Assert.Equal(66.7f, encounter.AttackerControlPercentage);
+            Assert.Equal(33.3f, encounter.DefenderControlPercentage);
         }
 
         [Fact]

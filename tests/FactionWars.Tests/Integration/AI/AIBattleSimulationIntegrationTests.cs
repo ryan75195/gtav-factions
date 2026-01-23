@@ -633,6 +633,16 @@ namespace FactionWars.Tests.Integration.AI
             var zone = new Zone(id, name, new Vector3(0, 0, 0), 150f, strategicValue);
             zone.OwnerFactionId = ownerFactionId;
             zone.ControlPercentage = 100f;
+
+            // Make all zones adjacent to each other for testing AI decisions
+            var existingZones = _zoneRepository.GetAll().ToList();
+            foreach (var existing in existingZones)
+            {
+                zone.AdjacentZoneIds.Add(existing.Id);
+                existing.AdjacentZoneIds.Add(id);
+                _zoneRepository.Update(existing);
+            }
+
             _zoneRepository.Add(zone);
 
             if (ownerFactionId != null)

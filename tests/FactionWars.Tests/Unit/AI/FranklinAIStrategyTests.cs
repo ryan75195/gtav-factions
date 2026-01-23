@@ -190,19 +190,32 @@ namespace FactionWars.Tests.Unit.AI
             var hardEnemy = CreateTestZone("hard-enemy", ownerFactionId: "enemy-faction", strategicValue: 7);
             hardEnemy.IsContested = true; // Already contested - harder target
 
+            // Set up adjacency so AI can attack the target zones from owned zone
+            ownedZone.AdjacentZoneIds.Add(easyNeutral.Id);
+            ownedZone.AdjacentZoneIds.Add(hardEnemy.Id);
+            easyNeutral.AdjacentZoneIds.Add(ownedZone.Id);
+            hardEnemy.AdjacentZoneIds.Add(ownedZone.Id);
+
             var ownedZones = new List<Zone> { ownedZone };
             var allZones = new List<Zone> { ownedZone, easyNeutral, hardEnemy };
             var enemyFactions = new List<Faction> { CreateTestFaction(FactionType.Trevor, "enemy-faction") };
             var context = new AIContext(faction, factionState, ownedZones, allZones, enemyFactions);
 
-            var decisions = strategy.MakeDecisions(context);
+            // Verify Franklin evaluates the easy target higher than the hard target
+            // (MakeDecisions uses weighted random selection, so we test the scoring logic directly)
+            var easyScore = strategy.EvaluateZone(easyNeutral, context);
+            var hardScore = strategy.EvaluateZone(hardEnemy, context);
 
-            // Franklin should have attack decisions
+            // Easy neutral zone should score higher than contested enemy zone
+            Assert.True(easyScore > hardScore,
+                $"Easy neutral zone should score higher ({easyScore:F3}) than contested enemy zone ({hardScore:F3})");
+
+            // Also verify an attack decision is made (targeting either zone via weighted random)
+            var decisions = strategy.MakeDecisions(context);
             var attackDecision = decisions.FirstOrDefault(d => d.DecisionType == AIDecisionType.Attack);
             Assert.NotNull(attackDecision);
-
-            // Should target the easier neutral zone over the heavily defended enemy zone
-            Assert.Equal("easy-neutral", attackDecision.TargetZoneId);
+            Assert.True(attackDecision.TargetZoneId == "easy-neutral" || attackDecision.TargetZoneId == "hard-enemy",
+                "Attack should target one of the available zones");
         }
 
         [Fact]
@@ -214,6 +227,10 @@ namespace FactionWars.Tests.Unit.AI
 
             var ownedZone = CreateTestZone("owned", ownerFactionId: faction.Id, strategicValue: 5);
             var targetZone = CreateTestZone("target", strategicValue: 6);
+
+            // Set up adjacency so AI can attack the target zone from owned zone
+            ownedZone.AdjacentZoneIds.Add(targetZone.Id);
+            targetZone.AdjacentZoneIds.Add(ownedZone.Id);
 
             var ownedZones = new List<Zone> { ownedZone };
             var allZones = new List<Zone> { ownedZone, targetZone };
@@ -261,6 +278,10 @@ namespace FactionWars.Tests.Unit.AI
             var contestedZone = CreateTestZone("contested", ownerFactionId: faction.Id, strategicValue: 6);
             contestedZone.IsContested = true;
             var targetZone = CreateTestZone("target", strategicValue: 6);
+
+            // Set up adjacency so AI can attack the target zone from contested zone
+            contestedZone.AdjacentZoneIds.Add(targetZone.Id);
+            targetZone.AdjacentZoneIds.Add(contestedZone.Id);
 
             var ownedZones = new List<Zone> { contestedZone };
             var allZones = new List<Zone> { contestedZone, targetZone };

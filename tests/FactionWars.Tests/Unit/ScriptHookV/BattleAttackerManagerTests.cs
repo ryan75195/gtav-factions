@@ -15,7 +15,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
     public class BattleAttackerManagerTests
     {
         private readonly Mock<IGameBridge> _gameBridgeMock;
-        private readonly Mock<IActiveBattleManager> _battleManagerMock;
+        private readonly Mock<IZoneBattleManager> _battleManagerMock;
         private readonly Mock<IPedSpawningService> _pedSpawningMock;
         private readonly Mock<IPedDespawnService> _pedDespawnMock;
         private readonly Mock<IDefenderTierService> _tierServiceMock;
@@ -25,7 +25,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
         public BattleAttackerManagerTests()
         {
             _gameBridgeMock = new Mock<IGameBridge>();
-            _battleManagerMock = new Mock<IActiveBattleManager>();
+            _battleManagerMock = new Mock<IZoneBattleManager>();
             _pedSpawningMock = new Mock<IPedSpawningService>();
             _pedDespawnMock = new Mock<IPedDespawnService>();
             _tierServiceMock = new Mock<IDefenderTierService>();
@@ -43,7 +43,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             var zone = new Zone("downtown", "Downtown", new Vector3(0, 0, 0), 100f) { OwnerFactionId = "player" };
             var attackerTroops = new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 5 } };
             var defenderTroops = new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 3 } };
-            var battle = new ActiveBattle("enemy", "player", "downtown", attackerTroops, defenderTroops, 60f, 6f);
+            var battle = new ZoneBattle("enemy", "player", "downtown", attackerTroops, defenderTroops, "player");
 
             _battleManagerMock.Setup(b => b.GetBattleForZone("downtown")).Returns(battle);
             _pedSpawningMock.Setup(p => p.CanSpawn()).Returns(true);
@@ -66,7 +66,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
         {
             // Arrange
             var zone = new Zone("downtown", "Downtown", new Vector3(0, 0, 0), 100f) { OwnerFactionId = "player" };
-            _battleManagerMock.Setup(b => b.GetBattleForZone("downtown")).Returns((ActiveBattle?)null);
+            _battleManagerMock.Setup(b => b.GetBattleForZone("downtown")).Returns((ZoneBattle?)null);
 
             var manager = CreateManager("player");
 
@@ -85,7 +85,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             var zone = new Zone("downtown", "Downtown", new Vector3(0, 0, 0), 100f) { OwnerFactionId = "enemy" };
             var attackerTroops = new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 5 } };
             var defenderTroops = new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 3 } };
-            var battle = new ActiveBattle("player", "enemy", "downtown", attackerTroops, defenderTroops, 60f, 6f);
+            var battle = new ZoneBattle("player", "enemy", "downtown", attackerTroops, defenderTroops, "player");
 
             _battleManagerMock.Setup(b => b.GetBattleForZone("downtown")).Returns(battle);
 
@@ -108,7 +108,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             var zone = new Zone("downtown", "Downtown", new Vector3(0, 0, 0), 100f) { OwnerFactionId = "player" };
             var attackerTroops = new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 15 } };
             var defenderTroops = new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 10 } };
-            var battle = new ActiveBattle("enemy", "player", "downtown", attackerTroops, defenderTroops, 60f, 6f);
+            var battle = new ZoneBattle("enemy", "player", "downtown", attackerTroops, defenderTroops, "player");
             battle.IsPlayerPresent = true;
 
             _battleManagerMock.Setup(b => b.GetBattleForZone("downtown")).Returns(battle);
@@ -160,7 +160,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             var zone = new Zone("downtown", "Downtown", new Vector3(0, 0, 0), 100f) { OwnerFactionId = "player" };
             var attackerTroops = new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 12 } };
             var defenderTroops = new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 10 } };
-            var battle = new ActiveBattle("enemy", "player", "downtown", attackerTroops, defenderTroops, 60f, 6f);
+            var battle = new ZoneBattle("enemy", "player", "downtown", attackerTroops, defenderTroops, "player");
             battle.IsPlayerPresent = true;
 
             _battleManagerMock.Setup(b => b.GetBattleForZone("downtown")).Returns(battle);
@@ -218,7 +218,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             var zone = new Zone("downtown", "Downtown", new Vector3(0, 0, 0), 100f) { OwnerFactionId = "player" };
             var attackerTroops = new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 5 } };
             var defenderTroops = new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 3 } };
-            var battle = new ActiveBattle("enemy", "player", "downtown", attackerTroops, defenderTroops, 60f, 6f);
+            var battle = new ZoneBattle("enemy", "player", "downtown", attackerTroops, defenderTroops, "player");
 
             _battleManagerMock.Setup(b => b.GetBattleForZone("downtown")).Returns(battle);
             _pedSpawningMock.Setup(p => p.CanSpawn()).Returns(true);
