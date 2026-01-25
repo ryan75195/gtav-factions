@@ -237,5 +237,158 @@ namespace FactionWars.Tests.Unit.Core
             Assert.False(mockBridge.PedExists(1));
             Assert.False(mockBridge.BlipExists(1));
         }
+
+        [Fact]
+        public void TaskPedWanderInAreaSprinting_DoesNotThrow()
+        {
+            // Arrange
+            var mockBridge = new MockGameBridge();
+            var handle = mockBridge.CreatePed("test_model", Vector3.Zero);
+            var center = new Vector3(100f, 100f, 0f);
+
+            // Act
+            var exception = Record.Exception(() => mockBridge.TaskPedWanderInAreaSprinting(handle, center, 150f));
+
+            // Assert
+            Assert.Null(exception);
+        }
+
+        [Fact]
+        public void TaskPedWanderInArea_DoesNotThrow()
+        {
+            // Arrange
+            var mockBridge = new MockGameBridge();
+            var handle = mockBridge.CreatePed("test_model", Vector3.Zero);
+            var center = new Vector3(100f, 100f, 0f);
+
+            // Act
+            var exception = Record.Exception(() => mockBridge.TaskPedWanderInArea(handle, center, 150f));
+
+            // Assert
+            Assert.Null(exception);
+        }
+
+        [Fact]
+        public void SetPedAsFriendly_SetsFriendlyDefendersGroup()
+        {
+            // Arrange
+            var mockBridge = new MockGameBridge();
+            var handle = mockBridge.CreatePed("test_model", Vector3.Zero);
+
+            // Act
+            mockBridge.SetPedAsFriendly(handle);
+
+            // Assert - Should be in FRIENDLY_DEFENDERS group, not PLAYER or DEFENDER_ENEMIES
+            var group = mockBridge.GetPedRelationshipGroup(handle);
+            Assert.Equal("FRIENDLY_DEFENDERS", group);
+            Assert.NotEqual("PLAYER", group);
+            Assert.NotEqual("DEFENDER_ENEMIES", group);
+        }
+
+        [Fact]
+        public void SetPedAsHostileWanderer_SetsDefenderEnemiesGroup()
+        {
+            // Arrange
+            var mockBridge = new MockGameBridge();
+            var handle = mockBridge.CreatePed("test_model", Vector3.Zero);
+
+            // Act
+            mockBridge.SetPedAsHostileWanderer(handle);
+
+            // Assert - Should be in DEFENDER_ENEMIES group (hostile to player)
+            var group = mockBridge.GetPedRelationshipGroup(handle);
+            Assert.Equal("DEFENDER_ENEMIES", group);
+        }
+
+        [Fact]
+        public void TaskPedWanderInArea_TracksWanderState()
+        {
+            // Arrange
+            var mockBridge = new MockGameBridge();
+            var handle = mockBridge.CreatePed("test_model", Vector3.Zero);
+            var center = new Vector3(100f, 200f, 0f);
+            var radius = 150f;
+
+            // Act
+            mockBridge.TaskPedWanderInArea(handle, center, radius);
+
+            // Assert
+            Assert.True(mockBridge.IsPedWandering(handle));
+            Assert.False(mockBridge.IsPedWanderingSprinting(handle));
+            Assert.Equal(center, mockBridge.GetPedWanderCenter(handle));
+            Assert.Equal(radius, mockBridge.GetPedWanderRadius(handle));
+        }
+
+        [Fact]
+        public void TaskPedWanderInAreaSprinting_TracksSprintingState()
+        {
+            // Arrange
+            var mockBridge = new MockGameBridge();
+            var handle = mockBridge.CreatePed("test_model", Vector3.Zero);
+            var center = new Vector3(100f, 200f, 0f);
+            var radius = 150f;
+
+            // Act
+            mockBridge.TaskPedWanderInAreaSprinting(handle, center, radius);
+
+            // Assert
+            Assert.True(mockBridge.IsPedWandering(handle));
+            Assert.True(mockBridge.IsPedWanderingSprinting(handle));
+            Assert.Equal(center, mockBridge.GetPedWanderCenter(handle));
+            Assert.Equal(radius, mockBridge.GetPedWanderRadius(handle));
+        }
+
+        [Fact]
+        public void Reset_ClearsWanderingPeds()
+        {
+            // Arrange
+            var mockBridge = new MockGameBridge();
+            var handle = mockBridge.CreatePed("test_model", Vector3.Zero);
+            mockBridge.TaskPedWanderInArea(handle, new Vector3(100f, 100f, 0f), 50f);
+
+            // Act
+            mockBridge.Reset();
+
+            // Assert
+            Assert.False(mockBridge.IsPedWandering(handle));
+        }
+
+        [Fact]
+        public void IsPlayerFreeAiming_DefaultsFalse()
+        {
+            var bridge = new MockGameBridge();
+            Assert.False(bridge.IsPlayerFreeAiming());
+        }
+
+        [Fact]
+        public void SetPlayerFreeAiming_ChangesState()
+        {
+            var bridge = new MockGameBridge();
+            bridge.SetPlayerFreeAiming(true);
+            Assert.True(bridge.IsPlayerFreeAiming());
+        }
+
+        [Fact]
+        public void GetEntityPlayerIsAimingAt_DefaultsToZero()
+        {
+            var bridge = new MockGameBridge();
+            Assert.Equal(0, bridge.GetEntityPlayerIsAimingAt());
+        }
+
+        [Fact]
+        public void SetEntityPlayerIsAimingAt_SetsTarget()
+        {
+            var bridge = new MockGameBridge();
+            bridge.SetEntityPlayerIsAimingAt(123);
+            Assert.Equal(123, bridge.GetEntityPlayerIsAimingAt());
+        }
+
+        [Fact]
+        public void DisplayHelpText_StoresLastHelpText()
+        {
+            var bridge = new MockGameBridge();
+            bridge.DisplayHelpText("Press ~INPUT_CONTEXT~ to interact");
+            Assert.Equal("Press ~INPUT_CONTEXT~ to interact", bridge.LastHelpText);
+        }
     }
 }

@@ -23,6 +23,9 @@ namespace FactionWars.Core.Utils
         private int _nextBlipHandle = 1;
         private int _nextPedBlipHandle = 5000;
 
+        private bool _isPlayerFreeAiming;
+        private int _entityPlayerIsAimingAt;
+
         /// <summary>
         /// Gets or sets the player position to return from GetPlayerPosition.
         /// </summary>
@@ -53,6 +56,11 @@ namespace FactionWars.Core.Utils
         /// Gets or sets the player's money amount.
         /// </summary>
         public int PlayerMoney { get; set; } = 0;
+
+        /// <summary>
+        /// Gets the last help text displayed via DisplayHelpText.
+        /// </summary>
+        public string? LastHelpText { get; private set; }
 
         /// <summary>
         /// Gets the list of notifications shown.
@@ -220,6 +228,16 @@ namespace FactionWars.Core.Utils
             PlayerMoney += amount;
         }
 
+        public bool IsPlayerFreeAiming() => _isPlayerFreeAiming;
+
+        public void SetPlayerFreeAiming(bool aiming) => _isPlayerFreeAiming = aiming;
+
+        public int GetEntityPlayerIsAimingAt() => _entityPlayerIsAimingAt;
+
+        public void SetEntityPlayerIsAimingAt(int entityHandle) => _entityPlayerIsAimingAt = entityHandle;
+
+        public void DisplayHelpText(string text) => LastHelpText = text;
+
         private readonly List<int> _followingPeds = new List<int>();
         private readonly Dictionary<int, VehicleState> _vehicles = new Dictionary<int, VehicleState>();
         private readonly Dictionary<int, int> _pedsInVehicles = new Dictionary<int, int>(); // pedHandle -> vehicleHandle
@@ -372,17 +390,77 @@ namespace FactionWars.Core.Utils
             return _nextPedBlipHandle++;
         }
 
+        private readonly Dictionary<int, WanderState> _wanderingPeds = new Dictionary<int, WanderState>();
+
         public void TaskPedWanderInArea(int pedHandle, Vector3 center, float radius)
         {
-            // Mock implementation - no-op
+            if (_peds.ContainsKey(pedHandle))
+            {
+                _wanderingPeds[pedHandle] = new WanderState
+                {
+                    Center = center,
+                    Radius = radius,
+                    IsSprinting = false
+                };
+            }
+        }
+
+        public void TaskPedWanderInAreaSprinting(int pedHandle, Vector3 center, float radius)
+        {
+            if (_peds.ContainsKey(pedHandle))
+            {
+                _wanderingPeds[pedHandle] = new WanderState
+                {
+                    Center = center,
+                    Radius = radius,
+                    IsSprinting = true
+                };
+            }
+        }
+
+        /// <summary>
+        /// Gets whether a ped is currently wandering.
+        /// </summary>
+        public bool IsPedWandering(int pedHandle) => _wanderingPeds.ContainsKey(pedHandle);
+
+        /// <summary>
+        /// Gets whether a ped is wandering and sprinting.
+        /// </summary>
+        public bool IsPedWanderingSprinting(int pedHandle)
+        {
+            return _wanderingPeds.TryGetValue(pedHandle, out var state) && state.IsSprinting;
+        }
+
+        /// <summary>
+        /// Gets the wander center position for a ped.
+        /// </summary>
+        public Vector3? GetPedWanderCenter(int pedHandle)
+        {
+            return _wanderingPeds.TryGetValue(pedHandle, out var state) ? state.Center : (Vector3?)null;
+        }
+
+        /// <summary>
+        /// Gets the wander radius for a ped.
+        /// </summary>
+        public float? GetPedWanderRadius(int pedHandle)
+        {
+            return _wanderingPeds.TryGetValue(pedHandle, out var state) ? state.Radius : (float?)null;
+        }
+
+        private class WanderState
+        {
+            public Vector3 Center { get; set; }
+            public float Radius { get; set; }
+            public bool IsSprinting { get; set; }
         }
 
         public void SetPedAsFriendly(int pedHandle)
         {
             if (_peds.TryGetValue(pedHandle, out var ped))
             {
-                // In mock, we'll set them to the player relationship group
-                ped.RelationshipGroup = "PLAYER";
+                // In mock, set to FRIENDLY_DEFENDERS group (separate from PLAYER group)
+                // This allows independent wandering behavior while still being friendly to player
+                ped.RelationshipGroup = "FRIENDLY_DEFENDERS";
             }
         }
 
@@ -547,6 +625,7 @@ namespace FactionWars.Core.Utils
             _followingPeds.Clear();
             _vehicles.Clear();
             _pedsInVehicles.Clear();
+            _wanderingPeds.Clear();
             _nextPedHandle = 1;
             _nextBlipHandle = 1;
             _nextVehicleHandle = 1000;
@@ -559,6 +638,9 @@ namespace FactionWars.Core.Utils
             IsPlayerInVehicleValue = false;
             PlayerVehicleHandle = -1;
             WaypointPosition = null;
+            _isPlayerFreeAiming = false;
+            _entityPlayerIsAimingAt = 0;
+            LastHelpText = null;
         }
 
         /// <summary>

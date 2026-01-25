@@ -65,19 +65,59 @@ namespace FactionWars.ScriptHookV
                 var gtaPosition = new GTA.Math.Vector3(position.X, position.Y, position.Z);
                 FileLogger.Spawn($"Initial position: ({gtaPosition.X:F1}, {gtaPosition.Y:F1}, {gtaPosition.Z:F1})");
 
-                // Try to get ground Z at position
+                // CRITICAL: Request collision at the spawn location first
+                // GET_GROUND_Z_FOR_3D_COORD fails when collisions aren't loaded
+                Function.Call(Hash.REQUEST_COLLISION_AT_COORD, position.X, position.Y, position.Z);
+
+                // Wait a bit for collision to load
+                int collisionWait = 0;
+                while (!Function.Call<bool>(Hash.HAS_COLLISION_LOADED_AROUND_ENTITY, Game.Player.Character.Handle) && collisionWait < 10)
+                {
+                    Script.Wait(10);
+                    collisionWait++;
+                }
+                FileLogger.Spawn($"Collision request complete after {collisionWait * 10}ms");
+
+                // Try to get ground Z at position using native with OutputArgument
                 float groundZ = 0f;
-                bool gotGround = World.GetGroundHeight(new GTA.Math.Vector3(position.X, position.Y, position.Z + 100f), out groundZ);
+                bool gotGround = false;
+                var outArg = new OutputArgument();
+                gotGround = Function.Call<bool>(Hash.GET_GROUND_Z_FOR_3D_COORD,
+                    position.X, position.Y, position.Z + 100f,
+                    outArg,
+                    false,  // ignoreWater
+                    false); // ignoreDistToWaterLevelCheck
+
+                if (gotGround)
+                {
+                    groundZ = outArg.GetResult<float>();
+                }
                 FileLogger.Spawn($"Ground height check: success={gotGround}, groundZ={groundZ:F1}");
 
                 if (gotGround && groundZ > 0)
                 {
-                    gtaPosition.Z = groundZ + 1f; // Spawn slightly above ground
+                    // IMPORTANT: Don't add offset - World.CreatePed may already adjust Z
+                    // Spawn at exact ground level, game will place ped properly
+                    gtaPosition.Z = groundZ;
                     FileLogger.Spawn($"Adjusted Z to ground: {gtaPosition.Z:F1}");
                 }
                 else
                 {
-                    FileLogger.Warn($"Could not get ground height, using original Z={gtaPosition.Z:F1}");
+                    // Fallback: use player's Z as reference if nearby
+                    var fallbackPlayerPos = Game.Player.Character.Position;
+                    float distToPlayer = (float)Math.Sqrt(
+                        Math.Pow(position.X - fallbackPlayerPos.X, 2) +
+                        Math.Pow(position.Y - fallbackPlayerPos.Y, 2));
+
+                    if (distToPlayer < 300f)
+                    {
+                        gtaPosition.Z = fallbackPlayerPos.Z;
+                        FileLogger.Spawn($"Using player Z as fallback: {gtaPosition.Z:F1}");
+                    }
+                    else
+                    {
+                        FileLogger.Warn($"Could not get ground height, using original Z={gtaPosition.Z:F1}");
+                    }
                 }
 
                 // Create ped facing player
@@ -87,6 +127,14 @@ namespace FactionWars.ScriptHookV
                 FileLogger.Spawn($"Creating ped at ({gtaPosition.X:F1}, {gtaPosition.Y:F1}, {gtaPosition.Z:F1}), heading={heading:F1}");
 
                 var ped = World.CreatePed(model, gtaPosition, heading);
+
+                // After creating ped, force them to ground level using SET_ENTITY_COORDS
+                // This ensures they're on the navmesh and can walk
+                if (ped != null && ped.Exists() && gotGround && groundZ > 0)
+                {
+                    Function.Call(Hash.SET_ENTITY_COORDS, ped.Handle, gtaPosition.X, gtaPosition.Y, groundZ, false, false, false, true);
+                    FileLogger.Spawn($"Forced ped to ground Z={groundZ:F1}");
+                }
 
                 model.MarkAsNoLongerNeeded();
 
@@ -891,54 +939,151 @@ namespace FactionWars.ScriptHookV
         /// <inheritdoc />
         public void TaskPedWanderInArea(int pedHandle, DomainVector3 center, float radius)
         {
+            FileLogger.AI($"TaskPedWanderInArea: CALLED for ped {pedHandle} at center ({center.X:F1}, {center.Y:F1}, {center.Z:F1}) radius {radius:F1}");
+
             try
             {
                 var ped = Entity.FromHandle(pedHandle) as Ped;
                 if (ped == null || !ped.Exists())
+                {
+                    FileLogger.Warn($"TaskPedWanderInArea: Ped {pedHandle} is null or doesn't exist, aborting");
                     return;
+                }
 
-                var gtaCenter = new GTA.Math.Vector3(center.X, center.Y, center.Z);
-                Function.Call(Hash.TASK_WANDER_IN_AREA, ped.Handle, gtaCenter.X, gtaCenter.Y, gtaCenter.Z, radius, 0f, 0f);
+                FileLogger.AI($"TaskPedWanderInArea: Ped {pedHandle} exists, position=({ped.Position.X:F1}, {ped.Position.Y:F1}, {ped.Position.Z:F1})");
+
+                // Clear any existing tasks first
+                ped.Task.ClearAllImmediately();
+                FileLogger.AI($"TaskPedWanderInArea: Cleared existing tasks for ped {pedHandle}");
+
+                // NOTE: Removed SET_BLOCKING_OF_NON_TEMPORARY_EVENTS - it may prevent wandering
+                // Instead, let the ped be able to respond to events while wandering
+
+                // Use TASK_WANDER_STANDARD instead - simpler and more reliable
+                // Parameters: ped, heading (10.0 = random direction), flags (0 = default)
+                Function.Call(Hash.TASK_WANDER_STANDARD, ped.Handle, 10.0f, 0);
+                FileLogger.AI($"TaskPedWanderInArea: TASK_WANDER_STANDARD called for ped {pedHandle}");
+
+                // Set movement blend ratio for walking (1.0 = walk)
+                Function.Call(Hash.SET_PED_DESIRED_MOVE_BLEND_RATIO, ped.Handle, 1.0f);
+                FileLogger.AI($"TaskPedWanderInArea: SET_PED_DESIRED_MOVE_BLEND_RATIO=1.0 (walk) for ped {pedHandle}");
+
+                // Check if task is active (task ID 222 = wander)
+                bool isWandering = Function.Call<bool>(Hash.GET_IS_TASK_ACTIVE, ped.Handle, 222);
+                FileLogger.AI($"TaskPedWanderInArea: Task active check (222) = {isWandering} for ped {pedHandle}");
+
+                FileLogger.AI($"TaskPedWanderInArea: COMPLETED successfully for ped {pedHandle}");
             }
-            catch
+            catch (Exception ex)
             {
-                // Silently ignore
+                FileLogger.Error($"TaskPedWanderInArea exception for ped {pedHandle}", ex);
+            }
+        }
+
+        /// <inheritdoc />
+        public void TaskPedWanderInAreaSprinting(int pedHandle, DomainVector3 center, float radius)
+        {
+            FileLogger.AI($"TaskPedWanderInAreaSprinting: CALLED for ped {pedHandle} at center ({center.X:F1}, {center.Y:F1}, {center.Z:F1}) radius {radius:F1}");
+
+            try
+            {
+                var ped = Entity.FromHandle(pedHandle) as Ped;
+                if (ped == null || !ped.Exists())
+                {
+                    FileLogger.Warn($"TaskPedWanderInAreaSprinting: Ped {pedHandle} is null or doesn't exist, aborting");
+                    return;
+                }
+
+                FileLogger.AI($"TaskPedWanderInAreaSprinting: Ped {pedHandle} exists, position=({ped.Position.X:F1}, {ped.Position.Y:F1}, {ped.Position.Z:F1})");
+
+                // Clear any existing tasks first
+                ped.Task.ClearAllImmediately();
+                FileLogger.AI($"TaskPedWanderInAreaSprinting: Cleared existing tasks for ped {pedHandle}");
+
+                // NOTE: Removed SET_BLOCKING_OF_NON_TEMPORARY_EVENTS - it prevents wandering from working
+                // Use TASK_WANDER_STANDARD - simpler and more reliable
+                Function.Call(Hash.TASK_WANDER_STANDARD, ped.Handle, 10.0f, 0);
+                FileLogger.AI($"TaskPedWanderInAreaSprinting: TASK_WANDER_STANDARD called for ped {pedHandle}");
+
+                // Set movement blend ratio for sprinting (3.0 = sprint)
+                Function.Call(Hash.SET_PED_DESIRED_MOVE_BLEND_RATIO, ped.Handle, 3.0f);
+                FileLogger.AI($"TaskPedWanderInAreaSprinting: SET_PED_DESIRED_MOVE_BLEND_RATIO=3.0 (sprint) for ped {pedHandle}");
+
+                FileLogger.AI($"TaskPedWanderInAreaSprinting: COMPLETED successfully for ped {pedHandle}");
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error($"TaskPedWanderInAreaSprinting exception for ped {pedHandle}", ex);
             }
         }
 
         /// <inheritdoc />
         public void SetPedAsFriendly(int pedHandle)
         {
+            FileLogger.AI($"SetPedAsFriendly: CALLED for ped {pedHandle}");
+
             try
             {
                 var ped = Entity.FromHandle(pedHandle) as Ped;
                 if (ped == null || !ped.Exists())
+                {
+                    FileLogger.Warn($"SetPedAsFriendly: Ped {pedHandle} is null or doesn't exist, aborting");
                     return;
+                }
 
                 var player = Game.Player.Character;
                 if (player == null || !player.Exists())
+                {
+                    FileLogger.Warn($"SetPedAsFriendly: Player doesn't exist, aborting");
                     return;
+                }
 
-                // Set relationship to the player's group so they are friendly with player and followers
+                FileLogger.AI($"SetPedAsFriendly: Ped {pedHandle} and player exist, setting up relationship groups");
+
+                // Create a separate FRIENDLY_DEFENDERS group (NOT the player's group)
+                // Being in the player's group makes GTA V treat peds as companions with special behavior
+                var friendlyDefendersGroup = World.AddRelationshipGroup("FRIENDLY_DEFENDERS");
                 var playerGroup = player.RelationshipGroup;
-                ped.RelationshipGroup = playerGroup;
-
-                // Ensure they hate the defender enemies group (hostile zone defenders)
                 var defenderEnemyGroup = World.AddRelationshipGroup("DEFENDER_ENEMIES");
-                playerGroup.SetRelationshipBetweenGroups(defenderEnemyGroup, Relationship.Hate, true);
 
-                // Configure combat attributes to help the player
+                // Set ped to friendly defenders group
+                ped.RelationshipGroup = friendlyDefendersGroup;
+                FileLogger.AI($"SetPedAsFriendly: Ped {pedHandle} set to FRIENDLY_DEFENDERS group");
+
+                // FRIENDLY_DEFENDERS likes player (won't attack, even when damaged)
+                friendlyDefendersGroup.SetRelationshipBetweenGroups(playerGroup, Relationship.Companion, true);
+
+                // FRIENDLY_DEFENDERS hates enemy defenders (will attack)
+                friendlyDefendersGroup.SetRelationshipBetweenGroups(defenderEnemyGroup, Relationship.Hate, true);
+                FileLogger.AI($"SetPedAsFriendly: Relationship groups configured (Companion to player, Hate to enemies)");
+
+                // Configure ped for patrol + engage behavior
                 ped.IsPersistent = true;
                 ped.KeepTaskWhenMarkedAsNoLongerNeeded = true;
-                ped.BlockPermanentEvents = false;
+                ped.BlockPermanentEvents = false; // Allow reaction to events
+
+                // CRITICAL: Prevent ped from becoming hostile when damaged by player
+                Function.Call(Hash.SET_PED_CONFIG_FLAG, ped.Handle, 42, true);  // CPED_CONFIG_FLAG_NeverLeavesGroup
+                Function.Call(Hash.SET_PED_FLEE_ATTRIBUTES, ped.Handle, 0, false); // Don't flee from anything
 
                 // Enable combat attributes
-                Function.Call(Hash.SET_PED_COMBAT_ATTRIBUTES, ped.Handle, 46, true); // Can fight armed peds
-                Function.Call(Hash.SET_PED_COMBAT_ATTRIBUTES, ped.Handle, 5, true);  // Can use cover
+                Function.Call(Hash.SET_PED_COMBAT_ATTRIBUTES, ped.Handle, 46, true);  // CanFightArmedPedsWhenNotArmed
+                Function.Call(Hash.SET_PED_COMBAT_ATTRIBUTES, ped.Handle, 5, true);   // CanUseCover
+                Function.Call(Hash.SET_PED_COMBAT_ATTRIBUTES, ped.Handle, 2, true);   // CanDoDrivebys
+                Function.Call(Hash.SET_PED_COMBAT_ATTRIBUTES, ped.Handle, 1, false);  // BF_CanBeTargettedByPlayer = false (won't retaliate)
+
+                // Set combat ability and range
+                Function.Call(Hash.SET_PED_COMBAT_ABILITY, ped.Handle, 2); // Professional
+                Function.Call(Hash.SET_PED_COMBAT_RANGE, ped.Handle, 2);   // Far
+
+                // Set alertness high so they notice enemies while wandering
+                Function.Call(Hash.SET_PED_ALERTNESS, ped.Handle, 3); // Full alertness
+
+                FileLogger.AI($"SetPedAsFriendly: COMPLETED for ped {pedHandle} - persistent, combat configured, alertness=3");
             }
-            catch
+            catch (Exception ex)
             {
-                // Silently ignore
+                FileLogger.Error($"SetPedAsFriendly exception for ped {pedHandle}", ex);
             }
         }
 
@@ -1078,6 +1223,57 @@ namespace FactionWars.ScriptHookV
             // ScriptHookVDotNet runs with GTA V installation folder as working directory
             // The scripts folder is a subdirectory of that
             return Path.Combine(Environment.CurrentDirectory, "scripts");
+        }
+
+        /// <inheritdoc />
+        public bool IsPlayerFreeAiming()
+        {
+            try
+            {
+                return Game.Player.IsAiming;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <inheritdoc />
+        public int GetEntityPlayerIsAimingAt()
+        {
+            try
+            {
+                var outEntity = new OutputArgument();
+                bool aiming = Function.Call<bool>(Hash.GET_ENTITY_PLAYER_IS_FREE_AIMING_AT, Game.Player.Handle, outEntity);
+
+                if (aiming)
+                {
+                    return outEntity.GetResult<int>();
+                }
+
+                return 0;
+            }
+            catch
+            {
+                return 0;
+            }
+        }
+
+        /// <inheritdoc />
+        public void DisplayHelpText(string text)
+        {
+            try
+            {
+                // BEGIN_TEXT_COMMAND_DISPLAY_HELP + ADD_TEXT_COMPONENT_SUBSTRING_PLAYER_NAME + END_TEXT_COMMAND_DISPLAY_HELP
+                // This shows help text at the bottom of the screen (like "Press E to...")
+                Function.Call(Hash.BEGIN_TEXT_COMMAND_DISPLAY_HELP, "STRING");
+                Function.Call(Hash.ADD_TEXT_COMPONENT_SUBSTRING_PLAYER_NAME, text);
+                Function.Call(Hash.END_TEXT_COMMAND_DISPLAY_HELP, 0, false, true, -1);
+            }
+            catch
+            {
+                // Silently ignore
+            }
         }
 
         /// <summary>
