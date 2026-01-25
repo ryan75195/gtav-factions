@@ -366,5 +366,21 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
                 p => p.SpawnPed(CommanderManager.CommanderModel, It.IsAny<Vector3>(), PlayerFactionId, TestZoneId),
                 Times.Exactly(2));
         }
+
+        [Fact]
+        public void OnTerritoryLost_DespawnsCommander()
+        {
+            SetupManager();
+            var zone = CreateFriendlyZone();
+
+            _manager.OnZoneEntered(zone);
+            Assert.True(_manager.HasCommanderInZone(TestZoneId));
+
+            // Territory is lost
+            _manager.OnTerritoryLost(TestZoneId);
+
+            Assert.False(_manager.HasCommanderInZone(TestZoneId));
+            _pedDespawnServiceMock.Verify(p => p.DespawnPed(It.IsAny<int>()), Times.Once);
+        }
     }
 }

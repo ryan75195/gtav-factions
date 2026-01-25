@@ -123,6 +123,15 @@ namespace FactionWars.ScriptHookV.Managers
         }
 
         /// <summary>
+        /// Called when territory is lost (all defenders died). Despawns the commander.
+        /// </summary>
+        /// <param name="zoneId">The zone where territory was lost.</param>
+        public void OnTerritoryLost(string zoneId)
+        {
+            DespawnCommander(zoneId);
+        }
+
+        /// <summary>
         /// Spawns a commander in the specified zone.
         /// </summary>
         private void SpawnCommander(Zone zone)
