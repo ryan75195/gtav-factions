@@ -301,5 +301,35 @@ namespace FactionWars.ScriptHookV.Managers
         {
             return _commanderByZone.ContainsValue(pedHandle);
         }
+
+        /// <summary>
+        /// Called when a battle starts in a zone. Switches commander to sprinting wander.
+        /// </summary>
+        public void OnBattleStarted(string zoneId)
+        {
+            _zonesInBattle.Add(zoneId);
+
+            if (!_commanderByZone.TryGetValue(zoneId, out var pedHandle)) return;
+
+            var zone = _zoneService.GetZone(zoneId);
+            if (zone == null) return;
+
+            _gameBridge.TaskPedWanderInAreaSprinting(pedHandle, zone.Center, zone.Radius);
+        }
+
+        /// <summary>
+        /// Called when a battle ends in a zone. Switches commander back to walking wander.
+        /// </summary>
+        public void OnBattleEnded(string zoneId)
+        {
+            _zonesInBattle.Remove(zoneId);
+
+            if (!_commanderByZone.TryGetValue(zoneId, out var pedHandle)) return;
+
+            var zone = _zoneService.GetZone(zoneId);
+            if (zone == null) return;
+
+            _gameBridge.TaskPedWanderInArea(pedHandle, zone.Center, zone.Radius);
+        }
     }
 }

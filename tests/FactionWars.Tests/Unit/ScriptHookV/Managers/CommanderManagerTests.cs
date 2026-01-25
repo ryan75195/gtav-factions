@@ -535,5 +535,39 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             var exception = Record.Exception(() => _manager.OnKeyDown(0x45));
             Assert.Null(exception);
         }
+
+        [Fact]
+        public void OnBattleStarted_SwitchesCommanderToSprinting()
+        {
+            SetupManager();
+            var zone = CreateFriendlyZone();
+            _zoneServiceMock.Setup(z => z.GetZone(TestZoneId)).Returns(zone);
+            _manager.OnZoneEntered(zone);
+
+            var commanderHandle = _gameBridge.GetSpawnedPeds()[0];
+            Assert.False(_gameBridge.IsPedWanderingSprinting(commanderHandle));
+
+            _manager.OnBattleStarted(TestZoneId);
+
+            Assert.True(_gameBridge.IsPedWanderingSprinting(commanderHandle));
+        }
+
+        [Fact]
+        public void OnBattleEnded_SwitchesCommanderToWalking()
+        {
+            SetupManager();
+            var zone = CreateFriendlyZone();
+            _zoneServiceMock.Setup(z => z.GetZone(TestZoneId)).Returns(zone);
+            _manager.OnZoneEntered(zone);
+            _manager.OnBattleStarted(TestZoneId);
+
+            var commanderHandle = _gameBridge.GetSpawnedPeds()[0];
+            Assert.True(_gameBridge.IsPedWanderingSprinting(commanderHandle));
+
+            _manager.OnBattleEnded(TestZoneId);
+
+            Assert.True(_gameBridge.IsPedWandering(commanderHandle));
+            Assert.False(_gameBridge.IsPedWanderingSprinting(commanderHandle));
+        }
     }
 }
