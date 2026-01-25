@@ -49,6 +49,7 @@ namespace FactionWars.ScriptHookV
         private FriendlyDefenderManager? _friendlyDefenderManager;
         private EnemyDefenderManager? _enemyDefenderManager;
         private BattleAttackerManager? _battleAttackerManager;
+        private CommanderManager? _commanderManager;
         private IAIController? _aiController;
         private IAutoSaveService? _autoSaveService;
         private MainMenuController? _mainMenuController;
@@ -338,6 +339,9 @@ namespace FactionWars.ScriptHookV
             // Update friendly defender manager (death detection, replacement spawning)
             _friendlyDefenderManager?.Update();
 
+            // Update commander manager (death detection, interaction prompt)
+            _commanderManager?.Update();
+
             // Update enemy defender manager (death detection, replacement spawning)
             var currentZone = _territoryManager?.CurrentZone;
             var enemyFactionId = currentZone?.OwnerFactionId;
@@ -586,9 +590,24 @@ namespace FactionWars.ScriptHookV
                 _zoneService,
                 CurrentPlayerFactionId ?? "");
 
+            // Create CommanderManager
+            var playerFactionId = CurrentPlayerFactionId ?? "";
+            _commanderManager = new CommanderManager(
+                _gameBridge,
+                pedSpawningService,
+                pedDespawnService,
+                pedBlipService,
+                _zoneService,
+                playerFactionId,
+                _ => _mainMenuController?.ShowMainMenu());
+
             // Subscribe to zone events for friendly defender spawning
             _territoryManager.ZoneEntered += (sender, zone) => _friendlyDefenderManager.OnZoneEntered(zone);
             _territoryManager.ZoneExited += (sender, zone) => _friendlyDefenderManager.OnZoneExited(zone);
+
+            // Subscribe to zone events for commander spawning
+            _territoryManager.ZoneEntered += (sender, zone) => _commanderManager?.OnZoneEntered(zone);
+            _territoryManager.ZoneExited += (sender, zone) => _commanderManager?.OnZoneExited(zone);
 
             // Subscribe to defender death events to sync with ZoneBattleManager
             _friendlyDefenderManager.DefenderDied += (sender, e) =>
@@ -602,6 +621,12 @@ namespace FactionWars.ScriptHookV
                 }
             };
 
+            // Subscribe to territory loss events to despawn commander when all defenders die
+            _friendlyDefenderManager.TerritoryLost += (sender, args) =>
+            {
+                _commanderManager?.OnTerritoryLost(args.ZoneId);
+            };
+
             // Subscribe battle attacker manager to zone events
             _territoryManager.ZoneEntered += (sender, zone) => _battleAttackerManager?.OnPlayerZoneEntered(zone);
             _territoryManager.ZoneExited += (sender, zone) => _battleAttackerManager?.OnPlayerZoneExited(zone);
@@ -613,7 +638,7 @@ namespace FactionWars.ScriptHookV
                 var zone = _zoneService?.GetZone(e.ZoneId);
                 if (zone != null)
                 {
-                    _friendlyDefenderManager.OnTroopsAllocated(e.FactionId, e.ZoneId, e.Tier, e.Count, zone.Center);
+                    _friendlyDefenderManager.OnTroopsAllocated(e.FactionId, e.ZoneId, e.Tier, e.Count, zone.Center, zone.Radius);
                 }
 
                 // If there's an active battle in this zone where player is defender, add troops to battle
@@ -848,6 +873,9 @@ namespace FactionWars.ScriptHookV
 
             // Pass key events to the main menu controller
             _mainMenuController?.OnKeyDown(keyCode);
+
+            // Pass key events to commander manager (for E key interaction)
+            _commanderManager?.OnKeyDown(keyCode);
         }
 
         /// <summary>
@@ -1253,6 +1281,9 @@ namespace FactionWars.ScriptHookV
         /// </summary>
         private void OnZoneBattleEnded(ZoneBattle battle, BattleOutcome outcome)
         {
+            // Notify commander manager to return to walking wander
+            _commanderManager?.OnBattleEnded(battle.ZoneId);
+
             // Calculate casualties
             int attackerCasualties = battle.InitialAttackerTroops - battle.TotalAttackerTroops;
             int defenderCasualties = battle.InitialDefenderTroops - battle.TotalDefenderTroops;
@@ -1307,6 +1338,9 @@ namespace FactionWars.ScriptHookV
         /// </summary>
         private void OnZoneBattleStarted(ZoneBattle battle)
         {
+            // Notify commander manager to switch to sprinting wander
+            _commanderManager?.OnBattleStarted(battle.ZoneId);
+
             // Check if player is in this zone
             var currentZone = _territoryManager?.CurrentZone;
             if (currentZone == null || currentZone.Id != battle.ZoneId)

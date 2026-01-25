@@ -92,7 +92,7 @@ namespace FactionWars.ScriptHookV.UI
         /// <summary>
         /// Creates and displays the main menu with all submenu options.
         /// </summary>
-        private void ShowMainMenu()
+        public void ShowMainMenu()
         {
             var menu = new MenuDefinition(MainMenuId, "Faction Wars", "Territory Control");
 
