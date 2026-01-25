@@ -339,5 +339,32 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             Assert.Equal(100, CommanderManager.CommanderArmor);
             Assert.Equal(0.75f, CommanderManager.CommanderAccuracy);
         }
+
+        [Fact]
+        public void Update_RespawnsDeadCommander()
+        {
+            // Arrange
+            SetupManager();
+            var zone = CreateFriendlyZone();
+            _zoneServiceMock.Setup(z => z.GetZone(TestZoneId)).Returns(zone);
+
+            _manager.OnZoneEntered(zone);
+            Assert.True(_manager.HasCommanderInZone(TestZoneId));
+
+            // Kill the commander
+            var peds = _gameBridge.GetSpawnedPeds();
+            Assert.Single(peds);
+            _gameBridge.KillPed(peds[0]);
+
+            // Act - Update should detect death and respawn
+            _manager.Update();
+
+            // Assert - Should still have a commander (respawned)
+            Assert.True(_manager.HasCommanderInZone(TestZoneId));
+            // Spawn was called twice (initial + respawn)
+            _pedSpawningServiceMock.Verify(
+                p => p.SpawnPed(CommanderManager.CommanderModel, It.IsAny<Vector3>(), PlayerFactionId, TestZoneId),
+                Times.Exactly(2));
+        }
     }
 }

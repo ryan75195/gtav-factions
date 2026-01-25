@@ -181,6 +181,54 @@ namespace FactionWars.ScriptHookV.Managers
         }
 
         /// <summary>
+        /// Checks all commanders for death and respawns them immediately.
+        /// Should be called every frame from the game loop.
+        /// </summary>
+        public void Update()
+        {
+            var deadCommanders = new List<string>();
+
+            foreach (var kvp in _commanderByZone)
+            {
+                var zoneId = kvp.Key;
+                var pedHandle = kvp.Value;
+
+                if (!_gameBridge.IsPedAlive(pedHandle))
+                {
+                    deadCommanders.Add(zoneId);
+                }
+            }
+
+            foreach (var zoneId in deadCommanders)
+            {
+                RespawnCommander(zoneId);
+            }
+        }
+
+        /// <summary>
+        /// Respawns a commander in the specified zone.
+        /// Removes the old commander and spawns a new one.
+        /// </summary>
+        /// <param name="zoneId">The zone ID to respawn the commander in.</param>
+        private void RespawnCommander(string zoneId)
+        {
+            // Remove old commander
+            if (_commanderByZone.TryGetValue(zoneId, out var oldHandle))
+            {
+                _pedBlipService.RemoveBlipForPed(oldHandle);
+                _gameBridge.DeletePed(oldHandle);
+                _commanderByZone.Remove(zoneId);
+            }
+
+            // Get zone and spawn new commander
+            var zone = _zoneService.GetZone(zoneId);
+            if (zone != null && zone.OwnerFactionId == _playerFactionId)
+            {
+                SpawnCommander(zone);
+            }
+        }
+
+        /// <summary>
         /// Calculates a random spawn position around the zone center at ground level.
         /// Uses the zone's full radius for spawn area (30%-100%) and navmesh-based safe
         /// coordinates to avoid spawning on rooftops.
