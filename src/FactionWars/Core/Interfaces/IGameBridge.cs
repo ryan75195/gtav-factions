@@ -256,13 +256,22 @@ namespace FactionWars.Core.Interfaces
         int CreateBlipForPed(int pedHandle);
 
         /// <summary>
-        /// Tasks a ped to wander within a specified area.
+        /// Tasks a ped to wander within a specified area at walking pace.
         /// Used for zone defenders that patrol instead of following the player.
         /// </summary>
         /// <param name="pedHandle">Handle of the ped to task.</param>
         /// <param name="center">Center point of the wander area.</param>
         /// <param name="radius">Radius of the wander area in meters.</param>
         void TaskPedWanderInArea(int pedHandle, Vector3 center, float radius);
+
+        /// <summary>
+        /// Tasks a ped to wander within a specified area at sprinting pace.
+        /// Used for zone defenders actively searching for enemies during battles.
+        /// </summary>
+        /// <param name="pedHandle">Handle of the ped to task.</param>
+        /// <param name="center">Center point of the wander area.</param>
+        /// <param name="radius">Radius of the wander area in meters.</param>
+        void TaskPedWanderInAreaSprinting(int pedHandle, Vector3 center, float radius);
 
         /// <summary>
         /// Makes a ped friendly to the player by setting them to the player's relationship group.
@@ -303,5 +312,24 @@ namespace FactionWars.Core.Interfaces
         /// </summary>
         /// <returns>The full path to the scripts directory.</returns>
         string GetScriptsDirectory();
+
+        /// <summary>
+        /// Checks if the player is currently free-aiming (aiming a weapon or in aim mode).
+        /// </summary>
+        /// <returns>True if the player is free-aiming.</returns>
+        bool IsPlayerFreeAiming();
+
+        /// <summary>
+        /// Gets the entity handle that the player is currently aiming at.
+        /// Returns 0 if not aiming at any entity.
+        /// </summary>
+        /// <returns>Entity handle, or 0 if not aiming at an entity.</returns>
+        int GetEntityPlayerIsAimingAt();
+
+        /// <summary>
+        /// Displays help text at the bottom of the screen (like "Press E to...").
+        /// </summary>
+        /// <param name="text">The text to display. Supports GTA text formatting.</param>
+        void DisplayHelpText(string text);
     }
 }
