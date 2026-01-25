@@ -58,6 +58,13 @@ namespace FactionWars.ScriptHookV.Managers
         private const float MinSpawnRadiusFraction = 0.3f;
 
         /// <summary>
+        /// Key code for the E key used for interaction.
+        /// </summary>
+        private const int InteractKeyCode = 0x45; // E key
+
+        private readonly Action<object?>? _openMenuCallback;
+
+        /// <summary>
         /// Creates a new CommanderManager instance.
         /// </summary>
         /// <param name="gameBridge">The game bridge for native function calls.</param>
@@ -66,6 +73,7 @@ namespace FactionWars.ScriptHookV.Managers
         /// <param name="pedBlipService">Service for managing ped blips.</param>
         /// <param name="zoneService">Service for zone operations.</param>
         /// <param name="playerFactionId">The player's current faction ID.</param>
+        /// <param name="openMenuCallback">Optional callback invoked when player interacts with commander.</param>
         /// <exception cref="ArgumentNullException">Thrown if any required parameter is null.</exception>
         public CommanderManager(
             IGameBridge gameBridge,
@@ -73,7 +81,8 @@ namespace FactionWars.ScriptHookV.Managers
             IPedDespawnService pedDespawnService,
             IPedBlipService pedBlipService,
             IZoneService zoneService,
-            string playerFactionId)
+            string playerFactionId,
+            Action<object?>? openMenuCallback = null)
         {
             _gameBridge = gameBridge ?? throw new ArgumentNullException(nameof(gameBridge));
             _pedSpawningService = pedSpawningService ?? throw new ArgumentNullException(nameof(pedSpawningService));
@@ -81,6 +90,7 @@ namespace FactionWars.ScriptHookV.Managers
             _pedBlipService = pedBlipService ?? throw new ArgumentNullException(nameof(pedBlipService));
             _zoneService = zoneService ?? throw new ArgumentNullException(nameof(zoneService));
             _playerFactionId = playerFactionId ?? throw new ArgumentNullException(nameof(playerFactionId));
+            _openMenuCallback = openMenuCallback;
 
             _commanderByZone = new Dictionary<string, int>();
             _zonesInBattle = new HashSet<string>();
@@ -191,10 +201,12 @@ namespace FactionWars.ScriptHookV.Managers
 
         /// <summary>
         /// Checks all commanders for death and respawns them immediately.
+        /// Also shows help text when player is aiming at a commander.
         /// Should be called every frame from the game loop.
         /// </summary>
         public void Update()
         {
+            // Check for dead commanders
             var deadCommanders = new List<string>();
 
             foreach (var kvp in _commanderByZone)
@@ -211,6 +223,16 @@ namespace FactionWars.ScriptHookV.Managers
             foreach (var zoneId in deadCommanders)
             {
                 RespawnCommander(zoneId);
+            }
+
+            // Show help text if aiming at commander
+            if (_gameBridge.IsPlayerFreeAiming())
+            {
+                var targetEntity = _gameBridge.GetEntityPlayerIsAimingAt();
+                if (targetEntity != 0 && IsCommander(targetEntity))
+                {
+                    _gameBridge.DisplayHelpText("Press ~INPUT_CONTEXT~ to talk to Commander");
+                }
             }
         }
 
@@ -252,6 +274,32 @@ namespace FactionWars.ScriptHookV.Managers
 
             var targetPos = new Vector3(x, y, center.Z);
             return _gameBridge.GetSafeCoordForPed(targetPos);
+        }
+
+        /// <summary>
+        /// Handles key press events. Opens menu when E is pressed while aiming at commander.
+        /// </summary>
+        /// <param name="keyCode">The key code of the pressed key.</param>
+        public void OnKeyDown(int keyCode)
+        {
+            if (keyCode != InteractKeyCode) return;
+            if (!_gameBridge.IsPlayerFreeAiming()) return;
+
+            var targetEntity = _gameBridge.GetEntityPlayerIsAimingAt();
+            if (targetEntity == 0) return;
+
+            if (IsCommander(targetEntity))
+            {
+                _openMenuCallback?.Invoke(null!);
+            }
+        }
+
+        /// <summary>
+        /// Checks if a ped handle is a commander.
+        /// </summary>
+        private bool IsCommander(int pedHandle)
+        {
+            return _commanderByZone.ContainsValue(pedHandle);
         }
     }
 }

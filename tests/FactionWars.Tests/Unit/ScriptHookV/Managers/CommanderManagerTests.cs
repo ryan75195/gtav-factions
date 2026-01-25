@@ -30,7 +30,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         private const string EnemyFactionId = "ballas";
         private const string TestZoneId = "zone_1";
 
-        private void SetupManager()
+        private void SetupManager(Action<object?>? openMenuCallback = null)
         {
             _gameBridge = new MockGameBridge();
             _pedSpawningServiceMock = new Mock<IPedSpawningService>();
@@ -52,7 +52,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
                 _pedDespawnServiceMock.Object,
                 _pedBlipServiceMock.Object,
                 _zoneServiceMock.Object,
-                PlayerFactionId);
+                PlayerFactionId,
+                openMenuCallback);
         }
 
         private Zone CreateFriendlyZone()
@@ -381,6 +382,158 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
 
             Assert.False(_manager.HasCommanderInZone(TestZoneId));
             _pedDespawnServiceMock.Verify(p => p.DespawnPed(It.IsAny<int>()), Times.Once);
+        }
+
+        [Fact]
+        public void Update_ShowsHelpTextWhenAimingAtCommander()
+        {
+            // Arrange
+            SetupManager();
+            var zone = CreateFriendlyZone();
+            _manager.OnZoneEntered(zone);
+
+            var commanderHandle = _gameBridge.GetSpawnedPeds()[0];
+            _gameBridge.SetPlayerFreeAiming(true);
+            _gameBridge.SetEntityPlayerIsAimingAt(commanderHandle);
+
+            // Act
+            _manager.Update();
+
+            // Assert
+            Assert.Contains("Commander", _gameBridge.LastHelpText);
+        }
+
+        [Fact]
+        public void Update_DoesNotShowHelpTextWhenNotAimingAtCommander()
+        {
+            // Arrange
+            SetupManager();
+            var zone = CreateFriendlyZone();
+            _manager.OnZoneEntered(zone);
+
+            _gameBridge.SetPlayerFreeAiming(true);
+            _gameBridge.SetEntityPlayerIsAimingAt(999); // Not a commander
+
+            // Act
+            _manager.Update();
+
+            // Assert
+            Assert.Null(_gameBridge.LastHelpText);
+        }
+
+        [Fact]
+        public void Update_DoesNotShowHelpTextWhenNotAiming()
+        {
+            // Arrange
+            SetupManager();
+            var zone = CreateFriendlyZone();
+            _manager.OnZoneEntered(zone);
+
+            var commanderHandle = _gameBridge.GetSpawnedPeds()[0];
+            _gameBridge.SetPlayerFreeAiming(false);
+            _gameBridge.SetEntityPlayerIsAimingAt(commanderHandle);
+
+            // Act
+            _manager.Update();
+
+            // Assert
+            Assert.Null(_gameBridge.LastHelpText);
+        }
+
+        [Fact]
+        public void OnKeyDown_OpensMenuWhenAimingAtCommanderAndPressingE()
+        {
+            // Arrange
+            bool menuOpened = false;
+            SetupManager(_ => menuOpened = true);
+            var zone = CreateFriendlyZone();
+            _manager.OnZoneEntered(zone);
+
+            var commanderHandle = _gameBridge.GetSpawnedPeds()[0];
+            _gameBridge.SetPlayerFreeAiming(true);
+            _gameBridge.SetEntityPlayerIsAimingAt(commanderHandle);
+
+            // Act
+            _manager.OnKeyDown(0x45); // E key
+
+            // Assert
+            Assert.True(menuOpened);
+        }
+
+        [Fact]
+        public void OnKeyDown_DoesNotOpenMenuWhenNotAimingAtCommander()
+        {
+            // Arrange
+            bool menuOpened = false;
+            SetupManager(_ => menuOpened = true);
+            var zone = CreateFriendlyZone();
+            _manager.OnZoneEntered(zone);
+
+            _gameBridge.SetPlayerFreeAiming(true);
+            _gameBridge.SetEntityPlayerIsAimingAt(999); // Not a commander
+
+            // Act
+            _manager.OnKeyDown(0x45); // E key
+
+            // Assert
+            Assert.False(menuOpened);
+        }
+
+        [Fact]
+        public void OnKeyDown_DoesNotOpenMenuWhenNotAiming()
+        {
+            // Arrange
+            bool menuOpened = false;
+            SetupManager(_ => menuOpened = true);
+            var zone = CreateFriendlyZone();
+            _manager.OnZoneEntered(zone);
+
+            var commanderHandle = _gameBridge.GetSpawnedPeds()[0];
+            _gameBridge.SetPlayerFreeAiming(false);
+            _gameBridge.SetEntityPlayerIsAimingAt(commanderHandle);
+
+            // Act
+            _manager.OnKeyDown(0x45); // E key
+
+            // Assert
+            Assert.False(menuOpened);
+        }
+
+        [Fact]
+        public void OnKeyDown_DoesNotOpenMenuWhenPressingWrongKey()
+        {
+            // Arrange
+            bool menuOpened = false;
+            SetupManager(_ => menuOpened = true);
+            var zone = CreateFriendlyZone();
+            _manager.OnZoneEntered(zone);
+
+            var commanderHandle = _gameBridge.GetSpawnedPeds()[0];
+            _gameBridge.SetPlayerFreeAiming(true);
+            _gameBridge.SetEntityPlayerIsAimingAt(commanderHandle);
+
+            // Act
+            _manager.OnKeyDown(0x46); // F key, not E
+
+            // Assert
+            Assert.False(menuOpened);
+        }
+
+        [Fact]
+        public void OnKeyDown_DoesNotThrowWhenNoCallbackProvided()
+        {
+            // Arrange
+            SetupManager(); // No callback
+            var zone = CreateFriendlyZone();
+            _manager.OnZoneEntered(zone);
+
+            var commanderHandle = _gameBridge.GetSpawnedPeds()[0];
+            _gameBridge.SetPlayerFreeAiming(true);
+            _gameBridge.SetEntityPlayerIsAimingAt(commanderHandle);
+
+            // Act & Assert - Should not throw
+            var exception = Record.Exception(() => _manager.OnKeyDown(0x45));
+            Assert.Null(exception);
         }
     }
 }
