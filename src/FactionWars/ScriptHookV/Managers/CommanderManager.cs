@@ -1,0 +1,200 @@
+using System;
+using System.Collections.Generic;
+using FactionWars.Combat.Interfaces;
+using FactionWars.Core.Interfaces;
+using FactionWars.Core.Models;
+using FactionWars.Territory.Interfaces;
+using FactionWars.Territory.Models;
+using FactionWars.UI.Interfaces;
+
+namespace FactionWars.ScriptHookV.Managers
+{
+    /// <summary>
+    /// Manages Commander NPCs that spawn in player-owned zones.
+    /// Commanders provide an immersive way to access the mod menu.
+    /// </summary>
+    public class CommanderManager
+    {
+        /// <summary>
+        /// Military mechanic model used for commanders.
+        /// </summary>
+        public const string CommanderModel = "s_m_y_armymech_01";
+
+        /// <summary>
+        /// Weapon carried by commanders.
+        /// </summary>
+        public const string CommanderWeapon = "weapon_carbinerifle";
+
+        /// <summary>
+        /// Health value for commanders (high durability).
+        /// </summary>
+        public const int CommanderHealth = 300;
+
+        /// <summary>
+        /// Armor value for commanders.
+        /// </summary>
+        public const int CommanderArmor = 100;
+
+        /// <summary>
+        /// Accuracy for commanders (high skill).
+        /// </summary>
+        public const float CommanderAccuracy = 0.75f;
+
+        private readonly IGameBridge _gameBridge;
+        private readonly IPedSpawningService _pedSpawningService;
+        private readonly IPedDespawnService _pedDespawnService;
+        private readonly IPedBlipService _pedBlipService;
+        private readonly IZoneService _zoneService;
+        private string _playerFactionId;
+
+        private readonly Dictionary<string, int> _commanderByZone; // zoneId -> pedHandle
+        private readonly HashSet<string> _zonesInBattle;
+        private string? _currentZoneId;
+        private readonly Random _random = new Random();
+
+        /// <summary>
+        /// Minimum spawn radius as a fraction of zone radius (30%).
+        /// </summary>
+        private const float MinSpawnRadiusFraction = 0.3f;
+
+        /// <summary>
+        /// Creates a new CommanderManager instance.
+        /// </summary>
+        /// <param name="gameBridge">The game bridge for native function calls.</param>
+        /// <param name="pedSpawningService">Service for spawning peds.</param>
+        /// <param name="pedDespawnService">Service for despawning peds.</param>
+        /// <param name="pedBlipService">Service for managing ped blips.</param>
+        /// <param name="zoneService">Service for zone operations.</param>
+        /// <param name="playerFactionId">The player's current faction ID.</param>
+        /// <exception cref="ArgumentNullException">Thrown if any required parameter is null.</exception>
+        public CommanderManager(
+            IGameBridge gameBridge,
+            IPedSpawningService pedSpawningService,
+            IPedDespawnService pedDespawnService,
+            IPedBlipService pedBlipService,
+            IZoneService zoneService,
+            string playerFactionId)
+        {
+            _gameBridge = gameBridge ?? throw new ArgumentNullException(nameof(gameBridge));
+            _pedSpawningService = pedSpawningService ?? throw new ArgumentNullException(nameof(pedSpawningService));
+            _pedDespawnService = pedDespawnService ?? throw new ArgumentNullException(nameof(pedDespawnService));
+            _pedBlipService = pedBlipService ?? throw new ArgumentNullException(nameof(pedBlipService));
+            _zoneService = zoneService ?? throw new ArgumentNullException(nameof(zoneService));
+            _playerFactionId = playerFactionId ?? throw new ArgumentNullException(nameof(playerFactionId));
+
+            _commanderByZone = new Dictionary<string, int>();
+            _zonesInBattle = new HashSet<string>();
+        }
+
+        /// <summary>
+        /// Checks if a commander is present in the specified zone.
+        /// </summary>
+        /// <param name="zoneId">The zone ID to check.</param>
+        /// <returns>True if a commander exists in the zone.</returns>
+        public bool HasCommanderInZone(string zoneId) => _commanderByZone.ContainsKey(zoneId);
+
+        /// <summary>
+        /// Called when the player enters a zone. Spawns a commander if the zone
+        /// belongs to the player's faction.
+        /// </summary>
+        /// <param name="zone">The zone that was entered.</param>
+        public void OnZoneEntered(Zone zone)
+        {
+            if (zone == null) return;
+            _currentZoneId = zone.Id;
+
+            if (zone.OwnerFactionId != _playerFactionId) return;
+
+            SpawnCommander(zone);
+        }
+
+        /// <summary>
+        /// Called when the player exits a zone. Despawns the commander
+        /// that was spawned for that zone.
+        /// </summary>
+        /// <param name="zone">The zone that was exited.</param>
+        public void OnZoneExited(Zone zone)
+        {
+            if (zone == null) return;
+            if (_currentZoneId == zone.Id)
+                _currentZoneId = null;
+
+            DespawnCommander(zone.Id);
+        }
+
+        /// <summary>
+        /// Spawns a commander in the specified zone.
+        /// </summary>
+        private void SpawnCommander(Zone zone)
+        {
+            if (_commanderByZone.ContainsKey(zone.Id)) return;
+            if (!_pedSpawningService.CanSpawn()) return;
+
+            var spawnPos = CalculateRandomSpawnPosition(zone.Center, zone.Radius);
+            var pedHandle = _pedSpawningService.SpawnPed(CommanderModel, spawnPos, _playerFactionId, zone.Id);
+
+            if (!pedHandle.IsValid) return;
+
+            ConfigureCommander(pedHandle.Handle, zone);
+            _pedBlipService.CreateBlipForPed(pedHandle.Handle, BlipColor.Blue);
+            _commanderByZone[zone.Id] = pedHandle.Handle;
+        }
+
+        /// <summary>
+        /// Despawns the commander in the specified zone.
+        /// </summary>
+        private void DespawnCommander(string zoneId)
+        {
+            if (!_commanderByZone.TryGetValue(zoneId, out var pedHandle)) return;
+
+            _pedBlipService.RemoveBlipForPed(pedHandle);
+            _pedDespawnService.DespawnPed(pedHandle);
+            _commanderByZone.Remove(zoneId);
+        }
+
+        /// <summary>
+        /// Configures the commander's combat attributes, weapons, and behavior.
+        /// </summary>
+        private void ConfigureCommander(int pedHandle, Zone zone)
+        {
+            _gameBridge.SetPedAsFriendly(pedHandle);
+
+            // Give pistol first as secondary weapon
+            _gameBridge.GivePedWeapon(pedHandle, "weapon_pistol");
+            // Give carbine rifle as primary weapon
+            _gameBridge.GivePedWeapon(pedHandle, CommanderWeapon);
+
+            _gameBridge.SetPedAccuracy(pedHandle, CommanderAccuracy);
+            _gameBridge.SetPedArmor(pedHandle, CommanderArmor);
+            _gameBridge.SetPedHealth(pedHandle, CommanderHealth);
+            _gameBridge.SetPedCombatAttributes(pedHandle, canUseCover: true, willFightArmedPeds: true);
+
+            // Wander in the zone
+            if (_zonesInBattle.Contains(zone.Id))
+            {
+                _gameBridge.TaskPedWanderInAreaSprinting(pedHandle, zone.Center, zone.Radius);
+            }
+            else
+            {
+                _gameBridge.TaskPedWanderInArea(pedHandle, zone.Center, zone.Radius);
+            }
+        }
+
+        /// <summary>
+        /// Calculates a random spawn position around the zone center at ground level.
+        /// Uses the zone's full radius for spawn area (30%-100%) and navmesh-based safe
+        /// coordinates to avoid spawning on rooftops.
+        /// </summary>
+        private Vector3 CalculateRandomSpawnPosition(Vector3 center, float zoneRadius)
+        {
+            var angle = _random.NextDouble() * 2 * Math.PI;
+            var minRadius = zoneRadius * MinSpawnRadiusFraction;
+            var distance = minRadius + (float)(_random.NextDouble() * (zoneRadius - minRadius));
+            var x = center.X + (float)(Math.Cos(angle) * distance);
+            var y = center.Y + (float)(Math.Sin(angle) * distance);
+
+            var targetPos = new Vector3(x, y, center.Z);
+            return _gameBridge.GetSafeCoordForPed(targetPos);
+        }
+    }
+}
