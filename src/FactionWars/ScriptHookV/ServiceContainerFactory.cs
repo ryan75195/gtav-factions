@@ -333,15 +333,6 @@ namespace FactionWars.ScriptHookV
         {
             var config = container.Resolve<GameConfig>();
 
-            // AI strategies dictionary - maps faction IDs to their strategies
-            container.RegisterSingleton<IDictionary<string, IAIStrategy>>(() =>
-                new Dictionary<string, IAIStrategy>
-                {
-                    { "michael", new MichaelAIStrategy(config.AI.MichaelAggressiveness, config.AI.MichaelRiskTolerance) },
-                    { "trevor", new TrevorAIStrategy(config.AI.TrevorAggressiveness, config.AI.TrevorRiskTolerance) },
-                    { "franklin", new FranklinAIStrategy(config.AI.FranklinAggressiveness, config.AI.FranklinRiskTolerance) }
-                });
-
             // Vehicle threat service - classifies vehicles by threat level
             container.RegisterSingleton<IVehicleThreatService>(() =>
                 new VehicleThreatService());
@@ -377,10 +368,40 @@ namespace FactionWars.ScriptHookV
                 costPerTroop: config.AI.AttackCostPerTroop,
                 recruitCostPerTroop: config.AI.RecruitCostPerTroop));
 
-            // Register AI recruitment service
+            // Register capital deployment service - intelligent decision-making for AI spending
+            container.RegisterSingleton<ICapitalDeploymentService>(() => new CapitalDeploymentService(
+                container.Resolve<IAIBudgetService>(),
+                container.Resolve<IZoneDefenderAllocationService>()));
+
+            // AI strategies dictionary - maps faction IDs to their strategies
+            // Each strategy gets CapitalDeploymentService injected for intelligent decision-making
+            container.RegisterSingleton<IDictionary<string, IAIStrategy>>(() =>
+            {
+                var capitalDeploymentService = container.Resolve<ICapitalDeploymentService>();
+
+                var michaelStrategy = new MichaelAIStrategy(config.AI.MichaelAggressiveness, config.AI.MichaelRiskTolerance);
+                michaelStrategy.SetCapitalDeploymentService(capitalDeploymentService);
+
+                var trevorStrategy = new TrevorAIStrategy(config.AI.TrevorAggressiveness, config.AI.TrevorRiskTolerance);
+                trevorStrategy.SetCapitalDeploymentService(capitalDeploymentService);
+
+                var franklinStrategy = new FranklinAIStrategy(config.AI.FranklinAggressiveness, config.AI.FranklinRiskTolerance);
+                franklinStrategy.SetCapitalDeploymentService(capitalDeploymentService);
+
+                return new Dictionary<string, IAIStrategy>
+                {
+                    { "michael", michaelStrategy },
+                    { "trevor", trevorStrategy },
+                    { "franklin", franklinStrategy }
+                };
+            });
+
+            // Register AI recruitment service with capital deployment service for scaled recruitment
             container.RegisterSingleton<IAIRecruitmentService>(() => new AIRecruitmentService(
                 container.Resolve<IFactionService>(),
-                container.Resolve<IAIBudgetService>()));
+                container.Resolve<IAIBudgetService>(),
+                container.Resolve<IDefenderTierService>(),
+                container.Resolve<ICapitalDeploymentService>()));
 
             // Register AI decision executor
             container.RegisterSingleton<AIDecisionExecutor>(() => new AIDecisionExecutor(
