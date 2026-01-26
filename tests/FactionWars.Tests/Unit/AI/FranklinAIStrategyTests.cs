@@ -636,8 +636,30 @@ namespace FactionWars.Tests.Unit.AI
         }
 
         [Fact]
-        public void FranklinStrategy_MoreSelectiveThanTrevor()
+        public void FranklinStrategy_AttacksLowValueZones()
         {
+            // After removing rigid thresholds, Franklin attacks any zone with sufficient troops
+            // Prioritization is handled by CapitalDeploymentService, not ShouldAttack
+            var franklinStrategy = new FranklinAIStrategy();
+
+            var faction = CreateTestFaction(FactionType.Franklin);
+            var factionState = CreateTestFactionState(faction.Id, troopCount: 50);
+
+            // Very low value enemy zone - Franklin should still be willing to attack
+            var lowValueEnemy = CreateTestZone("low-value", ownerFactionId: "enemy-faction", strategicValue: 2);
+            var enemyFactions = new List<Faction> { CreateTestFaction(FactionType.Michael, "enemy-faction") };
+            var context = new AIContext(faction, factionState, new List<Zone>(), new[] { lowValueEnemy }, enemyFactions);
+
+            var franklinAttacks = franklinStrategy.ShouldAttack(lowValueEnemy, context);
+
+            // Franklin should attack - prioritization happens elsewhere
+            Assert.True(franklinAttacks, "Franklin should be willing to attack low value zones");
+        }
+
+        [Fact]
+        public void FranklinStrategy_EvaluatesZonesDifferentlyFromTrevor()
+        {
+            // The difference between strategies is in EvaluateZone (prioritization), not ShouldAttack
             var franklinStrategy = new FranklinAIStrategy();
             var trevorStrategy = new TrevorAIStrategy();
 
@@ -646,16 +668,15 @@ namespace FactionWars.Tests.Unit.AI
 
             // Very low value enemy zone
             var lowValueEnemy = CreateTestZone("low-value", ownerFactionId: "enemy-faction", strategicValue: 2);
-            var enemyFactions = new List<Faction> { CreateTestFaction(FactionType.Michael, "enemy-faction") };
-            var context = new AIContext(faction, factionState, new List<Zone>(), new[] { lowValueEnemy }, enemyFactions);
+            var context = new AIContext(faction, factionState, new List<Zone>(), new[] { lowValueEnemy }, new List<Faction>());
 
-            var trevorAttacks = trevorStrategy.ShouldAttack(lowValueEnemy, context);
-            var franklinAttacks = franklinStrategy.ShouldAttack(lowValueEnemy, context);
+            // Both strategies will attack, but evaluate differently
+            var franklinScore = franklinStrategy.EvaluateZone(lowValueEnemy, context);
+            var trevorScore = trevorStrategy.EvaluateZone(lowValueEnemy, context);
 
-            // Trevor attacks anything, Franklin is more selective
-            Assert.True(trevorAttacks, "Trevor should attack low value zones");
-            // Franklin might not attack very low value enemy zones (not opportunistic enough)
-            // This is implementation dependent - but Franklin should at least consider it differently
+            // Trevor loves combat and should score enemy zones higher than Franklin
+            Assert.True(trevorScore > franklinScore,
+                $"Trevor ({trevorScore:F2}) should evaluate enemy zones higher than Franklin ({franklinScore:F2})");
         }
 
         #endregion

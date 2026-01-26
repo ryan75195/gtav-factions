@@ -78,10 +78,14 @@ namespace FactionWars.AI.Strategies
 
         /// <summary>
         /// Determines whether Michael should attack a zone.
-        /// Michael only attacks when the target is sufficiently valuable.
+        /// Michael can attack any zone - CapitalDeploymentService handles intelligent prioritization.
         /// </summary>
         public override bool ShouldAttack(Zone zone, AIContext context)
         {
+            // Use base implementation - it only checks:
+            // - Can't attack own zones
+            // - Need minimum troops to attack
+            // The base implementation also evaluates the zone, but we want it even more permissive
             if (zone == null)
                 throw new ArgumentNullException(nameof(zone));
             if (context == null)
@@ -99,17 +103,8 @@ namespace FactionWars.AI.Strategies
                 return false;
             }
 
-            // Michael's calculated approach: only attack high-value or neutral targets
-            float normalizedValue = zone.StrategicValue / MaxStrategicValue;
-
-            // Neutral zones are easier to take, lower threshold
-            if (zone.OwnerFactionId == null)
-            {
-                return normalizedValue >= 0.5f; // Attack neutral zones with at least 50% value
-            }
-
-            // Enemy zones require higher value to justify the risk
-            return normalizedValue >= 0.7f; // Only attack high-value enemy zones
+            // Attack any zone - CapitalDeploymentService handles prioritization via EvaluateZone
+            return true;
         }
 
         /// <summary>

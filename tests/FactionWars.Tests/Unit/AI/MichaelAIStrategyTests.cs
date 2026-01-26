@@ -198,11 +198,13 @@ namespace FactionWars.Tests.Unit.AI
 
         #endregion
 
-        #region ShouldAttack Tests - Calculated Approach
+        #region ShouldAttack Tests - Permissive Approach (CapitalDeploymentService handles prioritization)
 
         [Fact]
-        public void ShouldAttack_LowValueTarget_ReturnsFalse()
+        public void ShouldAttack_LowValueTarget_WithSufficientTroops_ReturnsTrue()
         {
+            // After removing rigid thresholds, AI should be willing to attack any adjacent zone
+            // CapitalDeploymentService handles intelligent prioritization through opportunity scoring
             var strategy = new MichaelAIStrategy();
             var faction = CreateTestFaction(FactionType.Michael);
             var factionState = CreateTestFactionState(faction.Id, troopCount: 50);
@@ -213,8 +215,24 @@ namespace FactionWars.Tests.Unit.AI
 
             var shouldAttack = strategy.ShouldAttack(lowValueZone, context);
 
-            // Michael is calculated - won't attack low value targets
-            Assert.False(shouldAttack);
+            // Michael should now be willing to attack low-value targets - prioritization is handled elsewhere
+            Assert.True(shouldAttack);
+        }
+
+        [Fact]
+        public void ShouldAttack_VeryLowValueNeutralZone_WithSufficientTroops_ReturnsTrue()
+        {
+            // AI should attack any neutral zone when they have troops, regardless of strategic value
+            var strategy = new MichaelAIStrategy();
+            var faction = CreateTestFaction(FactionType.Michael);
+            var factionState = CreateTestFactionState(faction.Id, troopCount: 50);
+
+            var veryLowValueZone = CreateTestZone("very-low-value", strategicValue: 1);
+            var context = new AIContext(faction, factionState, new List<Zone>(), new[] { veryLowValueZone }, new List<Faction>());
+
+            var shouldAttack = strategy.ShouldAttack(veryLowValueZone, context);
+
+            Assert.True(shouldAttack);
         }
 
         [Fact]
@@ -262,7 +280,7 @@ namespace FactionWars.Tests.Unit.AI
 
             var shouldAttack = strategy.ShouldAttack(neutralZone, context);
 
-            // Neutral high-value zones are attractive even to calculated Michael
+            // All neutral zones are valid attack targets when AI has troops
             Assert.True(shouldAttack);
         }
 

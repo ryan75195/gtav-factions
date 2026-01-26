@@ -181,6 +181,7 @@ namespace FactionWars.AI.Strategies
 
         /// <summary>
         /// Determines whether the faction should attack a specific zone.
+        /// Only checks basic constraints - CapitalDeploymentService handles prioritization.
         /// </summary>
         public virtual bool ShouldAttack(Zone zone, AIContext context)
         {
@@ -201,11 +202,9 @@ namespace FactionWars.AI.Strategies
                 return false;
             }
 
-            // Calculate attack threshold based on aggressiveness
-            float evaluationScore = EvaluateZone(zone, context);
-            float attackThreshold = 1f - _aggressiveness; // Higher aggressiveness = lower threshold
-
-            return evaluationScore >= attackThreshold * 0.5f;
+            // Attack any zone - CapitalDeploymentService handles intelligent prioritization
+            // via EvaluateZone scoring. Removed rigid thresholds to allow AI expansion.
+            return true;
         }
 
         /// <summary>

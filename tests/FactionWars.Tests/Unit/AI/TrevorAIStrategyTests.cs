@@ -499,24 +499,44 @@ namespace FactionWars.Tests.Unit.AI
         }
 
         [Fact]
-        public void TrevorStrategy_AttacksWhenMichaelWouldNot()
+        public void TrevorStrategy_AttacksLowValueZones()
         {
+            // After removing rigid thresholds, both strategies will attack low-value zones
+            // The difference is in prioritization (via EvaluateZone), not in yes/no attack decision
             var trevorStrategy = new TrevorAIStrategy();
-            var michaelStrategy = new MichaelAIStrategy();
 
             var faction = CreateTestFaction(FactionType.Trevor);
             var factionState = CreateTestFactionState(faction.Id, troopCount: 50);
 
-            // Low value enemy zone - Michael won't attack, Trevor will
+            // Low value enemy zone - all AI factions should be willing to attack
             var lowValueZone = CreateTestZone("low-value", ownerFactionId: "enemy-faction", strategicValue: 3);
             var enemyFactions = new List<Faction> { CreateTestFaction(FactionType.Franklin, "enemy-faction") };
             var context = new AIContext(faction, factionState, new List<Zone>(), new[] { lowValueZone }, enemyFactions);
 
             var trevorAttacks = trevorStrategy.ShouldAttack(lowValueZone, context);
-            var michaelAttacks = michaelStrategy.ShouldAttack(lowValueZone, context);
 
             Assert.True(trevorAttacks);
-            Assert.False(michaelAttacks);
+        }
+
+        [Fact]
+        public void AllStrategies_WillingToAttack_LowValueZones()
+        {
+            // Verify all strategies now attack any zone when they have troops
+            // CapitalDeploymentService handles prioritization - ShouldAttack just checks feasibility
+            var trevorStrategy = new TrevorAIStrategy();
+            var michaelStrategy = new MichaelAIStrategy();
+            var franklinStrategy = new FranklinAIStrategy();
+
+            var faction = CreateTestFaction(FactionType.Trevor);
+            var factionState = CreateTestFactionState(faction.Id, troopCount: 50);
+
+            var lowValueZone = CreateTestZone("low-value", ownerFactionId: "enemy-faction", strategicValue: 1);
+            var enemyFactions = new List<Faction> { CreateTestFaction(FactionType.Franklin, "enemy-faction") };
+            var context = new AIContext(faction, factionState, new List<Zone>(), new[] { lowValueZone }, enemyFactions);
+
+            Assert.True(trevorStrategy.ShouldAttack(lowValueZone, context));
+            Assert.True(michaelStrategy.ShouldAttack(lowValueZone, context));
+            Assert.True(franklinStrategy.ShouldAttack(lowValueZone, context));
         }
 
         #endregion

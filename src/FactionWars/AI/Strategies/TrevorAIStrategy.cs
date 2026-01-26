@@ -35,12 +35,6 @@ namespace FactionWars.AI.Strategies
         private const float CombatBonusMultiplier = 1.3f;
 
         /// <summary>
-        /// Minimum strategic value threshold to consider attacking.
-        /// Trevor has a very low threshold - he'll attack almost anything.
-        /// </summary>
-        private const float MinimumAttackThreshold = 0.2f;
-
-        /// <summary>
         /// Creates a new Trevor AI Strategy with configurable parameters.
         /// </summary>
         /// <param name="aggressiveness">Aggressiveness level (0-1). Default is 0.85.</param>
@@ -89,6 +83,7 @@ namespace FactionWars.AI.Strategies
         /// <summary>
         /// Determines whether Trevor should attack a zone.
         /// Trevor attacks with minimal restraint - if it's not his, he wants it.
+        /// CapitalDeploymentService handles prioritization.
         /// </summary>
         public override bool ShouldAttack(Zone zone, AIContext context)
         {
@@ -109,17 +104,8 @@ namespace FactionWars.AI.Strategies
                 return false;
             }
 
-            // Trevor's aggressive approach: attack with very low thresholds
-            float normalizedValue = zone.StrategicValue / MaxStrategicValue;
-
-            // For enemy zones, Trevor wants to fight - very low threshold
-            if (zone.OwnerFactionId != null)
-            {
-                return normalizedValue >= MinimumAttackThreshold;
-            }
-
-            // Neutral zones - still attack with low threshold
-            return normalizedValue >= MinimumAttackThreshold;
+            // Attack any zone - CapitalDeploymentService handles prioritization
+            return true;
         }
 
         /// <summary>

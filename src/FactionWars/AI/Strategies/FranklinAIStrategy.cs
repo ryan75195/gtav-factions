@@ -42,12 +42,6 @@ namespace FactionWars.AI.Strategies
         private const float ContestedPenaltyMultiplier = 0.8f;
 
         /// <summary>
-        /// Minimum strategic value threshold to consider attacking.
-        /// Franklin is more selective than Trevor but less than Michael.
-        /// </summary>
-        private const float MinimumAttackThreshold = 0.3f;
-
-        /// <summary>
         /// Maximum percentage of troops Franklin will commit to a single action.
         /// He maintains reserves for mobility and future opportunities.
         /// </summary>
@@ -106,7 +100,7 @@ namespace FactionWars.AI.Strategies
 
         /// <summary>
         /// Determines whether Franklin should attack a zone.
-        /// Franklin attacks when there's a good opportunity - prefers easy targets.
+        /// Franklin attacks when there's an opportunity - CapitalDeploymentService handles prioritization.
         /// </summary>
         public override bool ShouldAttack(Zone zone, AIContext context)
         {
@@ -127,17 +121,8 @@ namespace FactionWars.AI.Strategies
                 return false;
             }
 
-            // Franklin's opportunistic approach: balanced thresholds
-            float normalizedValue = zone.StrategicValue / MaxStrategicValue;
-
-            // Neutral zones are opportunities - lower threshold
-            if (zone.OwnerFactionId == null)
-            {
-                return normalizedValue >= MinimumAttackThreshold;
-            }
-
-            // Enemy zones - moderate threshold (between Michael's 0.7 and Trevor's 0.2)
-            return normalizedValue >= 0.4f;
+            // Attack any zone - CapitalDeploymentService handles prioritization
+            return true;
         }
 
         /// <summary>
