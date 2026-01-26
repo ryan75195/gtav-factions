@@ -242,6 +242,37 @@ namespace FactionWars.Tests.Unit.Core
             Assert.Equal(2, factionState.GetReserveTroops(DefenderTier.Heavy));
         }
 
+        [Fact]
+        public void AllocateTroops_EliteTier_Works()
+        {
+            var service = CreateService();
+            var factionState = CreateFactionStateWithReserves(elite: 5);
+
+            var result = service.AllocateTroops(factionState, "zone-1", DefenderTier.Elite, 3);
+
+            Assert.True(result);
+            Assert.Equal(2, factionState.GetReserveTroops(DefenderTier.Elite));
+        }
+
+        [Fact]
+        public void AllocateTroops_AllTiers_TracksEachSeparately()
+        {
+            var service = CreateService();
+            var factionState = CreateFactionStateWithReserves(basic: 10, medium: 5, heavy: 3, elite: 2);
+
+            service.AllocateTroops(factionState, "zone-1", DefenderTier.Basic, 3);
+            service.AllocateTroops(factionState, "zone-1", DefenderTier.Medium, 2);
+            service.AllocateTroops(factionState, "zone-1", DefenderTier.Heavy, 1);
+            service.AllocateTroops(factionState, "zone-1", DefenderTier.Elite, 1);
+
+            var allocation = service.GetAllocation(factionState.FactionId, "zone-1");
+            Assert.NotNull(allocation);
+            Assert.Equal(3, allocation!.GetTroopCount(DefenderTier.Basic));
+            Assert.Equal(2, allocation.GetTroopCount(DefenderTier.Medium));
+            Assert.Equal(1, allocation.GetTroopCount(DefenderTier.Heavy));
+            Assert.Equal(1, allocation.GetTroopCount(DefenderTier.Elite));
+        }
+
         #endregion
 
         #region GetAllocation Tests
@@ -562,6 +593,19 @@ namespace FactionWars.Tests.Unit.Core
         }
 
         [Fact]
+        public void WithdrawTroops_EliteTier_Works()
+        {
+            var service = CreateService();
+            var factionState = CreateFactionStateWithReserves(elite: 5);
+            service.AllocateTroops(factionState, "zone-1", DefenderTier.Elite, 3);
+
+            var result = service.WithdrawTroops(factionState, "zone-1", DefenderTier.Elite, 2);
+
+            Assert.True(result);
+            Assert.Equal(4, factionState.GetReserveTroops(DefenderTier.Elite)); // 2 remaining + 2 withdrawn
+        }
+
+        [Fact]
         public void WithdrawTroops_UpdatesTotalAllocatedTroops()
         {
             var service = CreateService();
@@ -585,13 +629,14 @@ namespace FactionWars.Tests.Unit.Core
             return new ZoneDefenderAllocationService(repository);
         }
 
-        private FactionState CreateFactionStateWithReserves(int basic = 0, int medium = 0, int heavy = 0)
+        private FactionState CreateFactionStateWithReserves(int basic = 0, int medium = 0, int heavy = 0, int elite = 0)
         {
             // After consolidation, initialTroopCount goes to Basic tier, so we don't use it
             var state = new FactionState("test-faction", 10000);
             state.AddReserveTroops(DefenderTier.Basic, basic);
             state.AddReserveTroops(DefenderTier.Medium, medium);
             state.AddReserveTroops(DefenderTier.Heavy, heavy);
+            state.AddReserveTroops(DefenderTier.Elite, elite);
             return state;
         }
 

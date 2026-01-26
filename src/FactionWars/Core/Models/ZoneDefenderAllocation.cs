@@ -6,7 +6,7 @@ namespace FactionWars.Core.Models
 {
     /// <summary>
     /// Represents the allocation of defender troops to a specific zone.
-    /// Tracks troops by tier (Basic, Medium, Heavy) that have been assigned
+    /// Tracks troops by tier (Basic, Medium, Heavy, Elite) that have been assigned
     /// from a faction's reserve pool to defend this zone.
     /// </summary>
     public class ZoneDefenderAllocation
@@ -53,7 +53,8 @@ namespace FactionWars.Core.Models
             {
                 { DefenderTier.Basic, 0 },
                 { DefenderTier.Medium, 0 },
-                { DefenderTier.Heavy, 0 }
+                { DefenderTier.Heavy, 0 },
+                { DefenderTier.Elite, 0 }
             };
         }
 
@@ -125,7 +126,7 @@ namespace FactionWars.Core.Models
 
         public override string ToString()
         {
-            return $"ZoneDefenderAllocation[{FactionId}/{ZoneId}]: Basic={GetTroopCount(DefenderTier.Basic)}, Medium={GetTroopCount(DefenderTier.Medium)}, Heavy={GetTroopCount(DefenderTier.Heavy)}";
+            return $"ZoneDefenderAllocation[{FactionId}/{ZoneId}]: Basic={GetTroopCount(DefenderTier.Basic)}, Medium={GetTroopCount(DefenderTier.Medium)}, Heavy={GetTroopCount(DefenderTier.Heavy)}, Elite={GetTroopCount(DefenderTier.Elite)}";
         }
     }
 }
