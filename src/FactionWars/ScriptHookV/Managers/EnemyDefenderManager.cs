@@ -349,6 +349,12 @@ namespace FactionWars.ScriptHookV.Managers
             _gameBridge.SetPedHealth(pedHandle, tierConfig.Health);
             _gameBridge.SetPedCombatAttributes(pedHandle, canUseCover: true, willFightArmedPeds: true);
 
+            // Elite tier uses RPG - prevent AI from switching to pistol (AI prefers pistol to avoid self-damage)
+            if (tierConfig.Tier == DefenderTier.Elite)
+            {
+                _gameBridge.SetPedCanSwitchWeapons(pedHandle, false);
+            }
+
             // Set zone-wide perception so enemies can detect friendly defenders across the zone
             var perceptionRange = wanderRadius * 1.2f;
             _gameBridge.SetPedSeeingRange(pedHandle, perceptionRange);

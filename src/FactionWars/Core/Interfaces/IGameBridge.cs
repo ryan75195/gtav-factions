@@ -201,6 +201,14 @@ namespace FactionWars.Core.Interfaces
         void GivePedWeapon(int pedHandle, string weaponName);
 
         /// <summary>
+        /// Sets whether a ped can switch between weapons.
+        /// Set to false for RPG users to prevent AI from switching to pistol.
+        /// </summary>
+        /// <param name="pedHandle">Handle of the ped.</param>
+        /// <param name="canSwitch">True to allow weapon switching, false to lock current weapon.</param>
+        void SetPedCanSwitchWeapons(int pedHandle, bool canSwitch);
+
+        /// <summary>
         /// Sets a ped's shooting accuracy.
         /// </summary>
         /// <param name="pedHandle">Handle of the ped.</param>

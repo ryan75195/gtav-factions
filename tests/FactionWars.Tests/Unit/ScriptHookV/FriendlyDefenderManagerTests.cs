@@ -830,6 +830,59 @@ namespace FactionWars.Tests.Unit.ScriptHookV
         }
 
         [Fact]
+        public void EliteTierDefenders_CannotSwitchWeapons()
+        {
+            // Arrange
+            SetupManager();
+            var zone = CreateFriendlyZone();
+            var allocation = new ZoneDefenderAllocation(PlayerFactionId, TestZoneId);
+            allocation.AddTroops(DefenderTier.Elite, 1);
+
+            _allocationServiceMock.Setup(a => a.GetAllocation(PlayerFactionId, TestZoneId))
+                .Returns(allocation);
+
+            // Setup elite tier config with RPG
+            var eliteConfig = new DefenderTierConfig(DefenderTier.Elite, 2000, 250, 100, "WEAPON_RPG", 0.8f, 3.0f);
+            _defenderTierServiceMock.Setup(d => d.GetTierConfig(DefenderTier.Elite)).Returns(eliteConfig);
+
+            // Act
+            _manager.OnZoneEntered(zone);
+
+            // Assert - Elite defenders should NOT be able to switch weapons (to prevent RPG->pistol switch)
+            Assert.Equal(1, _manager.GetSpawnedDefenderCount(TestZoneId));
+            var spawnedPeds = _gameBridge.GetSpawnedPeds();
+            foreach (var pedHandle in spawnedPeds)
+            {
+                Assert.False(_gameBridge.GetPedCanSwitchWeapons(pedHandle),
+                    "Elite tier defenders should have weapon switching disabled to keep RPG");
+            }
+        }
+
+        [Fact]
+        public void NonEliteTierDefenders_CanSwitchWeapons()
+        {
+            // Arrange
+            SetupManager();
+            var zone = CreateFriendlyZone();
+            var allocation = CreateAllocationWithDefenders(basic: 1, medium: 1, heavy: 1);
+
+            _allocationServiceMock.Setup(a => a.GetAllocation(PlayerFactionId, TestZoneId))
+                .Returns(allocation);
+
+            // Act
+            _manager.OnZoneEntered(zone);
+
+            // Assert - Non-elite defenders should still be able to switch weapons
+            Assert.Equal(3, _manager.GetSpawnedDefenderCount(TestZoneId));
+            var spawnedPeds = _gameBridge.GetSpawnedPeds();
+            foreach (var pedHandle in spawnedPeds)
+            {
+                Assert.True(_gameBridge.GetPedCanSwitchWeapons(pedHandle),
+                    "Non-elite tier defenders should be able to switch weapons");
+            }
+        }
+
+        [Fact]
         public void MultipleDeaths_WithoutReserves_EventuallyLeadsToTerritoryLoss()
         {
             // Arrange - When all defenders die with no reserves, territory should be lost

@@ -367,6 +367,12 @@ namespace FactionWars.ScriptHookV.Managers
 
             // Configure combat behavior - followers should take cover and fight armed enemies
             _gameBridge.SetPedCombatAttributes(pedHandle, canUseCover: true, willFightArmedPeds: true);
+
+            // Elite tier uses RPG - prevent AI from switching to pistol (AI prefers pistol to avoid self-damage)
+            if (tierConfig.Tier == DefenderTier.Elite)
+            {
+                _gameBridge.SetPedCanSwitchWeapons(pedHandle, false);
+            }
         }
 
         /// <summary>

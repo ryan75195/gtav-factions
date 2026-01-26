@@ -325,6 +325,26 @@ namespace FactionWars.Core.Utils
             }
         }
 
+        public void SetPedCanSwitchWeapons(int pedHandle, bool canSwitch)
+        {
+            if (_peds.TryGetValue(pedHandle, out var ped))
+            {
+                ped.CanSwitchWeapons = canSwitch;
+            }
+        }
+
+        /// <summary>
+        /// Gets whether a ped can switch weapons (for testing purposes).
+        /// </summary>
+        public bool GetPedCanSwitchWeapons(int pedHandle)
+        {
+            if (_peds.TryGetValue(pedHandle, out var ped))
+            {
+                return ped.CanSwitchWeapons;
+            }
+            return true; // Default
+        }
+
         public void SetPedAccuracy(int pedHandle, float accuracy)
         {
             if (_peds.TryGetValue(pedHandle, out var ped))
@@ -877,6 +897,7 @@ namespace FactionWars.Core.Utils
             public bool CanUseCover { get; set; } = false;
             public bool WillFightArmedPeds { get; set; } = false;
             public bool IsAttackingPlayer { get; set; } = false;
+            public bool CanSwitchWeapons { get; set; } = true; // Default: can switch weapons
         }
 
         private class BlipState

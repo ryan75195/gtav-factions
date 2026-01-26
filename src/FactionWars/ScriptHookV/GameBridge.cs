@@ -748,6 +748,23 @@ namespace FactionWars.ScriptHookV
         }
 
         /// <inheritdoc />
+        public void SetPedCanSwitchWeapons(int pedHandle, bool canSwitch)
+        {
+            try
+            {
+                var ped = Entity.FromHandle(pedHandle) as Ped;
+                if (ped == null || !ped.Exists()) return;
+
+                ped.CanSwitchWeapons = canSwitch;
+                FileLogger.AI($"SetPedCanSwitchWeapons: ped {pedHandle} canSwitch={canSwitch}");
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error($"SetPedCanSwitchWeapons exception for ped {pedHandle}", ex);
+            }
+        }
+
+        /// <inheritdoc />
         public void SetPedAccuracy(int pedHandle, float accuracy)
         {
             try

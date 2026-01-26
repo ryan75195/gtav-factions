@@ -118,7 +118,8 @@ namespace FactionWars.ScriptHookV.Managers
             {
                 { DefenderTier.Basic, "g_m_y_lost_01" },
                 { DefenderTier.Medium, "g_m_y_lost_02" },
-                { DefenderTier.Heavy, "g_m_y_lost_03" }
+                { DefenderTier.Heavy, "g_m_y_lost_03" },
+                { DefenderTier.Elite, "s_m_y_dealer_01" }
             };
 
             _spawnedPedTierByZone = new Dictionary<string, Dictionary<int, DefenderTier>>();
@@ -585,6 +586,12 @@ namespace FactionWars.ScriptHookV.Managers
             _gameBridge.SetPedArmor(pedHandle, tierConfig.Armor);
             _gameBridge.SetPedHealth(pedHandle, tierConfig.Health);
             _gameBridge.SetPedCombatAttributes(pedHandle, canUseCover: true, willFightArmedPeds: true);
+
+            // Elite tier uses RPG - prevent AI from switching to pistol (AI prefers pistol to avoid self-damage)
+            if (tierConfig.Tier == DefenderTier.Elite)
+            {
+                _gameBridge.SetPedCanSwitchWeapons(pedHandle, false);
+            }
         }
     }
 }

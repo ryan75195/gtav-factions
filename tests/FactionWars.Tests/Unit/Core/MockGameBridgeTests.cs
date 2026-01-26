@@ -432,5 +432,49 @@ namespace FactionWars.Tests.Unit.Core
             Assert.Equal(vehicleHandle, bridge.GetPlayerVehicle());
             Assert.Equal("buzzard", bridge.GetVehicleModelName(vehicleHandle));
         }
+
+        #region SetPedCanSwitchWeapons Tests
+
+        [Fact]
+        public void SetPedCanSwitchWeapons_TracksCanSwitchWeaponsState()
+        {
+            // Arrange
+            var bridge = new MockGameBridge();
+            var pedHandle = bridge.CreatePed("s_m_y_dealer_01", Vector3.Zero);
+
+            // Act
+            bridge.SetPedCanSwitchWeapons(pedHandle, false);
+
+            // Assert
+            Assert.False(bridge.GetPedCanSwitchWeapons(pedHandle));
+        }
+
+        [Fact]
+        public void SetPedCanSwitchWeapons_DefaultsToTrue()
+        {
+            // Arrange
+            var bridge = new MockGameBridge();
+            var pedHandle = bridge.CreatePed("s_m_y_dealer_01", Vector3.Zero);
+
+            // Assert - default should be true (can switch)
+            Assert.True(bridge.GetPedCanSwitchWeapons(pedHandle));
+        }
+
+        [Fact]
+        public void SetPedCanSwitchWeapons_CanBeSetToTrueAfterFalse()
+        {
+            // Arrange
+            var bridge = new MockGameBridge();
+            var pedHandle = bridge.CreatePed("s_m_y_dealer_01", Vector3.Zero);
+
+            // Act
+            bridge.SetPedCanSwitchWeapons(pedHandle, false);
+            bridge.SetPedCanSwitchWeapons(pedHandle, true);
+
+            // Assert
+            Assert.True(bridge.GetPedCanSwitchWeapons(pedHandle));
+        }
+
+        #endregion
     }
 }
