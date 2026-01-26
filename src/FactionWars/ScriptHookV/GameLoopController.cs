@@ -53,7 +53,9 @@ namespace FactionWars.ScriptHookV
         private IAIController? _aiController;
         private IAutoSaveService? _autoSaveService;
         private MainMenuController? _mainMenuController;
-        private ArmyMenuController? _armyMenuController;
+        private RecruitmentMenuController? _recruitmentMenuController;
+        private DefendersMenuController? _defendersMenuController;
+        private SquadMenuController? _squadMenuController;
         private OverviewMenuController? _overviewMenuController;
         private ZoneManagementMenuController? _zoneManagementMenuController;
         private ResourcesMenuController? _resourcesMenuController;
@@ -138,10 +140,10 @@ namespace FactionWars.ScriptHookV
         public MainMenuController? MainMenuController => _mainMenuController;
 
         /// <summary>
-        /// Gets the ArmyMenuController for handling army menu interactions.
+        /// Gets the RecruitmentMenuController for handling recruitment menu interactions.
         /// Returns null if not yet initialized.
         /// </summary>
-        public ArmyMenuController? ArmyMenuController => _armyMenuController;
+        public RecruitmentMenuController? RecruitmentMenuController => _recruitmentMenuController;
 
         /// <summary>
         /// Gets the AutoSaveService for automatic game state saving.
@@ -768,16 +770,29 @@ namespace FactionWars.ScriptHookV
                 allocationService);
             _zoneManagementMenuController.BackRequested += (s, e) => _mainMenuController.OnKeyDown(MainMenuController.MenuToggleKeyCode);
 
-            _armyMenuController = new ArmyMenuController(
+            // Initialize recruitment menu hierarchy
+            _recruitmentMenuController = new RecruitmentMenuController(menuProvider, _gameBridge);
+            _recruitmentMenuController.BackRequested += (s, e) => _mainMenuController.OnKeyDown(MainMenuController.MenuToggleKeyCode);
+
+            _defendersMenuController = new DefendersMenuController(
                 menuProvider,
                 _factionService,
                 purchaseService,
+                playerContext);
+            _defendersMenuController.BackRequested += (s, e) => _recruitmentMenuController.Show();
+
+            _squadMenuController = new SquadMenuController(
+                menuProvider,
+                purchaseService,
                 followerService,
-                defenderTierService,
                 playerContext,
                 _followerManager,
                 _gameBridge);
-            _armyMenuController.BackRequested += (s, e) => _mainMenuController.OnKeyDown(MainMenuController.MenuToggleKeyCode);
+            _squadMenuController.BackRequested += (s, e) => _recruitmentMenuController.Show();
+
+            // Wire up recruitment submenu navigation
+            _recruitmentMenuController.DefendersRequested += (s, e) => _defendersMenuController.Show();
+            _recruitmentMenuController.SquadRequested += (s, e) => _squadMenuController.Show();
 
             // Initialize resources menu controller
             var resourceModifier = _container.Resolve<IZoneTraitResourceModifier>();
@@ -835,7 +850,7 @@ namespace FactionWars.ScriptHookV
                     _zoneManagementMenuController?.Show();
                     break;
                 case MainMenuController.RecruitmentItemId:
-                    _armyMenuController?.Show();
+                    _recruitmentMenuController?.Show();
                     break;
                 case MainMenuController.ShopItemId:
                     _shopMenuController?.Show();

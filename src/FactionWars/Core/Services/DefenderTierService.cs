@@ -53,6 +53,17 @@ namespace FactionWars.Core.Services
                         weapon: "WEAPON_CARBINERIFLE",
                         accuracy: 0.7f,
                         combatModifier: 2.0f)
+                },
+                {
+                    DefenderTier.Elite,
+                    new DefenderTierConfig(
+                        tier: DefenderTier.Elite,
+                        cost: 2000,
+                        health: 650,
+                        armor: 200,
+                        weapon: "WEAPON_RPG",
+                        accuracy: 0.8f,
+                        combatModifier: 2.5f)
                 }
             };
 

@@ -62,16 +62,33 @@ namespace FactionWars.Tests.Unit.Core
         }
 
         [Fact]
-        public void GetAllTierConfigs_ReturnsAllThreeTiers()
+        public void GetTierConfig_Elite_ReturnsCorrectConfiguration()
+        {
+            // Act
+            var config = _service.GetTierConfig(DefenderTier.Elite);
+
+            // Assert
+            Assert.Equal(DefenderTier.Elite, config.Tier);
+            Assert.Equal(2000, config.Cost);
+            Assert.Equal(650, config.Health);
+            Assert.Equal(200, config.Armor);
+            Assert.Equal("WEAPON_RPG", config.Weapon);
+            Assert.Equal(0.8f, config.Accuracy, 2);
+            Assert.Equal(2.5f, config.CombatModifier, 2);
+        }
+
+        [Fact]
+        public void GetAllTierConfigs_ReturnsAllFourTiers()
         {
             // Act
             var configs = _service.GetAllTierConfigs();
 
             // Assert
-            Assert.Equal(3, configs.Count);
+            Assert.Equal(4, configs.Count);
             Assert.Contains(configs, c => c.Tier == DefenderTier.Basic);
             Assert.Contains(configs, c => c.Tier == DefenderTier.Medium);
             Assert.Contains(configs, c => c.Tier == DefenderTier.Heavy);
+            Assert.Contains(configs, c => c.Tier == DefenderTier.Elite);
         }
 
         [Fact]
@@ -81,15 +98,17 @@ namespace FactionWars.Tests.Unit.Core
             Assert.Equal(200, _service.GetCost(DefenderTier.Basic));
             Assert.Equal(500, _service.GetCost(DefenderTier.Medium));
             Assert.Equal(1000, _service.GetCost(DefenderTier.Heavy));
+            Assert.Equal(2000, _service.GetCost(DefenderTier.Elite));
         }
 
         [Fact]
         public void GetCombatModifier_ReturnsCorrectModifierForEachTier()
         {
-            // Per RFP: Basic=1.0, Medium=1.5, Heavy=2.0
+            // Basic=1.0, Medium=1.5, Heavy=2.0, Elite=2.5
             Assert.Equal(1.0f, _service.GetCombatModifier(DefenderTier.Basic), 2);
             Assert.Equal(1.5f, _service.GetCombatModifier(DefenderTier.Medium), 2);
             Assert.Equal(2.0f, _service.GetCombatModifier(DefenderTier.Heavy), 2);
+            Assert.Equal(2.5f, _service.GetCombatModifier(DefenderTier.Elite), 2);
         }
 
         [Fact]

@@ -22,6 +22,12 @@ namespace FactionWars.Core.Models
         /// Heavy tier defenders - most expensive but most effective.
         /// Cost: $1000, Health: 200, Armor: Full, Weapon: Carbine, Accuracy: 0.7
         /// </summary>
-        Heavy = 2
+        Heavy = 2,
+
+        /// <summary>
+        /// Elite tier defenders - anti-vehicle specialists with RPG.
+        /// Cost: $2000, Health: 250, Armor: Full, Weapon: RPG, Accuracy: 0.8
+        /// </summary>
+        Elite = 3
     }
 }
