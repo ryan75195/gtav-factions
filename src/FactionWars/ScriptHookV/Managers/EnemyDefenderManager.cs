@@ -60,7 +60,8 @@ namespace FactionWars.ScriptHookV.Managers
             {
                 { DefenderTier.Basic, "g_m_y_famca_01" },
                 { DefenderTier.Medium, "g_m_y_famdnf_01" },
-                { DefenderTier.Heavy, "g_m_y_famfor_01" }
+                { DefenderTier.Heavy, "g_m_y_famfor_01" },
+                { DefenderTier.Elite, "s_m_y_armymech_01" }  // Military mechanic for RPG specialist
             };
 
             _spawnedPedTierByZone = new Dictionary<string, Dictionary<int, DefenderTier>>();
@@ -96,7 +97,7 @@ namespace FactionWars.ScriptHookV.Managers
             var totalSpawned = 0;
             var random = new Random();
 
-            foreach (DefenderTier tier in new[] { DefenderTier.Heavy, DefenderTier.Medium, DefenderTier.Basic })
+            foreach (DefenderTier tier in new[] { DefenderTier.Elite, DefenderTier.Heavy, DefenderTier.Medium, DefenderTier.Basic })
             {
                 var count = allocation.GetTroopCount(tier);
                 if (count <= 0) continue;
@@ -274,7 +275,7 @@ namespace FactionWars.ScriptHookV.Managers
             }
 
             // Try other tiers (highest first)
-            foreach (var tier in new[] { DefenderTier.Heavy, DefenderTier.Medium, DefenderTier.Basic })
+            foreach (var tier in new[] { DefenderTier.Elite, DefenderTier.Heavy, DefenderTier.Medium, DefenderTier.Basic })
             {
                 if (tier == preferredTier) continue;
 

@@ -398,5 +398,12 @@ namespace FactionWars.Core.Interfaces
         /// <param name="position">The reference position to search from.</param>
         /// <returns>The nearest road position, or the input position if no road found.</returns>
         Vector3 GetNearestRoadPosition(Vector3 position);
+
+        /// <summary>
+        /// Gets the model name of a vehicle.
+        /// </summary>
+        /// <param name="vehicleHandle">Handle of the vehicle.</param>
+        /// <returns>The model name (e.g., "insurgent", "buzzard"), or empty string if invalid.</returns>
+        string GetVehicleModelName(int vehicleHandle);
     }
 }

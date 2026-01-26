@@ -1559,6 +1559,31 @@ namespace FactionWars.ScriptHookV
             }
         }
 
+        /// <inheritdoc />
+        public string GetVehicleModelName(int vehicleHandle)
+        {
+            try
+            {
+                var vehicle = Entity.FromHandle(vehicleHandle) as Vehicle;
+                if (vehicle == null || !vehicle.Exists())
+                {
+                    return string.Empty;
+                }
+
+                // Get the model and convert to lowercase name
+                var model = vehicle.Model;
+                var modelName = model.ToString().ToLowerInvariant();
+
+                FileLogger.AI($"GetVehicleModelName: Vehicle {vehicleHandle} model = {modelName}");
+                return modelName;
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error($"GetVehicleModelName exception for vehicle {vehicleHandle}", ex);
+                return string.Empty;
+            }
+        }
+
         /// <summary>
         /// Converts our domain BlipColor enum to GTA V's BlipColor.
         /// </summary>

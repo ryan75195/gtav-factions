@@ -68,6 +68,8 @@ namespace FactionWars.ScriptHookV
         private IZoneService? _zoneService;
         private IZoneDefenderAllocationService? _allocationService;
         private IZoneBattleManager? _zoneBattleManager;
+        private IVehicleThreatService? _vehicleThreatService;
+        private IAntiVehicleResponseService? _antiVehicleResponseService;
         private BattleHudRenderer? _battleHudRenderer;
         private int _currentBattleHudIndex = 0;
         private const int BattleCycleKeyCode = 0x42; // B key
@@ -724,6 +726,10 @@ namespace FactionWars.ScriptHookV
             _aiController.SetPlayerFactionId(CurrentPlayerFactionId);
             _aiController.Start();
 
+            // Initialize vehicle threat services for anti-vehicle response
+            _vehicleThreatService = _container.Resolve<IVehicleThreatService>();
+            _antiVehicleResponseService = _container.Resolve<IAntiVehicleResponseService>();
+
             // Initialize victory manager for victory condition checking
             var victoryConditionService = _container.Resolve<IVictoryConditionService>();
             var notificationService = _container.Resolve<INotificationService>();
@@ -1107,7 +1113,12 @@ namespace FactionWars.ScriptHookV
                 FileLogger.Combat($"Defending Faction: {encounter?.DefendingFactionId ?? "NULL"}");
                 _gameBridge.ShowNotification($"~r~COMBAT STARTED in:~w~ {zone.Name}");
 
+                // Check for vehicle threat and allocate Elite anti-vehicle units BEFORE spawning
+                // This ensures Elite units are included in the allocation when spawning begins
+                CheckAndRespondToVehicleThreat(zone, zone.OwnerFactionId!);
+
                 // Spawn enemy defenders using EnemyDefenderManager (wander + engage behavior)
+                // This includes any Elite units allocated by the vehicle threat response
                 _enemyDefenderManager?.OnEnemyZoneEntered(zone, zone.OwnerFactionId!);
             }
             else if (zone.OwnerFactionId == null)
@@ -1123,6 +1134,72 @@ namespace FactionWars.ScriptHookV
 
             // Notify zone battle manager that player entered this zone
             _zoneBattleManager?.OnPlayerEnteredZone(zone);
+        }
+
+        /// <summary>
+        /// Checks if the player is in a vehicle and responds to vehicle threats by deploying Elite units.
+        /// </summary>
+        /// <param name="zone">The enemy zone entered.</param>
+        /// <param name="enemyFactionId">The faction defending the zone.</param>
+        private void CheckAndRespondToVehicleThreat(Zone zone, string enemyFactionId)
+        {
+            // Check if services are available
+            if (_vehicleThreatService == null || _antiVehicleResponseService == null)
+            {
+                FileLogger.AI("CheckAndRespondToVehicleThreat: Vehicle threat services not initialized");
+                return;
+            }
+
+            // Check if player is in a vehicle
+            if (!_gameBridge.IsPlayerInVehicle())
+            {
+                FileLogger.AI("CheckAndRespondToVehicleThreat: Player is not in a vehicle, no threat response needed");
+                return;
+            }
+
+            // Get the player's vehicle
+            int vehicleHandle = _gameBridge.GetPlayerVehicle();
+            if (vehicleHandle <= 0)
+            {
+                FileLogger.AI($"CheckAndRespondToVehicleThreat: Invalid vehicle handle ({vehicleHandle})");
+                return;
+            }
+
+            // Get vehicle model name
+            string vehicleModel = _gameBridge.GetVehicleModelName(vehicleHandle);
+            if (string.IsNullOrEmpty(vehicleModel))
+            {
+                FileLogger.AI("CheckAndRespondToVehicleThreat: Could not get vehicle model name");
+                return;
+            }
+
+            FileLogger.AI($"CheckAndRespondToVehicleThreat: Player vehicle detected - model={vehicleModel}");
+
+            // Get threat level
+            var threatLevel = _vehicleThreatService.GetThreatLevel(vehicleModel);
+            FileLogger.AI($"CheckAndRespondToVehicleThreat: Threat level for {vehicleModel} = {threatLevel}");
+
+            // If no threat, don't deploy
+            if (threatLevel == VehicleThreatLevel.None)
+            {
+                FileLogger.AI("CheckAndRespondToVehicleThreat: No significant threat, skipping Elite deployment");
+                return;
+            }
+
+            // Deploy Elite units as anti-vehicle response
+            FileLogger.AI($"CheckAndRespondToVehicleThreat: Deploying Elite units for {threatLevel} threat in zone {zone.Id}");
+            int deployed = _antiVehicleResponseService.RespondToVehicleThreat(enemyFactionId, zone.Id, threatLevel);
+
+            if (deployed > 0)
+            {
+                FileLogger.Combat($"CheckAndRespondToVehicleThreat: Allocated {deployed} Elite RPG defenders against {vehicleModel} ({threatLevel} threat)");
+                _gameBridge.ShowNotification($"~o~Enemy deploying {deployed} RPG units against your {vehicleModel}!");
+                // Elite units will be spawned by the subsequent call to OnEnemyZoneEntered
+            }
+            else
+            {
+                FileLogger.AI($"CheckAndRespondToVehicleThreat: Failed to allocate Elite units (insufficient funds or reserves)");
+            }
         }
 
         /// <summary>

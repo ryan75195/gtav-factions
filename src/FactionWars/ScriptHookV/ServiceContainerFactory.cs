@@ -342,6 +342,18 @@ namespace FactionWars.ScriptHookV
                     { "franklin", new FranklinAIStrategy(config.AI.FranklinAggressiveness, config.AI.FranklinRiskTolerance) }
                 });
 
+            // Vehicle threat service - classifies vehicles by threat level
+            container.RegisterSingleton<IVehicleThreatService>(() =>
+                new VehicleThreatService());
+
+            // Anti-vehicle response service - deploys Elite units against vehicle threats
+            container.RegisterSingleton<IAntiVehicleResponseService>(() =>
+                new AntiVehicleResponseService(
+                    container.Resolve<IFactionService>(),
+                    container.Resolve<IZoneDefenderAllocationService>(),
+                    container.Resolve<IVehicleThreatService>(),
+                    container.Resolve<IDefenderTierService>()));
+
             // Aggression response service - tracks aggression and determines AI responses
             container.RegisterSingleton<IAggressionResponseService>(() =>
                 new AggressionResponseService());

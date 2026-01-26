@@ -813,6 +813,31 @@ namespace FactionWars.Core.Utils
         }
 
         /// <summary>
+        /// Gets the model name of a vehicle.
+        /// </summary>
+        public string GetVehicleModelName(int vehicleHandle)
+        {
+            if (_vehicles.TryGetValue(vehicleHandle, out var vehicle))
+            {
+                return vehicle.ModelName;
+            }
+            return string.Empty;
+        }
+
+        /// <summary>
+        /// Sets up the player vehicle with a specific model name (for testing).
+        /// </summary>
+        public int SetPlayerInVehicleWithModel(string modelName, int totalSeats = 4)
+        {
+            var handle = _nextVehicleHandle++;
+            _vehicles[handle] = new VehicleState(totalSeats, modelName, PlayerPosition);
+            IsPlayerInVehicleValue = true;
+            PlayerVehicleHandle = handle;
+            _vehicles[handle].OccupySeat(0, -1); // Driver seat
+            return handle;
+        }
+
+        /// <summary>
         /// Sets up a vehicle for the player with the specified number of seats.
         /// </summary>
         /// <param name="totalSeats">Total number of seats including driver.</param>

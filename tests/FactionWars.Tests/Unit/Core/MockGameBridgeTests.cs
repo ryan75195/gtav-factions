@@ -390,5 +390,47 @@ namespace FactionWars.Tests.Unit.Core
             bridge.DisplayHelpText("Press ~INPUT_CONTEXT~ to interact");
             Assert.Equal("Press ~INPUT_CONTEXT~ to interact", bridge.LastHelpText);
         }
+
+        [Fact]
+        public void GetVehicleModelName_ReturnsModelName()
+        {
+            // Arrange
+            var bridge = new MockGameBridge();
+            var vehicleHandle = bridge.CreateVehicle("insurgent", new Vector3(0, 0, 0));
+
+            // Act
+            var modelName = bridge.GetVehicleModelName(vehicleHandle);
+
+            // Assert
+            Assert.Equal("insurgent", modelName);
+        }
+
+        [Fact]
+        public void GetVehicleModelName_ReturnsEmptyForInvalidHandle()
+        {
+            // Arrange
+            var bridge = new MockGameBridge();
+
+            // Act
+            var modelName = bridge.GetVehicleModelName(999);
+
+            // Assert
+            Assert.Equal(string.Empty, modelName);
+        }
+
+        [Fact]
+        public void SetPlayerInVehicleWithModel_SetsPlayerInVehicle()
+        {
+            // Arrange
+            var bridge = new MockGameBridge();
+
+            // Act
+            var vehicleHandle = bridge.SetPlayerInVehicleWithModel("buzzard", 4);
+
+            // Assert
+            Assert.True(bridge.IsPlayerInVehicle());
+            Assert.Equal(vehicleHandle, bridge.GetPlayerVehicle());
+            Assert.Equal("buzzard", bridge.GetVehicleModelName(vehicleHandle));
+        }
     }
 }
