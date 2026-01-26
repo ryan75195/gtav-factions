@@ -194,7 +194,15 @@ namespace FactionWars.ScriptHookV
             try
             {
                 var ped = Entity.FromHandle(pedHandle) as Ped;
-                return ped != null && ped.Exists() && ped.IsAlive;
+                if (ped == null || !ped.Exists())
+                    return false;
+
+                // Check multiple conditions since DiesOnLowHealth=false can affect IsAlive behavior
+                // A ped is dead if: IsDead is true, Health <= 0, or IsAlive is false
+                if (ped.IsDead || ped.Health <= 0)
+                    return false;
+
+                return ped.IsAlive;
             }
             catch (Exception ex)
             {
@@ -785,6 +793,17 @@ namespace FactionWars.ScriptHookV
                 // SET_PED_SUFFERS_CRITICAL_HITS(ped, false) - prevents one-shot headshot deaths
                 Function.Call(Hash.SET_PED_SUFFERS_CRITICAL_HITS, ped.Handle, false);
 
+                // CRITICAL: Disable automatic death at low health
+                // By default, GTA V kills peds when health drops below FatalInjuryHealthThreshold (~100)
+                // This makes high health values ineffective since peds die at the threshold
+                ped.DiesOnLowHealth = false;
+
+                // Set injury thresholds very low so peds don't die until health is nearly zero
+                // InjuryHealthThreshold: ped becomes "injured" (falls down) below this
+                // FatalInjuryHealthThreshold: ped dies instantly when health drops below this
+                ped.InjuryHealthThreshold = 1.0f;
+                ped.FatalInjuryHealthThreshold = 0.0f;
+
                 // Use natives directly for more reliable health setting
                 // SET_PED_MAX_HEALTH is more reliable than setting MaxHealth property
                 Function.Call(Hash.SET_PED_MAX_HEALTH, ped.Handle, health);
@@ -794,7 +813,7 @@ namespace FactionWars.ScriptHookV
                 ped.MaxHealth = health;
                 ped.Health = health;
 
-                FileLogger.Info($"SetPedHealth: Set ped {pedHandle} health to {health}, critical hits disabled");
+                FileLogger.Info($"SetPedHealth: Set ped {pedHandle} health to {health}, DiesOnLowHealth=false, FatalInjuryThreshold=0");
             }
             catch (Exception ex)
             {
@@ -1014,6 +1033,35 @@ namespace FactionWars.ScriptHookV
             catch (Exception ex)
             {
                 FileLogger.Error($"TaskPedWanderInAreaSprinting exception for ped {pedHandle}", ex);
+            }
+        }
+
+        /// <inheritdoc />
+        public void TaskCombatHatedTargetsAroundPed(int pedHandle, float radius)
+        {
+            FileLogger.AI($"TaskCombatHatedTargetsAroundPed: CALLED for ped {pedHandle} radius {radius:F1}");
+
+            try
+            {
+                var ped = Entity.FromHandle(pedHandle) as Ped;
+                if (ped == null || !ped.Exists())
+                {
+                    FileLogger.Warn($"TaskCombatHatedTargetsAroundPed: Ped {pedHandle} is null or doesn't exist, aborting");
+                    return;
+                }
+
+                // Task the ped to actively seek out and fight any hated targets within range
+                // This makes them run towards enemies and engage in combat
+                Function.Call(Hash.TASK_COMBAT_HATED_TARGETS_AROUND_PED, ped.Handle, radius, 0);
+
+                // Set movement blend ratio for sprinting (3.0 = sprint) so they run towards enemies
+                Function.Call(Hash.SET_PED_DESIRED_MOVE_BLEND_RATIO, ped.Handle, 3.0f);
+
+                FileLogger.AI($"TaskCombatHatedTargetsAroundPed: COMPLETED for ped {pedHandle}");
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error($"TaskCombatHatedTargetsAroundPed exception for ped {pedHandle}", ex);
             }
         }
 
@@ -1273,6 +1321,241 @@ namespace FactionWars.ScriptHookV
             catch
             {
                 // Silently ignore
+            }
+        }
+
+        /// <inheritdoc />
+        public DomainVector3 GetPedPosition(int pedHandle)
+        {
+            try
+            {
+                var ped = Entity.FromHandle(pedHandle) as Ped;
+                if (ped == null || !ped.Exists())
+                    return DomainVector3.Zero;
+
+                var pos = ped.Position;
+                return new DomainVector3(pos.X, pos.Y, pos.Z);
+            }
+            catch
+            {
+                return DomainVector3.Zero;
+            }
+        }
+
+        /// <inheritdoc />
+        public void ClearPedTasks(int pedHandle)
+        {
+            try
+            {
+                var ped = Entity.FromHandle(pedHandle) as Ped;
+                if (ped == null || !ped.Exists())
+                    return;
+
+                ped.Task.ClearAllImmediately();
+                FileLogger.AI($"ClearPedTasks: Cleared tasks for ped {pedHandle}");
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error($"ClearPedTasks exception for ped {pedHandle}", ex);
+            }
+        }
+
+        /// <inheritdoc />
+        public void TaskPedTurnToFacePosition(int pedHandle, DomainVector3 position)
+        {
+            try
+            {
+                var ped = Entity.FromHandle(pedHandle) as Ped;
+                if (ped == null || !ped.Exists())
+                    return;
+
+                // TASK_TURN_PED_TO_FACE_COORD makes the ped turn to face a position
+                // After turning, the ped will stand idle
+                Function.Call(Hash.TASK_TURN_PED_TO_FACE_COORD, ped.Handle, position.X, position.Y, position.Z, -1);
+                FileLogger.AI($"TaskPedTurnToFacePosition: Ped {pedHandle} turning to face ({position.X:F1}, {position.Y:F1}, {position.Z:F1})");
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error($"TaskPedTurnToFacePosition exception for ped {pedHandle}", ex);
+            }
+        }
+
+        /// <inheritdoc />
+        public void SetPedSeeingRange(int pedHandle, float range)
+        {
+            FileLogger.AI($"SetPedSeeingRange: CALLED for ped {pedHandle} range {range:F1}");
+
+            try
+            {
+                var ped = Entity.FromHandle(pedHandle) as Ped;
+                if (ped == null || !ped.Exists())
+                {
+                    FileLogger.Warn($"SetPedSeeingRange: Ped {pedHandle} is null or doesn't exist");
+                    return;
+                }
+
+                // SET_PED_SEEING_RANGE sets how far the ped can visually detect enemies
+                // Default is around 70 meters
+                Function.Call(Hash.SET_PED_SEEING_RANGE, ped.Handle, range);
+
+                FileLogger.AI($"SetPedSeeingRange: COMPLETED for ped {pedHandle} - set to {range:F1}m");
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error($"SetPedSeeingRange exception for ped {pedHandle}", ex);
+            }
+        }
+
+        /// <inheritdoc />
+        public void SetPedHearingRange(int pedHandle, float range)
+        {
+            FileLogger.AI($"SetPedHearingRange: CALLED for ped {pedHandle} range {range:F1}");
+
+            try
+            {
+                var ped = Entity.FromHandle(pedHandle) as Ped;
+                if (ped == null || !ped.Exists())
+                {
+                    FileLogger.Warn($"SetPedHearingRange: Ped {pedHandle} is null or doesn't exist");
+                    return;
+                }
+
+                // SET_PED_HEARING_RANGE sets how far the ped can detect enemies by sound
+                // Default is around 60 meters
+                Function.Call(Hash.SET_PED_HEARING_RANGE, ped.Handle, range);
+
+                FileLogger.AI($"SetPedHearingRange: COMPLETED for ped {pedHandle} - set to {range:F1}m");
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error($"SetPedHearingRange exception for ped {pedHandle}", ex);
+            }
+        }
+
+        /// <inheritdoc />
+        public int CreateVehicle(string modelName, DomainVector3 position)
+        {
+            FileLogger.Info($"CreateVehicle: model={modelName}, pos=({position.X:F1}, {position.Y:F1}, {position.Z:F1})");
+
+            try
+            {
+                var model = new Model(modelName);
+
+                if (!model.IsValid)
+                {
+                    FileLogger.Error($"CreateVehicle: Model '{modelName}' is not valid");
+                    return -1;
+                }
+
+                // Request model with timeout
+                model.Request(5000);
+
+                // Wait for model to load
+                int waitCounter = 0;
+                while (!model.IsLoaded && waitCounter < 100)
+                {
+                    Script.Wait(10);
+                    waitCounter++;
+                }
+
+                if (!model.IsLoaded)
+                {
+                    FileLogger.Error($"CreateVehicle: Model '{modelName}' failed to load");
+                    return -1;
+                }
+
+                var gtaPosition = new GTA.Math.Vector3(position.X, position.Y, position.Z);
+
+                // Get ground Z for proper placement
+                var outArg = new OutputArgument();
+                bool gotGround = Function.Call<bool>(Hash.GET_GROUND_Z_FOR_3D_COORD,
+                    position.X, position.Y, position.Z + 100f,
+                    outArg, false, false);
+
+                if (gotGround)
+                {
+                    gtaPosition.Z = outArg.GetResult<float>();
+                }
+
+                var vehicle = World.CreateVehicle(model, gtaPosition);
+                model.MarkAsNoLongerNeeded();
+
+                if (vehicle == null || !vehicle.Exists())
+                {
+                    FileLogger.Error("CreateVehicle: World.CreateVehicle returned null or invalid");
+                    return -1;
+                }
+
+                // Make vehicle persistent
+                vehicle.IsPersistent = true;
+
+                FileLogger.Info($"CreateVehicle: Vehicle created successfully, handle={vehicle.Handle}");
+                return vehicle.Handle;
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error("CreateVehicle exception", ex);
+                return -1;
+            }
+        }
+
+        /// <inheritdoc />
+        public int CreateBlipForVehicle(int vehicleHandle)
+        {
+            try
+            {
+                var vehicle = Entity.FromHandle(vehicleHandle) as Vehicle;
+                if (vehicle == null || !vehicle.Exists())
+                    return -1;
+
+                var blip = vehicle.AddBlip();
+                if (blip == null || !blip.Exists())
+                    return -1;
+
+                FileLogger.Info($"CreateBlipForVehicle: Blip created for vehicle {vehicleHandle}, blip handle={blip.Handle}");
+                return blip.Handle;
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error($"CreateBlipForVehicle exception for vehicle {vehicleHandle}", ex);
+                return -1;
+            }
+        }
+
+        /// <inheritdoc />
+        public DomainVector3 GetNearestRoadPosition(DomainVector3 position)
+        {
+            FileLogger.Info($"GetNearestRoadPosition: Searching near ({position.X:F1}, {position.Y:F1}, {position.Z:F1})");
+
+            try
+            {
+                // Use GET_CLOSEST_VEHICLE_NODE_WITH_HEADING to find nearest road
+                var outNodeCoord = new OutputArgument();
+                var outHeading = new OutputArgument();
+                bool found = Function.Call<bool>(
+                    Hash.GET_CLOSEST_VEHICLE_NODE_WITH_HEADING,
+                    position.X, position.Y, position.Z,
+                    outNodeCoord,
+                    outHeading,
+                    1,      // nodeType - any road
+                    3.0f,   // p7 - search radius multiplier
+                    0);     // p8
+
+                if (found)
+                {
+                    var result = outNodeCoord.GetResult<GTA.Math.Vector3>();
+                    FileLogger.Info($"GetNearestRoadPosition: Found road at ({result.X:F1}, {result.Y:F1}, {result.Z:F1})");
+                    return new DomainVector3(result.X, result.Y, result.Z);
+                }
+
+                FileLogger.Warn($"GetNearestRoadPosition: No road found, using ground Z fallback");
+                var groundZ = GetGroundZ(position.X, position.Y, position.Z);
+                return new DomainVector3(position.X, position.Y, groundZ);
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error("GetNearestRoadPosition exception", ex);
+                return position;
             }
         }
 

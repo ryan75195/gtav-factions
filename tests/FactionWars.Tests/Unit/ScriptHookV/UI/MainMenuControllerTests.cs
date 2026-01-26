@@ -116,20 +116,6 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
         }
 
         [Fact]
-        public void MainMenu_ShouldHaveOverviewItem()
-        {
-            // Act
-            _controller.OnKeyDown(F7KeyCode);
-
-            // Assert
-            var menu = _menuProvider.GetCurrentMenuDefinition();
-            Assert.NotNull(menu);
-            var item = menu!.GetItem(MainMenuController.OverviewItemId);
-            Assert.NotNull(item);
-            Assert.Equal("Overview", item!.Text);
-        }
-
-        [Fact]
         public void MainMenu_ShouldHaveZoneManagementItem()
         {
             // Act
@@ -144,7 +130,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
         }
 
         [Fact]
-        public void MainMenu_ShouldHaveArmyItem()
+        public void MainMenu_ShouldHaveRecruitmentItem()
         {
             // Act
             _controller.OnKeyDown(F7KeyCode);
@@ -152,23 +138,9 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
             // Assert
             var menu = _menuProvider.GetCurrentMenuDefinition();
             Assert.NotNull(menu);
-            var item = menu!.GetItem(MainMenuController.ArmyItemId);
+            var item = menu!.GetItem(MainMenuController.RecruitmentItemId);
             Assert.NotNull(item);
-            Assert.Equal("Army", item!.Text);
-        }
-
-        [Fact]
-        public void MainMenu_ShouldHaveResourcesItem()
-        {
-            // Act
-            _controller.OnKeyDown(F7KeyCode);
-
-            // Assert
-            var menu = _menuProvider.GetCurrentMenuDefinition();
-            Assert.NotNull(menu);
-            var item = menu!.GetItem(MainMenuController.ResourcesItemId);
-            Assert.NotNull(item);
-            Assert.Equal("Resources", item!.Text);
+            Assert.Equal("Recruitment", item!.Text);
         }
 
         [Fact]
@@ -186,7 +158,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
         }
 
         [Fact]
-        public void MainMenu_ShouldHaveFiveItems()
+        public void MainMenu_ShouldHaveFourItems()
         {
             // Act
             _controller.OnKeyDown(F7KeyCode);
@@ -194,7 +166,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
             // Assert
             var menu = _menuProvider.GetCurrentMenuDefinition();
             Assert.NotNull(menu);
-            Assert.Equal(5, menu!.Items.Count);
+            Assert.Equal(4, menu!.Items.Count);
         }
 
         [Fact]
@@ -206,29 +178,15 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
             // Assert
             var menu = _menuProvider.GetCurrentMenuDefinition();
             Assert.NotNull(menu);
-            Assert.Equal(MainMenuController.OverviewItemId, menu!.Items[0].Id);
-            Assert.Equal(MainMenuController.ZoneManagementItemId, menu!.Items[1].Id);
-            Assert.Equal(MainMenuController.ArmyItemId, menu!.Items[2].Id);
-            Assert.Equal(MainMenuController.ResourcesItemId, menu!.Items[3].Id);
-            Assert.Equal(MainMenuController.SettingsItemId, menu!.Items[4].Id);
+            Assert.Equal(MainMenuController.ZoneManagementItemId, menu!.Items[0].Id);
+            Assert.Equal(MainMenuController.RecruitmentItemId, menu!.Items[1].Id);
+            Assert.Equal(MainMenuController.ShopItemId, menu!.Items[2].Id);
+            Assert.Equal(MainMenuController.SettingsItemId, menu!.Items[3].Id);
         }
 
         #endregion
 
         #region Menu Item Descriptions Tests
-
-        [Fact]
-        public void OverviewItem_ShouldHaveDescription()
-        {
-            // Act
-            _controller.OnKeyDown(F7KeyCode);
-
-            // Assert
-            var menu = _menuProvider.GetCurrentMenuDefinition();
-            var item = menu?.GetItem(MainMenuController.OverviewItemId);
-            Assert.NotNull(item);
-            Assert.False(string.IsNullOrEmpty(item!.Description));
-        }
 
         [Fact]
         public void ZoneManagementItem_ShouldHaveDescription()
@@ -244,27 +202,14 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
         }
 
         [Fact]
-        public void ArmyItem_ShouldHaveDescription()
+        public void RecruitmentItem_ShouldHaveDescription()
         {
             // Act
             _controller.OnKeyDown(F7KeyCode);
 
             // Assert
             var menu = _menuProvider.GetCurrentMenuDefinition();
-            var item = menu?.GetItem(MainMenuController.ArmyItemId);
-            Assert.NotNull(item);
-            Assert.False(string.IsNullOrEmpty(item!.Description));
-        }
-
-        [Fact]
-        public void ResourcesItem_ShouldHaveDescription()
-        {
-            // Act
-            _controller.OnKeyDown(F7KeyCode);
-
-            // Assert
-            var menu = _menuProvider.GetCurrentMenuDefinition();
-            var item = menu?.GetItem(MainMenuController.ResourcesItemId);
+            var item = menu?.GetItem(MainMenuController.RecruitmentItemId);
             Assert.NotNull(item);
             Assert.False(string.IsNullOrEmpty(item!.Description));
         }

@@ -58,6 +58,7 @@ namespace FactionWars.ScriptHookV
         private ZoneManagementMenuController? _zoneManagementMenuController;
         private ResourcesMenuController? _resourcesMenuController;
         private SettingsMenuController? _settingsMenuController;
+        private ShopMenuController? _shopMenuController;
         private CombatHudRenderer? _combatHudRenderer;
         private TerritoryIndicatorRenderer? _territoryIndicatorRenderer;
         private EventFeedRenderer? _eventFeedRenderer;
@@ -800,6 +801,10 @@ namespace FactionWars.ScriptHookV
                 gameStateCoordinator);
             _settingsMenuController.BackRequested += (s, e) => _mainMenuController.OnKeyDown(MainMenuController.MenuToggleKeyCode);
 
+            // Initialize shop menu controller
+            _shopMenuController = new ShopMenuController(menuProvider, _gameBridge);
+            _shopMenuController.BackRequested += (s, e) => _mainMenuController.OnKeyDown(MainMenuController.MenuToggleKeyCode);
+
             // Wire up main menu item selection to show submenus
             menuProvider.ItemSelected += OnMainMenuItemSelected;
 
@@ -826,17 +831,14 @@ namespace FactionWars.ScriptHookV
 
             switch (e.ItemId)
             {
-                case MainMenuController.OverviewItemId:
-                    _overviewMenuController?.Show();
-                    break;
                 case MainMenuController.ZoneManagementItemId:
                     _zoneManagementMenuController?.Show();
                     break;
-                case MainMenuController.ArmyItemId:
+                case MainMenuController.RecruitmentItemId:
                     _armyMenuController?.Show();
                     break;
-                case MainMenuController.ResourcesItemId:
-                    _resourcesMenuController?.Show();
+                case MainMenuController.ShopItemId:
+                    _shopMenuController?.Show();
                     break;
                 case MainMenuController.SettingsItemId:
                     _settingsMenuController?.Show();
@@ -1225,21 +1227,37 @@ namespace FactionWars.ScriptHookV
                 return;
             }
 
+            // Store zone ID before clearing
+            var zoneId = _currentNeutralZone.Id;
+            var zoneName = _currentNeutralZone.Name;
+
             // Deduct cost
             _gameBridge.AddPlayerMoney(-cost);
 
             // Transfer ownership
-            _zoneService!.TransferZoneOwnership(_currentNeutralZone.Id, playerFaction);
+            _zoneService!.TransferZoneOwnership(zoneId, playerFaction);
 
             // Allocate 1 Basic troop
             var allocationService = _container.Resolve<IZoneDefenderAllocationService>();
-            allocationService.SetAllocation(playerFaction!, _currentNeutralZone.Id, DefenderTier.Basic, 1);
+            allocationService.SetAllocation(playerFaction!, zoneId, DefenderTier.Basic, 1);
 
-            _gameBridge.ShowNotification($"~g~You now control {_currentNeutralZone.Name}!");
+            _gameBridge.ShowNotification($"~g~You now control {zoneName}!");
 
             // Clear prompt state
             _currentNeutralZone = null;
             _showingClaimPrompt = false;
+
+            // Spawn defender and commander immediately
+            // Get the updated zone (with new OwnerFactionId) from the service
+            var claimedZone = _zoneService.GetZone(zoneId);
+            if (claimedZone != null)
+            {
+                // Spawn friendly defender(s)
+                _friendlyDefenderManager?.OnZoneEntered(claimedZone);
+
+                // Spawn commander
+                _commanderManager?.OnZoneEntered(claimedZone);
+            }
         }
 
         /// <summary>
@@ -1310,6 +1328,9 @@ namespace FactionWars.ScriptHookV
                 {
                     _allocationService?.SetAllocation(battle.AttackerFactionId, battle.ZoneId, DefenderTier.Basic, toAllocate);
                 }
+
+                // Check if defender faction has been eliminated (lost all territory)
+                CheckFactionEliminated(battle.DefenderFactionId);
             }
 
             // Show notification
@@ -1329,6 +1350,24 @@ namespace FactionWars.ScriptHookV
             {
                 _gameBridge.ShowNotification($"~g~[{defenderName}]~w~ defended ~b~{zoneName}~w~ against ~r~[{attackerName}]");
                 FileLogger.Combat($"OnZoneBattleEnded: {defenderName} defended {zoneName} against {attackerName}");
+            }
+        }
+
+        /// <summary>
+        /// Checks if a faction has been eliminated (lost all territory) and shows a notification if so.
+        /// </summary>
+        private void CheckFactionEliminated(string factionId)
+        {
+            if (string.IsNullOrEmpty(factionId) || _zoneService == null)
+                return;
+
+            var zoneCount = _zoneService.GetZoneCount(factionId);
+            if (zoneCount == 0)
+            {
+                var faction = _factionService.GetFaction(factionId);
+                var factionName = faction?.Name ?? factionId;
+                _gameBridge.ShowNotification($"~r~[{factionName}]~w~ has been eliminated!");
+                FileLogger.Combat($"CheckFactionEliminated: {factionName} has been eliminated (0 zones remaining)");
             }
         }
 

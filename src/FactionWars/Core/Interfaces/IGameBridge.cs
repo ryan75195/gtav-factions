@@ -274,6 +274,14 @@ namespace FactionWars.Core.Interfaces
         void TaskPedWanderInAreaSprinting(int pedHandle, Vector3 center, float radius);
 
         /// <summary>
+        /// Tasks a ped to actively seek out and fight any hated targets within range.
+        /// Used for friendly defenders during battles to make them engage enemies.
+        /// </summary>
+        /// <param name="pedHandle">Handle of the ped to task.</param>
+        /// <param name="radius">The radius in which to search for enemies.</param>
+        void TaskCombatHatedTargetsAroundPed(int pedHandle, float radius);
+
+        /// <summary>
         /// Makes a ped friendly to the player by setting them to the player's relationship group.
         /// Unlike SetPedAsFollower, this does NOT make them follow the player or join the ped group.
         /// Used for friendly zone defenders who should not attack the player or followers.
@@ -331,5 +339,64 @@ namespace FactionWars.Core.Interfaces
         /// </summary>
         /// <param name="text">The text to display. Supports GTA text formatting.</param>
         void DisplayHelpText(string text);
+
+        /// <summary>
+        /// Gets the world position of a ped.
+        /// </summary>
+        /// <param name="pedHandle">Handle of the ped.</param>
+        /// <returns>The ped's current position, or Vector3.Zero if invalid.</returns>
+        Vector3 GetPedPosition(int pedHandle);
+
+        /// <summary>
+        /// Clears all tasks from a ped, stopping any current activity.
+        /// </summary>
+        /// <param name="pedHandle">Handle of the ped.</param>
+        void ClearPedTasks(int pedHandle);
+
+        /// <summary>
+        /// Makes a ped turn to face a specific position and remain idle.
+        /// </summary>
+        /// <param name="pedHandle">Handle of the ped.</param>
+        /// <param name="position">Position to face.</param>
+        void TaskPedTurnToFacePosition(int pedHandle, Vector3 position);
+
+        /// <summary>
+        /// Sets a ped's seeing range (how far they can visually detect enemies).
+        /// Default is around 70 meters. Set higher for zone-wide visibility during battles.
+        /// </summary>
+        /// <param name="pedHandle">Handle of the ped.</param>
+        /// <param name="range">The seeing range in meters.</param>
+        void SetPedSeeingRange(int pedHandle, float range);
+
+        /// <summary>
+        /// Sets a ped's hearing range (how far they can detect enemies by sound).
+        /// Default is around 60 meters. Set higher for zone-wide awareness during battles.
+        /// </summary>
+        /// <param name="pedHandle">Handle of the ped.</param>
+        /// <param name="range">The hearing range in meters.</param>
+        void SetPedHearingRange(int pedHandle, float range);
+
+        /// <summary>
+        /// Creates a vehicle at the specified position.
+        /// </summary>
+        /// <param name="modelName">The model name of the vehicle (e.g., "insurgent", "buzzard").</param>
+        /// <param name="position">World position to spawn the vehicle.</param>
+        /// <returns>Handle to the created vehicle, or -1 if creation failed.</returns>
+        int CreateVehicle(string modelName, Vector3 position);
+
+        /// <summary>
+        /// Creates a blip attached to a vehicle that follows the vehicle on the minimap.
+        /// </summary>
+        /// <param name="vehicleHandle">Handle of the vehicle to attach blip to.</param>
+        /// <returns>Handle to the created blip, or -1 if creation failed.</returns>
+        int CreateBlipForVehicle(int vehicleHandle);
+
+        /// <summary>
+        /// Gets the nearest road position to the specified location.
+        /// Uses vehicle node pathfinding to find a valid road surface.
+        /// </summary>
+        /// <param name="position">The reference position to search from.</param>
+        /// <returns>The nearest road position, or the input position if no road found.</returns>
+        Vector3 GetNearestRoadPosition(Vector3 position);
     }
 }

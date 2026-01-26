@@ -21,24 +21,19 @@ namespace FactionWars.ScriptHookV.UI
         public const string MainMenuId = "main_menu";
 
         /// <summary>
-        /// Item ID for the Overview submenu option.
-        /// </summary>
-        public const string OverviewItemId = "overview";
-
-        /// <summary>
         /// Item ID for the Zone Management submenu option.
         /// </summary>
         public const string ZoneManagementItemId = "zone_management";
 
         /// <summary>
-        /// Item ID for the Army submenu option.
+        /// Item ID for the Recruitment submenu option.
         /// </summary>
-        public const string ArmyItemId = "army";
+        public const string RecruitmentItemId = "recruitment";
 
         /// <summary>
-        /// Item ID for the Resources submenu option.
+        /// Item ID for the Shop submenu option.
         /// </summary>
-        public const string ResourcesItemId = "resources";
+        public const string ShopItemId = "shop";
 
         /// <summary>
         /// Item ID for the Settings submenu option.
@@ -97,24 +92,19 @@ namespace FactionWars.ScriptHookV.UI
             var menu = new MenuDefinition(MainMenuId, "Faction Wars", "Territory Control");
 
             menu.AddItem(new MenuItem(
-                OverviewItemId,
-                "Overview",
-                "View faction stats and victory progress"));
-
-            menu.AddItem(new MenuItem(
                 ZoneManagementItemId,
                 "Zone Management",
                 "View zones, allocate and withdraw troops"));
 
             menu.AddItem(new MenuItem(
-                ArmyItemId,
-                "Army",
+                RecruitmentItemId,
+                "Recruitment",
                 "Purchase troops and recruit followers"));
 
             menu.AddItem(new MenuItem(
-                ResourcesItemId,
-                "Resources",
-                "View income breakdown and finances"));
+                ShopItemId,
+                "Shop",
+                "Purchase military vehicles"));
 
             menu.AddItem(new MenuItem(
                 SettingsItemId,

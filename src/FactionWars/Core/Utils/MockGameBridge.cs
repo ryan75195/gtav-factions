@@ -242,7 +242,9 @@ namespace FactionWars.Core.Utils
         private readonly Dictionary<int, VehicleState> _vehicles = new Dictionary<int, VehicleState>();
         private readonly Dictionary<int, int> _pedsInVehicles = new Dictionary<int, int>(); // pedHandle -> vehicleHandle
         private readonly HashSet<int> _pedsTryingToEnterVehicle = new HashSet<int>();
+        private readonly Dictionary<int, int> _vehicleBlips = new Dictionary<int, int>(); // vehicleHandle -> blipHandle
         private int _nextVehicleHandle = 1000;
+        private int _nextVehicleBlipHandle = 9000;
 
         /// <summary>
         /// Gets or sets whether the player is in a vehicle.
@@ -396,6 +398,9 @@ namespace FactionWars.Core.Utils
         {
             if (_peds.ContainsKey(pedHandle))
             {
+                // Clear other task states when assigning wander
+                _pedsFacingPosition.Remove(pedHandle);
+                _combatTargetingPeds.Remove(pedHandle);
                 _wanderingPeds[pedHandle] = new WanderState
                 {
                     Center = center,
@@ -409,6 +414,9 @@ namespace FactionWars.Core.Utils
         {
             if (_peds.ContainsKey(pedHandle))
             {
+                // Clear other task states when assigning wander
+                _pedsFacingPosition.Remove(pedHandle);
+                _combatTargetingPeds.Remove(pedHandle);
                 _wanderingPeds[pedHandle] = new WanderState
                 {
                     Center = center,
@@ -452,6 +460,32 @@ namespace FactionWars.Core.Utils
             public Vector3 Center { get; set; }
             public float Radius { get; set; }
             public bool IsSprinting { get; set; }
+        }
+
+        private readonly Dictionary<int, float> _combatTargetingPeds = new Dictionary<int, float>();
+
+        public void TaskCombatHatedTargetsAroundPed(int pedHandle, float radius)
+        {
+            if (_peds.ContainsKey(pedHandle))
+            {
+                // Clear other task states when assigning combat targeting
+                _wanderingPeds.Remove(pedHandle);
+                _pedsFacingPosition.Remove(pedHandle);
+                _combatTargetingPeds[pedHandle] = radius;
+            }
+        }
+
+        /// <summary>
+        /// Gets whether a ped is actively seeking combat targets.
+        /// </summary>
+        public bool IsPedCombatTargeting(int pedHandle) => _combatTargetingPeds.ContainsKey(pedHandle);
+
+        /// <summary>
+        /// Gets the combat targeting radius for a ped.
+        /// </summary>
+        public float? GetPedCombatTargetingRadius(int pedHandle)
+        {
+            return _combatTargetingPeds.TryGetValue(pedHandle, out var radius) ? radius : (float?)null;
         }
 
         public void SetPedAsFriendly(int pedHandle)
@@ -532,6 +566,80 @@ namespace FactionWars.Core.Utils
         public Vector3 GetPedPosition(int pedHandle)
         {
             return _peds.TryGetValue(pedHandle, out var ped) ? ped.Position : Vector3.Zero;
+        }
+
+        private readonly HashSet<int> _clearedPeds = new HashSet<int>();
+        private readonly Dictionary<int, Vector3> _pedsFacingPosition = new Dictionary<int, Vector3>();
+
+        public void ClearPedTasks(int pedHandle)
+        {
+            if (_peds.ContainsKey(pedHandle))
+            {
+                _clearedPeds.Add(pedHandle);
+                _wanderingPeds.Remove(pedHandle);
+                _pedsFacingPosition.Remove(pedHandle);
+            }
+        }
+
+        public void TaskPedTurnToFacePosition(int pedHandle, Vector3 position)
+        {
+            if (_peds.ContainsKey(pedHandle))
+            {
+                _pedsFacingPosition[pedHandle] = position;
+            }
+        }
+
+        private readonly Dictionary<int, float> _pedSeeingRanges = new Dictionary<int, float>();
+        private readonly Dictionary<int, float> _pedHearingRanges = new Dictionary<int, float>();
+
+        public void SetPedSeeingRange(int pedHandle, float range)
+        {
+            if (_peds.ContainsKey(pedHandle))
+            {
+                _pedSeeingRanges[pedHandle] = range;
+            }
+        }
+
+        public void SetPedHearingRange(int pedHandle, float range)
+        {
+            if (_peds.ContainsKey(pedHandle))
+            {
+                _pedHearingRanges[pedHandle] = range;
+            }
+        }
+
+        /// <summary>
+        /// Gets the seeing range set for a ped.
+        /// </summary>
+        public float GetPedSeeingRange(int pedHandle)
+        {
+            return _pedSeeingRanges.TryGetValue(pedHandle, out var range) ? range : 70f; // Default ~70m
+        }
+
+        /// <summary>
+        /// Gets the hearing range set for a ped.
+        /// </summary>
+        public float GetPedHearingRange(int pedHandle)
+        {
+            return _pedHearingRanges.TryGetValue(pedHandle, out var range) ? range : 60f; // Default ~60m
+        }
+
+        /// <summary>
+        /// Checks if a ped has had its tasks cleared.
+        /// </summary>
+        public bool WerePedTasksCleared(int pedHandle) => _clearedPeds.Contains(pedHandle);
+
+        /// <summary>
+        /// Checks if a ped is facing a position.
+        /// </summary>
+        public bool IsPedFacingPosition(int pedHandle) => _pedsFacingPosition.ContainsKey(pedHandle);
+
+        /// <summary>
+        /// Gets the position a ped is facing.
+        /// </summary>
+        public Vector3? GetPedFacingPosition(int pedHandle)
+        {
+            return _pedsFacingPosition.TryGetValue(pedHandle, out var pos) ? pos : (Vector3?)null;
         }
 
         /// <summary>
@@ -648,11 +756,60 @@ namespace FactionWars.Core.Utils
         /// </summary>
         /// <param name="totalSeats">Total number of seats including driver.</param>
         /// <returns>The vehicle handle.</returns>
-        public int CreateVehicle(int totalSeats = 4)
+        public int CreateTestVehicle(int totalSeats = 4)
         {
             var handle = _nextVehicleHandle++;
             _vehicles[handle] = new VehicleState(totalSeats);
             return handle;
+        }
+
+        /// <summary>
+        /// Creates a vehicle at the specified position (IGameBridge implementation).
+        /// </summary>
+        public int CreateVehicle(string modelName, Vector3 position)
+        {
+            var handle = _nextVehicleHandle++;
+            _vehicles[handle] = new VehicleState(4, modelName, position);
+            return handle;
+        }
+
+        /// <summary>
+        /// Creates a blip attached to a vehicle.
+        /// </summary>
+        public int CreateBlipForVehicle(int vehicleHandle)
+        {
+            if (!_vehicles.ContainsKey(vehicleHandle))
+            {
+                return -1;
+            }
+            var blipHandle = _nextVehicleBlipHandle++;
+            _vehicleBlips[vehicleHandle] = blipHandle;
+            _blips[blipHandle] = new BlipState
+            {
+                Position = _vehicles[vehicleHandle].Position,
+                Color = BlipColor.Yellow
+            };
+            _blipsCreated.Add(blipHandle);
+            return blipHandle;
+        }
+
+        /// <summary>
+        /// Gets the count of spawned vehicles (for testing).
+        /// </summary>
+        public int GetSpawnedVehicleCount() => _vehicles.Count;
+
+        /// <summary>
+        /// Gets the count of vehicle blips (for testing).
+        /// </summary>
+        public int GetVehicleBlipCount() => _vehicleBlips.Count;
+
+        /// <summary>
+        /// Gets the nearest road position (mock returns position with Z=0 to simulate road level).
+        /// </summary>
+        public Vector3 GetNearestRoadPosition(Vector3 position)
+        {
+            // Mock simulates finding a nearby road at ground level
+            return new Vector3(position.X + 5, position.Y, 0f);
         }
 
         /// <summary>
@@ -662,7 +819,7 @@ namespace FactionWars.Core.Utils
         /// <returns>The vehicle handle.</returns>
         public int SetPlayerInVehicle(int totalSeats = 4)
         {
-            var handle = CreateVehicle(totalSeats);
+            var handle = CreateTestVehicle(totalSeats);
             IsPlayerInVehicleValue = true;
             PlayerVehicleHandle = handle;
             // Occupy driver seat (index 0) by player
@@ -710,9 +867,14 @@ namespace FactionWars.Core.Utils
             private readonly Dictionary<int, int> _occupiedSeats = new Dictionary<int, int>(); // seatIndex -> pedHandle (-1 for player)
             private readonly int _totalSeats;
 
-            public VehicleState(int totalSeats)
+            public string ModelName { get; }
+            public Vector3 Position { get; }
+
+            public VehicleState(int totalSeats, string modelName = "", Vector3 position = default)
             {
                 _totalSeats = totalSeats;
+                ModelName = modelName;
+                Position = position;
             }
 
             public int[] GetFreeSeats()

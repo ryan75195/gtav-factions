@@ -10,7 +10,7 @@ namespace FactionWars.Tests.Integration.ScriptHookV
     /// <summary>
     /// Integration tests verifying the complete menu system:
     /// - F7 opens the main menu
-    /// - All submenus (Overview, Zone Management, Army, Resources, Settings) work correctly
+    /// - All submenus (Zone Management, Recruitment, Settings) work correctly
     /// - Navigation between menus functions properly
     /// </summary>
     public class MenuSystemIntegrationTests
@@ -65,7 +65,7 @@ namespace FactionWars.Tests.Integration.ScriptHookV
         }
 
         [Fact]
-        public void MainMenu_HasAllFiveSubmenus()
+        public void MainMenu_HasAllFourSubmenus()
         {
             // Arrange
             _controller.OnKeyDown(F7KeyCode);
@@ -75,65 +75,11 @@ namespace FactionWars.Tests.Integration.ScriptHookV
 
             // Assert
             Assert.NotNull(menu);
-            Assert.Equal(5, menu!.Items.Count);
-            Assert.NotNull(menu.GetItem(MainMenuController.OverviewItemId));
+            Assert.Equal(4, menu!.Items.Count);
             Assert.NotNull(menu.GetItem(MainMenuController.ZoneManagementItemId));
-            Assert.NotNull(menu.GetItem(MainMenuController.ArmyItemId));
-            Assert.NotNull(menu.GetItem(MainMenuController.ResourcesItemId));
+            Assert.NotNull(menu.GetItem(MainMenuController.RecruitmentItemId));
+            Assert.NotNull(menu.GetItem(MainMenuController.ShopItemId));
             Assert.NotNull(menu.GetItem(MainMenuController.SettingsItemId));
-        }
-
-        #endregion
-
-        #region Overview Submenu Tests
-
-        [Fact]
-        public void OverviewSubmenu_OpensWhenSelected()
-        {
-            // Arrange
-            _controller.OnKeyDown(F7KeyCode);
-
-            // Act
-            _menuProvider.SimulateItemSelection(MainMenuController.OverviewItemId);
-
-            // Assert
-            Assert.True(_menuProvider.IsMenuVisible);
-            Assert.Equal(OverviewMenuController.OverviewMenuId, _menuProvider.CurrentMenuId);
-        }
-
-        [Fact]
-        public void OverviewSubmenu_DisplaysFactionStats()
-        {
-            // Arrange
-            _controller.OnKeyDown(F7KeyCode);
-            _menuProvider.SimulateItemSelection(MainMenuController.OverviewItemId);
-
-            // Act
-            var menu = _menuProvider.GetCurrentMenuDefinition();
-
-            // Assert
-            Assert.NotNull(menu);
-            Assert.NotNull(menu!.GetItem(OverviewMenuController.ZonesOwnedItemId));
-            Assert.NotNull(menu.GetItem(OverviewMenuController.VictoryProgressItemId));
-            Assert.NotNull(menu.GetItem(OverviewMenuController.CashItemId));
-            Assert.NotNull(menu.GetItem(OverviewMenuController.TotalTroopsItemId));
-            Assert.NotNull(menu.GetItem(OverviewMenuController.BackItemId));
-        }
-
-        [Fact]
-        public void OverviewSubmenu_BackReturnsToMainMenu()
-        {
-            // Arrange
-            _controller.OnKeyDown(F7KeyCode);
-            _menuProvider.SimulateItemSelection(MainMenuController.OverviewItemId);
-            Assert.Equal(OverviewMenuController.OverviewMenuId, _menuProvider.CurrentMenuId);
-
-            // Act
-            _menuProvider.SimulateItemSelection(OverviewMenuController.BackItemId);
-
-            // Assert - Menu should reopen at main menu
-            Assert.True(_menuProvider.IsMenuVisible);
-            Assert.Equal(MainMenuController.MainMenuId, _menuProvider.CurrentMenuId);
         }
 
         #endregion
@@ -171,16 +117,16 @@ namespace FactionWars.Tests.Integration.ScriptHookV
 
         #endregion
 
-        #region Army Submenu Tests
+        #region Recruitment Submenu Tests
 
         [Fact]
-        public void ArmySubmenu_OpensWhenSelected()
+        public void RecruitmentSubmenu_OpensWhenSelected()
         {
             // Arrange
             _controller.OnKeyDown(F7KeyCode);
 
             // Act
-            _menuProvider.SimulateItemSelection(MainMenuController.ArmyItemId);
+            _menuProvider.SimulateItemSelection(MainMenuController.RecruitmentItemId);
 
             // Assert
             Assert.True(_menuProvider.IsMenuVisible);
@@ -188,11 +134,11 @@ namespace FactionWars.Tests.Integration.ScriptHookV
         }
 
         [Fact]
-        public void ArmySubmenu_DisplaysPurchaseOptions()
+        public void RecruitmentSubmenu_DisplaysPurchaseOptions()
         {
             // Arrange
             _controller.OnKeyDown(F7KeyCode);
-            _menuProvider.SimulateItemSelection(MainMenuController.ArmyItemId);
+            _menuProvider.SimulateItemSelection(MainMenuController.RecruitmentItemId);
 
             // Act
             var menu = _menuProvider.GetCurrentMenuDefinition();
@@ -206,66 +152,14 @@ namespace FactionWars.Tests.Integration.ScriptHookV
         }
 
         [Fact]
-        public void ArmySubmenu_BackReturnsToMainMenu()
+        public void RecruitmentSubmenu_BackReturnsToMainMenu()
         {
             // Arrange
             _controller.OnKeyDown(F7KeyCode);
-            _menuProvider.SimulateItemSelection(MainMenuController.ArmyItemId);
+            _menuProvider.SimulateItemSelection(MainMenuController.RecruitmentItemId);
 
             // Act
             _menuProvider.SimulateItemSelection(ArmyMenuController.BackItemId);
-
-            // Assert
-            Assert.True(_menuProvider.IsMenuVisible);
-            Assert.Equal(MainMenuController.MainMenuId, _menuProvider.CurrentMenuId);
-        }
-
-        #endregion
-
-        #region Resources Submenu Tests
-
-        [Fact]
-        public void ResourcesSubmenu_OpensWhenSelected()
-        {
-            // Arrange
-            _controller.OnKeyDown(F7KeyCode);
-
-            // Act
-            _menuProvider.SimulateItemSelection(MainMenuController.ResourcesItemId);
-
-            // Assert
-            Assert.True(_menuProvider.IsMenuVisible);
-            Assert.Equal(ResourcesMenuController.ResourcesMenuId, _menuProvider.CurrentMenuId);
-        }
-
-        [Fact]
-        public void ResourcesSubmenu_DisplaysIncomeBreakdown()
-        {
-            // Arrange
-            _controller.OnKeyDown(F7KeyCode);
-            _menuProvider.SimulateItemSelection(MainMenuController.ResourcesItemId);
-
-            // Act
-            var menu = _menuProvider.GetCurrentMenuDefinition();
-
-            // Assert
-            Assert.NotNull(menu);
-            Assert.NotNull(menu!.GetItem(ResourcesMenuController.NextTickItemId));
-            Assert.NotNull(menu.GetItem(ResourcesMenuController.TotalCashItemId));
-            Assert.NotNull(menu.GetItem(ResourcesMenuController.TotalRecruitmentItemId));
-            Assert.NotNull(menu.GetItem(ResourcesMenuController.TotalWeaponsItemId));
-            Assert.NotNull(menu.GetItem(ResourcesMenuController.BackItemId));
-        }
-
-        [Fact]
-        public void ResourcesSubmenu_BackReturnsToMainMenu()
-        {
-            // Arrange
-            _controller.OnKeyDown(F7KeyCode);
-            _menuProvider.SimulateItemSelection(MainMenuController.ResourcesItemId);
-
-            // Act
-            _menuProvider.SimulateItemSelection(ResourcesMenuController.BackItemId);
 
             // Assert
             Assert.True(_menuProvider.IsMenuVisible);
@@ -343,7 +237,7 @@ namespace FactionWars.Tests.Integration.ScriptHookV
         {
             // Arrange
             _controller.OnKeyDown(F7KeyCode);
-            _menuProvider.SimulateItemSelection(MainMenuController.OverviewItemId);
+            _menuProvider.SimulateItemSelection(MainMenuController.ZoneManagementItemId);
 
             // Act & Assert
             var exception = Record.Exception(() => _controller.OnTick());
