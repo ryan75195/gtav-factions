@@ -451,22 +451,19 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             // Act
             _manager.OnZoneEntered(zone);
 
-            // Assert - All spawn positions should be within zone radius (30%-100%)
-            var minRadius = zone.Radius * 0.3f; // 45m
-            var maxRadius = zone.Radius; // 150m
+            // Assert - All spawn positions should be at 80% of zone radius
+            var expectedRadius = zone.Radius * 0.8f; // 120m
             foreach (var pos in spawnPositions)
             {
                 var distance = Math.Sqrt(Math.Pow(pos.X - zone.Center.X, 2) + Math.Pow(pos.Y - zone.Center.Y, 2));
-                Assert.True(distance >= minRadius - 1f, $"Position {pos} is too close to center (distance: {distance}, minRadius: {minRadius})");
-                Assert.True(distance <= maxRadius + 1f, $"Position {pos} is too far from center (distance: {distance}, maxRadius: {maxRadius})");
+                Assert.True(distance >= expectedRadius - 1f && distance <= expectedRadius + 1f,
+                    $"Position {pos} should be at 80% of zone radius (expected: {expectedRadius}, actual: {distance})");
             }
 
-            // Assert - Positions should be different (random, not deterministic)
-            // With 5 spawns, we expect variation
-            var uniqueDistances = spawnPositions.Select(p =>
-                Math.Round(Math.Sqrt(Math.Pow(p.X - zone.Center.X, 2) + Math.Pow(p.Y - zone.Center.Y, 2)), 1))
-                .Distinct().Count();
-            Assert.True(uniqueDistances > 1, "Spawn positions should have varying distances (randomness)");
+            // Assert - Positions should be at different angles (random X/Y, not deterministic)
+            // With 5 spawns, we expect unique positions even at the same radius
+            var uniquePositions = spawnPositions.Select(p => (Math.Round(p.X, 1), Math.Round(p.Y, 1))).Distinct().Count();
+            Assert.True(uniquePositions > 1, "Spawn positions should have varying angles (randomness)");
         }
 
         [Fact]
@@ -616,15 +613,15 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             // Re-enable spawning for replacement
             _pedSpawningServiceMock.Setup(p => p.CanSpawn()).Returns(true);
 
-            // Start battle - existing defenders switch to sprinting
+            // Start battle - existing defenders switch to combat targeting
             _manager.OnBattleStarted(TestZoneId);
 
-            // All defenders should be sprinting now
+            // All defenders should be in combat targeting mode now
             var initialPeds = _gameBridge.GetSpawnedPeds();
             foreach (var pedHandle in initialPeds)
             {
-                Assert.True(_gameBridge.IsPedWanderingSprinting(pedHandle),
-                    $"Ped {pedHandle} should be sprinting after OnBattleStarted");
+                Assert.True(_gameBridge.IsPedCombatTargeting(pedHandle),
+                    $"Ped {pedHandle} should be combat targeting after OnBattleStarted");
             }
 
             // Kill one defender
@@ -639,14 +636,14 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             Assert.Equal(3, _manager.GetSpawnedDefenderCount(TestZoneId));
             Assert.Equal(3, allocation.TotalTroops); // Decremented from 4
 
-            // The replacement should also be sprinting since battle is active
+            // The replacement should also be in combat targeting mode since battle is active
             var currentPeds = _gameBridge.GetSpawnedPeds();
             foreach (var pedHandle in currentPeds)
             {
                 if (_gameBridge.IsPedAlive(pedHandle))
                 {
-                    Assert.True(_gameBridge.IsPedWanderingSprinting(pedHandle),
-                        $"Ped {pedHandle} should be sprinting during active battle");
+                    Assert.True(_gameBridge.IsPedCombatTargeting(pedHandle),
+                        $"Ped {pedHandle} should be combat targeting during active battle");
                 }
             }
         }
@@ -739,14 +736,14 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             // Act - Allocate more troops during battle
             _manager.OnTroopsAllocated(PlayerFactionId, TestZoneId, DefenderTier.Basic, 2, zone.Center, zone.Radius);
 
-            // Assert - New troops should also be sprinting
+            // Assert - New troops should also be in combat targeting mode
             var currentPeds = _gameBridge.GetSpawnedPeds();
             Assert.Equal(4, currentPeds.Count);
 
             foreach (var pedHandle in currentPeds)
             {
-                Assert.True(_gameBridge.IsPedWanderingSprinting(pedHandle),
-                    $"Ped {pedHandle} should be sprinting during active battle");
+                Assert.True(_gameBridge.IsPedCombatTargeting(pedHandle),
+                    $"Ped {pedHandle} should be combat targeting during active battle");
             }
         }
 

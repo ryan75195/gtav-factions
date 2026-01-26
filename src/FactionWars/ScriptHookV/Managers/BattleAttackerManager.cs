@@ -398,6 +398,9 @@ namespace FactionWars.ScriptHookV.Managers
             // Set as hostile wanderer - will engage player and followers on sight
             _gameBridge.SetPedAsHostileWanderer(pedHandle);
 
+            // Sprinting wander to actively search for and engage enemies
+            _gameBridge.TaskPedWanderInAreaSprinting(pedHandle, zoneCenter, wanderRadius);
+
             // CRITICAL: Task to attack player immediately so they engage right away
             _gameBridge.SetPedToAttackPlayer(pedHandle);
         }

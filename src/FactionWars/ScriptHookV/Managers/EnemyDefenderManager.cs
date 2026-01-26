@@ -30,7 +30,7 @@ namespace FactionWars.ScriptHookV.Managers
         private readonly Dictionary<string, Dictionary<int, DefenderTier>> _spawnedPedTierByZone;
         private string? _currentEnemyZoneId;
 
-        private const float MinSpawnRadiusFraction = 0.3f;  // Min 30% of zone radius
+        private const float SpawnRadiusFraction = 0.8f;  // 80% of zone radius
 
         /// <summary>
         /// Maximum number of enemy defenders that can be spawned at once per zone.
@@ -320,14 +320,13 @@ namespace FactionWars.ScriptHookV.Managers
 
         /// <summary>
         /// Calculates a random spawn position around the zone center at ground level.
-        /// Uses the zone's full radius for spawn area and navmesh-based safe coordinates
+        /// Uses 80% of zone radius for spawn distance and navmesh-based safe coordinates
         /// to avoid spawning on rooftops.
         /// </summary>
         private Vector3 CalculateRandomSpawnPosition(Vector3 center, float zoneRadius, Random random)
         {
             var angle = random.NextDouble() * 2 * Math.PI;
-            var minRadius = zoneRadius * MinSpawnRadiusFraction;
-            var distance = minRadius + (float)(random.NextDouble() * (zoneRadius - minRadius));
+            var distance = zoneRadius * SpawnRadiusFraction;
             var x = center.X + (float)(Math.Cos(angle) * distance);
             var y = center.Y + (float)(Math.Sin(angle) * distance);
 
@@ -349,10 +348,18 @@ namespace FactionWars.ScriptHookV.Managers
             _gameBridge.SetPedHealth(pedHandle, tierConfig.Health);
             _gameBridge.SetPedCombatAttributes(pedHandle, canUseCover: true, willFightArmedPeds: true);
 
+            // Set zone-wide perception so enemies can detect friendly defenders across the zone
+            var perceptionRange = wanderRadius * 1.2f;
+            _gameBridge.SetPedSeeingRange(pedHandle, perceptionRange);
+            _gameBridge.SetPedHearingRange(pedHandle, perceptionRange);
+
             // Set as hostile wanderer - will engage player and followers on sight
             _gameBridge.SetPedAsHostileWanderer(pedHandle);
 
-            // CRITICAL: Task to attack player immediately so they engage right away
+            // Task to seek and fight hated targets (player, followers, friendly defenders)
+            _gameBridge.TaskCombatHatedTargetsAroundPed(pedHandle, wanderRadius);
+
+            // CRITICAL: Also task to attack player immediately for immediate engagement
             _gameBridge.SetPedToAttackPlayer(pedHandle);
         }
 

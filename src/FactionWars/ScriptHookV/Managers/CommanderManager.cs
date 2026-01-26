@@ -49,6 +49,7 @@ namespace FactionWars.ScriptHookV.Managers
 
         private readonly Dictionary<string, int> _commanderByZone; // zoneId -> pedHandle
         private readonly HashSet<string> _zonesInBattle;
+        private readonly HashSet<int> _commandersFacingPlayer; // Commanders currently facing player
         private string? _currentZoneId;
         private readonly Random _random = new Random();
 
@@ -61,6 +62,12 @@ namespace FactionWars.ScriptHookV.Managers
         /// Key code for the E key used for interaction.
         /// </summary>
         private const int InteractKeyCode = 0x45; // E key
+
+        /// <summary>
+        /// Proximity distance (in meters) for commander interaction.
+        /// Player must be within this distance to interact with a commander.
+        /// </summary>
+        public const float InteractionProximity = 3.0f;
 
         private readonly Action<object?>? _openMenuCallback;
 
@@ -94,6 +101,7 @@ namespace FactionWars.ScriptHookV.Managers
 
             _commanderByZone = new Dictionary<string, int>();
             _zonesInBattle = new HashSet<string>();
+            _commandersFacingPlayer = new HashSet<int>();
         }
 
         /// <summary>
@@ -188,10 +196,10 @@ namespace FactionWars.ScriptHookV.Managers
             _gameBridge.SetPedHealth(pedHandle, CommanderHealth);
             _gameBridge.SetPedCombatAttributes(pedHandle, canUseCover: true, willFightArmedPeds: true);
 
-            // Wander in the zone
+            // Combat targeting if in battle, otherwise wander in the zone
             if (_zonesInBattle.Contains(zone.Id))
             {
-                _gameBridge.TaskPedWanderInAreaSprinting(pedHandle, zone.Center, zone.Radius);
+                _gameBridge.TaskCombatHatedTargetsAroundPed(pedHandle, zone.Radius);
             }
             else
             {
@@ -201,7 +209,7 @@ namespace FactionWars.ScriptHookV.Managers
 
         /// <summary>
         /// Checks all commanders for death and respawns them immediately.
-        /// Also shows help text when player is aiming at a commander.
+        /// Also shows help text when player is near a commander.
         /// Should be called every frame from the game loop.
         /// </summary>
         public void Update()
@@ -225,14 +233,39 @@ namespace FactionWars.ScriptHookV.Managers
                 RespawnCommander(zoneId);
             }
 
-            // Show help text if aiming at commander
-            if (_gameBridge.IsPlayerFreeAiming())
+            // Handle proximity-based facing/wandering state
+            var nearbyCommander = GetNearbyCommander();
+            if (nearbyCommander != null)
             {
-                var targetEntity = _gameBridge.GetEntityPlayerIsAimingAt();
-                if (targetEntity != 0 && IsCommander(targetEntity))
+                var commanderHandle = nearbyCommander.Value;
+
+                // Show help text
+                _gameBridge.DisplayHelpText("Press ~INPUT_CONTEXT~ to talk to Commander");
+
+                // If commander is not already facing player, stop wandering and face player
+                if (!_commandersFacingPlayer.Contains(commanderHandle))
                 {
-                    _gameBridge.DisplayHelpText("Press ~INPUT_CONTEXT~ to talk to Commander");
+                    _gameBridge.ClearPedTasks(commanderHandle);
+                    var playerPos = _gameBridge.GetPlayerPosition();
+                    _gameBridge.TaskPedTurnToFacePosition(commanderHandle, playerPos);
+                    _commandersFacingPlayer.Add(commanderHandle);
                 }
+            }
+
+            // Resume wandering for commanders no longer near player
+            var commandersToResume = new List<int>();
+            foreach (var commanderHandle in _commandersFacingPlayer)
+            {
+                if (nearbyCommander == null || nearbyCommander.Value != commanderHandle)
+                {
+                    commandersToResume.Add(commanderHandle);
+                }
+            }
+
+            foreach (var commanderHandle in commandersToResume)
+            {
+                _commandersFacingPlayer.Remove(commanderHandle);
+                ResumeWandering(commanderHandle);
             }
         }
 
@@ -277,21 +310,18 @@ namespace FactionWars.ScriptHookV.Managers
         }
 
         /// <summary>
-        /// Handles key press events. Opens menu when E is pressed while aiming at commander.
+        /// Handles key press events. Opens menu when E is pressed near a commander.
         /// </summary>
         /// <param name="keyCode">The key code of the pressed key.</param>
         public void OnKeyDown(int keyCode)
         {
             if (keyCode != InteractKeyCode) return;
-            if (!_gameBridge.IsPlayerFreeAiming()) return;
 
-            var targetEntity = _gameBridge.GetEntityPlayerIsAimingAt();
-            if (targetEntity == 0) return;
+            // Check if player is near any commander (proximity-based)
+            var nearbyCommander = GetNearbyCommander();
+            if (nearbyCommander == null) return;
 
-            if (IsCommander(targetEntity))
-            {
-                _openMenuCallback?.Invoke(null!);
-            }
+            _openMenuCallback?.Invoke(null!);
         }
 
         /// <summary>
@@ -303,7 +333,68 @@ namespace FactionWars.ScriptHookV.Managers
         }
 
         /// <summary>
-        /// Called when a battle starts in a zone. Switches commander to sprinting wander.
+        /// Resumes behavior for a commander after the player moves away.
+        /// Uses combat targeting if in battle, otherwise wanders.
+        /// </summary>
+        private void ResumeWandering(int commanderHandle)
+        {
+            // Find the zone this commander is in
+            string? zoneId = null;
+            foreach (var kvp in _commanderByZone)
+            {
+                if (kvp.Value == commanderHandle)
+                {
+                    zoneId = kvp.Key;
+                    break;
+                }
+            }
+
+            if (zoneId == null) return;
+
+            var zone = _zoneService.GetZone(zoneId);
+            if (zone == null) return;
+
+            // Resume combat targeting if in battle, otherwise wander
+            if (_zonesInBattle.Contains(zoneId))
+            {
+                _gameBridge.TaskCombatHatedTargetsAroundPed(commanderHandle, zone.Radius);
+            }
+            else
+            {
+                _gameBridge.TaskPedWanderInArea(commanderHandle, zone.Center, zone.Radius);
+            }
+        }
+
+        /// <summary>
+        /// Gets the first commander within interaction proximity of the player.
+        /// Returns the ped handle of the nearby commander, or null if none are close enough.
+        /// </summary>
+        private int? GetNearbyCommander()
+        {
+            var playerPos = _gameBridge.GetPlayerPosition();
+
+            foreach (var kvp in _commanderByZone)
+            {
+                var pedHandle = kvp.Value;
+                var commanderPos = _gameBridge.GetPedPosition(pedHandle);
+
+                // Calculate distance (2D distance is sufficient since they're on the same plane)
+                var dx = playerPos.X - commanderPos.X;
+                var dy = playerPos.Y - commanderPos.Y;
+                var dz = playerPos.Z - commanderPos.Z;
+                var distance = (float)Math.Sqrt(dx * dx + dy * dy + dz * dz);
+
+                if (distance <= InteractionProximity)
+                {
+                    return pedHandle;
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Called when a battle starts in a zone. Tasks commander to actively engage enemies.
         /// </summary>
         public void OnBattleStarted(string zoneId)
         {
@@ -314,7 +405,7 @@ namespace FactionWars.ScriptHookV.Managers
             var zone = _zoneService.GetZone(zoneId);
             if (zone == null) return;
 
-            _gameBridge.TaskPedWanderInAreaSprinting(pedHandle, zone.Center, zone.Radius);
+            _gameBridge.TaskCombatHatedTargetsAroundPed(pedHandle, zone.Radius);
         }
 
         /// <summary>

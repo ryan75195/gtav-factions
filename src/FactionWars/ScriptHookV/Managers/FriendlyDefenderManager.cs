@@ -64,9 +64,9 @@ namespace FactionWars.ScriptHookV.Managers
         private readonly Random _random = new Random();
 
         /// <summary>
-        /// Minimum spawn radius as a fraction of zone radius (30%).
+        /// Spawn radius as a fraction of zone radius (80%).
         /// </summary>
-        private const float MinSpawnRadiusFraction = 0.3f;
+        private const float SpawnRadiusFraction = 0.8f;
 
         /// <summary>
         /// Maximum number of defenders that can be spawned at once per zone.
@@ -217,8 +217,8 @@ namespace FactionWars.ScriptHookV.Managers
         }
 
         /// <summary>
-        /// Called when a battle starts in a zone. Switches friendly defenders to sprinting
-        /// wander mode so they actively search for and engage enemies.
+        /// Called when a battle starts in a zone. Tasks friendly defenders to actively
+        /// seek out and engage enemies within range.
         /// </summary>
         /// <param name="zoneId">The zone where the battle started.</param>
         public void OnBattleStarted(string zoneId)
@@ -232,9 +232,24 @@ namespace FactionWars.ScriptHookV.Managers
 
             foreach (var pedHandle in pedTiers.Keys)
             {
-                // Switch to sprinting wander for faster enemy engagement
-                _gameBridge.TaskPedWanderInAreaSprinting(pedHandle, zone.Center, zone.Radius);
+                // Set zone-wide perception so defenders can see enemies across the entire zone
+                ConfigureBattlePerception(pedHandle, zone.Radius);
+
+                // Task defenders to actively seek out and fight enemies within zone radius
+                // This makes them run towards enemies instead of waiting to be engaged
+                _gameBridge.TaskCombatHatedTargetsAroundPed(pedHandle, zone.Radius);
             }
+        }
+
+        /// <summary>
+        /// Configures a ped's seeing and hearing range for zone-wide perception during battles.
+        /// </summary>
+        private void ConfigureBattlePerception(int pedHandle, float zoneRadius)
+        {
+            // Set perception range to cover the entire zone (with a small buffer)
+            var perceptionRange = zoneRadius * 1.2f;
+            _gameBridge.SetPedSeeingRange(pedHandle, perceptionRange);
+            _gameBridge.SetPedHearingRange(pedHandle, perceptionRange);
         }
 
         /// <summary>
@@ -443,7 +458,7 @@ namespace FactionWars.ScriptHookV.Managers
 
         /// <summary>
         /// Spawns a single defender of the specified tier.
-        /// Uses sprinting wander if a battle is active in the zone.
+        /// Uses combat targeting if a battle is active in the zone.
         /// </summary>
         private void SpawnSingleDefender(string zoneId, DefenderTier tier, Vector3 center, float zoneRadius)
         {
@@ -461,10 +476,11 @@ namespace FactionWars.ScriptHookV.Managers
             _gameBridge.SetPedAsFriendly(pedHandle.Handle);
             ConfigureDefenderCombat(pedHandle.Handle, tierConfig);
 
-            // Use sprinting wander if battle is active, otherwise walking wander
+            // Use combat targeting if battle is active, otherwise walking wander
             if (_zonesInBattle.Contains(zoneId))
             {
-                _gameBridge.TaskPedWanderInAreaSprinting(pedHandle.Handle, center, zoneRadius);
+                ConfigureBattlePerception(pedHandle.Handle, zoneRadius);
+                _gameBridge.TaskCombatHatedTargetsAroundPed(pedHandle.Handle, zoneRadius);
             }
             else
             {
@@ -521,10 +537,11 @@ namespace FactionWars.ScriptHookV.Managers
                 _gameBridge.SetPedAsFriendly(pedHandle.Handle);
                 ConfigureDefenderCombat(pedHandle.Handle, tierConfig);
 
-                // Use sprinting wander if battle is active, otherwise walking wander
+                // Use combat targeting if battle is active, otherwise walking wander
                 if (inBattle)
                 {
-                    _gameBridge.TaskPedWanderInAreaSprinting(pedHandle.Handle, zoneCenter, zoneRadius);
+                    ConfigureBattlePerception(pedHandle.Handle, zoneRadius);
+                    _gameBridge.TaskCombatHatedTargetsAroundPed(pedHandle.Handle, zoneRadius);
                 }
                 else
                 {
@@ -540,14 +557,13 @@ namespace FactionWars.ScriptHookV.Managers
 
         /// <summary>
         /// Calculates a random spawn position around the zone center at ground level.
-        /// Uses the zone's full radius for spawn area (30%-100%) and navmesh-based safe
+        /// Uses 80% of zone radius for spawn distance and navmesh-based safe
         /// coordinates to avoid spawning on rooftops.
         /// </summary>
         private Vector3 CalculateRandomSpawnPosition(Vector3 center, float zoneRadius)
         {
             var angle = _random.NextDouble() * 2 * Math.PI;
-            var minRadius = zoneRadius * MinSpawnRadiusFraction;
-            var distance = minRadius + (float)(_random.NextDouble() * (zoneRadius - minRadius));
+            var distance = zoneRadius * SpawnRadiusFraction;
             var x = center.X + (float)(Math.Cos(angle) * distance);
             var y = center.Y + (float)(Math.Sin(angle) * distance);
 

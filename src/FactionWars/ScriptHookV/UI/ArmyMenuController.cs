@@ -176,7 +176,7 @@ namespace FactionWars.ScriptHookV.UI
             var factionId = _playerContext.CurrentFactionId;
             var factionState = factionId != null ? _factionService.GetFactionState(factionId) : null;
 
-            var menu = new MenuDefinition(ArmyMenuId, "Army", "Troops & Followers");
+            var menu = new MenuDefinition(ArmyMenuId, "Recruitment", "Troops & Followers");
 
             // Money display
             var playerMoney = _purchaseService.GetPlayerMoney();

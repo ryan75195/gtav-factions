@@ -179,7 +179,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
             // Assert
             var menu = _menuProvider.GetCurrentMenuDefinition();
             Assert.NotNull(menu);
-            Assert.Equal("Army", menu!.Title);
+            Assert.Equal("Recruitment", menu!.Title);
         }
 
         [Fact]

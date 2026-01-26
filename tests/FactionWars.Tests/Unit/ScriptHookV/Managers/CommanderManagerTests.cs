@@ -385,7 +385,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         }
 
         [Fact]
-        public void Update_ShowsHelpTextWhenAimingAtCommander()
+        public void Update_ShowsHelpTextWhenNearCommander()
         {
             // Arrange
             SetupManager();
@@ -393,8 +393,10 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             _manager.OnZoneEntered(zone);
 
             var commanderHandle = _gameBridge.GetSpawnedPeds()[0];
-            _gameBridge.SetPlayerFreeAiming(true);
-            _gameBridge.SetEntityPlayerIsAimingAt(commanderHandle);
+            var commanderPos = _gameBridge.GetPedPosition(commanderHandle);
+
+            // Place player within interaction proximity (3m)
+            _gameBridge.PlayerPosition = new Vector3(commanderPos.X + 1.0f, commanderPos.Y, commanderPos.Z);
 
             // Act
             _manager.Update();
@@ -404,25 +406,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         }
 
         [Fact]
-        public void Update_DoesNotShowHelpTextWhenNotAimingAtCommander()
-        {
-            // Arrange
-            SetupManager();
-            var zone = CreateFriendlyZone();
-            _manager.OnZoneEntered(zone);
-
-            _gameBridge.SetPlayerFreeAiming(true);
-            _gameBridge.SetEntityPlayerIsAimingAt(999); // Not a commander
-
-            // Act
-            _manager.Update();
-
-            // Assert
-            Assert.Null(_gameBridge.LastHelpText);
-        }
-
-        [Fact]
-        public void Update_DoesNotShowHelpTextWhenNotAiming()
+        public void Update_DoesNotShowHelpTextWhenFarFromCommander()
         {
             // Arrange
             SetupManager();
@@ -430,8 +414,10 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             _manager.OnZoneEntered(zone);
 
             var commanderHandle = _gameBridge.GetSpawnedPeds()[0];
-            _gameBridge.SetPlayerFreeAiming(false);
-            _gameBridge.SetEntityPlayerIsAimingAt(commanderHandle);
+            var commanderPos = _gameBridge.GetPedPosition(commanderHandle);
+
+            // Place player far from commander (beyond 3m interaction proximity)
+            _gameBridge.PlayerPosition = new Vector3(commanderPos.X + 50.0f, commanderPos.Y, commanderPos.Z);
 
             // Act
             _manager.Update();
@@ -441,7 +427,24 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         }
 
         [Fact]
-        public void OnKeyDown_OpensMenuWhenAimingAtCommanderAndPressingE()
+        public void Update_DoesNotShowHelpTextWhenNoCommanders()
+        {
+            // Arrange
+            SetupManager();
+            // Don't spawn any commander
+
+            // Set player position to some location
+            _gameBridge.PlayerPosition = new Vector3(0, 0, 0);
+
+            // Act
+            _manager.Update();
+
+            // Assert
+            Assert.Null(_gameBridge.LastHelpText);
+        }
+
+        [Fact]
+        public void OnKeyDown_OpensMenuWhenNearCommanderAndPressingE()
         {
             // Arrange
             bool menuOpened = false;
@@ -450,8 +453,10 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             _manager.OnZoneEntered(zone);
 
             var commanderHandle = _gameBridge.GetSpawnedPeds()[0];
-            _gameBridge.SetPlayerFreeAiming(true);
-            _gameBridge.SetEntityPlayerIsAimingAt(commanderHandle);
+            var commanderPos = _gameBridge.GetPedPosition(commanderHandle);
+
+            // Place player within interaction proximity (3m)
+            _gameBridge.PlayerPosition = new Vector3(commanderPos.X + 1.0f, commanderPos.Y, commanderPos.Z);
 
             // Act
             _manager.OnKeyDown(0x45); // E key
@@ -461,26 +466,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         }
 
         [Fact]
-        public void OnKeyDown_DoesNotOpenMenuWhenNotAimingAtCommander()
-        {
-            // Arrange
-            bool menuOpened = false;
-            SetupManager(_ => menuOpened = true);
-            var zone = CreateFriendlyZone();
-            _manager.OnZoneEntered(zone);
-
-            _gameBridge.SetPlayerFreeAiming(true);
-            _gameBridge.SetEntityPlayerIsAimingAt(999); // Not a commander
-
-            // Act
-            _manager.OnKeyDown(0x45); // E key
-
-            // Assert
-            Assert.False(menuOpened);
-        }
-
-        [Fact]
-        public void OnKeyDown_DoesNotOpenMenuWhenNotAiming()
+        public void OnKeyDown_DoesNotOpenMenuWhenFarFromCommander()
         {
             // Arrange
             bool menuOpened = false;
@@ -489,8 +475,10 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             _manager.OnZoneEntered(zone);
 
             var commanderHandle = _gameBridge.GetSpawnedPeds()[0];
-            _gameBridge.SetPlayerFreeAiming(false);
-            _gameBridge.SetEntityPlayerIsAimingAt(commanderHandle);
+            var commanderPos = _gameBridge.GetPedPosition(commanderHandle);
+
+            // Place player far from commander (beyond 3m interaction proximity)
+            _gameBridge.PlayerPosition = new Vector3(commanderPos.X + 50.0f, commanderPos.Y, commanderPos.Z);
 
             // Act
             _manager.OnKeyDown(0x45); // E key
@@ -509,8 +497,10 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             _manager.OnZoneEntered(zone);
 
             var commanderHandle = _gameBridge.GetSpawnedPeds()[0];
-            _gameBridge.SetPlayerFreeAiming(true);
-            _gameBridge.SetEntityPlayerIsAimingAt(commanderHandle);
+            var commanderPos = _gameBridge.GetPedPosition(commanderHandle);
+
+            // Place player within interaction proximity
+            _gameBridge.PlayerPosition = new Vector3(commanderPos.X + 1.0f, commanderPos.Y, commanderPos.Z);
 
             // Act
             _manager.OnKeyDown(0x46); // F key, not E
@@ -528,8 +518,10 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             _manager.OnZoneEntered(zone);
 
             var commanderHandle = _gameBridge.GetSpawnedPeds()[0];
-            _gameBridge.SetPlayerFreeAiming(true);
-            _gameBridge.SetEntityPlayerIsAimingAt(commanderHandle);
+            var commanderPos = _gameBridge.GetPedPosition(commanderHandle);
+
+            // Place player within interaction proximity
+            _gameBridge.PlayerPosition = new Vector3(commanderPos.X + 1.0f, commanderPos.Y, commanderPos.Z);
 
             // Act & Assert - Should not throw
             var exception = Record.Exception(() => _manager.OnKeyDown(0x45));
@@ -537,7 +529,87 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         }
 
         [Fact]
-        public void OnBattleStarted_SwitchesCommanderToSprinting()
+        public void Update_CommanderStopsWanderingAndFacesPlayerWhenNear()
+        {
+            // Arrange
+            SetupManager();
+            var zone = CreateFriendlyZone();
+            _zoneServiceMock.Setup(z => z.GetZone(TestZoneId)).Returns(zone);
+            _manager.OnZoneEntered(zone);
+
+            var commanderHandle = _gameBridge.GetSpawnedPeds()[0];
+            var commanderPos = _gameBridge.GetPedPosition(commanderHandle);
+
+            // Commander should be wandering initially
+            Assert.True(_gameBridge.IsPedWandering(commanderHandle));
+
+            // Place player within interaction proximity
+            _gameBridge.PlayerPosition = new Vector3(commanderPos.X + 1.0f, commanderPos.Y, commanderPos.Z);
+
+            // Act
+            _manager.Update();
+
+            // Assert - Commander should stop wandering and face player
+            Assert.False(_gameBridge.IsPedWandering(commanderHandle));
+            Assert.True(_gameBridge.IsPedFacingPosition(commanderHandle));
+        }
+
+        [Fact]
+        public void Update_CommanderResumesWanderingWhenPlayerMovesAway()
+        {
+            // Arrange
+            SetupManager();
+            var zone = CreateFriendlyZone();
+            _zoneServiceMock.Setup(z => z.GetZone(TestZoneId)).Returns(zone);
+            _manager.OnZoneEntered(zone);
+
+            var commanderHandle = _gameBridge.GetSpawnedPeds()[0];
+            var commanderPos = _gameBridge.GetPedPosition(commanderHandle);
+
+            // Move player near commander
+            _gameBridge.PlayerPosition = new Vector3(commanderPos.X + 1.0f, commanderPos.Y, commanderPos.Z);
+            _manager.Update();
+
+            // Verify commander is facing player
+            Assert.True(_gameBridge.IsPedFacingPosition(commanderHandle));
+
+            // Move player far away
+            _gameBridge.PlayerPosition = new Vector3(commanderPos.X + 50.0f, commanderPos.Y, commanderPos.Z);
+
+            // Act
+            _manager.Update();
+
+            // Assert - Commander should resume wandering
+            Assert.True(_gameBridge.IsPedWandering(commanderHandle));
+            Assert.False(_gameBridge.IsPedFacingPosition(commanderHandle));
+        }
+
+        [Fact]
+        public void Update_CommanderDoesNotResumeWanderingWhilePlayerStillNear()
+        {
+            // Arrange
+            SetupManager();
+            var zone = CreateFriendlyZone();
+            _zoneServiceMock.Setup(z => z.GetZone(TestZoneId)).Returns(zone);
+            _manager.OnZoneEntered(zone);
+
+            var commanderHandle = _gameBridge.GetSpawnedPeds()[0];
+            var commanderPos = _gameBridge.GetPedPosition(commanderHandle);
+
+            // Move player near commander
+            _gameBridge.PlayerPosition = new Vector3(commanderPos.X + 1.0f, commanderPos.Y, commanderPos.Z);
+            _manager.Update();
+
+            // Act - Call update again while still near
+            _manager.Update();
+
+            // Assert - Commander should still be facing (not re-triggered)
+            Assert.True(_gameBridge.IsPedFacingPosition(commanderHandle));
+            Assert.False(_gameBridge.IsPedWandering(commanderHandle));
+        }
+
+        [Fact]
+        public void OnBattleStarted_SwitchesCommanderToCombatTargeting()
         {
             SetupManager();
             var zone = CreateFriendlyZone();
@@ -545,11 +617,11 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             _manager.OnZoneEntered(zone);
 
             var commanderHandle = _gameBridge.GetSpawnedPeds()[0];
-            Assert.False(_gameBridge.IsPedWanderingSprinting(commanderHandle));
+            Assert.False(_gameBridge.IsPedCombatTargeting(commanderHandle));
 
             _manager.OnBattleStarted(TestZoneId);
 
-            Assert.True(_gameBridge.IsPedWanderingSprinting(commanderHandle));
+            Assert.True(_gameBridge.IsPedCombatTargeting(commanderHandle));
         }
 
         [Fact]
@@ -562,12 +634,12 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             _manager.OnBattleStarted(TestZoneId);
 
             var commanderHandle = _gameBridge.GetSpawnedPeds()[0];
-            Assert.True(_gameBridge.IsPedWanderingSprinting(commanderHandle));
+            Assert.True(_gameBridge.IsPedCombatTargeting(commanderHandle));
 
             _manager.OnBattleEnded(TestZoneId);
 
             Assert.True(_gameBridge.IsPedWandering(commanderHandle));
-            Assert.False(_gameBridge.IsPedWanderingSprinting(commanderHandle));
+            Assert.False(_gameBridge.IsPedCombatTargeting(commanderHandle));
         }
     }
 }
