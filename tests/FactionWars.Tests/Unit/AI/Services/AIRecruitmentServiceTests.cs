@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using FactionWars.AI.Interfaces;
 using FactionWars.AI.Services;
@@ -342,6 +343,149 @@ namespace FactionWars.Tests.Unit.AI.Services
                 totalRecorded += kvp.Value;
             }
             Assert.Equal(result, totalRecorded);
+        }
+
+        #endregion
+
+        #region Scaled Recruitment with ICapitalDeploymentService
+
+        [Fact]
+        public void TryAutoRecruit_WithCapitalDeploymentService_UsesScaledMax()
+        {
+            // $25,000 cash: GetScaledRecruitmentMax returns 10 + (25000/10000) = 12
+            var mockCapitalService = new Mock<ICapitalDeploymentService>();
+            mockCapitalService.Setup(c => c.GetScaledRecruitmentMax(25000)).Returns(12);
+
+            var factionState = new FactionState("test", initialCash: 25000, initialTroopCount: 0);
+            _mockFactionService.Setup(f => f.GetFactionState("test")).Returns(factionState);
+            _mockFactionService.Setup(f => f.AddReserveTroops(It.IsAny<string>(), It.IsAny<DefenderTier>(), It.IsAny<int>())).Returns(true);
+            _mockFactionService.Setup(f => f.SpendCash(It.IsAny<string>(), It.IsAny<int>())).Returns(true);
+
+            var serviceWithCapital = new AIRecruitmentService(
+                _mockFactionService.Object,
+                _budgetService,
+                _tierService,
+                mockCapitalService.Object);
+
+            var result = serviceWithCapital.TryAutoRecruit("test");
+
+            // Should recruit 12 troops (scaled max) instead of default 10
+            Assert.Equal(12, result);
+            mockCapitalService.Verify(c => c.GetScaledRecruitmentMax(25000), Times.Once);
+        }
+
+        [Fact]
+        public void TryAutoRecruit_WithCapitalDeploymentService_HighWealth_UsesHigherMax()
+        {
+            // $100,000 cash: GetScaledRecruitmentMax returns 10 + (100000/10000) = 20, capped at 50
+            var mockCapitalService = new Mock<ICapitalDeploymentService>();
+            mockCapitalService.Setup(c => c.GetScaledRecruitmentMax(100000)).Returns(20);
+
+            var factionState = new FactionState("test", initialCash: 100000, initialTroopCount: 0);
+            _mockFactionService.Setup(f => f.GetFactionState("test")).Returns(factionState);
+            _mockFactionService.Setup(f => f.AddReserveTroops(It.IsAny<string>(), It.IsAny<DefenderTier>(), It.IsAny<int>())).Returns(true);
+            _mockFactionService.Setup(f => f.SpendCash(It.IsAny<string>(), It.IsAny<int>())).Returns(true);
+
+            var serviceWithCapital = new AIRecruitmentService(
+                _mockFactionService.Object,
+                _budgetService,
+                _tierService,
+                mockCapitalService.Object);
+
+            var result = serviceWithCapital.TryAutoRecruit("test");
+
+            // Should recruit 20 troops (scaled max) instead of default 10
+            Assert.Equal(20, result);
+        }
+
+        [Fact]
+        public void TryAutoRecruit_WithCapitalDeploymentService_LowWealth_UsesBaseRate()
+        {
+            // $2,000 cash: GetScaledRecruitmentMax returns 10 + (2000/10000) = 10
+            var mockCapitalService = new Mock<ICapitalDeploymentService>();
+            mockCapitalService.Setup(c => c.GetScaledRecruitmentMax(2000)).Returns(10);
+
+            var factionState = new FactionState("test", initialCash: 2000, initialTroopCount: 0);
+            _mockFactionService.Setup(f => f.GetFactionState("test")).Returns(factionState);
+            _mockFactionService.Setup(f => f.AddReserveTroops(It.IsAny<string>(), It.IsAny<DefenderTier>(), It.IsAny<int>())).Returns(true);
+            _mockFactionService.Setup(f => f.SpendCash(It.IsAny<string>(), It.IsAny<int>())).Returns(true);
+
+            var serviceWithCapital = new AIRecruitmentService(
+                _mockFactionService.Object,
+                _budgetService,
+                _tierService,
+                mockCapitalService.Object);
+
+            var result = serviceWithCapital.TryAutoRecruit("test");
+
+            // Should recruit up to 10 (base rate), but limited by what can be afforded
+            Assert.Equal(10, result);
+        }
+
+        [Fact]
+        public void TryAutoRecruit_WithoutCapitalDeploymentService_UsesDefaultMax()
+        {
+            // Without ICapitalDeploymentService, should use default maxTroopsToRecruit parameter
+            var factionState = new FactionState("test", initialCash: 100000, initialTroopCount: 0);
+            _mockFactionService.Setup(f => f.GetFactionState("test")).Returns(factionState);
+            _mockFactionService.Setup(f => f.AddReserveTroops(It.IsAny<string>(), It.IsAny<DefenderTier>(), It.IsAny<int>())).Returns(true);
+            _mockFactionService.Setup(f => f.SpendCash(It.IsAny<string>(), It.IsAny<int>())).Returns(true);
+
+            // Using existing _service which has no ICapitalDeploymentService
+            var result = _service.TryAutoRecruit("test");
+
+            // Should still use default max of 10, even with high wealth
+            Assert.Equal(10, result);
+        }
+
+        [Fact]
+        public void TryAutoRecruit_WithCapitalDeploymentService_ExplicitMaxParam_IgnoresParam()
+        {
+            // When ICapitalDeploymentService is provided, explicit maxTroopsToRecruit parameter is ignored
+            var mockCapitalService = new Mock<ICapitalDeploymentService>();
+            mockCapitalService.Setup(c => c.GetScaledRecruitmentMax(30000)).Returns(13);
+
+            var factionState = new FactionState("test", initialCash: 30000, initialTroopCount: 0);
+            _mockFactionService.Setup(f => f.GetFactionState("test")).Returns(factionState);
+            _mockFactionService.Setup(f => f.AddReserveTroops(It.IsAny<string>(), It.IsAny<DefenderTier>(), It.IsAny<int>())).Returns(true);
+            _mockFactionService.Setup(f => f.SpendCash(It.IsAny<string>(), It.IsAny<int>())).Returns(true);
+
+            var serviceWithCapital = new AIRecruitmentService(
+                _mockFactionService.Object,
+                _budgetService,
+                _tierService,
+                mockCapitalService.Object);
+
+            // Pass explicit maxTroopsToRecruit=5, but service should ignore it and use scaled max
+            var result = serviceWithCapital.TryAutoRecruit("test", maxTroopsToRecruit: 5);
+
+            // Should recruit 13 troops (scaled max) not 5 (explicit param)
+            Assert.Equal(13, result);
+        }
+
+        [Fact]
+        public void Constructor_WithCapitalDeploymentService_AcceptsNonNullService()
+        {
+            var mockCapitalService = new Mock<ICapitalDeploymentService>();
+
+            // Should not throw
+            var service = new AIRecruitmentService(
+                _mockFactionService.Object,
+                _budgetService,
+                _tierService,
+                mockCapitalService.Object);
+
+            Assert.NotNull(service);
+        }
+
+        [Fact]
+        public void Constructor_WithNullCapitalDeploymentService_ThrowsArgumentNullException()
+        {
+            Assert.Throws<ArgumentNullException>(() => new AIRecruitmentService(
+                _mockFactionService.Object,
+                _budgetService,
+                _tierService,
+                null!));
         }
 
         #endregion

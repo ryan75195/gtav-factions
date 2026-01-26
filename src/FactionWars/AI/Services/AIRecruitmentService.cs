@@ -15,6 +15,7 @@ namespace FactionWars.AI.Services
         private readonly IFactionService _factionService;
         private readonly IAIBudgetService _budgetService;
         private readonly IDefenderTierService? _tierService;
+        private readonly ICapitalDeploymentService? _capitalDeploymentService;
 
         // Wealth thresholds
         private const int LowWealthThreshold = 5000;
@@ -42,11 +43,26 @@ namespace FactionWars.AI.Services
         }
 
         /// <summary>
+        /// Creates a new AIRecruitmentService with multi-tier wealth-scaled recruitment
+        /// and dynamic scaled recruitment limits from ICapitalDeploymentService.
+        /// </summary>
+        public AIRecruitmentService(
+            IFactionService factionService,
+            IAIBudgetService budgetService,
+            IDefenderTierService tierService,
+            ICapitalDeploymentService capitalDeploymentService)
+            : this(factionService, budgetService, tierService)
+        {
+            _capitalDeploymentService = capitalDeploymentService ?? throw new ArgumentNullException(nameof(capitalDeploymentService));
+        }
+
+        /// <summary>
         /// Attempts to auto-recruit troops for a faction based on their wealth level.
         /// Uses wealth-scaled tier distribution when IDefenderTierService is available.
+        /// When ICapitalDeploymentService is available, uses scaled recruitment max based on cash.
         /// </summary>
         /// <param name="factionId">The faction to recruit for.</param>
-        /// <param name="maxTroopsToRecruit">Maximum troops to recruit per cycle (default 10).</param>
+        /// <param name="maxTroopsToRecruit">Maximum troops to recruit per cycle (default 10). Ignored when ICapitalDeploymentService is available.</param>
         /// <returns>The total number of troops recruited.</returns>
         public int TryAutoRecruit(string factionId, int maxTroopsToRecruit = 10)
         {
@@ -57,14 +73,21 @@ namespace FactionWars.AI.Services
             if (state == null)
                 return 0;
 
+            // Use scaled max if capital deployment service is available
+            int effectiveMax = maxTroopsToRecruit;
+            if (_capitalDeploymentService != null)
+            {
+                effectiveMax = _capitalDeploymentService.GetScaledRecruitmentMax(state.Cash);
+            }
+
             // Use multi-tier recruitment if tier service is available
             if (_tierService != null)
             {
-                return TryAutoRecruitMultiTier(factionId, state.Cash, maxTroopsToRecruit);
+                return TryAutoRecruitMultiTier(factionId, state.Cash, effectiveMax);
             }
 
             // Legacy basic-only recruitment
-            return TryAutoRecruitBasicOnly(factionId, state.Cash, maxTroopsToRecruit);
+            return TryAutoRecruitBasicOnly(factionId, state.Cash, effectiveMax);
         }
 
         /// <summary>
