@@ -472,6 +472,176 @@ namespace FactionWars.Tests.Unit.AI
 
         #endregion
 
+        #region CapitalDeploymentService Integration Tests
+
+        [Fact]
+        public void SetCapitalDeploymentService_SetsService()
+        {
+            var strategy = CreateDefaultStrategy();
+            var mockService = new Mock<ICapitalDeploymentService>();
+
+            // Should not throw
+            strategy.SetCapitalDeploymentService(mockService.Object);
+        }
+
+        [Fact]
+        public void MakeDecisions_WithCapitalDeploymentService_UsesServiceDecision()
+        {
+            var strategy = CreateDefaultStrategy();
+            var mockService = new Mock<ICapitalDeploymentService>();
+            var faction = CreateTestFaction(FactionType.Michael);
+            var factionState = CreateTestFactionState(faction.Id, troopCount: 50);
+            var ownedZone = CreateTestZone("owned", ownerFactionId: faction.Id);
+            var enemyZone = CreateTestZone("enemy", ownerFactionId: "enemy-faction");
+
+            // Setup adjacency
+            ownedZone.AdjacentZoneIds.Add(enemyZone.Id);
+            enemyZone.AdjacentZoneIds.Add(ownedZone.Id);
+
+            var context = new AIContext(faction, factionState, new[] { ownedZone }, new[] { ownedZone, enemyZone },
+                new[] { CreateTestFaction(FactionType.Trevor, "enemy-faction") });
+
+            // Setup service to return an Attack decision
+            var serviceDecision = new AIDecision(AIDecisionType.Attack, "enemy", 0.9f, 30);
+            mockService.Setup(s => s.GetBestDecision(It.IsAny<AIContext>())).Returns(serviceDecision);
+
+            strategy.SetCapitalDeploymentService(mockService.Object);
+
+            var decisions = strategy.MakeDecisions(context);
+
+            // Should contain the decision from the service
+            Assert.Contains(decisions, d => d.DecisionType == AIDecisionType.Attack && d.TargetZoneId == "enemy");
+            mockService.Verify(s => s.GetBestDecision(It.IsAny<AIContext>()), Times.Once);
+        }
+
+        [Fact]
+        public void MakeDecisions_WithCapitalDeploymentService_ReturnsHold_ReturnsEmptyList()
+        {
+            var strategy = CreateDefaultStrategy();
+            var mockService = new Mock<ICapitalDeploymentService>();
+            var faction = CreateTestFaction(FactionType.Michael);
+            var factionState = CreateTestFactionState(faction.Id, troopCount: 50);
+            var ownedZone = CreateTestZone("owned", ownerFactionId: faction.Id);
+
+            var context = new AIContext(faction, factionState, new[] { ownedZone }, new[] { ownedZone }, new List<Faction>());
+
+            // Setup service to return null (Hold)
+            mockService.Setup(s => s.GetBestDecision(It.IsAny<AIContext>())).Returns((AIDecision?)null);
+
+            strategy.SetCapitalDeploymentService(mockService.Object);
+
+            var decisions = strategy.MakeDecisions(context);
+
+            Assert.Empty(decisions);
+            mockService.Verify(s => s.GetBestDecision(It.IsAny<AIContext>()), Times.Once);
+        }
+
+        [Fact]
+        public void MakeDecisions_WithCapitalDeploymentService_DefendDecision_ReturnsDefendDecision()
+        {
+            var strategy = CreateDefaultStrategy();
+            var mockService = new Mock<ICapitalDeploymentService>();
+            var faction = CreateTestFaction(FactionType.Michael);
+            var factionState = CreateTestFactionState(faction.Id, troopCount: 50);
+            var ownedZone = CreateTestZone("owned", ownerFactionId: faction.Id);
+            ownedZone.IsContested = true;
+
+            var context = new AIContext(faction, factionState, new[] { ownedZone }, new[] { ownedZone }, new List<Faction>());
+
+            // Setup service to return a Defend decision
+            var serviceDecision = new AIDecision(AIDecisionType.Defend, "owned", 0.8f, 0);
+            mockService.Setup(s => s.GetBestDecision(It.IsAny<AIContext>())).Returns(serviceDecision);
+
+            strategy.SetCapitalDeploymentService(mockService.Object);
+
+            var decisions = strategy.MakeDecisions(context);
+
+            Assert.Single(decisions);
+            Assert.Equal(AIDecisionType.Defend, decisions[0].DecisionType);
+            Assert.Equal("owned", decisions[0].TargetZoneId);
+        }
+
+        [Fact]
+        public void MakeDecisions_WithoutCapitalDeploymentService_UsesExistingLogic()
+        {
+            // Verify existing logic still works when service is not set
+            var strategy = new TestAIStrategy(FactionType.Michael, 0.8f, 0.5f); // Aggressive
+            var faction = CreateTestFaction(FactionType.Michael);
+            var factionState = CreateTestFactionState(faction.Id, troopCount: 50);
+
+            var ownedZone = CreateTestZone("owned", ownerFactionId: faction.Id);
+            var enemyZone = CreateTestZone("enemy", ownerFactionId: "enemy-faction", strategicValue: 8);
+
+            // Set up adjacency so AI can attack the enemy zone from owned zone
+            ownedZone.AdjacentZoneIds.Add(enemyZone.Id);
+            enemyZone.AdjacentZoneIds.Add(ownedZone.Id);
+
+            var ownedZones = new List<Zone> { ownedZone };
+            var allZones = new List<Zone> { ownedZone, enemyZone };
+            var enemyFactions = new List<Faction> { CreateTestFaction(FactionType.Trevor, "enemy-faction") };
+            var context = new AIContext(faction, factionState, ownedZones, allZones, enemyFactions);
+
+            // Don't set the capital deployment service
+            var decisions = strategy.MakeDecisions(context);
+
+            // Should still get attack decisions using existing logic
+            Assert.Contains(decisions, d => d.DecisionType == AIDecisionType.Attack);
+        }
+
+        [Fact]
+        public void MakeDecisions_WithCapitalDeploymentService_NoTroops_ReturnsEmptyList()
+        {
+            var strategy = CreateDefaultStrategy();
+            var mockService = new Mock<ICapitalDeploymentService>();
+            var faction = CreateTestFaction(FactionType.Michael);
+            var factionState = CreateTestFactionState(faction.Id, troopCount: 0);
+            var ownedZone = CreateTestZone("owned", ownerFactionId: faction.Id);
+
+            var context = new AIContext(faction, factionState, new[] { ownedZone }, new[] { ownedZone }, new List<Faction>());
+
+            strategy.SetCapitalDeploymentService(mockService.Object);
+
+            var decisions = strategy.MakeDecisions(context);
+
+            // No troops means no decisions, regardless of service
+            Assert.Empty(decisions);
+            // Service should NOT be called when there are no troops
+            mockService.Verify(s => s.GetBestDecision(It.IsAny<AIContext>()), Times.Never);
+        }
+
+        [Fact]
+        public void GetTroopsForAttack_WithCapitalDeploymentService_UsesOverwhelmingForce()
+        {
+            var strategy = CreateDefaultStrategy();
+            var mockService = new Mock<ICapitalDeploymentService>();
+            var faction = CreateTestFaction(FactionType.Michael);
+            var factionState = CreateTestFactionState(faction.Id, troopCount: 100);
+            var ownedZone = CreateTestZone("owned", ownerFactionId: faction.Id);
+            var enemyZone = CreateTestZone("enemy", ownerFactionId: "enemy-faction");
+
+            // Setup adjacency
+            ownedZone.AdjacentZoneIds.Add(enemyZone.Id);
+            enemyZone.AdjacentZoneIds.Add(ownedZone.Id);
+
+            var context = new AIContext(faction, factionState, new[] { ownedZone }, new[] { ownedZone, enemyZone },
+                new[] { CreateTestFaction(FactionType.Trevor, "enemy-faction") });
+
+            // Service returns attack with overwhelming force calculation
+            // The service would calculate 60 troops needed (20 defenders * 3)
+            var serviceDecision = new AIDecision(AIDecisionType.Attack, "enemy", 0.9f, 60);
+            mockService.Setup(s => s.GetBestDecision(It.IsAny<AIContext>())).Returns(serviceDecision);
+
+            strategy.SetCapitalDeploymentService(mockService.Object);
+
+            var decisions = strategy.MakeDecisions(context);
+
+            // Should use the troop count from the service decision
+            Assert.Single(decisions);
+            Assert.Equal(60, decisions[0].TroopsToCommit);
+        }
+
+        #endregion
+
         #region Helper Methods
 
         private TestAIStrategy CreateDefaultStrategy()

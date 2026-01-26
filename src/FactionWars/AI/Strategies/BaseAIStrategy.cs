@@ -20,6 +20,7 @@ namespace FactionWars.AI.Strategies
         private readonly float _aggressiveness;
         private readonly float _riskTolerance;
         private readonly Random _random = new Random();
+        private ICapitalDeploymentService? _capitalDeploymentService;
 
         /// <summary>
         /// Minimum troops required to consider an attack.
@@ -52,6 +53,16 @@ namespace FactionWars.AI.Strategies
             _factionType = factionType;
             _aggressiveness = Math.Max(0f, Math.Min(1f, aggressiveness));
             _riskTolerance = Math.Max(0f, Math.Min(1f, riskTolerance));
+        }
+
+        /// <summary>
+        /// Sets the capital deployment service for intelligent decision-making.
+        /// When set, MakeDecisions() will delegate to this service for primary decisions.
+        /// </summary>
+        /// <param name="service">The capital deployment service to use.</param>
+        public void SetCapitalDeploymentService(ICapitalDeploymentService service)
+        {
+            _capitalDeploymentService = service;
         }
 
         /// <summary>
@@ -119,6 +130,26 @@ namespace FactionWars.AI.Strategies
                 return decisions;
             }
 
+            // When capital deployment service is available, use its intelligent decision-making
+            if (_capitalDeploymentService != null)
+            {
+                FileLogger.AI($"      [Strategy] Using CapitalDeploymentService for {context.Faction.Id}");
+                var bestDecision = _capitalDeploymentService.GetBestDecision(context);
+
+                if (bestDecision != null)
+                {
+                    FileLogger.AI($"      [Strategy] Service decision: {bestDecision.DecisionType} on {bestDecision.TargetZoneId}, troops={bestDecision.TroopsToCommit}");
+                    decisions.Add(bestDecision);
+                }
+                else
+                {
+                    FileLogger.AI($"      [Strategy] Service decision: Hold (no action)");
+                }
+
+                return decisions;
+            }
+
+            // Fallback: Use existing logic when no capital deployment service
             // Priority 1: Defend threatened zones
             var threatenedZones = context.GetThreatenedZones().ToList();
             foreach (var zone in threatenedZones)
