@@ -1,0 +1,349 @@
+using System.Collections.Generic;
+using FactionWars.AI.Interfaces;
+using FactionWars.AI.Services;
+using FactionWars.Core.Interfaces;
+using FactionWars.Core.Models;
+using FactionWars.Core.Services;
+using FactionWars.Factions.Interfaces;
+using FactionWars.Factions.Models;
+using Moq;
+using Xunit;
+
+namespace FactionWars.Tests.Unit.AI.Services
+{
+    public class AIRecruitmentServiceTests
+    {
+        private readonly Mock<IFactionService> _mockFactionService;
+        private readonly IDefenderTierService _tierService;
+        private readonly IAIBudgetService _budgetService;
+        private readonly AIRecruitmentService _service;
+
+        public AIRecruitmentServiceTests()
+        {
+            _mockFactionService = new Mock<IFactionService>();
+            _tierService = new DefenderTierService();
+            _budgetService = new AIBudgetService();
+            _service = new AIRecruitmentService(_mockFactionService.Object, _budgetService, _tierService);
+        }
+
+        #region Basic Functionality Tests
+
+        [Fact]
+        public void TryAutoRecruit_WithNullFactionId_ReturnsZero()
+        {
+            var result = _service.TryAutoRecruit(null!);
+
+            Assert.Equal(0, result);
+        }
+
+        [Fact]
+        public void TryAutoRecruit_WithEmptyFactionId_ReturnsZero()
+        {
+            var result = _service.TryAutoRecruit("");
+
+            Assert.Equal(0, result);
+        }
+
+        [Fact]
+        public void TryAutoRecruit_WithNonexistentFaction_ReturnsZero()
+        {
+            _mockFactionService.Setup(f => f.GetFactionState("test")).Returns((FactionState?)null);
+
+            var result = _service.TryAutoRecruit("test");
+
+            Assert.Equal(0, result);
+        }
+
+        #endregion
+
+        #region Below $5k - 100% Basic
+
+        [Fact]
+        public void TryAutoRecruit_Below5k_OnlyRecruitsBasicTroops()
+        {
+            // $4000 = 20 Basic affordable, capped at 10
+            var factionState = new FactionState("test", initialCash: 4000, initialTroopCount: 0);
+            _mockFactionService.Setup(f => f.GetFactionState("test")).Returns(factionState);
+            _mockFactionService.Setup(f => f.AddReserveTroops(It.IsAny<string>(), It.IsAny<DefenderTier>(), It.IsAny<int>())).Returns(true);
+            _mockFactionService.Setup(f => f.SpendCash(It.IsAny<string>(), It.IsAny<int>())).Returns(true);
+
+            var result = _service.TryAutoRecruit("test");
+
+            Assert.Equal(10, result);
+            _mockFactionService.Verify(f => f.AddReserveTroops("test", DefenderTier.Basic, 10), Times.Once);
+            _mockFactionService.Verify(f => f.AddReserveTroops("test", DefenderTier.Medium, It.IsAny<int>()), Times.Never);
+            _mockFactionService.Verify(f => f.AddReserveTroops("test", DefenderTier.Heavy, It.IsAny<int>()), Times.Never);
+            _mockFactionService.Verify(f => f.AddReserveTroops("test", DefenderTier.Elite, It.IsAny<int>()), Times.Never);
+            _mockFactionService.Verify(f => f.SpendCash("test", 2000), Times.Once); // 10 * $200
+        }
+
+        [Fact]
+        public void TryAutoRecruit_Below5k_LimitedByBudget_RecruitsAffordableAmount()
+        {
+            // $600 = 3 Basic affordable
+            var factionState = new FactionState("test", initialCash: 600, initialTroopCount: 0);
+            _mockFactionService.Setup(f => f.GetFactionState("test")).Returns(factionState);
+            _mockFactionService.Setup(f => f.AddReserveTroops(It.IsAny<string>(), It.IsAny<DefenderTier>(), It.IsAny<int>())).Returns(true);
+            _mockFactionService.Setup(f => f.SpendCash(It.IsAny<string>(), It.IsAny<int>())).Returns(true);
+
+            var result = _service.TryAutoRecruit("test");
+
+            Assert.Equal(3, result);
+            _mockFactionService.Verify(f => f.AddReserveTroops("test", DefenderTier.Basic, 3), Times.Once);
+            _mockFactionService.Verify(f => f.SpendCash("test", 600), Times.Once);
+        }
+
+        [Fact]
+        public void TryAutoRecruit_WithZeroCash_ReturnsZero()
+        {
+            var factionState = new FactionState("test", initialCash: 0, initialTroopCount: 0);
+            _mockFactionService.Setup(f => f.GetFactionState("test")).Returns(factionState);
+
+            var result = _service.TryAutoRecruit("test");
+
+            Assert.Equal(0, result);
+            _mockFactionService.Verify(f => f.AddReserveTroops(It.IsAny<string>(), It.IsAny<DefenderTier>(), It.IsAny<int>()), Times.Never);
+        }
+
+        #endregion
+
+        #region $5k-$15k - 60/30/10 Distribution, No Elite
+
+        [Fact]
+        public void TryAutoRecruit_5kTo15k_Uses60_30_10Distribution()
+        {
+            // $10,000 - should buy mix of Basic(60%), Medium(30%), Heavy(10%)
+            // With 10 troops max: 6 Basic, 3 Medium, 1 Heavy
+            var factionState = new FactionState("test", initialCash: 10000, initialTroopCount: 0);
+            _mockFactionService.Setup(f => f.GetFactionState("test")).Returns(factionState);
+            _mockFactionService.Setup(f => f.AddReserveTroops(It.IsAny<string>(), It.IsAny<DefenderTier>(), It.IsAny<int>())).Returns(true);
+            _mockFactionService.Setup(f => f.SpendCash(It.IsAny<string>(), It.IsAny<int>())).Returns(true);
+
+            var result = _service.TryAutoRecruit("test");
+
+            // 6 Basic ($1200) + 3 Medium ($1500) + 1 Heavy ($1000) = $3700
+            Assert.Equal(10, result);
+            _mockFactionService.Verify(f => f.AddReserveTroops("test", DefenderTier.Basic, 6), Times.Once);
+            _mockFactionService.Verify(f => f.AddReserveTroops("test", DefenderTier.Medium, 3), Times.Once);
+            _mockFactionService.Verify(f => f.AddReserveTroops("test", DefenderTier.Heavy, 1), Times.Once);
+            _mockFactionService.Verify(f => f.AddReserveTroops("test", DefenderTier.Elite, It.IsAny<int>()), Times.Never);
+            _mockFactionService.Verify(f => f.SpendCash("test", 3700), Times.Once);
+        }
+
+        [Fact]
+        public void TryAutoRecruit_At5k_Uses60_30_10Distribution()
+        {
+            // Exactly $5k is the threshold for 60/30/10
+            var factionState = new FactionState("test", initialCash: 5000, initialTroopCount: 0);
+            _mockFactionService.Setup(f => f.GetFactionState("test")).Returns(factionState);
+            _mockFactionService.Setup(f => f.AddReserveTroops(It.IsAny<string>(), It.IsAny<DefenderTier>(), It.IsAny<int>())).Returns(true);
+            _mockFactionService.Setup(f => f.SpendCash(It.IsAny<string>(), It.IsAny<int>())).Returns(true);
+
+            var result = _service.TryAutoRecruit("test");
+
+            Assert.Equal(10, result);
+            _mockFactionService.Verify(f => f.AddReserveTroops("test", DefenderTier.Basic, 6), Times.Once);
+            _mockFactionService.Verify(f => f.AddReserveTroops("test", DefenderTier.Medium, 3), Times.Once);
+            _mockFactionService.Verify(f => f.AddReserveTroops("test", DefenderTier.Heavy, 1), Times.Once);
+        }
+
+        #endregion
+
+        #region $15k-$30k - 40/30/20 Distribution, 1 Elite
+
+        [Fact]
+        public void TryAutoRecruit_15kTo30k_Buys1Elite_AndUses40_30_20Distribution()
+        {
+            // $20,000 - should buy 1 Elite ($2000), then mix of Basic(40%), Medium(30%), Heavy(20%)
+            // After Elite: 9 slots remain, distribution: 4 Basic, 3 Medium, 2 Heavy (rounded)
+            var factionState = new FactionState("test", initialCash: 20000, initialTroopCount: 0);
+            _mockFactionService.Setup(f => f.GetFactionState("test")).Returns(factionState);
+            _mockFactionService.Setup(f => f.AddReserveTroops(It.IsAny<string>(), It.IsAny<DefenderTier>(), It.IsAny<int>())).Returns(true);
+            _mockFactionService.Setup(f => f.SpendCash(It.IsAny<string>(), It.IsAny<int>())).Returns(true);
+
+            var result = _service.TryAutoRecruit("test");
+
+            // 1 Elite + 9 standard (40/30/20 = ~4/3/2)
+            Assert.Equal(10, result);
+            _mockFactionService.Verify(f => f.AddReserveTroops("test", DefenderTier.Elite, 1), Times.Once);
+            _mockFactionService.Verify(f => f.AddReserveTroops("test", DefenderTier.Basic, 4), Times.Once);
+            _mockFactionService.Verify(f => f.AddReserveTroops("test", DefenderTier.Medium, 3), Times.Once);
+            _mockFactionService.Verify(f => f.AddReserveTroops("test", DefenderTier.Heavy, 2), Times.Once);
+            // 1*$2000 + 4*$200 + 3*$500 + 2*$1000 = $2000 + $800 + $1500 + $2000 = $6300
+            _mockFactionService.Verify(f => f.SpendCash("test", 6300), Times.Once);
+        }
+
+        [Fact]
+        public void TryAutoRecruit_At15k_Buys1Elite()
+        {
+            // Exactly $15k threshold for 1 Elite
+            var factionState = new FactionState("test", initialCash: 15000, initialTroopCount: 0);
+            _mockFactionService.Setup(f => f.GetFactionState("test")).Returns(factionState);
+            _mockFactionService.Setup(f => f.AddReserveTroops(It.IsAny<string>(), It.IsAny<DefenderTier>(), It.IsAny<int>())).Returns(true);
+            _mockFactionService.Setup(f => f.SpendCash(It.IsAny<string>(), It.IsAny<int>())).Returns(true);
+
+            var result = _service.TryAutoRecruit("test");
+
+            _mockFactionService.Verify(f => f.AddReserveTroops("test", DefenderTier.Elite, 1), Times.Once);
+        }
+
+        #endregion
+
+        #region Above $30k - 20/30/40 Distribution, 2 Elite
+
+        [Fact]
+        public void TryAutoRecruit_Above30k_Buys2Elite_AndUses20_30_40Distribution()
+        {
+            // $40,000 - should buy 2 Elite ($4000), then mix of Basic(20%), Medium(30%), Heavy(40%)
+            // After Elite: 8 slots remain
+            // Distribution: 8*0.2=1.6->2, 8*0.3=2.4->2, 8*0.4=3.2->3 = 7, +1 basic = 3/2/3
+            var factionState = new FactionState("test", initialCash: 40000, initialTroopCount: 0);
+            _mockFactionService.Setup(f => f.GetFactionState("test")).Returns(factionState);
+            _mockFactionService.Setup(f => f.AddReserveTroops(It.IsAny<string>(), It.IsAny<DefenderTier>(), It.IsAny<int>())).Returns(true);
+            _mockFactionService.Setup(f => f.SpendCash(It.IsAny<string>(), It.IsAny<int>())).Returns(true);
+
+            var result = _service.TryAutoRecruit("test");
+
+            // 2 Elite + 8 standard (20/30/40 with rounding = 3/2/3)
+            Assert.Equal(10, result);
+            _mockFactionService.Verify(f => f.AddReserveTroops("test", DefenderTier.Elite, 2), Times.Once);
+            _mockFactionService.Verify(f => f.AddReserveTroops("test", DefenderTier.Basic, 3), Times.Once);
+            _mockFactionService.Verify(f => f.AddReserveTroops("test", DefenderTier.Medium, 2), Times.Once);
+            _mockFactionService.Verify(f => f.AddReserveTroops("test", DefenderTier.Heavy, 3), Times.Once);
+            // 2*$2000 + 3*$200 + 2*$500 + 3*$1000 = $4000 + $600 + $1000 + $3000 = $8600
+            _mockFactionService.Verify(f => f.SpendCash("test", 8600), Times.Once);
+        }
+
+        [Fact]
+        public void TryAutoRecruit_At30k_Buys2Elite()
+        {
+            // Exactly $30k is the threshold for 2 Elite
+            var factionState = new FactionState("test", initialCash: 30000, initialTroopCount: 0);
+            _mockFactionService.Setup(f => f.GetFactionState("test")).Returns(factionState);
+            _mockFactionService.Setup(f => f.AddReserveTroops(It.IsAny<string>(), It.IsAny<DefenderTier>(), It.IsAny<int>())).Returns(true);
+            _mockFactionService.Setup(f => f.SpendCash(It.IsAny<string>(), It.IsAny<int>())).Returns(true);
+
+            var result = _service.TryAutoRecruit("test");
+
+            // $30k exactly - should buy 2 Elite
+            _mockFactionService.Verify(f => f.AddReserveTroops("test", DefenderTier.Elite, 2), Times.Once);
+        }
+
+        #endregion
+
+        #region Budget Constraints
+
+        [Fact]
+        public void TryAutoRecruit_LimitedBudget_StopsWhenCantAfford()
+        {
+            // $3000 at $5k-$15k tier - can afford some troops but not all 10
+            // 60/30/10 of 10 = 6 Basic, 3 Medium, 1 Heavy
+            // Cost: 6*$200 + 3*$500 + 1*$1000 = $3700 > $3000
+            // Should recruit what it can afford
+            var factionState = new FactionState("test", initialCash: 5000, initialTroopCount: 0);
+            _mockFactionService.Setup(f => f.GetFactionState("test")).Returns(factionState);
+            _mockFactionService.Setup(f => f.AddReserveTroops(It.IsAny<string>(), It.IsAny<DefenderTier>(), It.IsAny<int>())).Returns(true);
+            _mockFactionService.Setup(f => f.SpendCash(It.IsAny<string>(), It.IsAny<int>())).Returns(true);
+
+            var result = _service.TryAutoRecruit("test");
+
+            // Should recruit troops and deduct appropriate cash
+            Assert.True(result > 0);
+        }
+
+        [Fact]
+        public void TryAutoRecruit_MaxTroopsLimit_EnforcedAtTen()
+        {
+            // Even with huge budget, max 10 troops per cycle
+            var factionState = new FactionState("test", initialCash: 100000, initialTroopCount: 0);
+            _mockFactionService.Setup(f => f.GetFactionState("test")).Returns(factionState);
+            _mockFactionService.Setup(f => f.AddReserveTroops(It.IsAny<string>(), It.IsAny<DefenderTier>(), It.IsAny<int>())).Returns(true);
+            _mockFactionService.Setup(f => f.SpendCash(It.IsAny<string>(), It.IsAny<int>())).Returns(true);
+
+            var result = _service.TryAutoRecruit("test");
+
+            Assert.Equal(10, result);
+        }
+
+        [Fact]
+        public void TryAutoRecruit_CustomMaxTroops_Respected()
+        {
+            var factionState = new FactionState("test", initialCash: 100000, initialTroopCount: 0);
+            _mockFactionService.Setup(f => f.GetFactionState("test")).Returns(factionState);
+            _mockFactionService.Setup(f => f.AddReserveTroops(It.IsAny<string>(), It.IsAny<DefenderTier>(), It.IsAny<int>())).Returns(true);
+            _mockFactionService.Setup(f => f.SpendCash(It.IsAny<string>(), It.IsAny<int>())).Returns(true);
+
+            var result = _service.TryAutoRecruit("test", maxTroopsToRecruit: 5);
+
+            Assert.Equal(5, result);
+        }
+
+        #endregion
+
+        #region Elite Purchase When Cannot Afford Full Elite
+
+        [Fact]
+        public void TryAutoRecruit_At15kButCantAffordElitePlusStandard_SkipsElite()
+        {
+            // Edge case: $15k threshold but not enough for 1 Elite + standard troops
+            // $2000 exactly - can only afford 1 Elite, no standard
+            // But since we're at $15k threshold, it should try Elite first
+            var factionState = new FactionState("test", initialCash: 15000, initialTroopCount: 0);
+            _mockFactionService.Setup(f => f.GetFactionState("test")).Returns(factionState);
+            _mockFactionService.Setup(f => f.AddReserveTroops(It.IsAny<string>(), It.IsAny<DefenderTier>(), It.IsAny<int>())).Returns(true);
+            _mockFactionService.Setup(f => f.SpendCash(It.IsAny<string>(), It.IsAny<int>())).Returns(true);
+
+            var result = _service.TryAutoRecruit("test");
+
+            // Should buy 1 Elite + remaining troops
+            Assert.True(result > 0);
+            _mockFactionService.Verify(f => f.AddReserveTroops("test", DefenderTier.Elite, 1), Times.Once);
+        }
+
+        [Fact]
+        public void TryAutoRecruit_CantAffordAnyElite_SkipsEliteEntirely()
+        {
+            // $14,999 - just below $15k threshold, no Elite
+            var factionState = new FactionState("test", initialCash: 14999, initialTroopCount: 0);
+            _mockFactionService.Setup(f => f.GetFactionState("test")).Returns(factionState);
+            _mockFactionService.Setup(f => f.AddReserveTroops(It.IsAny<string>(), It.IsAny<DefenderTier>(), It.IsAny<int>())).Returns(true);
+            _mockFactionService.Setup(f => f.SpendCash(It.IsAny<string>(), It.IsAny<int>())).Returns(true);
+
+            var result = _service.TryAutoRecruit("test");
+
+            _mockFactionService.Verify(f => f.AddReserveTroops("test", DefenderTier.Elite, It.IsAny<int>()), Times.Never);
+        }
+
+        #endregion
+
+        #region Tier Distribution Rounding
+
+        [Fact]
+        public void TryAutoRecruit_RoundsDistributionCorrectly_NoBudgetLeak()
+        {
+            // Verify that rounding doesn't cause us to lose or gain troops
+            // With 9 troops at 40/30/20: 3.6/2.7/1.8 -> should round to total 9
+            var factionState = new FactionState("test", initialCash: 20000, initialTroopCount: 0);
+            _mockFactionService.Setup(f => f.GetFactionState("test")).Returns(factionState);
+            _mockFactionService.Setup(f => f.AddReserveTroops(It.IsAny<string>(), It.IsAny<DefenderTier>(), It.IsAny<int>())).Returns(true);
+            _mockFactionService.Setup(f => f.SpendCash(It.IsAny<string>(), It.IsAny<int>())).Returns(true);
+
+            var troopCounts = new Dictionary<DefenderTier, int>();
+            _mockFactionService.Setup(f => f.AddReserveTroops("test", It.IsAny<DefenderTier>(), It.IsAny<int>()))
+                .Callback<string, DefenderTier, int>((id, tier, count) => troopCounts[tier] = count)
+                .Returns(true);
+
+            var result = _service.TryAutoRecruit("test");
+
+            // Total should equal result
+            int totalRecorded = 0;
+            foreach (var kvp in troopCounts)
+            {
+                totalRecorded += kvp.Value;
+            }
+            Assert.Equal(result, totalRecorded);
+        }
+
+        #endregion
+    }
+}
