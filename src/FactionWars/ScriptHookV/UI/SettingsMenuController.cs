@@ -468,7 +468,7 @@ namespace FactionWars.ScriptHookV.UI
         {
             _difficultyService.SetDifficulty(level);
             _pendingDifficulty = null;
-            _menuProvider.CloseMenu();
+            Show(); // Return to settings menu instead of closing
         }
     }
 }

@@ -706,7 +706,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
         }
 
         [Fact]
-        public void ConfirmDifficulty_SetsDifficultyAndClosesMenu()
+        public void ConfirmDifficulty_SetsDifficultyAndReturnsToSettings()
         {
             // Arrange - Current is Normal, selecting Easy
             _difficultyServiceMock.Setup(d => d.Current).Returns(DifficultySettings.Normal);
@@ -718,7 +718,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
 
             // Assert
             _difficultyServiceMock.Verify(d => d.SetDifficulty(Difficulty.Easy), Times.Once);
-            Assert.False(_menuProvider.IsMenuVisible);
+            Assert.Equal(SettingsMenuController.SettingsMenuId, _menuProvider.CurrentMenuId);
         }
 
         [Fact]
