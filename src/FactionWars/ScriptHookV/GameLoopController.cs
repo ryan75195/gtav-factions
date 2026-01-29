@@ -7,6 +7,8 @@ using FactionWars.Combat.Interfaces;
 using FactionWars.Combat.Models;
 using FactionWars.Core.Interfaces;
 using FactionWars.Core.Models;
+using FactionWars.Core.Services;
+using FactionWars.Persistence.Models;
 using FactionWars.Economy.Interfaces;
 using FactionWars.Factions.Interfaces;
 using FactionWars.ScriptHookV.Data;
@@ -35,6 +37,7 @@ namespace FactionWars.ScriptHookV
         private readonly IZoneRepository _zoneRepository;
         private readonly IFactionService _factionService;
         private readonly IResourceTickService _resourceTickService;
+        private IDifficultyService? _difficultyService;
         private readonly FactionInitializer _factionInitializer;
         private readonly ZoneDataLoader _zoneDataLoader;
         private MapBlipManager? _mapBlipManager;
@@ -52,6 +55,7 @@ namespace FactionWars.ScriptHookV
         private CommanderManager? _commanderManager;
         private IAIController? _aiController;
         private IAutoSaveService? _autoSaveService;
+        private IGameStateManager? _gameStateManager;
         private MainMenuController? _mainMenuController;
         private RecruitmentMenuController? _recruitmentMenuController;
         private DefendersMenuController? _defendersMenuController;
@@ -817,10 +821,21 @@ namespace FactionWars.ScriptHookV
             // Initialize settings menu controller
             var saveSlotManager = _container.Resolve<ISaveSlotManager>();
             var gameStateCoordinator = _container.Resolve<IGameStateCoordinator>();
+            _difficultyService = _container.Resolve<IDifficultyService>();
+
+            // Apply initial difficulty settings to resource tick service
+            _resourceTickService.SetAiIncomeMultiplier(_difficultyService.Current.AiIncomeMultiplier);
+            _resourceTickService.SetTickInterval(_difficultyService.Current.TickIntervalSeconds);
+            _resourceTickService.SetPlayerFactionId(CurrentPlayerFactionId);
+
+            // Subscribe to difficulty changes to update resource tick service
+            _difficultyService.DifficultyChanged += OnDifficultyChanged;
+
             _settingsMenuController = new SettingsMenuController(
                 menuProvider,
                 saveSlotManager,
-                gameStateCoordinator);
+                gameStateCoordinator,
+                _difficultyService);
             _settingsMenuController.BackRequested += (s, e) => _mainMenuController.OnKeyDown(MainMenuController.MenuToggleKeyCode);
 
             // Initialize shop menu controller
@@ -834,8 +849,13 @@ namespace FactionWars.ScriptHookV
             _autoSaveService = _container.Resolve<IAutoSaveService>();
 
             // Start auto-save after marking the game as loaded
-            var gameStateManager = _container.Resolve<IGameStateManager>();
-            gameStateManager.NewGame(); // Mark the game as loaded so auto-save can capture state
+            _gameStateManager = _container.Resolve<IGameStateManager>();
+            _gameStateManager.NewGame(); // Mark the game as loaded so auto-save can capture state
+            _gameStateManager.SetCurrentDifficulty(_difficultyService.Current.Level); // Sync initial difficulty
+
+            // Subscribe to game state events for difficulty persistence
+            _gameStateManager.OnGameLoaded += OnGameLoaded;
+
             _autoSaveService.Start();
 
             FileLogger.Separator("INITIALIZATION COMPLETE");
@@ -865,6 +885,36 @@ namespace FactionWars.ScriptHookV
                 case MainMenuController.SettingsItemId:
                     _settingsMenuController?.Show();
                     break;
+            }
+        }
+
+        /// <summary>
+        /// Handles difficulty changed events from the difficulty service.
+        /// Updates the resource tick service with the new difficulty settings.
+        /// </summary>
+        private void OnDifficultyChanged(object? sender, DifficultySettings settings)
+        {
+            _resourceTickService?.SetAiIncomeMultiplier(settings.AiIncomeMultiplier);
+            _resourceTickService?.SetTickInterval(settings.TickIntervalSeconds);
+            _gameStateManager?.SetCurrentDifficulty(settings.Level);
+            FileLogger.Info($"Difficulty changed to {settings.Level}: AI={settings.AiIncomeMultiplier}x, Tick={settings.TickIntervalMinutes}min");
+        }
+
+        /// <summary>
+        /// Handles game loaded events from the game state manager.
+        /// Restores difficulty settings from the loaded game state.
+        /// </summary>
+        private void OnGameLoaded(object? sender, GameStateLoadedEventArgs e)
+        {
+            if (!e.Success || _difficultyService == null || _gameStateManager == null)
+                return;
+
+            // Get the loaded game state to retrieve the difficulty
+            var gameState = _gameStateManager.GetCurrentGameState();
+            if (gameState != null)
+            {
+                _difficultyService.SetDifficulty(gameState.Difficulty);
+                FileLogger.Info($"Restored difficulty from save: {gameState.Difficulty}");
             }
         }
 
@@ -996,6 +1046,20 @@ namespace FactionWars.ScriptHookV
             // Clean up event feed renderer and service
             _eventFeedRenderer = null;
             _eventFeedService = null;
+
+            // Unsubscribe from difficulty events
+            if (_difficultyService != null)
+            {
+                _difficultyService.DifficultyChanged -= OnDifficultyChanged;
+            }
+            _difficultyService = null;
+
+            // Unsubscribe from game state manager events
+            if (_gameStateManager != null)
+            {
+                _gameStateManager.OnGameLoaded -= OnGameLoaded;
+            }
+            _gameStateManager = null;
         }
 
         /// <summary>

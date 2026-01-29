@@ -1,4 +1,5 @@
 using FactionWars.Core.Interfaces;
+using FactionWars.Core.Models;
 using FactionWars.Factions.Interfaces;
 using FactionWars.Factions.Models;
 using FactionWars.Persistence.Models;
@@ -27,6 +28,7 @@ namespace FactionWars.ScriptHookV.Persistence
         private string? _currentSaveName;
         private long _totalPlayTimeSeconds;
         private float _playTimeAccumulator;
+        private Difficulty _currentDifficulty = Difficulty.Normal;
 
         /// <inheritdoc />
         public bool HasGameLoaded => _hasGameLoaded;
@@ -84,6 +86,7 @@ namespace FactionWars.ScriptHookV.Persistence
 
             gameState.TotalPlayTimeSeconds = _totalPlayTimeSeconds;
             gameState.SaveName = _currentSaveName ?? "Unnamed Save";
+            gameState.Difficulty = _currentDifficulty;
             gameState.MarkModified();
 
             return gameState;
@@ -280,6 +283,12 @@ namespace FactionWars.ScriptHookV.Persistence
                     _allocationRepository.Add(allocation);
                 }
             }
+        }
+
+        /// <inheritdoc />
+        public void SetCurrentDifficulty(Difficulty difficulty)
+        {
+            _currentDifficulty = difficulty;
         }
     }
 }

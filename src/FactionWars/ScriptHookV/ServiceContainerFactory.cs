@@ -26,6 +26,7 @@ using FactionWars.ScriptHookV.UI;
 using FactionWars.UI.Interfaces;
 using FactionWars.UI.Services;
 using FactionWars.Combat.Models;
+using FactionWars.Core.Models;
 
 namespace FactionWars.ScriptHookV
 {
@@ -112,6 +113,9 @@ namespace FactionWars.ScriptHookV
 
         private static void RegisterDomainServices(ServiceContainer container)
         {
+            // Difficulty service - manages game difficulty settings
+            container.RegisterSingleton<IDifficultyService>(() => new DifficultyService());
+
             // Zone service depends on zone repository and faction repository (for syncing zone ownership)
             container.RegisterSingleton<IZoneService>(() =>
                 new ZoneService(
@@ -409,7 +413,7 @@ namespace FactionWars.ScriptHookV
                 container.Resolve<IAIBudgetService>(),
                 container.Resolve<IAIRecruitmentService>()));
 
-            // Register consolidated AI controller
+            // Register consolidated AI controller with recruitment service for scaled recruitment
             container.RegisterSingleton<IAIController>(() => new AIController(
                 container.Resolve<IFactionService>(),
                 container.Resolve<IZoneService>(),
@@ -417,7 +421,8 @@ namespace FactionWars.ScriptHookV
                 container.Resolve<IZoneDefenderAllocationService>(),
                 container.Resolve<IGameBridge>(),
                 container.Resolve<IDictionary<string, IAIStrategy>>(),
-                container.Resolve<IZoneBattleManager>()));
+                container.Resolve<IZoneBattleManager>(),
+                container.Resolve<IAIRecruitmentService>()));
         }
     }
 }

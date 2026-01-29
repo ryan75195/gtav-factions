@@ -1,4 +1,5 @@
 using FactionWars.Core.Interfaces;
+using FactionWars.Core.Models;
 using FactionWars.Persistence.Models;
 using System;
 using System.Threading.Tasks;
@@ -78,6 +79,12 @@ namespace FactionWars.ScriptHookV.Persistence
         /// </summary>
         /// <param name="gameState">The game state to apply.</param>
         void ApplyGameState(GameState gameState);
+
+        /// <summary>
+        /// Sets the current difficulty level to be included in saved game states.
+        /// </summary>
+        /// <param name="difficulty">The current difficulty level.</param>
+        void SetCurrentDifficulty(Difficulty difficulty);
     }
 
     /// <summary>
