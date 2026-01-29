@@ -476,5 +476,56 @@ namespace FactionWars.Tests.Unit.Core
         }
 
         #endregion
+
+        #region Vehicle Class and Turret Seat Tests
+
+        [Fact]
+        public void GetVehicleClass_ReturnsSetClass()
+        {
+            var bridge = new MockGameBridge();
+            var vehicleHandle = bridge.CreateVehicle("car", new Vector3(0, 0, 0));
+            bridge.SetVehicleClass(vehicleHandle, 15); // Helicopter
+
+            var result = bridge.GetVehicleClass(vehicleHandle);
+
+            Assert.Equal(15, result);
+        }
+
+        [Fact]
+        public void GetVehicleClass_InvalidVehicle_ReturnsNegativeOne()
+        {
+            var bridge = new MockGameBridge();
+
+            var result = bridge.GetVehicleClass(9999);
+
+            Assert.Equal(-1, result);
+        }
+
+        [Fact]
+        public void IsVehicleSeatTurret_ReturnsTrueForTurretSeat()
+        {
+            var bridge = new MockGameBridge();
+            var vehicleHandle = bridge.CreateVehicle("technical", new Vector3(0, 0, 0));
+            bridge.SetSeatAsTurret(vehicleHandle, 2); // Back turret
+
+            Assert.True(bridge.IsVehicleSeatTurret(vehicleHandle, 2));
+            Assert.False(bridge.IsVehicleSeatTurret(vehicleHandle, 1));
+        }
+
+        [Fact]
+        public void GetVehiclePosition_ReturnsSetPosition()
+        {
+            var bridge = new MockGameBridge();
+            var vehicleHandle = bridge.CreateVehicle("car", new Vector3(10, 20, 30));
+            bridge.SetVehiclePosition(vehicleHandle, new Vector3(100, 200, 50));
+
+            var result = bridge.GetVehiclePosition(vehicleHandle);
+
+            Assert.Equal(100, result.X);
+            Assert.Equal(200, result.Y);
+            Assert.Equal(50, result.Z);
+        }
+
+        #endregion
     }
 }

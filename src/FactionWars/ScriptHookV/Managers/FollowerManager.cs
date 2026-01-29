@@ -19,6 +19,7 @@ namespace FactionWars.ScriptHookV.Managers
         private readonly IPedSpawningService _pedSpawningService;
         private readonly IDefenderTierService _defenderTierService;
         private readonly IPedBlipService _pedBlipService;
+        private readonly IVehicleSeatPriorityService _seatPriorityService;
         private readonly Dictionary<DefenderTier, string> _modelsByTier;
 
         /// <summary>
@@ -34,19 +35,22 @@ namespace FactionWars.ScriptHookV.Managers
         /// <param name="pedSpawningService">Service for spawning peds.</param>
         /// <param name="defenderTierService">Service for defender tier configurations.</param>
         /// <param name="pedBlipService">Service for managing ped blips on the minimap.</param>
+        /// <param name="seatPriorityService">Service for coordinated vehicle seat assignment.</param>
         /// <exception cref="ArgumentNullException">Thrown if any parameter is null.</exception>
         public FollowerManager(
             IGameBridge gameBridge,
             IFollowerService followerService,
             IPedSpawningService pedSpawningService,
             IDefenderTierService defenderTierService,
-            IPedBlipService pedBlipService)
+            IPedBlipService pedBlipService,
+            IVehicleSeatPriorityService seatPriorityService)
         {
             _gameBridge = gameBridge ?? throw new ArgumentNullException(nameof(gameBridge));
             _followerService = followerService ?? throw new ArgumentNullException(nameof(followerService));
             _pedSpawningService = pedSpawningService ?? throw new ArgumentNullException(nameof(pedSpawningService));
             _defenderTierService = defenderTierService ?? throw new ArgumentNullException(nameof(defenderTierService));
             _pedBlipService = pedBlipService ?? throw new ArgumentNullException(nameof(pedBlipService));
+            _seatPriorityService = seatPriorityService ?? throw new ArgumentNullException(nameof(seatPriorityService));
 
             _modelsByTier = new Dictionary<DefenderTier, string>
             {
@@ -197,7 +201,7 @@ namespace FactionWars.ScriptHookV.Managers
         /// <summary>
         /// Updates follower state. Should be called each game tick.
         /// Checks for follower deaths and handles cleanup.
-        /// Also manages vehicle enter/exit behavior.
+        /// Also manages vehicle enter/exit behavior with coordinated seat assignment.
         /// </summary>
         /// <param name="factionId">The faction to update followers for.</param>
         public void Update(string factionId)
@@ -212,15 +216,11 @@ namespace FactionWars.ScriptHookV.Managers
             // Check vehicle state
             var playerInVehicle = _gameBridge.IsPlayerInVehicle();
             var playerVehicle = playerInVehicle ? _gameBridge.GetPlayerVehicle() : -1;
-            int[]? freeSeats = null;
-            var seatIndex = 0;
 
-            if (playerInVehicle && playerVehicle >= 0)
-            {
-                freeSeats = _gameBridge.GetVehicleFreeSeats(playerVehicle);
-            }
+            // Collect alive follower handles for coordinated assignment
+            var aliveFollowerHandles = new List<int>();
 
-            // Check each follower for death and vehicle state
+            // Check each follower for death
             foreach (var follower in followers)
             {
                 // Skip unspawned followers
@@ -242,23 +242,48 @@ namespace FactionWars.ScriptHookV.Managers
                     continue;
                 }
 
-                // Handle vehicle behavior
-                var followerInVehicle = _gameBridge.IsPedInVehicle(follower.PedHandle);
-                var followerTryingToEnter = _gameBridge.IsPedTryingToEnterVehicle(follower.PedHandle);
+                aliveFollowerHandles.Add(follower.PedHandle);
+            }
 
-                if (playerInVehicle && !followerInVehicle && !followerTryingToEnter)
+            // Handle vehicle behavior
+            if (playerInVehicle && playerVehicle >= 0)
+            {
+                // Get prioritized seats and nearby followers
+                var prioritizedSeats = _seatPriorityService.GetPrioritizedFreeSeats(playerVehicle);
+                var nearbyFollowers = _seatPriorityService.FilterFollowersByProximity(
+                    aliveFollowerHandles.ToArray(), playerVehicle, 15f);
+
+                // Coordinated assignment - assign all at once
+                var seatIndex = 0;
+                foreach (var pedHandle in nearbyFollowers)
                 {
-                    // Player is in vehicle but follower isn't and isn't already trying - order follower to enter
-                    if (freeSeats != null && seatIndex < freeSeats.Length)
+                    if (seatIndex >= prioritizedSeats.Length)
+                        break;
+
+                    var inVehicle = _gameBridge.IsPedInVehicle(pedHandle);
+                    var tryingToEnter = _gameBridge.IsPedTryingToEnterVehicle(pedHandle);
+
+                    if (!inVehicle && !tryingToEnter)
                     {
-                        _gameBridge.TaskPedEnterVehicle(follower.PedHandle, playerVehicle, freeSeats[seatIndex]);
+                        _gameBridge.TaskPedEnterVehicle(pedHandle, playerVehicle, prioritizedSeats[seatIndex]);
+                        seatIndex++;
+                    }
+                    else if (inVehicle)
+                    {
+                        // Already in vehicle, account for this seat being taken
                         seatIndex++;
                     }
                 }
-                else if (!playerInVehicle && followerInVehicle)
+            }
+            else
+            {
+                // Player not in vehicle - make followers exit if they're in one
+                foreach (var pedHandle in aliveFollowerHandles)
                 {
-                    // Player exited vehicle but follower is still in - order follower to exit
-                    _gameBridge.TaskPedLeaveVehicle(follower.PedHandle);
+                    if (_gameBridge.IsPedInVehicle(pedHandle))
+                    {
+                        _gameBridge.TaskPedLeaveVehicle(pedHandle);
+                    }
                 }
             }
         }

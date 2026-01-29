@@ -18,6 +18,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         private readonly Mock<IPedSpawningService> _pedSpawningServiceMock;
         private readonly Mock<IDefenderTierService> _defenderTierServiceMock;
         private readonly Mock<IPedBlipService> _pedBlipServiceMock;
+        private readonly Mock<IVehicleSeatPriorityService> _seatPriorityServiceMock;
         private readonly FollowerManager _manager;
 
         public FollowerManagerTests()
@@ -27,6 +28,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             _pedSpawningServiceMock = new Mock<IPedSpawningService>();
             _defenderTierServiceMock = new Mock<IDefenderTierService>();
             _pedBlipServiceMock = new Mock<IPedBlipService>();
+            _seatPriorityServiceMock = new Mock<IVehicleSeatPriorityService>();
 
             // Set up default tier configs (tests can override as needed)
             _defenderTierServiceMock.Setup(s => s.GetTierConfig(DefenderTier.Basic))
@@ -39,12 +41,20 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             // Set up default player money (plenty of cash by default)
             _gameBridgeMock.Setup(g => g.GetPlayerMoney()).Returns(10000);
 
+            // Default: return seats as-is, return all followers
+            _seatPriorityServiceMock.Setup(s => s.GetPrioritizedFreeSeats(It.IsAny<int>()))
+                .Returns(new[] { 1, 2, 3 });
+            _seatPriorityServiceMock.Setup(s => s.FilterFollowersByProximity(
+                It.IsAny<int[]>(), It.IsAny<int>(), It.IsAny<float>()))
+                .Returns<int[], int, float>((handles, v, d) => handles);
+
             _manager = new FollowerManager(
                 _gameBridgeMock.Object,
                 _followerServiceMock.Object,
                 _pedSpawningServiceMock.Object,
                 _defenderTierServiceMock.Object,
-                _pedBlipServiceMock.Object);
+                _pedBlipServiceMock.Object,
+                _seatPriorityServiceMock.Object);
         }
 
         #region Constructor Tests
@@ -58,7 +68,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
                 _followerServiceMock.Object,
                 _pedSpawningServiceMock.Object,
                 _defenderTierServiceMock.Object,
-                _pedBlipServiceMock.Object));
+                _pedBlipServiceMock.Object,
+                _seatPriorityServiceMock.Object));
         }
 
         [Fact]
@@ -70,7 +81,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
                 null!,
                 _pedSpawningServiceMock.Object,
                 _defenderTierServiceMock.Object,
-                _pedBlipServiceMock.Object));
+                _pedBlipServiceMock.Object,
+                _seatPriorityServiceMock.Object));
         }
 
         [Fact]
@@ -82,7 +94,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
                 _followerServiceMock.Object,
                 null!,
                 _defenderTierServiceMock.Object,
-                _pedBlipServiceMock.Object));
+                _pedBlipServiceMock.Object,
+                _seatPriorityServiceMock.Object));
         }
 
         [Fact]
@@ -94,7 +107,34 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
                 _followerServiceMock.Object,
                 _pedSpawningServiceMock.Object,
                 null!,
-                _pedBlipServiceMock.Object));
+                _pedBlipServiceMock.Object,
+                _seatPriorityServiceMock.Object));
+        }
+
+        [Fact]
+        public void Constructor_WithNullPedBlipService_ShouldThrowArgumentNullException()
+        {
+            // Act & Assert
+            Assert.Throws<ArgumentNullException>(() => new FollowerManager(
+                _gameBridgeMock.Object,
+                _followerServiceMock.Object,
+                _pedSpawningServiceMock.Object,
+                _defenderTierServiceMock.Object,
+                null!,
+                _seatPriorityServiceMock.Object));
+        }
+
+        [Fact]
+        public void Constructor_WithNullSeatPriorityService_ShouldThrowArgumentNullException()
+        {
+            // Act & Assert
+            Assert.Throws<ArgumentNullException>(() => new FollowerManager(
+                _gameBridgeMock.Object,
+                _followerServiceMock.Object,
+                _pedSpawningServiceMock.Object,
+                _defenderTierServiceMock.Object,
+                _pedBlipServiceMock.Object,
+                null!));
         }
 
         #endregion
@@ -731,7 +771,9 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             _gameBridgeMock.Setup(g => g.IsPlayerInVehicle()).Returns(true);
             _gameBridgeMock.Setup(g => g.GetPlayerVehicle()).Returns(vehicleHandle);
             _gameBridgeMock.Setup(g => g.IsPedInVehicle(42)).Returns(false);
-            _gameBridgeMock.Setup(g => g.GetVehicleFreeSeats(vehicleHandle)).Returns(new[] { 1, 2 }); // Passenger seats
+            _seatPriorityServiceMock.Setup(s => s.GetPrioritizedFreeSeats(vehicleHandle)).Returns(new[] { 1, 2 });
+            _seatPriorityServiceMock.Setup(s => s.FilterFollowersByProximity(It.IsAny<int[]>(), vehicleHandle, 15f))
+                .Returns(new[] { 42 });
 
             // Act
             _manager.Update(factionId);
@@ -774,6 +816,9 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             _gameBridgeMock.Setup(g => g.IsPlayerInVehicle()).Returns(true);
             _gameBridgeMock.Setup(g => g.GetPlayerVehicle()).Returns(vehicleHandle);
             _gameBridgeMock.Setup(g => g.IsPedInVehicle(42)).Returns(true); // Already in vehicle
+            _seatPriorityServiceMock.Setup(s => s.GetPrioritizedFreeSeats(vehicleHandle)).Returns(new[] { 1, 2 });
+            _seatPriorityServiceMock.Setup(s => s.FilterFollowersByProximity(It.IsAny<int[]>(), vehicleHandle, 15f))
+                .Returns(new[] { 42 });
 
             // Act
             _manager.Update(factionId);
@@ -816,7 +861,9 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             _gameBridgeMock.Setup(g => g.IsPlayerInVehicle()).Returns(true);
             _gameBridgeMock.Setup(g => g.GetPlayerVehicle()).Returns(vehicleHandle);
             _gameBridgeMock.Setup(g => g.IsPedInVehicle(42)).Returns(false);
-            _gameBridgeMock.Setup(g => g.GetVehicleFreeSeats(vehicleHandle)).Returns(Array.Empty<int>()); // No free seats
+            _seatPriorityServiceMock.Setup(s => s.GetPrioritizedFreeSeats(vehicleHandle)).Returns(Array.Empty<int>()); // No free seats
+            _seatPriorityServiceMock.Setup(s => s.FilterFollowersByProximity(It.IsAny<int[]>(), vehicleHandle, 15f))
+                .Returns(new[] { 42 });
 
             // Act
             _manager.Update(factionId);
@@ -842,7 +889,9 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             _gameBridgeMock.Setup(g => g.GetPlayerVehicle()).Returns(vehicleHandle);
             _gameBridgeMock.Setup(g => g.IsPedInVehicle(42)).Returns(false);
             _gameBridgeMock.Setup(g => g.IsPedInVehicle(43)).Returns(false);
-            _gameBridgeMock.Setup(g => g.GetVehicleFreeSeats(vehicleHandle)).Returns(new[] { 1, 2 }); // Two free seats
+            _seatPriorityServiceMock.Setup(s => s.GetPrioritizedFreeSeats(vehicleHandle)).Returns(new[] { 1, 2 });
+            _seatPriorityServiceMock.Setup(s => s.FilterFollowersByProximity(It.IsAny<int[]>(), vehicleHandle, 15f))
+                .Returns(new[] { 42, 43 });
 
             // Act
             _manager.Update(factionId);
@@ -868,13 +917,67 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             _gameBridgeMock.Setup(g => g.IsPlayerInVehicle()).Returns(true);
             _gameBridgeMock.Setup(g => g.GetPlayerVehicle()).Returns(vehicleHandle);
             _gameBridgeMock.Setup(g => g.IsPedInVehicle(It.IsAny<int>())).Returns(false);
-            _gameBridgeMock.Setup(g => g.GetVehicleFreeSeats(vehicleHandle)).Returns(new[] { 1 }); // Only one free seat
+            _seatPriorityServiceMock.Setup(s => s.GetPrioritizedFreeSeats(vehicleHandle)).Returns(new[] { 1 }); // Only one free seat
+            _seatPriorityServiceMock.Setup(s => s.FilterFollowersByProximity(It.IsAny<int[]>(), vehicleHandle, 15f))
+                .Returns(new[] { 42, 43, 44 });
 
             // Act
             _manager.Update(factionId);
 
             // Assert - only one follower should enter
             _gameBridgeMock.Verify(g => g.TaskPedEnterVehicle(It.IsAny<int>(), vehicleHandle, It.IsAny<int>()), Times.Once);
+        }
+
+        [Fact]
+        public void Update_WhenFollowerTooFarFromVehicle_ShouldNotEnterVehicle()
+        {
+            // Arrange
+            var factionId = "blue";
+            var follower = CreateFollowerWithPedHandle(factionId, DefenderTier.Basic, 42);
+            var followers = new List<Follower> { follower };
+            var vehicleHandle = 100;
+
+            _followerServiceMock.Setup(s => s.GetFollowers(factionId)).Returns(followers);
+            _gameBridgeMock.Setup(g => g.IsPedAlive(42)).Returns(true);
+            _gameBridgeMock.Setup(g => g.IsPlayerInVehicle()).Returns(true);
+            _gameBridgeMock.Setup(g => g.GetPlayerVehicle()).Returns(vehicleHandle);
+            _gameBridgeMock.Setup(g => g.IsPedInVehicle(42)).Returns(false);
+            _seatPriorityServiceMock.Setup(s => s.GetPrioritizedFreeSeats(vehicleHandle)).Returns(new[] { 1, 2 });
+            // Follower is too far, filtered out
+            _seatPriorityServiceMock.Setup(s => s.FilterFollowersByProximity(It.IsAny<int[]>(), vehicleHandle, 15f))
+                .Returns(Array.Empty<int>());
+
+            // Act
+            _manager.Update(factionId);
+
+            // Assert - follower should not enter since they're too far
+            _gameBridgeMock.Verify(g => g.TaskPedEnterVehicle(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>()), Times.Never);
+        }
+
+        [Fact]
+        public void Update_ShouldUsePrioritizedSeatsFromService()
+        {
+            // Arrange
+            var factionId = "blue";
+            var follower = CreateFollowerWithPedHandle(factionId, DefenderTier.Basic, 42);
+            var followers = new List<Follower> { follower };
+            var vehicleHandle = 100;
+
+            _followerServiceMock.Setup(s => s.GetFollowers(factionId)).Returns(followers);
+            _gameBridgeMock.Setup(g => g.IsPedAlive(42)).Returns(true);
+            _gameBridgeMock.Setup(g => g.IsPlayerInVehicle()).Returns(true);
+            _gameBridgeMock.Setup(g => g.GetPlayerVehicle()).Returns(vehicleHandle);
+            _gameBridgeMock.Setup(g => g.IsPedInVehicle(42)).Returns(false);
+            // Return turret seat (8) as highest priority
+            _seatPriorityServiceMock.Setup(s => s.GetPrioritizedFreeSeats(vehicleHandle)).Returns(new[] { 8, 1, 2 });
+            _seatPriorityServiceMock.Setup(s => s.FilterFollowersByProximity(It.IsAny<int[]>(), vehicleHandle, 15f))
+                .Returns(new[] { 42 });
+
+            // Act
+            _manager.Update(factionId);
+
+            // Assert - follower should get seat 8 (turret, highest priority)
+            _gameBridgeMock.Verify(g => g.TaskPedEnterVehicle(42, vehicleHandle, 8), Times.Once);
         }
 
         #endregion

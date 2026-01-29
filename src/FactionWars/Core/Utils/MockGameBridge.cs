@@ -844,6 +844,57 @@ namespace FactionWars.Core.Utils
             return string.Empty;
         }
 
+        /// <inheritdoc />
+        public int GetVehicleClass(int vehicleHandle)
+        {
+            if (_vehicles.TryGetValue(vehicleHandle, out var state))
+                return state.VehicleClass;
+            return -1;
+        }
+
+        /// <inheritdoc />
+        public bool IsVehicleSeatTurret(int vehicleHandle, int seatIndex)
+        {
+            if (_vehicles.TryGetValue(vehicleHandle, out var state))
+                return state.TurretSeats.Contains(seatIndex);
+            return false;
+        }
+
+        /// <inheritdoc />
+        public Vector3 GetVehiclePosition(int vehicleHandle)
+        {
+            if (_vehicles.TryGetValue(vehicleHandle, out var state))
+                return state.Position;
+            return Vector3.Zero;
+        }
+
+        /// <summary>
+        /// Sets the vehicle class for testing.
+        /// </summary>
+        public void SetVehicleClass(int vehicleHandle, int vehicleClass)
+        {
+            if (_vehicles.TryGetValue(vehicleHandle, out var state))
+                state.VehicleClass = vehicleClass;
+        }
+
+        /// <summary>
+        /// Marks a seat as a turret seat for testing.
+        /// </summary>
+        public void SetSeatAsTurret(int vehicleHandle, int seatIndex)
+        {
+            if (_vehicles.TryGetValue(vehicleHandle, out var state))
+                state.TurretSeats.Add(seatIndex);
+        }
+
+        /// <summary>
+        /// Sets the vehicle position for testing.
+        /// </summary>
+        public void SetVehiclePosition(int vehicleHandle, Vector3 position)
+        {
+            if (_vehicles.TryGetValue(vehicleHandle, out var state))
+                state.Position = position;
+        }
+
         /// <summary>
         /// Sets up the player vehicle with a specific model name (for testing).
         /// </summary>
@@ -864,7 +915,8 @@ namespace FactionWars.Core.Utils
         /// <returns>The vehicle handle.</returns>
         public int SetPlayerInVehicle(int totalSeats = 4)
         {
-            var handle = CreateTestVehicle(totalSeats);
+            var handle = _nextVehicleHandle++;
+            _vehicles[handle] = new VehicleState(totalSeats, "", PlayerPosition);
             IsPlayerInVehicleValue = true;
             PlayerVehicleHandle = handle;
             // Occupy driver seat (index 0) by player
@@ -914,7 +966,9 @@ namespace FactionWars.Core.Utils
             private readonly int _totalSeats;
 
             public string ModelName { get; }
-            public Vector3 Position { get; }
+            public Vector3 Position { get; set; }
+            public int VehicleClass { get; set; } = 0; // Default to Compacts
+            public HashSet<int> TurretSeats { get; } = new HashSet<int>();
 
             public VehicleState(int totalSeats, string modelName = "", Vector3 position = default)
             {

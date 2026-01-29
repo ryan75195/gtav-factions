@@ -671,6 +671,64 @@ namespace FactionWars.ScriptHookV
         }
 
         /// <inheritdoc />
+        public int GetVehicleClass(int vehicleHandle)
+        {
+            try
+            {
+                var vehicle = Entity.FromHandle(vehicleHandle) as Vehicle;
+                if (vehicle == null || !vehicle.Exists())
+                    return -1;
+
+                return Function.Call<int>(Hash.GET_VEHICLE_CLASS, vehicleHandle);
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error("GetVehicleClass error", ex);
+                return -1;
+            }
+        }
+
+        /// <inheritdoc />
+        public bool IsVehicleSeatTurret(int vehicleHandle, int seatIndex)
+        {
+            try
+            {
+                var vehicle = Entity.FromHandle(vehicleHandle) as Vehicle;
+                if (vehicle == null || !vehicle.Exists())
+                    return false;
+
+                // GTA V uses -1 for driver, 0+ for passengers
+                // Our abstraction uses 0 for driver, 1+ for passengers
+                var gtaSeatIndex = seatIndex - 1;
+                return Function.Call<bool>(Hash.IS_TURRET_SEAT, vehicleHandle, gtaSeatIndex);
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error("IsVehicleSeatTurret error", ex);
+                return false;
+            }
+        }
+
+        /// <inheritdoc />
+        public DomainVector3 GetVehiclePosition(int vehicleHandle)
+        {
+            try
+            {
+                var vehicle = Entity.FromHandle(vehicleHandle) as Vehicle;
+                if (vehicle == null || !vehicle.Exists())
+                    return DomainVector3.Zero;
+
+                var pos = vehicle.Position;
+                return new DomainVector3(pos.X, pos.Y, pos.Z);
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error("GetVehiclePosition error", ex);
+                return DomainVector3.Zero;
+            }
+        }
+
+        /// <inheritdoc />
         public void TaskPedEnterVehicle(int pedHandle, int vehicleHandle, int seatIndex)
         {
             try

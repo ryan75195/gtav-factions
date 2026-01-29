@@ -180,6 +180,28 @@ namespace FactionWars.Core.Interfaces
         int[] GetVehicleFreeSeats(int vehicleHandle);
 
         /// <summary>
+        /// Gets the vehicle class (e.g., 15=helicopter, 14=boat, 8=motorcycle).
+        /// </summary>
+        /// <param name="vehicleHandle">Handle of the vehicle.</param>
+        /// <returns>Vehicle class ID, or -1 if invalid.</returns>
+        int GetVehicleClass(int vehicleHandle);
+
+        /// <summary>
+        /// Checks if a vehicle seat is a turret/gun seat.
+        /// </summary>
+        /// <param name="vehicleHandle">Handle of the vehicle.</param>
+        /// <param name="seatIndex">The seat index to check.</param>
+        /// <returns>True if the seat is a turret, false otherwise.</returns>
+        bool IsVehicleSeatTurret(int vehicleHandle, int seatIndex);
+
+        /// <summary>
+        /// Gets the position of a vehicle.
+        /// </summary>
+        /// <param name="vehicleHandle">Handle of the vehicle.</param>
+        /// <returns>The vehicle's position, or Vector3.Zero if invalid.</returns>
+        Vector3 GetVehiclePosition(int vehicleHandle);
+
+        /// <summary>
         /// Tasks a ped to enter a specific vehicle and seat.
         /// </summary>
         /// <param name="pedHandle">Handle of the ped to task.</param>

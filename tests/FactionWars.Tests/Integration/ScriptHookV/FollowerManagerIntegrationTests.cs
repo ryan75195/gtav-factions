@@ -28,6 +28,7 @@ namespace FactionWars.Tests.Integration.ScriptHookV
         private readonly IFollowerService _followerService;
         private readonly IDefenderTierService _defenderTierService;
         private readonly IPedBlipService _pedBlipService;
+        private readonly IVehicleSeatPriorityService _seatPriorityService;
         private readonly FollowerManager _followerManager;
 
         public FollowerManagerIntegrationTests()
@@ -43,13 +44,15 @@ namespace FactionWars.Tests.Integration.ScriptHookV
             _followerService = new FollowerService(maxFollowers: 6);
             _defenderTierService = new DefenderTierService();
             _pedBlipService = new PedBlipService(_gameBridge);
+            _seatPriorityService = new VehicleSeatPriorityService(_gameBridge);
 
             _followerManager = new FollowerManager(
                 _gameBridge,
                 _followerService,
                 _pedSpawningService,
                 _defenderTierService,
-                _pedBlipService);
+                _pedBlipService,
+                _seatPriorityService);
         }
 
         #region Following Behavior Tests

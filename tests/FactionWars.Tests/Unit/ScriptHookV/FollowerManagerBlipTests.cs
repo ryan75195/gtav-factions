@@ -18,6 +18,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
         private readonly Mock<IPedSpawningService> _pedSpawningServiceMock;
         private readonly Mock<IDefenderTierService> _defenderTierServiceMock;
         private readonly Mock<IPedBlipService> _pedBlipServiceMock;
+        private readonly Mock<IVehicleSeatPriorityService> _seatPriorityServiceMock;
         private readonly FollowerManager _manager;
 
         public FollowerManagerBlipTests()
@@ -29,6 +30,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             _pedSpawningServiceMock = new Mock<IPedSpawningService>();
             _defenderTierServiceMock = new Mock<IDefenderTierService>();
             _pedBlipServiceMock = new Mock<IPedBlipService>();
+            _seatPriorityServiceMock = new Mock<IVehicleSeatPriorityService>();
 
             var tierConfig = new DefenderTierConfig(DefenderTier.Basic, 100, 100, 0, "weapon_pistol", 0.5f, 1.0f);
             _defenderTierServiceMock.Setup(d => d.GetTierConfig(It.IsAny<DefenderTier>())).Returns(tierConfig);
@@ -40,12 +42,19 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             _followerServiceMock.Setup(f => f.Recruit(It.IsAny<string>(), It.IsAny<DefenderTier>()))
                 .Returns(FollowerRecruitResult.Succeeded(new Follower("faction-1", DefenderTier.Basic)));
 
+            // Default seat priority service setup
+            _seatPriorityServiceMock.Setup(s => s.GetPrioritizedFreeSeats(It.IsAny<int>()))
+                .Returns(new[] { 1, 2, 3 });
+            _seatPriorityServiceMock.Setup(s => s.FilterFollowersByProximity(It.IsAny<int[]>(), It.IsAny<int>(), It.IsAny<float>()))
+                .Returns<int[], int, float>((handles, v, d) => handles);
+
             _manager = new FollowerManager(
                 _gameBridge,
                 _followerServiceMock.Object,
                 _pedSpawningServiceMock.Object,
                 _defenderTierServiceMock.Object,
-                _pedBlipServiceMock.Object);
+                _pedBlipServiceMock.Object,
+                _seatPriorityServiceMock.Object);
         }
 
         [Fact]
@@ -109,7 +118,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV
                 _followerServiceMock.Object,
                 _pedSpawningServiceMock.Object,
                 _defenderTierServiceMock.Object,
-                null!));
+                null!,
+                _seatPriorityServiceMock.Object));
         }
     }
 }
