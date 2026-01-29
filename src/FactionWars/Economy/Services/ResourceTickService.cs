@@ -20,6 +20,8 @@ namespace FactionWars.Economy.Services
         private int _tickIntervalSeconds;
         private float _elapsedTime;
         private bool _isRunning;
+        private float _aiIncomeMultiplier = 1.0f;
+        private string? _playerFactionId;
 
         /// <inheritdoc />
         public event EventHandler<ResourceTickEventArgs>? OnResourceTick;
@@ -130,6 +132,18 @@ namespace FactionWars.Economy.Services
             }
         }
 
+        /// <inheritdoc />
+        public void SetAiIncomeMultiplier(float multiplier)
+        {
+            _aiIncomeMultiplier = multiplier;
+        }
+
+        /// <inheritdoc />
+        public void SetPlayerFactionId(string? factionId)
+        {
+            _playerFactionId = factionId;
+        }
+
         /// <summary>
         /// Executes a single resource tick for all active factions.
         /// </summary>
@@ -141,22 +155,31 @@ namespace FactionWars.Economy.Services
             {
                 var resources = CalculateFactionResources(faction.Id);
 
+                // Determine if this is the player faction
+                bool isPlayerFaction = _playerFactionId != null && faction.Id == _playerFactionId;
+                float incomeMultiplier = isPlayerFaction ? 1.0f : _aiIncomeMultiplier;
+
+                // Apply AI income multiplier
+                int finalCash = (int)(resources.cash * incomeMultiplier);
+                int finalRecruitment = (int)(resources.recruitment * incomeMultiplier);
+                int finalWeapons = (int)(resources.weapons * incomeMultiplier);
+
                 // Add resources to faction
-                if (resources.cash > 0)
-                    _factionService.AddCash(faction.Id, resources.cash);
+                if (finalCash > 0)
+                    _factionService.AddCash(faction.Id, finalCash);
 
-                if (resources.recruitment > 0)
-                    _factionService.AddRecruitmentPoints(faction.Id, resources.recruitment);
+                if (finalRecruitment > 0)
+                    _factionService.AddRecruitmentPoints(faction.Id, finalRecruitment);
 
-                if (resources.weapons > 0)
-                    _factionService.AddWeapons(faction.Id, resources.weapons);
+                if (finalWeapons > 0)
+                    _factionService.AddWeapons(faction.Id, finalWeapons);
 
                 // Raise event
                 var args = new ResourceTickEventArgs(
                     faction.Id,
-                    resources.cash,
-                    resources.recruitment,
-                    resources.weapons);
+                    finalCash,
+                    finalRecruitment,
+                    finalWeapons);
 
                 OnResourceTick?.Invoke(this, args);
             }

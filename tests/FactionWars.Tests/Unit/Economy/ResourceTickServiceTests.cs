@@ -924,6 +924,235 @@ namespace FactionWars.Tests.Unit.Economy
 
         #endregion
 
+        #region AI Income Multiplier Tests
+
+        [Fact]
+        public void SetAiIncomeMultiplier_StoresValue()
+        {
+            // Arrange & Act
+            _service.SetAiIncomeMultiplier(0.5f);
+
+            // Assert - We need to verify by observing behavior in a tick
+            // Set up a faction without it being the player faction
+            var faction = CreateFaction("ai_faction");
+            var state = new FactionState("ai_faction", 0, 0);
+            var zone = CreateZone("zone1", "ai_faction", ZoneTrait.None, 1);
+
+            _mockFactionService.Setup(f => f.GetActiveFactions())
+                .Returns(new[] { faction });
+            _mockFactionService.Setup(f => f.GetFactionState("ai_faction"))
+                .Returns(state);
+            _mockZoneService.Setup(z => z.GetZonesByOwner("ai_faction"))
+                .Returns(new[] { zone });
+            SetupModifierForNoBonus();
+
+            ResourceTickEventArgs? receivedArgs = null;
+            _service.OnResourceTick += (_, args) => receivedArgs = args;
+
+            // Act
+            _service.ForceTick();
+
+            // Assert - AI faction should get 0.5x resources
+            Assert.NotNull(receivedArgs);
+            Assert.Equal(50, receivedArgs.CashGenerated); // 100 * 0.5
+            Assert.Equal(5, receivedArgs.RecruitmentGenerated); // 10 * 0.5
+            Assert.Equal(2, receivedArgs.WeaponsGenerated); // 5 * 0.5 = 2.5, truncated to 2
+        }
+
+        [Fact]
+        public void SetPlayerFactionId_StoresValue()
+        {
+            // Arrange
+            _service.SetAiIncomeMultiplier(0.5f);
+            _service.SetPlayerFactionId("player_faction");
+
+            var faction = CreateFaction("player_faction");
+            var state = new FactionState("player_faction", 0, 0);
+            var zone = CreateZone("zone1", "player_faction", ZoneTrait.None, 1);
+
+            _mockFactionService.Setup(f => f.GetActiveFactions())
+                .Returns(new[] { faction });
+            _mockFactionService.Setup(f => f.GetFactionState("player_faction"))
+                .Returns(state);
+            _mockZoneService.Setup(z => z.GetZonesByOwner("player_faction"))
+                .Returns(new[] { zone });
+            SetupModifierForNoBonus();
+
+            ResourceTickEventArgs? receivedArgs = null;
+            _service.OnResourceTick += (_, args) => receivedArgs = args;
+
+            // Act
+            _service.ForceTick();
+
+            // Assert - Player faction should get full resources (1.0x multiplier)
+            Assert.NotNull(receivedArgs);
+            Assert.Equal(100, receivedArgs.CashGenerated);
+            Assert.Equal(10, receivedArgs.RecruitmentGenerated);
+            Assert.Equal(5, receivedArgs.WeaponsGenerated);
+        }
+
+        [Fact]
+        public void ExecuteTick_WithAiMultiplier_AppliesMultiplierToAiFactions()
+        {
+            // Arrange
+            _service.SetAiIncomeMultiplier(0.75f);
+            _service.SetPlayerFactionId("player_faction");
+
+            var aiFaction = CreateFaction("ai_faction");
+            var aiState = new FactionState("ai_faction", 0, 0);
+            var aiZone = CreateZone("zone1", "ai_faction", ZoneTrait.None, 1);
+
+            _mockFactionService.Setup(f => f.GetActiveFactions())
+                .Returns(new[] { aiFaction });
+            _mockFactionService.Setup(f => f.GetFactionState("ai_faction"))
+                .Returns(aiState);
+            _mockZoneService.Setup(z => z.GetZonesByOwner("ai_faction"))
+                .Returns(new[] { aiZone });
+            SetupModifierForNoBonus();
+
+            ResourceTickEventArgs? receivedArgs = null;
+            _service.OnResourceTick += (_, args) => receivedArgs = args;
+
+            // Act
+            _service.ForceTick();
+
+            // Assert - AI faction gets 0.75x resources
+            Assert.NotNull(receivedArgs);
+            Assert.Equal(75, receivedArgs.CashGenerated); // 100 * 0.75
+            Assert.Equal(7, receivedArgs.RecruitmentGenerated); // 10 * 0.75 = 7.5, truncated to 7
+            Assert.Equal(3, receivedArgs.WeaponsGenerated); // 5 * 0.75 = 3.75, truncated to 3
+        }
+
+        [Fact]
+        public void ExecuteTick_PlayerFaction_DoesNotApplyMultiplier()
+        {
+            // Arrange
+            _service.SetAiIncomeMultiplier(0.25f); // Very low AI income
+            _service.SetPlayerFactionId("player_faction");
+
+            var playerFaction = CreateFaction("player_faction");
+            var aiFaction = CreateFaction("ai_faction");
+            var playerState = new FactionState("player_faction", 0, 0);
+            var aiState = new FactionState("ai_faction", 0, 0);
+            var playerZone = CreateZone("zone1", "player_faction", ZoneTrait.None, 1);
+            var aiZone = CreateZone("zone2", "ai_faction", ZoneTrait.None, 1);
+
+            _mockFactionService.Setup(f => f.GetActiveFactions())
+                .Returns(new[] { playerFaction, aiFaction });
+            _mockFactionService.Setup(f => f.GetFactionState("player_faction"))
+                .Returns(playerState);
+            _mockFactionService.Setup(f => f.GetFactionState("ai_faction"))
+                .Returns(aiState);
+            _mockZoneService.Setup(z => z.GetZonesByOwner("player_faction"))
+                .Returns(new[] { playerZone });
+            _mockZoneService.Setup(z => z.GetZonesByOwner("ai_faction"))
+                .Returns(new[] { aiZone });
+            SetupModifierForNoBonus();
+
+            var receivedEvents = new List<ResourceTickEventArgs>();
+            _service.OnResourceTick += (_, args) => receivedEvents.Add(args);
+
+            // Act
+            _service.ForceTick();
+
+            // Assert
+            Assert.Equal(2, receivedEvents.Count);
+
+            var playerEvent = receivedEvents.Find(e => e.FactionId == "player_faction");
+            var aiEvent = receivedEvents.Find(e => e.FactionId == "ai_faction");
+
+            Assert.NotNull(playerEvent);
+            Assert.NotNull(aiEvent);
+
+            // Player faction gets full income
+            Assert.Equal(100, playerEvent.CashGenerated);
+            Assert.Equal(10, playerEvent.RecruitmentGenerated);
+            Assert.Equal(5, playerEvent.WeaponsGenerated);
+
+            // AI faction gets 0.25x income
+            Assert.Equal(25, aiEvent.CashGenerated); // 100 * 0.25
+            Assert.Equal(2, aiEvent.RecruitmentGenerated); // 10 * 0.25 = 2.5, truncated to 2
+            Assert.Equal(1, aiEvent.WeaponsGenerated); // 5 * 0.25 = 1.25, truncated to 1
+        }
+
+        [Fact]
+        public void ExecuteTick_WithNoPlayerFactionSet_AppliesMultiplierToAllFactions()
+        {
+            // Arrange - No player faction set, but AI multiplier is set
+            _service.SetAiIncomeMultiplier(0.5f);
+            // Note: SetPlayerFactionId is NOT called, so all factions are treated as AI
+
+            var faction = CreateFaction("faction1");
+            var state = new FactionState("faction1", 0, 0);
+            var zone = CreateZone("zone1", "faction1", ZoneTrait.None, 1);
+
+            _mockFactionService.Setup(f => f.GetActiveFactions())
+                .Returns(new[] { faction });
+            _mockFactionService.Setup(f => f.GetFactionState("faction1"))
+                .Returns(state);
+            _mockZoneService.Setup(z => z.GetZonesByOwner("faction1"))
+                .Returns(new[] { zone });
+            SetupModifierForNoBonus();
+
+            ResourceTickEventArgs? receivedArgs = null;
+            _service.OnResourceTick += (_, args) => receivedArgs = args;
+
+            // Act
+            _service.ForceTick();
+
+            // Assert - All factions get AI multiplier when no player faction is set
+            Assert.NotNull(receivedArgs);
+            Assert.Equal(50, receivedArgs.CashGenerated); // 100 * 0.5
+        }
+
+        [Fact]
+        public void ExecuteTick_AiMultiplierStacksWithOtherModifiers()
+        {
+            // Arrange
+            _service.SetAiIncomeMultiplier(0.5f);
+            // No player faction set
+
+            var faction = CreateFaction("ai_faction");
+            var state = new FactionState("ai_faction", 0, 0);
+            var zone = CreateZone("zone1", "ai_faction", ZoneTrait.Commercial, 2); // 2x strategic value
+
+            _mockFactionService.Setup(f => f.GetActiveFactions())
+                .Returns(new[] { faction });
+            _mockFactionService.Setup(f => f.GetFactionState("ai_faction"))
+                .Returns(state);
+            _mockZoneService.Setup(z => z.GetZonesByOwner("ai_faction"))
+                .Returns(new[] { zone });
+
+            // Commercial gives +50% cash
+            _mockModifier.Setup(m => m.GetModifier(ZoneTrait.Commercial, ResourceType.Cash))
+                .Returns(1.5f);
+            _mockModifier.Setup(m => m.GetModifier(ZoneTrait.Commercial, ResourceType.Recruitment))
+                .Returns(1.0f);
+            _mockModifier.Setup(m => m.GetModifier(ZoneTrait.Commercial, ResourceType.Weapons))
+                .Returns(1.0f);
+
+            // 80% supply line efficiency
+            _mockSupplyLineService.Setup(s => s.GetSupplyLineEfficiency("ai_faction", "zone1"))
+                .Returns(0.8f);
+
+            ResourceTickEventArgs? receivedArgs = null;
+            _service.OnResourceTick += (_, args) => receivedArgs = args;
+
+            // Act
+            _service.ForceTick();
+
+            // Assert
+            Assert.NotNull(receivedArgs);
+            // Cash: base 100 * strategic 2 * trait 1.5 * supply 0.8 * AI 0.5 = 120
+            Assert.Equal(120, receivedArgs.CashGenerated);
+            // Recruitment: base 10 * strategic 2 * trait 1.0 * supply 0.8 * AI 0.5 = 8
+            Assert.Equal(8, receivedArgs.RecruitmentGenerated);
+            // Weapons: base 5 * strategic 2 * trait 1.0 * supply 0.8 * AI 0.5 = 4
+            Assert.Equal(4, receivedArgs.WeaponsGenerated);
+        }
+
+        #endregion
+
         #region Helper Methods
 
         private void SetupSingleFactionWithZone()

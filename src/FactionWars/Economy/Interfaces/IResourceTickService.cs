@@ -103,5 +103,19 @@ namespace FactionWars.Economy.Interfaces
         /// <param name="seconds">The new interval in seconds (must be positive).</param>
         /// <exception cref="ArgumentOutOfRangeException">Thrown if seconds is not positive.</exception>
         void SetTickInterval(int seconds);
+
+        /// <summary>
+        /// Sets the income multiplier applied to AI factions.
+        /// Player faction income is not affected by this multiplier.
+        /// </summary>
+        /// <param name="multiplier">The multiplier to apply to AI faction income (e.g., 0.5 for half income, 1.5 for 50% more).</param>
+        void SetAiIncomeMultiplier(float multiplier);
+
+        /// <summary>
+        /// Sets the player's faction ID. This faction will receive full income (1.0x multiplier)
+        /// regardless of the AI income multiplier setting.
+        /// </summary>
+        /// <param name="factionId">The faction ID that belongs to the player, or null if no player faction.</param>
+        void SetPlayerFactionId(string? factionId);
     }
 }
