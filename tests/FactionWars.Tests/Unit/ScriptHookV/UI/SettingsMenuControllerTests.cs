@@ -1,4 +1,5 @@
 using FactionWars.Core.Interfaces;
+using FactionWars.Core.Models;
 using FactionWars.Persistence.Models;
 using FactionWars.ScriptHookV.UI;
 using FactionWars.Tests.Mocks;
@@ -19,6 +20,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
         private readonly MockMenuProvider _menuProvider;
         private readonly Mock<ISaveSlotManager> _saveSlotManagerMock;
         private readonly Mock<IGameStateCoordinator> _gameStateCoordinatorMock;
+        private readonly Mock<IDifficultyService> _difficultyServiceMock;
         private readonly SettingsMenuController _controller;
 
         public SettingsMenuControllerTests()
@@ -26,6 +28,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
             _menuProvider = new MockMenuProvider();
             _saveSlotManagerMock = new Mock<ISaveSlotManager>();
             _gameStateCoordinatorMock = new Mock<IGameStateCoordinator>();
+            _difficultyServiceMock = new Mock<IDifficultyService>();
 
             // Setup default save slot configuration
             _saveSlotManagerMock.Setup(s => s.MaxSlots).Returns(5);
@@ -38,10 +41,14 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
                 CreateEmptySlotInfo(4)
             });
 
+            // Setup default difficulty
+            _difficultyServiceMock.Setup(d => d.Current).Returns(DifficultySettings.Normal);
+
             _controller = new SettingsMenuController(
                 _menuProvider,
                 _saveSlotManagerMock.Object,
-                _gameStateCoordinatorMock.Object);
+                _gameStateCoordinatorMock.Object,
+                _difficultyServiceMock.Object);
         }
 
         private SaveSlotInfo CreateEmptySlotInfo(int slotNumber)
@@ -64,7 +71,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
             Assert.Throws<ArgumentNullException>(() => new SettingsMenuController(
                 null!,
                 _saveSlotManagerMock.Object,
-                _gameStateCoordinatorMock.Object));
+                _gameStateCoordinatorMock.Object,
+                _difficultyServiceMock.Object));
         }
 
         [Fact]
@@ -73,7 +81,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
             Assert.Throws<ArgumentNullException>(() => new SettingsMenuController(
                 _menuProvider,
                 null!,
-                _gameStateCoordinatorMock.Object));
+                _gameStateCoordinatorMock.Object,
+                _difficultyServiceMock.Object));
         }
 
         [Fact]
@@ -82,6 +91,17 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
             Assert.Throws<ArgumentNullException>(() => new SettingsMenuController(
                 _menuProvider,
                 _saveSlotManagerMock.Object,
+                null!,
+                _difficultyServiceMock.Object));
+        }
+
+        [Fact]
+        public void Constructor_WithNullDifficultyService_ShouldThrowArgumentNullException()
+        {
+            Assert.Throws<ArgumentNullException>(() => new SettingsMenuController(
+                _menuProvider,
+                _saveSlotManagerMock.Object,
+                _gameStateCoordinatorMock.Object,
                 null!));
         }
 
@@ -518,10 +538,11 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
             var menu = _menuProvider.GetCurrentMenuDefinition();
             Assert.NotNull(menu);
 
-            // Order: Save Game, Load Game, Debug Mode, Back
+            // Order: Save Game, Load Game, Difficulty, Debug Mode, Back
             Assert.Equal(SettingsMenuController.SaveGameItemId, menu!.Items[0].Id);
             Assert.Equal(SettingsMenuController.LoadGameItemId, menu.Items[1].Id);
-            Assert.Equal(SettingsMenuController.DebugModeItemId, menu.Items[2].Id);
+            Assert.Equal(SettingsMenuController.DifficultyItemId, menu.Items[2].Id);
+            Assert.Equal(SettingsMenuController.DebugModeItemId, menu.Items[3].Id);
             Assert.Equal(SettingsMenuController.BackItemId, menu.Items[menu.Items.Count - 1].Id);
         }
 
@@ -541,13 +562,191 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
 
             var saveItem = menu!.GetItem(SettingsMenuController.SaveGameItemId);
             var loadItem = menu.GetItem(SettingsMenuController.LoadGameItemId);
+            var difficultyItem = menu.GetItem(SettingsMenuController.DifficultyItemId);
             var debugItem = menu.GetItem(SettingsMenuController.DebugModeItemId);
             var backItem = menu.GetItem(SettingsMenuController.BackItemId);
 
             Assert.True(saveItem!.IsEnabled);
             Assert.True(loadItem!.IsEnabled);
+            Assert.True(difficultyItem!.IsEnabled);
             Assert.True(debugItem!.IsEnabled);
             Assert.True(backItem!.IsEnabled);
+        }
+
+        #endregion
+
+        #region Difficulty Menu Tests
+
+        [Fact]
+        public void Show_IncludesDifficultyMenuItem()
+        {
+            // Act
+            _controller.Show();
+
+            // Assert
+            var menu = _menuProvider.GetCurrentMenuDefinition();
+            Assert.NotNull(menu);
+            var item = menu!.GetItem(SettingsMenuController.DifficultyItemId);
+            Assert.NotNull(item);
+            Assert.Contains("Difficulty", item!.Text);
+            Assert.Contains("Normal", item.Text);
+        }
+
+        [Fact]
+        public void Show_DifficultyMenuItem_ShowsCurrentDifficulty()
+        {
+            // Arrange
+            _difficultyServiceMock.Setup(d => d.Current).Returns(DifficultySettings.Hard);
+
+            // Act
+            _controller.Show();
+
+            // Assert
+            var menu = _menuProvider.GetCurrentMenuDefinition();
+            var item = menu?.GetItem(SettingsMenuController.DifficultyItemId);
+            Assert.NotNull(item);
+            Assert.Contains("Hard", item!.Text);
+        }
+
+        [Fact]
+        public void ShowDifficultyMenu_ShowsThreeOptions()
+        {
+            // Act
+            _controller.ShowDifficultyMenu();
+
+            // Assert
+            Assert.True(_menuProvider.IsMenuVisible);
+            Assert.Equal(SettingsMenuController.DifficultyMenuId, _menuProvider.CurrentMenuId);
+
+            var menu = _menuProvider.GetCurrentMenuDefinition();
+            Assert.NotNull(menu);
+
+            // Should have Easy, Normal, Hard plus Back
+            var easyItem = menu!.GetItem("difficulty_easy");
+            var normalItem = menu.GetItem("difficulty_normal");
+            var hardItem = menu.GetItem("difficulty_hard");
+            var backItem = menu.GetItem(SettingsMenuController.BackItemId);
+
+            Assert.NotNull(easyItem);
+            Assert.NotNull(normalItem);
+            Assert.NotNull(hardItem);
+            Assert.NotNull(backItem);
+
+            Assert.Contains("Easy", easyItem!.Text);
+            Assert.Contains("Normal", normalItem!.Text);
+            Assert.Contains("Hard", hardItem!.Text);
+        }
+
+        [Fact]
+        public void ShowDifficultyMenu_MarksCurrentDifficulty()
+        {
+            // Arrange - Normal is current
+            _difficultyServiceMock.Setup(d => d.Current).Returns(DifficultySettings.Normal);
+
+            // Act
+            _controller.ShowDifficultyMenu();
+
+            // Assert
+            var menu = _menuProvider.GetCurrentMenuDefinition();
+            var normalItem = menu?.GetItem("difficulty_normal");
+            var easyItem = menu?.GetItem("difficulty_easy");
+            var hardItem = menu?.GetItem("difficulty_hard");
+
+            Assert.Contains("[Current]", normalItem!.Text);
+            Assert.DoesNotContain("[Current]", easyItem!.Text);
+            Assert.DoesNotContain("[Current]", hardItem!.Text);
+        }
+
+        [Fact]
+        public void OnDifficultyItemSelected_ShouldShowDifficultyMenu()
+        {
+            // Arrange
+            _controller.Show();
+
+            // Act
+            _menuProvider.SimulateItemSelection(SettingsMenuController.DifficultyItemId);
+
+            // Assert
+            Assert.Equal(SettingsMenuController.DifficultyMenuId, _menuProvider.CurrentMenuId);
+        }
+
+        [Fact]
+        public void SelectDifficulty_ShowsConfirmation_WhenDifferent()
+        {
+            // Arrange - Current is Normal, selecting Easy
+            _difficultyServiceMock.Setup(d => d.Current).Returns(DifficultySettings.Normal);
+            _controller.ShowDifficultyMenu();
+
+            // Act
+            _menuProvider.SimulateItemSelection("difficulty_easy");
+
+            // Assert - Should show confirmation menu
+            Assert.Equal(SettingsMenuController.DifficultyConfirmMenuId, _menuProvider.CurrentMenuId);
+
+            var menu = _menuProvider.GetCurrentMenuDefinition();
+            Assert.NotNull(menu);
+            var confirmItem = menu!.GetItem("confirm");
+            var cancelItem = menu.GetItem("cancel");
+            Assert.NotNull(confirmItem);
+            Assert.NotNull(cancelItem);
+        }
+
+        [Fact]
+        public void SelectDifficulty_SameAsCurrent_GoesBackToSettings()
+        {
+            // Arrange - Current is Normal, selecting Normal
+            _difficultyServiceMock.Setup(d => d.Current).Returns(DifficultySettings.Normal);
+            _controller.ShowDifficultyMenu();
+
+            // Act
+            _menuProvider.SimulateItemSelection("difficulty_normal");
+
+            // Assert - Should go back to settings menu (not confirmation)
+            Assert.Equal(SettingsMenuController.SettingsMenuId, _menuProvider.CurrentMenuId);
+        }
+
+        [Fact]
+        public void ConfirmDifficulty_SetsDifficultyAndClosesMenu()
+        {
+            // Arrange - Current is Normal, selecting Easy
+            _difficultyServiceMock.Setup(d => d.Current).Returns(DifficultySettings.Normal);
+            _controller.ShowDifficultyMenu();
+            _menuProvider.SimulateItemSelection("difficulty_easy");
+
+            // Act - Confirm the selection
+            _menuProvider.SimulateItemSelection("confirm");
+
+            // Assert
+            _difficultyServiceMock.Verify(d => d.SetDifficulty(Difficulty.Easy), Times.Once);
+            Assert.False(_menuProvider.IsMenuVisible);
+        }
+
+        [Fact]
+        public void CancelDifficulty_GoesBackToDifficultyMenu()
+        {
+            // Arrange - Current is Normal, selecting Easy
+            _difficultyServiceMock.Setup(d => d.Current).Returns(DifficultySettings.Normal);
+            _controller.ShowDifficultyMenu();
+            _menuProvider.SimulateItemSelection("difficulty_easy");
+
+            // Act - Cancel the selection
+            _menuProvider.SimulateItemSelection("cancel");
+
+            // Assert - Should go back to difficulty menu
+            Assert.Equal(SettingsMenuController.DifficultyMenuId, _menuProvider.CurrentMenuId);
+        }
+
+        [Fact]
+        public void DifficultyMenu_BackItem_GoesToSettingsMenu()
+        {
+            // Arrange
+            _controller.ShowDifficultyMenu();
+
+            // Act
+            _menuProvider.SimulateItemSelection(SettingsMenuController.BackItemId);
+
+            // Assert
+            Assert.Equal(SettingsMenuController.SettingsMenuId, _menuProvider.CurrentMenuId);
         }
 
         #endregion

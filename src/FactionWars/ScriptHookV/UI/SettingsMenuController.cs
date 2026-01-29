@@ -1,4 +1,5 @@
 using FactionWars.Core.Interfaces;
+using FactionWars.Core.Models;
 using FactionWars.UI.Interfaces;
 using FactionWars.UI.Models;
 using System;
@@ -45,10 +46,27 @@ namespace FactionWars.ScriptHookV.UI
         /// </summary>
         public const string BackItemId = "back";
 
+        /// <summary>
+        /// Item ID for the difficulty option.
+        /// </summary>
+        public const string DifficultyItemId = "difficulty";
+
+        /// <summary>
+        /// Menu ID for the difficulty menu.
+        /// </summary>
+        public const string DifficultyMenuId = "difficulty_menu";
+
+        /// <summary>
+        /// Menu ID for the difficulty confirmation menu.
+        /// </summary>
+        public const string DifficultyConfirmMenuId = "difficulty_confirm_menu";
+
         private readonly IMenuProvider _menuProvider;
         private readonly ISaveSlotManager _saveSlotManager;
         private readonly IGameStateCoordinator _gameStateCoordinator;
+        private readonly IDifficultyService _difficultyService;
         private bool _isDebugModeEnabled;
+        private Difficulty? _pendingDifficulty;
 
         /// <summary>
         /// Gets whether debug mode is currently enabled.
@@ -91,15 +109,18 @@ namespace FactionWars.ScriptHookV.UI
         /// <param name="menuProvider">The menu provider for displaying menus.</param>
         /// <param name="saveSlotManager">The save slot manager for managing save files.</param>
         /// <param name="gameStateCoordinator">The game state coordinator for save/load operations.</param>
+        /// <param name="difficultyService">The difficulty service for managing game difficulty.</param>
         /// <exception cref="ArgumentNullException">Thrown if any parameter is null.</exception>
         public SettingsMenuController(
             IMenuProvider menuProvider,
             ISaveSlotManager saveSlotManager,
-            IGameStateCoordinator gameStateCoordinator)
+            IGameStateCoordinator gameStateCoordinator,
+            IDifficultyService difficultyService)
         {
             _menuProvider = menuProvider ?? throw new ArgumentNullException(nameof(menuProvider));
             _saveSlotManager = saveSlotManager ?? throw new ArgumentNullException(nameof(saveSlotManager));
             _gameStateCoordinator = gameStateCoordinator ?? throw new ArgumentNullException(nameof(gameStateCoordinator));
+            _difficultyService = difficultyService ?? throw new ArgumentNullException(nameof(difficultyService));
             _isDebugModeEnabled = false;
 
             // Subscribe to menu item selection events
@@ -122,6 +143,12 @@ namespace FactionWars.ScriptHookV.UI
                 LoadGameItemId,
                 "Load Game",
                 "Load a previously saved game"));
+
+            var currentDifficulty = _difficultyService.Current.Level;
+            menu.AddItem(new MenuItem(
+                DifficultyItemId,
+                $"Difficulty: {currentDifficulty}",
+                "Change game difficulty"));
 
             var debugStateText = _isDebugModeEnabled ? "On" : "Off";
             menu.AddItem(new MenuItem(
@@ -224,6 +251,12 @@ namespace FactionWars.ScriptHookV.UI
                 case LoadMenuId:
                     HandleLoadMenuSelection(e.ItemId);
                     break;
+                case DifficultyMenuId:
+                    HandleDifficultyMenuSelection(e.ItemId);
+                    break;
+                case DifficultyConfirmMenuId:
+                    HandleDifficultyConfirmSelection(e.ItemId);
+                    break;
             }
         }
 
@@ -239,6 +272,9 @@ namespace FactionWars.ScriptHookV.UI
                     break;
                 case LoadGameItemId:
                     ShowLoadMenu();
+                    break;
+                case DifficultyItemId:
+                    ShowDifficultyMenu();
                     break;
                 case DebugModeItemId:
                     _isDebugModeEnabled = !_isDebugModeEnabled;
@@ -297,6 +333,142 @@ namespace FactionWars.ScriptHookV.UI
                     LoadCompleted?.Invoke(this, EventArgs.Empty);
                 }
             }
+        }
+
+        /// <summary>
+        /// Shows the difficulty selection menu.
+        /// </summary>
+        public void ShowDifficultyMenu()
+        {
+            var menu = new MenuDefinition(DifficultyMenuId, "Difficulty", "Select Difficulty");
+            var currentLevel = _difficultyService.Current.Level;
+
+            // Add Easy option
+            var easySettings = DifficultySettings.Easy;
+            var easyText = currentLevel == Difficulty.Easy ? "Easy [Current]" : "Easy";
+            menu.AddItem(new MenuItem(
+                "difficulty_easy",
+                easyText,
+                $"{easySettings.AiIncomeMultiplier:F2}x AI income, {easySettings.TickIntervalMinutes} min tick rate"));
+
+            // Add Normal option
+            var normalSettings = DifficultySettings.Normal;
+            var normalText = currentLevel == Difficulty.Normal ? "Normal [Current]" : "Normal";
+            menu.AddItem(new MenuItem(
+                "difficulty_normal",
+                normalText,
+                $"{normalSettings.AiIncomeMultiplier:F2}x AI income, {normalSettings.TickIntervalMinutes} min tick rate"));
+
+            // Add Hard option
+            var hardSettings = DifficultySettings.Hard;
+            var hardText = currentLevel == Difficulty.Hard ? "Hard [Current]" : "Hard";
+            menu.AddItem(new MenuItem(
+                "difficulty_hard",
+                hardText,
+                $"{hardSettings.AiIncomeMultiplier:F2}x AI income, {hardSettings.TickIntervalMinutes} min tick rate"));
+
+            menu.AddItem(new MenuItem(
+                BackItemId,
+                "Back",
+                "Return to settings"));
+
+            _menuProvider.ShowMenu(menu);
+        }
+
+        /// <summary>
+        /// Handles selections from the difficulty menu.
+        /// </summary>
+        private void HandleDifficultyMenuSelection(string itemId)
+        {
+            if (itemId == BackItemId)
+            {
+                Show();
+                return;
+            }
+
+            Difficulty? selectedDifficulty = null;
+            switch (itemId)
+            {
+                case "difficulty_easy":
+                    selectedDifficulty = Difficulty.Easy;
+                    break;
+                case "difficulty_normal":
+                    selectedDifficulty = Difficulty.Normal;
+                    break;
+                case "difficulty_hard":
+                    selectedDifficulty = Difficulty.Hard;
+                    break;
+            }
+
+            if (selectedDifficulty.HasValue)
+            {
+                HandleDifficultySelection(selectedDifficulty.Value);
+            }
+        }
+
+        /// <summary>
+        /// Handles the selection of a difficulty level.
+        /// If the selected level is the same as current, returns to settings.
+        /// Otherwise, shows a confirmation dialog.
+        /// </summary>
+        private void HandleDifficultySelection(Difficulty level)
+        {
+            if (level == _difficultyService.Current.Level)
+            {
+                // Same as current, just go back to settings
+                Show();
+                return;
+            }
+
+            // Different difficulty, show confirmation
+            _pendingDifficulty = level;
+            ShowDifficultyConfirmation(level);
+        }
+
+        /// <summary>
+        /// Shows the difficulty change confirmation menu.
+        /// </summary>
+        private void ShowDifficultyConfirmation(Difficulty level)
+        {
+            var menu = new MenuDefinition(DifficultyConfirmMenuId, "Confirm Change", $"Change to {level}?");
+
+            menu.AddItem(new MenuItem(
+                "confirm",
+                "Confirm",
+                $"Change difficulty to {level}"));
+
+            menu.AddItem(new MenuItem(
+                "cancel",
+                "Cancel",
+                "Go back without changing"));
+
+            _menuProvider.ShowMenu(menu);
+        }
+
+        /// <summary>
+        /// Handles selections from the difficulty confirmation menu.
+        /// </summary>
+        private void HandleDifficultyConfirmSelection(string itemId)
+        {
+            if (itemId == "confirm" && _pendingDifficulty.HasValue)
+            {
+                ConfirmDifficultyChange(_pendingDifficulty.Value);
+            }
+            else if (itemId == "cancel")
+            {
+                _pendingDifficulty = null;
+                ShowDifficultyMenu();
+            }
+        }
+
+        /// <summary>
+        /// Confirms the difficulty change and applies it.
+        /// </summary>
+        private void ConfirmDifficultyChange(Difficulty level)
+        {
+            _difficultyService.SetDifficulty(level);
+            _pendingDifficulty = null;
+            _menuProvider.CloseMenu();
         }
     }
 }
