@@ -21,6 +21,7 @@ namespace FactionWars.ScriptHookV
         {
             Tick += OnTick;
             KeyDown += OnKeyDown;
+            KeyUp += OnKeyUp;
             Aborted += OnAborted;
 
             // Defer initialization to first tick to ensure game is ready
@@ -41,6 +42,14 @@ namespace FactionWars.ScriptHookV
         private void OnKeyDown(object sender, KeyEventArgs e)
         {
             _controller?.OnKeyDown((int)e.KeyCode);
+        }
+
+        /// <summary>
+        /// Called when a key is released.
+        /// </summary>
+        private void OnKeyUp(object sender, KeyEventArgs e)
+        {
+            _controller?.OnKeyUp((int)e.KeyCode);
         }
 
         /// <summary>

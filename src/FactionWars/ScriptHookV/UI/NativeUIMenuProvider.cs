@@ -16,11 +16,24 @@ namespace FactionWars.ScriptHookV.UI
         private MenuDefinition? _currentDefinition;
         private readonly Dictionary<UIMenuItem, string> _itemIdMap;
 
+        // Hold-to-repeat state
+        private bool _selectKeyHeld;
+        private bool _wasKeyHeld;
+        private DateTime _holdStartTime;
+        private DateTime _lastRepeatTime;
+
+        // Hold-to-repeat timing (in milliseconds)
+        private const int InitialDelayMs = 400;  // Wait before first repeat
+        private const int RepeatIntervalMs = 100; // Interval between repeats
+
         /// <inheritdoc />
         public bool IsMenuVisible => _currentMenu?.Visible ?? false;
 
         /// <inheritdoc />
         public string? CurrentMenuId => _currentDefinition?.Id;
+
+        /// <inheritdoc />
+        public bool HoldToRepeatEnabled { get; set; }
 
         /// <summary>
         /// Gets the currently selected item index, or -1 if no menu is open.
@@ -50,6 +63,9 @@ namespace FactionWars.ScriptHookV.UI
 
             // Close any existing menu first
             CloseMenu();
+
+            // Reset hold-to-repeat (must be explicitly enabled per menu)
+            HoldToRepeatEnabled = false;
 
             _currentDefinition = definition;
 
@@ -115,6 +131,57 @@ namespace FactionWars.ScriptHookV.UI
         {
             // Process NativeUI menus - THIS IS CRITICAL for rendering
             _menuPool.ProcessMenus();
+
+            // Handle hold-to-repeat functionality
+            ProcessHoldToRepeat();
+        }
+
+        /// <inheritdoc />
+        public void SetSelectKeyHeld(bool isHeld)
+        {
+            _selectKeyHeld = isHeld;
+        }
+
+        /// <summary>
+        /// Processes hold-to-repeat logic for the select key.
+        /// </summary>
+        private void ProcessHoldToRepeat()
+        {
+            if (!HoldToRepeatEnabled || !IsMenuVisible)
+            {
+                _wasKeyHeld = false;
+                return;
+            }
+
+            var now = DateTime.UtcNow;
+
+            if (_selectKeyHeld)
+            {
+                if (!_wasKeyHeld)
+                {
+                    // Key just pressed - start tracking hold time
+                    _holdStartTime = now;
+                    _lastRepeatTime = now;
+                    _wasKeyHeld = true;
+                }
+                else
+                {
+                    // Key is being held - check if we should repeat
+                    var holdDuration = (now - _holdStartTime).TotalMilliseconds;
+                    var timeSinceLastRepeat = (now - _lastRepeatTime).TotalMilliseconds;
+
+                    if (holdDuration >= InitialDelayMs && timeSinceLastRepeat >= RepeatIntervalMs)
+                    {
+                        // Fire a repeat selection
+                        SelectCurrentItem();
+                        _lastRepeatTime = now;
+                    }
+                }
+            }
+            else
+            {
+                _wasKeyHeld = false;
+            }
         }
 
         /// <summary>

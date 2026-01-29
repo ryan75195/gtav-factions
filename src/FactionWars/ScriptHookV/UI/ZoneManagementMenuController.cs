@@ -308,6 +308,7 @@ namespace FactionWars.ScriptHookV.UI
             menu.AddItem(backItem);
 
             _menuProvider.ShowMenu(menu, selectedItemId);
+            _menuProvider.HoldToRepeatEnabled = true; // Enable hold-to-repeat for allocation/withdrawal
         }
 
         /// <summary>

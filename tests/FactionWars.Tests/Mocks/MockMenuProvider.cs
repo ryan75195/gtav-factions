@@ -19,6 +19,9 @@ namespace FactionWars.Tests.Mocks
         public string? CurrentMenuId => _currentDefinition?.Id;
 
         /// <inheritdoc />
+        public bool HoldToRepeatEnabled { get; set; }
+
+        /// <inheritdoc />
         public event EventHandler<MenuItemSelectedEventArgs>? ItemSelected;
 
         /// <inheritdoc />
@@ -28,6 +31,11 @@ namespace FactionWars.Tests.Mocks
         /// Gets the currently selected item index, or -1 if no menu is open.
         /// </summary>
         public int SelectedIndex { get; private set; } = -1;
+
+        /// <summary>
+        /// Gets whether the select key is currently held (for testing).
+        /// </summary>
+        public bool SelectKeyHeld { get; private set; }
 
         /// <inheritdoc />
         public void ShowMenu(MenuDefinition definition, string? selectedItemId = null)
@@ -66,6 +74,12 @@ namespace FactionWars.Tests.Mocks
         public void Update()
         {
             // No-op for mock
+        }
+
+        /// <inheritdoc />
+        public void SetSelectKeyHeld(bool isHeld)
+        {
+            SelectKeyHeld = isHeld;
         }
 
         /// <summary>

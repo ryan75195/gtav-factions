@@ -45,6 +45,19 @@ namespace FactionWars.UI.Interfaces
         /// Updates any menu display logic (called each tick if needed).
         /// </summary>
         void Update();
+
+        /// <summary>
+        /// Updates the select key held state for repeat functionality.
+        /// When held, the currently selected item will be repeatedly triggered.
+        /// </summary>
+        /// <param name="isHeld">True if the select key (Enter) is currently held down.</param>
+        void SetSelectKeyHeld(bool isHeld);
+
+        /// <summary>
+        /// Gets or sets whether the current menu supports hold-to-repeat.
+        /// When true, holding Enter will repeatedly trigger the selected item.
+        /// </summary>
+        bool HoldToRepeatEnabled { get; set; }
     }
 
     /// <summary>

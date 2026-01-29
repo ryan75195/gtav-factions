@@ -277,6 +277,7 @@ namespace FactionWars.ScriptHookV.UI
             menu.AddItem(backItem);
 
             _menuProvider.ShowMenu(menu, _lastSelectedItemId);
+            _menuProvider.HoldToRepeatEnabled = true; // Enable hold-to-repeat for troop purchases
         }
 
         /// <summary>
