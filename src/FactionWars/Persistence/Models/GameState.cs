@@ -38,6 +38,11 @@ namespace FactionWars.Persistence.Models
         public long TotalPlayTimeSeconds { get; set; }
 
         /// <summary>
+        /// Current difficulty level.
+        /// </summary>
+        public Difficulty Difficulty { get; set; } = Difficulty.Normal;
+
+        /// <summary>
         /// All factions in the game.
         /// </summary>
         public List<FactionData> Factions { get; set; } = new List<FactionData>();

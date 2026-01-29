@@ -1,4 +1,5 @@
 using FactionWars.Core.Interfaces;
+using FactionWars.Core.Models;
 using FactionWars.Factions.Models;
 using FactionWars.Persistence.Models;
 using FactionWars.Territory.Models;
@@ -84,6 +85,29 @@ namespace FactionWars.Tests.Unit.Persistence
 
             // Assert
             Assert.NotNull(gameState.SaveName);
+        }
+
+        [Fact]
+        public void Difficulty_DefaultsToNormal()
+        {
+            // Arrange & Act
+            var gameState = new GameState();
+
+            // Assert
+            Assert.Equal(Difficulty.Normal, gameState.Difficulty);
+        }
+
+        [Fact]
+        public void Difficulty_CanBeSetAndRetrieved()
+        {
+            // Arrange
+            var gameState = new GameState();
+
+            // Act
+            gameState.Difficulty = Difficulty.Hard;
+
+            // Assert
+            Assert.Equal(Difficulty.Hard, gameState.Difficulty);
         }
 
         #endregion
