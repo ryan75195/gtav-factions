@@ -299,12 +299,40 @@ namespace FactionWars.Tests.Unit.AI.Services
 
             var context = CreateTestContext(faction: faction, factionState: factionState);
 
-            // Cannot afford attack
-            _mockBudgetService.Setup(b => b.CanAffordAttack(It.IsAny<int>(), It.IsAny<int>())).Returns(false);
+            // Setup: cost is $50/troop, cash is $0, so can afford 0 troops (below minimum of 10)
+            _mockBudgetService.Setup(b => b.CostPerTroop).Returns(50);
 
             var result = _service.GetAttackOpportunity(targetZone, context);
 
             Assert.Equal(0f, result);
+        }
+
+        [Fact]
+        public void GetAttackOpportunity_LargeTroopCountLowCash_ChecksAffordabilityForNeededForceNotAllTroops()
+        {
+            // BUG FIX: Trevor scenario - 445 troops but only $650 cash
+            // Attack cost is $50/troop. Should check if we can afford the NEEDED force,
+            // not ALL troops. Enemy has 10 defenders, so needed force = max(10*3, 445*0.5) = 222 troops.
+            // But even a smaller affordable attack (13 troops with $650) should produce non-zero opportunity.
+            var faction = CreateTestFaction(FactionType.Trevor, "trevor");
+            var factionState = CreateTestFactionState(faction.Id, troops: 445, cash: 650);
+            var targetZone = CreateTestZone("target", ownerFactionId: "enemy-faction", strategicValue: 5);
+
+            var context = CreateTestContext(faction: faction, factionState: factionState);
+
+            // Enemy has 10 defenders
+            SetupZoneAllocation("enemy-faction", "target", 10);
+
+            // Setup budget service to return true when checking affordable troops (13 with $650 at $50/troop)
+            // but false when checking all 445 troops ($22,250 needed)
+            _mockBudgetService.Setup(b => b.CostPerTroop).Returns(50);
+            _mockBudgetService.Setup(b => b.CanAffordAttack(650, 445)).Returns(false); // Can't afford all
+            _mockBudgetService.Setup(b => b.CanAffordAttack(650, It.Is<int>(t => t <= 13))).Returns(true); // Can afford up to 13
+
+            var result = _service.GetAttackOpportunity(targetZone, context);
+
+            // Should NOT be zero - faction can afford SOME troops even if not all
+            Assert.True(result > 0f, $"Should have non-zero opportunity with 445 troops even if cash-limited, got {result}");
         }
 
         [Fact]

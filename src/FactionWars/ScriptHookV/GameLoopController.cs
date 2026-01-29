@@ -665,6 +665,7 @@ namespace FactionWars.ScriptHookV
                 _gameBridge,
                 allocationService,
                 pedSpawningService,
+                pedDespawnService,
                 defenderTierService,
                 pedBlipService,
                 _zoneService);

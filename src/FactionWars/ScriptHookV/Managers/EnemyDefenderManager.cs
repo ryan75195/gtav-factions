@@ -22,6 +22,7 @@ namespace FactionWars.ScriptHookV.Managers
         private readonly IGameBridge _gameBridge;
         private readonly IZoneDefenderAllocationService _allocationService;
         private readonly IPedSpawningService _pedSpawningService;
+        private readonly IPedDespawnService _pedDespawnService;
         private readonly IDefenderTierService _defenderTierService;
         private readonly IPedBlipService _pedBlipService;
         private readonly IZoneService _zoneService;
@@ -44,6 +45,7 @@ namespace FactionWars.ScriptHookV.Managers
             IGameBridge gameBridge,
             IZoneDefenderAllocationService allocationService,
             IPedSpawningService pedSpawningService,
+            IPedDespawnService pedDespawnService,
             IDefenderTierService defenderTierService,
             IPedBlipService pedBlipService,
             IZoneService zoneService)
@@ -51,6 +53,7 @@ namespace FactionWars.ScriptHookV.Managers
             _gameBridge = gameBridge ?? throw new ArgumentNullException(nameof(gameBridge));
             _allocationService = allocationService ?? throw new ArgumentNullException(nameof(allocationService));
             _pedSpawningService = pedSpawningService ?? throw new ArgumentNullException(nameof(pedSpawningService));
+            _pedDespawnService = pedDespawnService ?? throw new ArgumentNullException(nameof(pedDespawnService));
             _defenderTierService = defenderTierService ?? throw new ArgumentNullException(nameof(defenderTierService));
             _pedBlipService = pedBlipService ?? throw new ArgumentNullException(nameof(pedBlipService));
             _zoneService = zoneService ?? throw new ArgumentNullException(nameof(zoneService));
@@ -144,7 +147,7 @@ namespace FactionWars.ScriptHookV.Managers
             foreach (var pedHandle in pedTiers.Keys)
             {
                 _pedBlipService.RemoveBlipForPed(pedHandle);
-                _gameBridge.DeletePed(pedHandle);
+                _pedDespawnService.DespawnPed(pedHandle);
             }
             _spawnedPedTierByZone.Remove(zone.Id);
         }
@@ -159,7 +162,7 @@ namespace FactionWars.ScriptHookV.Managers
                 foreach (var pedHandle in zonePedTiers.Keys)
                 {
                     _pedBlipService.RemoveBlipForPed(pedHandle);
-                    _gameBridge.DeletePed(pedHandle);
+                    _pedDespawnService.DespawnPed(pedHandle);
                 }
             }
             _spawnedPedTierByZone.Clear();
@@ -234,9 +237,9 @@ namespace FactionWars.ScriptHookV.Managers
                 pedTiers.Remove(pedHandle);
             }
 
-            // Remove blip and delete ped
+            // Remove blip and despawn ped (properly removes from pool)
             _pedBlipService.RemoveBlipForPed(pedHandle);
-            _gameBridge.DeletePed(pedHandle);
+            _pedDespawnService.DespawnPed(pedHandle);
 
             // Get allocation and ALWAYS decrement when a defender dies
             var allocation = _allocationService.GetAllocation(enemyFactionId, zoneId);

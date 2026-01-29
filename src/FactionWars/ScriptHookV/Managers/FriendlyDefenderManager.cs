@@ -363,8 +363,8 @@ namespace FactionWars.ScriptHookV.Managers
             // Remove blip
             _pedBlipService.RemoveBlipForPed(pedHandle);
 
-            // Delete the ped entity
-            _gameBridge.DeletePed(pedHandle);
+            // Despawn the ped (removes from pool AND deletes from game)
+            _pedDespawnService.DespawnPed(pedHandle);
 
             var allocation = _allocationService.GetAllocation(_playerFactionId, zoneId);
 
