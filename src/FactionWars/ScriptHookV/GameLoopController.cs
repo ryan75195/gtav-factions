@@ -57,6 +57,7 @@ namespace FactionWars.ScriptHookV
         private IAutoSaveService? _autoSaveService;
         private IGameStateManager? _gameStateManager;
         private MainMenuController? _mainMenuController;
+        private IMenuProvider? _menuProvider;
         private RecruitmentMenuController? _recruitmentMenuController;
         private DefendersMenuController? _defendersMenuController;
         private SquadMenuController? _squadMenuController;
@@ -99,6 +100,11 @@ namespace FactionWars.ScriptHookV
         private Zone? _currentNeutralZone;
         private bool _showingClaimPrompt;
         private const int ClaimKeyCode = 0x45; // E key
+
+        // Menu hold-to-repeat state
+        private const int EnterKeyCode = 0x0D; // Enter key
+        private const int NumpadEnterKeyCode = 0x0D; // Same as Enter
+        private bool _enterKeyHeld;
 
         /// <summary>
         /// Event raised when the player switches to a different character.
@@ -256,7 +262,8 @@ namespace FactionWars.ScriptHookV
             // Update auto-save service (checks interval and saves if needed)
             _autoSaveService?.Update(TimeSpan.FromSeconds(deltaTime));
 
-            // Update menu system
+            // Update menu system with key state for hold-to-repeat
+            _menuProvider?.SetSelectKeyHeld(_enterKeyHeld);
             _mainMenuController?.Update();
 
             // Update map blip colors to reflect current zone ownership
@@ -758,8 +765,8 @@ namespace FactionWars.ScriptHookV
             _territoryManager.ZoneExited += OnZoneExitedForClaim;
 
             // Initialize main menu controller for UI
-            var menuProvider = _container.Resolve<IMenuProvider>();
-            _mainMenuController = new MainMenuController(menuProvider);
+            _menuProvider = _container.Resolve<IMenuProvider>();
+            _mainMenuController = new MainMenuController(_menuProvider);
 
             // Initialize submenu controllers
             var playerContext = _container.Resolve<IPlayerContext>();
@@ -767,14 +774,14 @@ namespace FactionWars.ScriptHookV
             // allocationService already resolved above for FriendlyDefenderManager
 
             _overviewMenuController = new OverviewMenuController(
-                menuProvider,
+                _menuProvider,
                 _factionService,
                 _zoneService,
                 playerContext);
             _overviewMenuController.BackRequested += (s, e) => _mainMenuController.OnKeyDown(MainMenuController.MenuToggleKeyCode);
 
             _zoneManagementMenuController = new ZoneManagementMenuController(
-                menuProvider,
+                _menuProvider,
                 _factionService,
                 _zoneService,
                 playerContext,
@@ -782,18 +789,18 @@ namespace FactionWars.ScriptHookV
             _zoneManagementMenuController.BackRequested += (s, e) => _mainMenuController.OnKeyDown(MainMenuController.MenuToggleKeyCode);
 
             // Initialize recruitment menu hierarchy
-            _recruitmentMenuController = new RecruitmentMenuController(menuProvider, _gameBridge);
+            _recruitmentMenuController = new RecruitmentMenuController(_menuProvider, _gameBridge);
             _recruitmentMenuController.BackRequested += (s, e) => _mainMenuController.OnKeyDown(MainMenuController.MenuToggleKeyCode);
 
             _defendersMenuController = new DefendersMenuController(
-                menuProvider,
+                _menuProvider,
                 _factionService,
                 purchaseService,
                 playerContext);
             _defendersMenuController.BackRequested += (s, e) => _recruitmentMenuController.Show();
 
             _squadMenuController = new SquadMenuController(
-                menuProvider,
+                _menuProvider,
                 purchaseService,
                 followerService,
                 playerContext,
@@ -809,7 +816,7 @@ namespace FactionWars.ScriptHookV
             var resourceModifier = _container.Resolve<IZoneTraitResourceModifier>();
             var supplyLineService = _container.Resolve<ISupplyLineService>();
             _resourcesMenuController = new ResourcesMenuController(
-                menuProvider,
+                _menuProvider,
                 _factionService,
                 _zoneService,
                 playerContext,
@@ -832,18 +839,18 @@ namespace FactionWars.ScriptHookV
             _difficultyService.DifficultyChanged += OnDifficultyChanged;
 
             _settingsMenuController = new SettingsMenuController(
-                menuProvider,
+                _menuProvider,
                 saveSlotManager,
                 gameStateCoordinator,
                 _difficultyService);
             _settingsMenuController.BackRequested += (s, e) => _mainMenuController.OnKeyDown(MainMenuController.MenuToggleKeyCode);
 
             // Initialize shop menu controller
-            _shopMenuController = new ShopMenuController(menuProvider, _gameBridge);
+            _shopMenuController = new ShopMenuController(_menuProvider, _gameBridge);
             _shopMenuController.BackRequested += (s, e) => _mainMenuController.OnKeyDown(MainMenuController.MenuToggleKeyCode);
 
             // Wire up main menu item selection to show submenus
-            menuProvider.ItemSelected += OnMainMenuItemSelected;
+            _menuProvider.ItemSelected += OnMainMenuItemSelected;
 
             // Initialize auto-save service for automatic game state saving
             _autoSaveService = _container.Resolve<IAutoSaveService>();
@@ -898,6 +905,9 @@ namespace FactionWars.ScriptHookV
             _resourceTickService?.SetTickInterval(settings.TickIntervalSeconds);
             _gameStateManager?.SetCurrentDifficulty(settings.Level);
             FileLogger.Info($"Difficulty changed to {settings.Level}: AI={settings.AiIncomeMultiplier}x, Tick={settings.TickIntervalMinutes}min");
+
+            // Show notification to player
+            _gameBridge?.ShowNotification($"~b~Difficulty:~w~ {settings.Level} (AI {settings.AiIncomeMultiplier}x, {settings.TickIntervalMinutes}min ticks)");
         }
 
         /// <summary>
@@ -927,6 +937,12 @@ namespace FactionWars.ScriptHookV
             if (!_isInitialized)
                 return;
 
+            // Track Enter key for menu hold-to-repeat
+            if (keyCode == EnterKeyCode)
+            {
+                _enterKeyHeld = true;
+            }
+
             // Handle claim key when in neutral zone
             if (keyCode == ClaimKeyCode && _showingClaimPrompt && _currentNeutralZone != null)
             {
@@ -950,6 +966,19 @@ namespace FactionWars.ScriptHookV
 
             // Pass key events to commander manager (for E key interaction)
             _commanderManager?.OnKeyDown(keyCode);
+        }
+
+        /// <summary>
+        /// Called when a key is released.
+        /// </summary>
+        /// <param name="keyCode">The virtual key code of the released key.</param>
+        public void OnKeyUp(int keyCode)
+        {
+            // Track Enter key release for menu hold-to-repeat
+            if (keyCode == EnterKeyCode)
+            {
+                _enterKeyHeld = false;
+            }
         }
 
         /// <summary>
