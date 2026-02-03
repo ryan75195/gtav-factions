@@ -27,11 +27,12 @@ namespace FactionWars.ScriptHookV.Managers
         private readonly IPedBlipService _pedBlipService;
         private readonly IZoneService _zoneService;
 
-        private readonly Dictionary<DefenderTier, string> _modelsByTier;
         private readonly Dictionary<string, Dictionary<int, DefenderTier>> _spawnedPedTierByZone;
+        private readonly Dictionary<int, int> _corpseDeathTimes; // pedHandle -> game time when died
         private string? _currentEnemyZoneId;
 
         private const float SpawnRadiusFraction = 0.8f;  // 80% of zone radius
+        private const int CorpseDelayMs = 15000;  // 15 seconds before despawning corpses
 
         /// <summary>
         /// Maximum number of enemy defenders that can be spawned at once per zone.
@@ -58,16 +59,8 @@ namespace FactionWars.ScriptHookV.Managers
             _pedBlipService = pedBlipService ?? throw new ArgumentNullException(nameof(pedBlipService));
             _zoneService = zoneService ?? throw new ArgumentNullException(nameof(zoneService));
 
-            // Enemy faction ped models (different from player's faction)
-            _modelsByTier = new Dictionary<DefenderTier, string>
-            {
-                { DefenderTier.Basic, "g_m_y_famca_01" },
-                { DefenderTier.Medium, "g_m_y_famdnf_01" },
-                { DefenderTier.Heavy, "g_m_y_famfor_01" },
-                { DefenderTier.Elite, "s_m_y_armymech_01" }  // Military mechanic for RPG specialist
-            };
-
             _spawnedPedTierByZone = new Dictionary<string, Dictionary<int, DefenderTier>>();
+            _corpseDeathTimes = new Dictionary<int, int>();
         }
 
         /// <summary>
@@ -105,7 +98,7 @@ namespace FactionWars.ScriptHookV.Managers
                 var count = allocation.GetTroopCount(tier);
                 if (count <= 0) continue;
 
-                var model = _modelsByTier.TryGetValue(tier, out var m) ? m : "g_m_y_famca_01";
+                var model = FactionPedModels.GetModel(enemyFactionId, tier);
                 var tierConfig = _defenderTierService.GetTierConfig(tier);
 
                 for (int i = 0; i < count && totalSpawned < MaxSpawnedDefenders; i++)
@@ -130,7 +123,7 @@ namespace FactionWars.ScriptHookV.Managers
         }
 
         /// <summary>
-        /// Called when the player exits an enemy zone. Despawns all enemy defenders.
+        /// Called when the player exits an enemy zone. Despawns all enemy defenders and corpses.
         /// </summary>
         /// <param name="zone">The zone that was exited.</param>
         public void OnEnemyZoneExited(Zone zone)
@@ -142,18 +135,28 @@ namespace FactionWars.ScriptHookV.Managers
             if (_currentEnemyZoneId == zone.Id)
                 _currentEnemyZoneId = null;
 
-            if (!_spawnedPedTierByZone.TryGetValue(zone.Id, out var pedTiers)) return;
-
-            foreach (var pedHandle in pedTiers.Keys)
+            if (_spawnedPedTierByZone.TryGetValue(zone.Id, out var pedTiers))
             {
-                _pedBlipService.RemoveBlipForPed(pedHandle);
-                _pedDespawnService.DespawnPed(pedHandle);
+                foreach (var pedHandle in pedTiers.Keys)
+                {
+                    _pedBlipService.RemoveBlipForPed(pedHandle);
+                    _pedDespawnService.DespawnPed(pedHandle);
+                    _corpseDeathTimes.Remove(pedHandle); // Also remove from corpse tracking
+                }
+                _spawnedPedTierByZone.Remove(zone.Id);
             }
-            _spawnedPedTierByZone.Remove(zone.Id);
+
+            // Also clean up any corpses from this zone
+            var corpsesToRemove = _corpseDeathTimes.Keys.ToList();
+            foreach (var pedHandle in corpsesToRemove)
+            {
+                _pedDespawnService.DeletePedEntity(pedHandle);
+                _corpseDeathTimes.Remove(pedHandle);
+            }
         }
 
         /// <summary>
-        /// Despawns all enemy defenders across all zones.
+        /// Despawns all enemy defenders and corpses across all zones.
         /// </summary>
         public void DespawnAllDefenders()
         {
@@ -166,6 +169,14 @@ namespace FactionWars.ScriptHookV.Managers
                 }
             }
             _spawnedPedTierByZone.Clear();
+
+            // Also clean up all corpses
+            foreach (var pedHandle in _corpseDeathTimes.Keys)
+            {
+                _pedDespawnService.DeletePedEntity(pedHandle);
+            }
+            _corpseDeathTimes.Clear();
+
             _currentEnemyZoneId = null;
         }
 
@@ -197,7 +208,8 @@ namespace FactionWars.ScriptHookV.Managers
         {
             if (_currentEnemyZoneId == null || string.IsNullOrEmpty(enemyFactionId)) return;
 
-            var deadPeds = new List<(string zoneId, int pedHandle, DefenderTier tier)>();
+            var newlyDeadPeds = new List<(string zoneId, int pedHandle, DefenderTier tier)>();
+            var currentGameTime = _gameBridge.GetGameTime();
 
             // Check all spawned enemy defenders for death
             foreach (var kvp in _spawnedPedTierByZone)
@@ -210,36 +222,49 @@ namespace FactionWars.ScriptHookV.Managers
                     var pedHandle = pedKvp.Key;
                     var tier = pedKvp.Value;
 
+                    // Skip if already tracked as corpse
+                    if (_corpseDeathTimes.ContainsKey(pedHandle))
+                        continue;
+
                     if (!_gameBridge.IsPedAlive(pedHandle))
                     {
-                        deadPeds.Add((zoneId, pedHandle, tier));
+                        newlyDeadPeds.Add((zoneId, pedHandle, tier));
                     }
                 }
             }
 
-            // Process each dead defender
-            foreach (var (zoneId, pedHandle, tier) in deadPeds)
+            // Process each newly dead defender (track as corpse, decrement allocation, spawn replacement)
+            foreach (var (zoneId, pedHandle, tier) in newlyDeadPeds)
             {
                 HandleDefenderDeath(zoneId, pedHandle, tier, enemyFactionId);
             }
+
+            // Clean up corpses that have exceeded the delay
+            CleanupExpiredCorpses(currentGameTime);
         }
 
         /// <summary>
         /// Handles the death of an enemy defender.
+        /// Tracks corpse for delayed cleanup, removes blip, decrements allocation, spawns replacement.
         /// </summary>
         private void HandleDefenderDeath(string zoneId, int pedHandle, DefenderTier tier, string enemyFactionId)
         {
             FileLogger.Combat($"EnemyDefenderManager: Defender died in {zoneId}, tier={tier}");
 
-            // Remove from tracking
+            // Track death time for corpse cleanup (don't despawn yet - leave corpse visible)
+            _corpseDeathTimes[pedHandle] = _gameBridge.GetGameTime();
+
+            // Remove from active tracking (no longer counts toward spawned defenders)
             if (_spawnedPedTierByZone.TryGetValue(zoneId, out var pedTiers))
             {
                 pedTiers.Remove(pedHandle);
             }
 
-            // Remove blip and despawn ped (properly removes from pool)
+            // Remove blip immediately (dead peds shouldn't show on radar)
             _pedBlipService.RemoveBlipForPed(pedHandle);
-            _pedDespawnService.DespawnPed(pedHandle);
+
+            // IMPORTANT: Untrack from ped pool to free spawn slot (but keep corpse visible)
+            _pedDespawnService.UntrackPed(pedHandle);
 
             // Get allocation and ALWAYS decrement when a defender dies
             var allocation = _allocationService.GetAllocation(enemyFactionId, zoneId);
@@ -251,6 +276,33 @@ namespace FactionWars.ScriptHookV.Managers
 
             // Try to spawn replacement from remaining reserves
             TrySpawnReplacement(zoneId, tier, enemyFactionId, allocation);
+        }
+
+        /// <summary>
+        /// Cleans up corpses that have exceeded the corpse delay time.
+        /// </summary>
+        private void CleanupExpiredCorpses(int currentGameTime)
+        {
+            var expiredCorpses = new List<int>();
+
+            foreach (var kvp in _corpseDeathTimes)
+            {
+                var pedHandle = kvp.Key;
+                var deathTime = kvp.Value;
+
+                if (currentGameTime - deathTime >= CorpseDelayMs)
+                {
+                    expiredCorpses.Add(pedHandle);
+                }
+            }
+
+            foreach (var pedHandle in expiredCorpses)
+            {
+                FileLogger.Combat($"EnemyDefenderManager: Cleaning up corpse {pedHandle} after {CorpseDelayMs}ms delay");
+                // Delete the visual entity (already untracked from pool on death)
+                _pedDespawnService.DeletePedEntity(pedHandle);
+                _corpseDeathTimes.Remove(pedHandle);
+            }
         }
 
         /// <summary>
@@ -303,7 +355,7 @@ namespace FactionWars.ScriptHookV.Managers
         {
             if (!_pedSpawningService.CanSpawn()) return;
 
-            var model = _modelsByTier.TryGetValue(tier, out var m) ? m : "g_m_y_famca_01";
+            var model = FactionPedModels.GetModel(enemyFactionId, tier);
             var tierConfig = _defenderTierService.GetTierConfig(tier);
             var random = new Random();
 
