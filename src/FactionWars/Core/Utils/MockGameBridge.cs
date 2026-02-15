@@ -228,6 +228,49 @@ namespace FactionWars.Core.Utils
             PlayerMoney += amount;
         }
 
+        public void SetPlayerMoney(int amount)
+        {
+            PlayerMoney = amount;
+        }
+
+        private readonly List<string> _playerWeapons = new List<string>();
+
+        /// <summary>
+        /// Gets the list of weapons the player has been given (for testing).
+        /// </summary>
+        public IReadOnlyList<string> PlayerWeapons => _playerWeapons;
+
+        /// <summary>
+        /// Gets whether all player weapons have been removed since last reset.
+        /// </summary>
+        public bool WereAllPlayerWeaponsRemoved { get; private set; }
+
+        public void RemoveAllPlayerWeapons()
+        {
+            _playerWeapons.Clear();
+            _playerWeaponsWithAmmo.Clear();
+            WereAllPlayerWeaponsRemoved = true;
+        }
+
+        public void GivePlayerWeapon(string weaponName, int ammo)
+        {
+            // Store weapon with ammo for GetPlayerWeapons
+            _playerWeaponsWithAmmo[weaponName] = ammo;
+            _playerWeapons.Add(weaponName);
+        }
+
+        private readonly Dictionary<string, int> _playerWeaponsWithAmmo = new Dictionary<string, int>();
+
+        public Dictionary<string, int> GetPlayerWeapons()
+        {
+            return new Dictionary<string, int>(_playerWeaponsWithAmmo);
+        }
+
+        public void ConfigurePlayerSettings()
+        {
+            // Mock: No actual game settings to configure
+        }
+
         public bool IsPlayerFreeAiming() => _isPlayerFreeAiming;
 
         public void SetPlayerFreeAiming(bool aiming) => _isPlayerFreeAiming = aiming;
@@ -769,6 +812,9 @@ namespace FactionWars.Core.Utils
             _isPlayerFreeAiming = false;
             _entityPlayerIsAimingAt = 0;
             LastHelpText = null;
+            _playerWeapons.Clear();
+            _playerWeaponsWithAmmo.Clear();
+            WereAllPlayerWeaponsRemoved = false;
         }
 
         /// <summary>
@@ -935,6 +981,35 @@ namespace FactionWars.Core.Utils
                 vehicle.OccupySeat(seatIndex, pedHandle);
             }
         }
+
+        private readonly HashSet<int> _pressedControls = new HashSet<int>();
+        private readonly HashSet<int> _justPressedControls = new HashSet<int>();
+
+        /// <summary>
+        /// Simulates a control being held down (for testing).
+        /// </summary>
+        public void SetControlPressed(int control, bool pressed)
+        {
+            if (pressed)
+                _pressedControls.Add(control);
+            else
+                _pressedControls.Remove(control);
+        }
+
+        /// <summary>
+        /// Simulates a control being just pressed this frame (for testing).
+        /// </summary>
+        public void SetControlJustPressed(int control, bool justPressed)
+        {
+            if (justPressed)
+                _justPressedControls.Add(control);
+            else
+                _justPressedControls.Remove(control);
+        }
+
+        public bool IsControlPressed(int control) => _pressedControls.Contains(control);
+
+        public bool IsControlJustPressed(int control) => _justPressedControls.Contains(control);
 
         private class PedState
         {

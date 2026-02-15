@@ -140,6 +140,30 @@ namespace FactionWars.Core.Interfaces
         void AddPlayerMoney(int amount);
 
         /// <summary>
+        /// Sets the player's money to an exact amount.
+        /// </summary>
+        /// <param name="amount">The exact amount to set.</param>
+        void SetPlayerMoney(int amount);
+
+        /// <summary>
+        /// Removes all weapons from the player.
+        /// </summary>
+        void RemoveAllPlayerWeapons();
+
+        /// <summary>
+        /// Gives a weapon to the player character.
+        /// </summary>
+        /// <param name="weaponName">The weapon name/hash (e.g., "weapon_pistol").</param>
+        /// <param name="ammo">Amount of ammo to give.</param>
+        void GivePlayerWeapon(string weaponName, int ammo);
+
+        /// <summary>
+        /// Configures player settings for the mod (weapon drops, etc.).
+        /// Should be called once during initialization.
+        /// </summary>
+        void ConfigurePlayerSettings();
+
+        /// <summary>
         /// Makes a ped follow the player as a bodyguard.
         /// Sets up the appropriate task and relationship group so the ped follows and assists in combat.
         /// </summary>
@@ -435,5 +459,25 @@ namespace FactionWars.Core.Interfaces
         /// <param name="vehicleHandle">Handle of the vehicle.</param>
         /// <returns>The model name (e.g., "insurgent", "buzzard"), or empty string if invalid.</returns>
         string GetVehicleModelName(int vehicleHandle);
+
+        /// <summary>
+        /// Gets all weapons the player currently has along with their ammo counts.
+        /// </summary>
+        /// <returns>A dictionary mapping weapon names to ammo counts.</returns>
+        System.Collections.Generic.Dictionary<string, int> GetPlayerWeapons();
+
+        /// <summary>
+        /// Checks if a GTA V control (gamepad/keyboard) is currently pressed.
+        /// </summary>
+        /// <param name="control">The GTA V control ID (e.g., 175 for D-pad Right).</param>
+        /// <returns>True if the control is currently held down.</returns>
+        bool IsControlPressed(int control);
+
+        /// <summary>
+        /// Checks if a GTA V control was just pressed this frame.
+        /// </summary>
+        /// <param name="control">The GTA V control ID.</param>
+        /// <returns>True if the control was just pressed.</returns>
+        bool IsControlJustPressed(int control);
     }
 }

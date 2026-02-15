@@ -36,6 +36,7 @@ namespace FactionWars.ScriptHookV
         private readonly IGameBridge _gameBridge;
         private readonly IZoneRepository _zoneRepository;
         private readonly IFactionService _factionService;
+        private readonly IFactionRepository _factionRepository;
         private readonly IResourceTickService _resourceTickService;
         private IDifficultyService? _difficultyService;
         private readonly FactionInitializer _factionInitializer;
@@ -76,6 +77,7 @@ namespace FactionWars.ScriptHookV
         private IVehicleThreatService? _vehicleThreatService;
         private IAntiVehicleResponseService? _antiVehicleResponseService;
         private BattleHudRenderer? _battleHudRenderer;
+        private PlayTimeHudRenderer? _playTimeHudRenderer;
         private int _currentBattleHudIndex = 0;
         private const int BattleCycleKeyCode = 0x42; // B key
         private DateTime _lastTickTime;
@@ -105,6 +107,12 @@ namespace FactionWars.ScriptHookV
         private const int EnterKeyCode = 0x0D; // Enter key
         private const int NumpadEnterKeyCode = 0x0D; // Same as Enter
         private bool _enterKeyHeld;
+
+        // Controller input constants (GTA V control IDs)
+        private const int ControlDpadRight = 175;   // INPUT_PHONE_RIGHT
+        private const int ControlDpadDown = 173;     // INPUT_PHONE_DOWN
+        private const int ControlLB = 37;            // INPUT_AIM (LB/L1)
+        private const int ControlFrontendAccept = 201; // A/Cross button
 
         /// <summary>
         /// Event raised when the player switches to a different character.
@@ -206,7 +214,7 @@ namespace FactionWars.ScriptHookV
             _gameBridge = _container.Resolve<IGameBridge>();
             var factionDetector = _container.Resolve<IPlayerFactionDetector>();
             _zoneRepository = _container.Resolve<IZoneRepository>();
-            var factionRepository = _container.Resolve<IFactionRepository>();
+            _factionRepository = _container.Resolve<IFactionRepository>();
             _factionService = _container.Resolve<IFactionService>();
             _resourceTickService = _container.Resolve<IResourceTickService>();
 
@@ -217,7 +225,7 @@ namespace FactionWars.ScriptHookV
             // Create zone and faction initializers
             _zoneDataLoader = new ZoneDataLoader(_zoneRepository);
             var allocationService = _container.Resolve<IZoneDefenderAllocationService>();
-            _factionInitializer = new FactionInitializer(factionRepository, _zoneRepository, allocationService);
+            _factionInitializer = new FactionInitializer(_factionRepository, _zoneRepository, allocationService);
 
             _isInitialized = true;
             _characterSwitchInitialized = false;
@@ -259,8 +267,14 @@ namespace FactionWars.ScriptHookV
             // Update economy manager
             _economyManager?.Update(deltaTime);
 
+            // Update play time tracker
+            _gameStateManager?.UpdatePlayTime(deltaTime);
+
             // Update auto-save service (checks interval and saves if needed)
             _autoSaveService?.Update(TimeSpan.FromSeconds(deltaTime));
+
+            // Poll controller input
+            PollControllerInput();
 
             // Update menu system with key state for hold-to-repeat
             _menuProvider?.SetSelectKeyHeld(_enterKeyHeld);
@@ -489,6 +503,13 @@ namespace FactionWars.ScriptHookV
 
             // Draw battle HUD showing active AI battles
             UpdateAndDrawBattleHud();
+
+            // Draw play time HUD (only when game is loaded)
+            if (_playTimeHudRenderer != null && _gameStateManager != null && _gameStateManager.HasGameLoaded)
+            {
+                _playTimeHudRenderer.SetPlayTime(_gameStateManager.TotalPlayTimeSeconds);
+                _playTimeHudRenderer.Draw();
+            }
 
             // Combat HUD disabled - TerritoryIndicatorRenderer now shows all combat info
             // including reserves in the "nicer graphics" top-right display
@@ -753,6 +774,13 @@ namespace FactionWars.ScriptHookV
             _combatHudRenderer = new CombatHudRenderer();
             _territoryIndicatorRenderer = new TerritoryIndicatorRenderer();
 
+            // Initialize play time HUD renderer (only in real game, not tests)
+            // Tests use MockGameBridge, real game uses GameBridge
+            if (_gameBridge.GetType().FullName == "FactionWars.ScriptHookV.GameBridge")
+            {
+                _playTimeHudRenderer = new PlayTimeHudRenderer();
+            }
+
             // Event feed renderer for displaying world events
             _eventFeedRenderer = new EventFeedRenderer(_container.Resolve<IFactionRepository>());
             _eventFeedService = _container.Resolve<IEventFeedService>();
@@ -843,7 +871,8 @@ namespace FactionWars.ScriptHookV
                 _menuProvider,
                 saveSlotManager,
                 gameStateCoordinator,
-                _difficultyService);
+                _difficultyService,
+                _gameBridge);
             _settingsMenuController.BackRequested += (s, e) => _mainMenuController.OnKeyDown(MainMenuController.MenuToggleKeyCode);
 
             // Initialize shop menu controller
@@ -866,9 +895,61 @@ namespace FactionWars.ScriptHookV
 
             _autoSaveService.Start();
 
+            // Configure player settings (weapon persistence, starting cash)
+            ConfigurePlayerStartupSettings();
+
             FileLogger.Separator("INITIALIZATION COMPLETE");
             FileLogger.Info($"Player faction: {CurrentPlayerFactionId ?? "UNKNOWN"}");
             FileLogger.Info($"Log file: {FileLogger.LogPath}");
+        }
+
+        /// <summary>
+        /// Resets player to fair starting state (weapons, cash).
+        /// </summary>
+        private void ConfigurePlayerStartupSettings()
+        {
+            const int StartingCash = 15000;
+
+            // Remove all weapons for fair gameplay
+            _gameBridge.RemoveAllPlayerWeapons();
+            FileLogger.Info("Reset player weapons for fair gameplay");
+
+            // Set starting cash to fixed amount for fair gameplay
+            var currentMoney = _gameBridge.GetPlayerMoney();
+            _gameBridge.SetPlayerMoney(StartingCash);
+            FileLogger.Info($"Set starting cash to ${StartingCash:N0} (was ${currentMoney:N0})");
+
+            // Configure weapon persistence (don't drop weapons on death)
+            _gameBridge.ConfigurePlayerSettings();
+        }
+
+        /// <summary>
+        /// Syncs player state to their faction's economic state on character switch.
+        /// Clears weapons and sets cash to faction capital.
+        /// </summary>
+        private void SyncPlayerToFactionState(string? factionId)
+        {
+            if (string.IsNullOrEmpty(factionId))
+                return;
+
+            // Clear weapons for fresh start
+            _gameBridge.RemoveAllPlayerWeapons();
+
+            // Get faction state and sync player's GTA money to faction's cash
+            var factionState = _factionRepository.GetState(factionId);
+            if (factionState != null)
+            {
+                var factionCash = factionState.Cash;
+                _gameBridge.SetPlayerMoney(factionCash);
+                FileLogger.Info($"SyncPlayerToFactionState: {factionId} - Set cash to faction's ${factionCash:N0}");
+            }
+            else
+            {
+                FileLogger.Warn($"SyncPlayerToFactionState: No state found for faction {factionId}");
+            }
+
+            // Configure weapon persistence
+            _gameBridge.ConfigurePlayerSettings();
         }
 
         /// <summary>
@@ -926,6 +1007,51 @@ namespace FactionWars.ScriptHookV
             {
                 _difficultyService.SetDifficulty(gameState.Difficulty);
                 FileLogger.Info($"Restored difficulty from save: {gameState.Difficulty}");
+            }
+        }
+
+        /// <summary>
+        /// Polls controller (gamepad) input each frame and triggers the same actions as keyboard keys.
+        /// </summary>
+        private void PollControllerInput()
+        {
+            if (!_isInitialized) return;
+
+            // LB + D-pad Right = Toggle menu (same as F7)
+            if (_gameBridge.IsControlJustPressed(ControlDpadRight) && _gameBridge.IsControlPressed(ControlLB))
+            {
+                _mainMenuController?.OnKeyDown(MainMenuController.MenuToggleKeyCode);
+                return; // Don't also process D-pad Right as claim
+            }
+
+            // D-pad Right (no LB) = Claim zone (same as E key)
+            if (_gameBridge.IsControlJustPressed(ControlDpadRight) && !_gameBridge.IsControlPressed(ControlLB))
+            {
+                if (_showingClaimPrompt && _currentNeutralZone != null)
+                {
+                    TryClaimNeutralZone();
+                }
+                // Also pass to commander manager for E key interaction
+                _commanderManager?.OnKeyDown(ClaimKeyCode);
+            }
+
+            // D-pad Down = Cycle battle HUD (same as B key)
+            if (_gameBridge.IsControlJustPressed(ControlDpadDown))
+            {
+                if (_zoneBattleManager != null)
+                {
+                    var battles = _zoneBattleManager.GetAllActiveBattles();
+                    if (battles.Count > 1)
+                    {
+                        _currentBattleHudIndex = (_currentBattleHudIndex + 1) % battles.Count;
+                    }
+                }
+            }
+
+            // A button held = Menu hold-to-repeat (same as Enter held)
+            if (_gameBridge.IsControlPressed(ControlFrontendAccept))
+            {
+                _enterKeyHeld = true;
             }
         }
 
@@ -1114,6 +1240,15 @@ namespace FactionWars.ScriptHookV
                 }
             }
 
+            // Despawn all enemy defenders and battle attackers - they have stale
+            // relationship groups that were configured against the OLD player
+            // character's group. New peds will spawn fresh with correct
+            // relationships when the player enters zones.
+            FileLogger.Spawn("HandleCharacterSwitched: Despawning all enemy defenders (stale relationships)");
+            _enemyDefenderManager?.DespawnAllDefenders();
+            FileLogger.Spawn("HandleCharacterSwitched: Despawning all battle attackers (stale relationships)");
+            _battleAttackerManager?.DespawnAllAttackers();
+
             // Update battle attacker manager faction
             if (!string.IsNullOrEmpty(newFactionId))
             {
@@ -1121,9 +1256,13 @@ namespace FactionWars.ScriptHookV
             }
 
             // Update managers with new faction
+            FileLogger.Info($"HandleCharacterSwitched: Updating all managers to new faction: {newFactionId}");
             _economyManager?.SetPlayerFactionId(newFactionId);
             _aiManager?.SetPlayerFactionId(newFactionId);
             _aiController?.SetPlayerFactionId(newFactionId);
+
+            // Sync player state to new faction (clear weapons, set cash to faction capital)
+            SyncPlayerToFactionState(newFactionId);
 
             // Show notification to player
             var newCharacterName = GetCharacterDisplayName(newFactionId);
@@ -1131,6 +1270,7 @@ namespace FactionWars.ScriptHookV
 
             // Raise the public event for other systems to respond
             OnCharacterSwitched?.Invoke(oldFactionId, newFactionId);
+            FileLogger.Info("HandleCharacterSwitched: Complete");
         }
 
         /// <summary>
@@ -1417,6 +1557,15 @@ namespace FactionWars.ScriptHookV
             // Store zone ID before clearing
             var zoneId = _currentNeutralZone.Id;
             var zoneName = _currentNeutralZone.Name;
+
+            // Cancel any existing AI simulated battle for this zone
+            // This prevents AI battles from continuing after the player captures a zone
+            var existingBattle = _zoneBattleManager?.GetBattleForZone(zoneId);
+            if (existingBattle != null)
+            {
+                FileLogger.Combat($"Cancelling existing battle in {zoneName} - player claimed zone");
+                _zoneBattleManager!.EndBattle(zoneId, BattleOutcome.Cancelled);
+            }
 
             // Deduct cost
             _gameBridge.AddPlayerMoney(-cost);
