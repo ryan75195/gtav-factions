@@ -740,6 +740,7 @@ namespace FactionWars.ScriptHookV
                 aggressionResponseService);
 
             // Subscribe to combat ended event to show claim prompt after victory
+            _combatManager.CombatStarted += OnCombatStarted;
             _combatManager.CombatEnded += OnCombatEnded;
 
             // Initialize AI manager for AI faction decisions
@@ -1125,6 +1126,7 @@ namespace FactionWars.ScriptHookV
             // Stop and clean up combat manager
             if (_combatManager != null)
             {
+                _combatManager.CombatStarted -= OnCombatStarted;
                 _combatManager.CombatEnded -= OnCombatEnded;
                 _combatManager.EndCombat(CombatStatus.Aborted);
             }
@@ -1448,11 +1450,25 @@ namespace FactionWars.ScriptHookV
         }
 
         /// <summary>
+        /// Called when a combat encounter starts. Marks the zone contested so the
+        /// minimap blip flashes red/white. Symmetric clear lives in OnCombatEnded.
+        /// </summary>
+        private void OnCombatStarted(object? sender, CombatEncounter encounter)
+        {
+            _zoneService?.SetZoneContested(encounter.ZoneId, true);
+        }
+
+        /// <summary>
         /// Called when a combat encounter ends.
         /// If the player won (AttackerVictory), shows the claim prompt for the now-neutral zone.
         /// </summary>
         private void OnCombatEnded(object? sender, CombatEncounter encounter)
         {
+            // Always clear contested state. CombatResultHandler also clears it on
+            // win/loss; calling it again is idempotent. This handler also covers
+            // abort/retreat/stalemate where ProcessCombatResult is skipped.
+            _zoneService?.SetZoneContested(encounter.ZoneId, false);
+
             // Add combat result event to event feed
             if (_eventFeedService != null)
             {

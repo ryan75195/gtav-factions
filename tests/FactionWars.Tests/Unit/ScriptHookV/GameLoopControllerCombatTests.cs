@@ -121,6 +121,42 @@ namespace FactionWars.Tests.Unit.ScriptHookV
         }
 
         [Fact]
+        public void OnCombatStarted_MarksZoneAsContested()
+        {
+            SetupController();
+            var controller = new GameLoopController(_container);
+            controller.OnTick(); // Initialize
+
+            var zoneRepo = _container.Resolve<IZoneRepository>();
+            var zone = zoneRepo.GetById("vinewood_hills")!;
+            zone.OwnerFactionId = "trevor";
+            Assert.False(zone.IsContested);
+
+            controller.CombatManager!.StartCombat(zone, attackingFactionId: "michael");
+
+            Assert.True(zoneRepo.GetById("vinewood_hills")!.IsContested);
+        }
+
+        [Fact]
+        public void OnCombatEnded_ClearsContestedFlag()
+        {
+            SetupController();
+            var controller = new GameLoopController(_container);
+            controller.OnTick();
+
+            var zoneRepo = _container.Resolve<IZoneRepository>();
+            var zone = zoneRepo.GetById("vinewood_hills")!;
+            zone.OwnerFactionId = "trevor";
+
+            controller.CombatManager!.StartCombat(zone, attackingFactionId: "michael");
+            Assert.True(zoneRepo.GetById("vinewood_hills")!.IsContested);
+
+            controller.CombatManager.AbortCombat();
+
+            Assert.False(zoneRepo.GetById("vinewood_hills")!.IsContested);
+        }
+
+        [Fact]
         public void OnAbort_CleansUpCombatManager()
         {
             // Arrange
