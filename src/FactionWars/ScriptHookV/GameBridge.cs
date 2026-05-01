@@ -502,6 +502,75 @@ namespace FactionWars.ScriptHookV
         }
 
         /// <inheritdoc />
+        public long? GetTotalPlayTimeSeconds()
+        {
+            try
+            {
+                int activeChar = GetActiveSpCharacterIndex();
+                string statName = $"SP{activeChar}_TOTAL_PLAYING_TIME";
+                int hash = Function.Call<int>(Hash.GET_HASH_KEY, statName);
+                var outArg = new OutputArgument();
+                bool ok = Function.Call<bool>(Hash.STAT_GET_INT, hash, outArg, -1);
+                if (!ok) return null;
+                return outArg.GetResult<int>() / 1000L;
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error("GetTotalPlayTimeSeconds exception", ex);
+                return null;
+            }
+        }
+
+        public int GetActiveCharacterIndex() => GetActiveSpCharacterIndex();
+
+        /// <inheritdoc />
+        public int GetCompletedMissionCount()
+        {
+            try
+            {
+                int activeChar = GetActiveSpCharacterIndex();
+                string statName = $"SP{activeChar}_TOTAL_MISSIONS_PASSED";
+                int hash = Function.Call<int>(Hash.GET_HASH_KEY, statName);
+                var outArg = new OutputArgument();
+                bool ok = Function.Call<bool>(Hash.STAT_GET_INT, hash, outArg, -1);
+                int valueOut = ok ? outArg.GetResult<int>() : 0;
+                FileLogger.Debug($"GetCompletedMissionCount: stat={statName} ok={ok} value={valueOut}");
+                return valueOut;
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error("GetCompletedMissionCount exception", ex);
+                return 0;
+            }
+        }
+
+        /// <inheritdoc />
+        public int GetInGameClockMinutes()
+        {
+            try
+            {
+                int hours = Function.Call<int>(Hash.GET_CLOCK_HOURS);
+                int minutes = Function.Call<int>(Hash.GET_CLOCK_MINUTES);
+                int total = hours * 60 + minutes;
+                FileLogger.Debug($"GetInGameClockMinutes: {hours:D2}:{minutes:D2} = {total}");
+                return total;
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error("GetInGameClockMinutes exception", ex);
+                return 0;
+            }
+        }
+
+        private int GetActiveSpCharacterIndex()
+        {
+            string model = GetPlayerCharacterModel();
+            if (string.Equals(model, "player_one", StringComparison.OrdinalIgnoreCase)) return 1;
+            if (string.Equals(model, "player_two", StringComparison.OrdinalIgnoreCase)) return 2;
+            return 0;
+        }
+
+        /// <inheritdoc />
         public void RemoveAllPlayerWeapons()
         {
             try

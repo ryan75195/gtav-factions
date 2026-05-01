@@ -58,6 +58,26 @@ namespace FactionWars.Core.Utils
         public int PlayerMoney { get; set; } = 0;
 
         /// <summary>
+        /// Gets or sets the total play time in seconds.
+        /// </summary>
+        public long TotalPlayTimeSeconds { get; set; } = 0;
+
+        /// <summary>When true, GetTotalPlayTimeSeconds() returns null to simulate a failed stat read.</summary>
+        public bool SimulateTotalPlayTimeReadFailure { get; set; } = false;
+
+        public int ActiveCharacterIndex { get; set; } = 0;
+
+        /// <summary>
+        /// Gets or sets the number of completed missions.
+        /// </summary>
+        public int CompletedMissionCount { get; set; } = 0;
+
+        /// <summary>
+        /// Gets or sets the in-game clock time in minutes.
+        /// </summary>
+        public int InGameClockMinutes { get; set; } = 0;
+
+        /// <summary>
         /// Gets the last help text displayed via DisplayHelpText.
         /// </summary>
         public string? LastHelpText { get; private set; }
@@ -222,6 +242,14 @@ namespace FactionWars.Core.Utils
         public bool IsPlayerDead() => IsPlayerDeadValue;
 
         public int GetPlayerMoney() => PlayerMoney;
+
+        public long? GetTotalPlayTimeSeconds() => SimulateTotalPlayTimeReadFailure ? (long?)null : TotalPlayTimeSeconds;
+
+        public int GetActiveCharacterIndex() => ActiveCharacterIndex;
+
+        public int GetCompletedMissionCount() => CompletedMissionCount;
+
+        public int GetInGameClockMinutes() => InGameClockMinutes;
 
         public void AddPlayerMoney(int amount)
         {

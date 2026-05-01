@@ -68,17 +68,6 @@ namespace FactionWars.Persistence.Models
         public List<ZoneDefenderAllocationData> Allocations { get; set; } = new List<ZoneDefenderAllocationData>();
 
         /// <summary>
-        /// The player's GTA V character money (separate from faction resources).
-        /// </summary>
-        public int PlayerMoney { get; set; }
-
-        /// <summary>
-        /// The player's GTA V weapons with ammo counts.
-        /// Key is weapon name (e.g., "weapon_pistol"), value is ammo count.
-        /// </summary>
-        public Dictionary<string, int> PlayerWeapons { get; set; } = new Dictionary<string, int>();
-
-        /// <summary>
         /// Creates a new GameState with current timestamps.
         /// </summary>
         public GameState()

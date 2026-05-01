@@ -55,7 +55,6 @@ namespace FactionWars.ScriptHookV
         private BattleAttackerManager? _battleAttackerManager;
         private CommanderManager? _commanderManager;
         private IAIController? _aiController;
-        private IAutoSaveService? _autoSaveService;
         private IGameStateManager? _gameStateManager;
         private MainMenuController? _mainMenuController;
         private IMenuProvider? _menuProvider;
@@ -166,12 +165,6 @@ namespace FactionWars.ScriptHookV
         public RecruitmentMenuController? RecruitmentMenuController => _recruitmentMenuController;
 
         /// <summary>
-        /// Gets the AutoSaveService for automatic game state saving.
-        /// Returns null if not yet initialized.
-        /// </summary>
-        public IAutoSaveService? AutoSaveService => _autoSaveService;
-
-        /// <summary>
         /// Gets the TerritoryManager for zone detection.
         /// Returns null if not yet initialized.
         /// </summary>
@@ -269,9 +262,6 @@ namespace FactionWars.ScriptHookV
 
             // Update play time tracker
             _gameStateManager?.UpdatePlayTime(deltaTime);
-
-            // Update auto-save service (checks interval and saves if needed)
-            _autoSaveService?.Update(TimeSpan.FromSeconds(deltaTime));
 
             // Poll controller input
             PollControllerInput();
@@ -862,8 +852,6 @@ namespace FactionWars.ScriptHookV
             _resourcesMenuController.BackRequested += (s, e) => _mainMenuController.OnKeyDown(MainMenuController.MenuToggleKeyCode);
 
             // Initialize settings menu controller
-            var saveSlotManager = _container.Resolve<ISaveSlotManager>();
-            var gameStateCoordinator = _container.Resolve<IGameStateCoordinator>();
             _difficultyService = _container.Resolve<IDifficultyService>();
 
             // Apply initial difficulty settings to resource tick service
@@ -876,8 +864,6 @@ namespace FactionWars.ScriptHookV
 
             _settingsMenuController = new SettingsMenuController(
                 _menuProvider,
-                saveSlotManager,
-                gameStateCoordinator,
                 _difficultyService,
                 _gameBridge);
             _settingsMenuController.BackRequested += (s, e) => _mainMenuController.OnKeyDown(MainMenuController.MenuToggleKeyCode);
@@ -889,18 +875,13 @@ namespace FactionWars.ScriptHookV
             // Wire up main menu item selection to show submenus
             _menuProvider.ItemSelected += OnMainMenuItemSelected;
 
-            // Initialize auto-save service for automatic game state saving
-            _autoSaveService = _container.Resolve<IAutoSaveService>();
-
-            // Start auto-save after marking the game as loaded
+            // Mark the game as loaded so the state manager begins tracking play time.
             _gameStateManager = _container.Resolve<IGameStateManager>();
-            _gameStateManager.NewGame(); // Mark the game as loaded so auto-save can capture state
-            _gameStateManager.SetCurrentDifficulty(_difficultyService.Current.Level); // Sync initial difficulty
+            _gameStateManager.NewGame();
+            _gameStateManager.SetCurrentDifficulty(_difficultyService.Current.Level);
 
             // Subscribe to game state events for difficulty persistence
             _gameStateManager.OnGameLoaded += OnGameLoaded;
-
-            _autoSaveService.Start();
 
             // Configure player settings (weapon persistence, starting cash)
             ConfigurePlayerStartupSettings();
@@ -1129,11 +1110,6 @@ namespace FactionWars.ScriptHookV
             // Stop economy manager
             _economyManager?.Stop();
             _economyManager = null;
-
-            // Stop and dispose auto-save service
-            _autoSaveService?.Stop();
-            _autoSaveService?.Dispose();
-            _autoSaveService = null;
 
             // Clean up map blips
             _mapBlipManager?.Dispose();

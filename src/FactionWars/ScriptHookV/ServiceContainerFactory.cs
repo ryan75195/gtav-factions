@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using FactionWars.AI.Controllers;
 using FactionWars.AI.Interfaces;
 using FactionWars.AI.Services;
@@ -218,43 +219,65 @@ namespace FactionWars.ScriptHookV
             container.RegisterSingleton<IPersistenceService>(() =>
                 new JsonPersistenceService());
 
-            // Save slot manager - manages multiple save slots using persistence service
-            // Uses user's Documents folder for save files (GTA V convention)
-            container.RegisterSingleton<ISaveSlotManager>(() =>
+            // Sidecar store - persists mod state alongside GTA V's native saves.
+            container.RegisterSingleton<ISidecarStore>(() =>
             {
                 var documentsPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-                var saveDirectory = Path.Combine(documentsPath, config.Persistence.SaveDirectoryName, "Saves");
-                return new SaveSlotManager(
-                    container.Resolve<IPersistenceService>(),
-                    saveDirectory,
-                    config.Persistence.MaxSaveSlots);
+                var sidecarDirectory = Path.Combine(documentsPath, config.Persistence.SaveDirectoryName, "sidecars");
+                return new SidecarStore(sidecarDirectory);
+            });
+
+            // Legacy backup - runs once at startup to migrate save_slot_*.json files.
+            container.RegisterSingleton<LegacyBackupTask>(() =>
+            {
+                var documentsPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+                var saveDirectory = Path.Combine(documentsPath, config.Persistence.SaveDirectoryName);
+                return new LegacyBackupTask(saveDirectory);
+            });
+
+            // Native save watcher - points at the active Rockstar profile directory.
+            container.RegisterSingleton<NativeSaveWatcher>(() =>
+            {
+                var profileDir = ResolveActiveRockstarProfileDir();
+                return new NativeSaveWatcher(profileDir);
             });
 
             // Game state manager - coordinates save/load between domain repositories and persistence
-            // Includes game bridge for saving/loading player state (money/weapons)
             container.RegisterSingleton<IGameStateManager>(() =>
                 new GameStateManager(
-                    container.Resolve<ISaveSlotManager>(),
+                    container.Resolve<ISidecarStore>(),
                     container.Resolve<IZoneRepository>(),
                     container.Resolve<IFactionRepository>(),
-                    container.Resolve<IZoneDefenderAllocationRepository>(),
-                    container.Resolve<IGameBridge>()));
+                    container.Resolve<IZoneDefenderAllocationRepository>()));
+        }
 
-            // Game state coordinator - provides simplified interface for UI save/load operations
-            container.RegisterSingleton<IGameStateCoordinator>(() =>
-                new GameStateCoordinator(container.Resolve<IGameStateManager>()));
+        private static string ResolveActiveRockstarProfileDir()
+        {
+            var profilesRoot = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+                "Rockstar Games", "GTA V", "Profiles");
 
-            // Auto-save service - automatically saves game state at intervals
-            container.RegisterSingleton<IAutoSaveService>(() =>
+            if (!Directory.Exists(profilesRoot))
             {
-                var documentsPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-                var saveDirectory = Path.Combine(documentsPath, config.Persistence.SaveDirectoryName, "Saves");
-                return new AutoSaveService(
-                    container.Resolve<IPersistenceService>(),
-                    container.Resolve<IGameStateManager>(),
-                    saveDirectory,
-                    TimeSpan.FromSeconds(config.Persistence.AutoSaveIntervalSeconds));
-            });
+                FactionWars.ScriptHookV.Logging.FileLogger.Warn($"Rockstar profile root not found: {profilesRoot}");
+                return profilesRoot;
+            }
+
+            var best = Directory.EnumerateDirectories(profilesRoot)
+                .Select(dir => new
+                {
+                    Dir = dir,
+                    MostRecent = Directory.EnumerateFiles(dir, "SGTA*")
+                        .Select(f => File.GetLastWriteTimeUtc(f))
+                        .DefaultIfEmpty(DateTime.MinValue)
+                        .Max(),
+                })
+                .OrderByDescending(x => x.MostRecent)
+                .FirstOrDefault();
+
+            var chosen = best?.Dir ?? profilesRoot;
+            FactionWars.ScriptHookV.Logging.FileLogger.Info($"Resolved Rockstar profile dir: {chosen}");
+            return chosen;
         }
 
         private static void RegisterEconomyServices(ServiceContainer container)

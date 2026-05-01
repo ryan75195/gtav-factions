@@ -18,11 +18,6 @@ namespace FactionWars.ScriptHookV.Persistence
         bool HasGameLoaded { get; }
 
         /// <summary>
-        /// Gets the current save name, if any.
-        /// </summary>
-        string? CurrentSaveName { get; }
-
-        /// <summary>
         /// Gets the total play time in seconds for the current session.
         /// </summary>
         long TotalPlayTimeSeconds { get; }
@@ -38,30 +33,15 @@ namespace FactionWars.ScriptHookV.Persistence
         event EventHandler<GameStateLoadedEventArgs>? OnGameLoaded;
 
         /// <summary>
-        /// Saves the current game state to the specified slot.
+        /// Captures the current game state into a sidecar tagged with the supplied fingerprint
+        /// and writes it via the SidecarStore. Failures are logged and swallowed.
         /// </summary>
-        /// <param name="slotNumber">The slot number (0-based).</param>
-        /// <param name="saveName">Optional name for the save.</param>
-        void SaveToSlot(int slotNumber, string? saveName = null);
+        void WriteCurrentSidecar(SaveFingerprint fingerprint, PlayerPosition position, string nativeSaveFilename);
 
         /// <summary>
-        /// Saves the current game state to the specified slot asynchronously.
+        /// Applies the given sidecar's GameState to the current world.
         /// </summary>
-        /// <param name="slotNumber">The slot number (0-based).</param>
-        /// <param name="saveName">Optional name for the save.</param>
-        Task SaveToSlotAsync(int slotNumber, string? saveName = null);
-
-        /// <summary>
-        /// Loads a game state from the specified slot.
-        /// </summary>
-        /// <param name="slotNumber">The slot number (0-based).</param>
-        void LoadFromSlot(int slotNumber);
-
-        /// <summary>
-        /// Loads a game state from the specified slot asynchronously.
-        /// </summary>
-        /// <param name="slotNumber">The slot number (0-based).</param>
-        Task LoadFromSlotAsync(int slotNumber);
+        void HydrateFromSidecar(Sidecar sidecar);
 
         /// <summary>
         /// Creates a new game with default starting conditions.

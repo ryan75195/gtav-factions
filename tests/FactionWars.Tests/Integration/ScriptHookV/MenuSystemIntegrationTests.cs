@@ -263,9 +263,7 @@ namespace FactionWars.Tests.Integration.ScriptHookV
 
             // Assert
             Assert.NotNull(menu);
-            Assert.NotNull(menu!.GetItem(SettingsMenuController.SaveGameItemId));
-            Assert.NotNull(menu.GetItem(SettingsMenuController.LoadGameItemId));
-            Assert.NotNull(menu.GetItem(SettingsMenuController.DebugModeItemId));
+            Assert.NotNull(menu!.GetItem(SettingsMenuController.DebugModeItemId));
             Assert.NotNull(menu.GetItem(SettingsMenuController.BackItemId));
         }
 
