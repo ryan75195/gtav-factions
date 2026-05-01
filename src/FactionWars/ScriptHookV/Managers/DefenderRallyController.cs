@@ -47,8 +47,49 @@ namespace FactionWars.ScriptHookV.Managers
         public void Update()
         {
             var zone = _territory.CurrentZone;
-            if (zone == null) return;
-            // Subsequent tasks will fill in the rally logic.
+            var playerFactionId = _currentPlayerFactionIdAccessor();
+
+            bool isUnderAttackNow = false;
+            bool inOwnZone = zone != null && zone.OwnerFactionId != null && zone.OwnerFactionId == playerFactionId;
+
+            if (inOwnZone)
+            {
+                // Cheap composite signal: any ONE of these triggers rally.
+                bool wanted = _bridge.GetWantedLevel() > 0;
+                bool encounter = _combat.HasActiveEncounter;
+                bool damaged = _bridge.ConsumePlayerDamagedByPedFlag();
+                isUnderAttackNow = wanted || encounter || damaged;
+            }
+
+            long now = _nowMs();
+            if (isUnderAttackNow)
+                _underAttackUntilTickMs = now + UnderAttackCoolDownMs;
+
+            bool isUnderAttack = inOwnZone && now < _underAttackUntilTickMs;
+
+            bool shouldRally = isUnderAttack;
+
+            if (shouldRally && !_wasUnderAttack)
+            {
+                IssueRallyTasks(zone!);
+            }
+
+            _wasUnderAttack = shouldRally;
+        }
+
+        private void IssueRallyTasks(Zone zone)
+        {
+            int playerHandle = _bridge.GetPlayerPedHandle();
+            var defenders = _defenders.GetDefendersInZone(zone.Id);
+            _rallyingPeds.Clear();
+
+            foreach (var pedHandle in defenders.Keys)
+            {
+                _bridge.ClearPedTasks(pedHandle);
+                _bridge.TaskGoToEntity(pedHandle, playerHandle, RallyStoppingRangeM);
+                _bridge.TaskCombatHatedTargetsAroundPed(pedHandle, RallyCombatRadiusM);
+                _rallyingPeds.Add(pedHandle);
+            }
         }
     }
 }
