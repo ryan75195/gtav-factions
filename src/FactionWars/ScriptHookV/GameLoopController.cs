@@ -1693,6 +1693,10 @@ namespace FactionWars.ScriptHookV
         /// </summary>
         private void OnZoneBattleStarted(ZoneBattle battle)
         {
+            // Mark the zone contested so the minimap blip flashes red/white.
+            // CombatResultHandler clears this when the battle resolves.
+            _zoneService?.SetZoneContested(battle.ZoneId, true);
+
             // Notify commander manager to switch to sprinting wander
             _commanderManager?.OnBattleStarted(battle.ZoneId);
 

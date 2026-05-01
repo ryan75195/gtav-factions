@@ -1,7 +1,12 @@
+using System.Collections.Generic;
+using FactionWars.Combat.Interfaces;
+using FactionWars.Combat.Models;
 using FactionWars.Core.Interfaces;
+using FactionWars.Core.Models;
 using FactionWars.Core.Utils;
 using FactionWars.ScriptHookV;
 using FactionWars.ScriptHookV.Managers;
+using FactionWars.Territory.Interfaces;
 using FactionWars.Tests.Mocks;
 using Xunit;
 
@@ -89,6 +94,30 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             // Assert
             Assert.NotNull(controller.CombatManager);
             // Combat state depends on zone ownership setup
+        }
+
+        [Fact]
+        public void OnZoneBattleStarted_MarksZoneAsContested()
+        {
+            SetupController();
+            var controller = new GameLoopController(_container);
+            controller.OnTick(); // Initialize
+
+            var zoneRepo = _container.Resolve<IZoneRepository>();
+            var battleManager = _container.Resolve<IZoneBattleManager>();
+            var zone = zoneRepo.GetById("vinewood_hills");
+            Assert.NotNull(zone);
+            Assert.False(zone!.IsContested);
+
+            var troops = new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 1 } };
+            battleManager.StartBattle(
+                zoneId: "vinewood_hills",
+                attackerFactionId: "trevor",
+                defenderFactionId: "michael",
+                attackerTroops: troops,
+                defenderTroops: troops);
+
+            Assert.True(zoneRepo.GetById("vinewood_hills")!.IsContested);
         }
 
         [Fact]
