@@ -531,6 +531,7 @@ namespace FactionWars.Core.Utils
                 // Clear other task states when assigning wander
                 _pedsFacingPosition.Remove(pedHandle);
                 _combatTargetingPeds.Remove(pedHandle);
+                _goToEntityPeds.Remove(pedHandle);
                 _wanderingPeds[pedHandle] = new WanderState
                 {
                     Center = center,
@@ -547,6 +548,7 @@ namespace FactionWars.Core.Utils
                 // Clear other task states when assigning wander
                 _pedsFacingPosition.Remove(pedHandle);
                 _combatTargetingPeds.Remove(pedHandle);
+                _goToEntityPeds.Remove(pedHandle);
                 _wanderingPeds[pedHandle] = new WanderState
                 {
                     Center = center,
@@ -598,7 +600,12 @@ namespace FactionWars.Core.Utils
         {
             if (_peds.ContainsKey(pedHandle))
             {
-                // Clear other task states when assigning combat targeting
+                // Clear conflicting task states when assigning combat targeting.
+                // NOTE: deliberately does NOT clear _goToEntityPeds — the rally controller
+                // stacks combat-targeting on top of go-to-entity (sprint toward player THEN
+                // engage hated targets while close), and tests assert both states are
+                // active simultaneously after a rally. See spec section "State machine
+                // and tasking" in 2026-05-01-defender-rally-on-threat-design.md.
                 _wanderingPeds.Remove(pedHandle);
                 _pedsFacingPosition.Remove(pedHandle);
                 _combatTargetingPeds[pedHandle] = radius;
@@ -619,6 +626,12 @@ namespace FactionWars.Core.Utils
         }
 
         private readonly Dictionary<int, GoToEntityState> _goToEntityPeds = new Dictionary<int, GoToEntityState>();
+
+        private class GoToEntityState
+        {
+            public int TargetEntityHandle { get; set; }
+            public float StoppingRange { get; set; }
+        }
 
         public void TaskGoToEntity(int pedHandle, int targetEntityHandle, float stoppingRange)
         {
@@ -646,12 +659,6 @@ namespace FactionWars.Core.Utils
         /// <summary>Gets the stopping range for a go-to-entity task.</summary>
         public float? GetGoToEntityStoppingRange(int pedHandle)
             => _goToEntityPeds.TryGetValue(pedHandle, out var state) ? state.StoppingRange : (float?)null;
-
-        private class GoToEntityState
-        {
-            public int TargetEntityHandle { get; set; }
-            public float StoppingRange { get; set; }
-        }
 
         public void SetPedAsFriendly(int pedHandle)
         {
