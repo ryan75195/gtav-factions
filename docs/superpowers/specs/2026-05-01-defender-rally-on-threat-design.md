@@ -1,33 +1,52 @@
-# Defender Rally on Threat — Design
+# Defender Rally on Player — Design
 
 ## Goal
 
-When the player is in a zone owned by their faction and aggressive NPCs are
-attacking them, the defenders allocated to that zone should abandon their
-wander pattern, run to the player, and stay within a tight radius engaging
-threats. When the threat clears, defenders return to wandering.
+The defenders of whatever zone the player is currently in should converge
+on the player and stay clustered within a tight radius whenever combat is
+relevant. Concretely, this covers two symmetric cases:
 
-This makes player-owned territory feel meaningfully defended and turns
-faction-owned zones into safe havens during combat.
+1. **Player in own zone, under attack** — friendly defenders rally to
+   protect the player from police / enemy faction / any ped attacking them.
+2. **Player in enemy zone (invading)** — enemy defenders rally to attack
+   the player (the player is, from their perspective, the aggressive NPC
+   in their territory).
+
+Both cases share the same task primitive — `TaskGoToEntity(player)` plus
+`TaskCombatHatedTargetsAroundPed` — because GTA's relationship-group
+machinery routes "who shoots whom" automatically once defenders are close.
+The only thing that varies between cases is the trigger condition.
+
+This makes both player-owned zones feel meaningfully defended and enemy
+zones feel meaningfully hostile to invaders, instead of the current
+behaviour where defenders keep wandering aimlessly during firefights.
 
 ## Scope
 
 In scope:
-- Player-faction defenders in the **player's current zone only**.
-- Threats from police, mod-managed combat, or any ped that has damaged the
-  player.
+- Defenders of the **player's current zone**, regardless of ownership.
+- Friendly-rally triggers: police, mod-managed combat, or any ped that has
+  damaged the player.
+- Hostile-rally trigger: player is in a zone owned by a faction that is
+  not the player's faction.
 
 Out of scope (future work):
-- AI factions defending their own zones (AI factions don't have a "player"
-  centerpiece to rally around).
+- AI factions defending against AI invaders (this is for the player only).
 - Defenders in adjacent zones rushing to help (cross-zone reinforcement).
 - Vehicle-aware go-to behavior — defenders pathing through traffic relies on
   GTA's built-in pathing.
+- BattleAttackerManager-spawned attackers — those are spawned with their
+  own combat tasks already; rallying them is a separate follow-up if their
+  default behaviour proves to wander too.
 
-## Threat-detection signal
+## Rally-trigger signal
 
-A defender is considered "under attack" if any of the following is true on
-the current tick:
+The controller decides "should defenders rally now?" each tick. The signal
+depends on which case applies:
+
+**Case 1: player in own zone (current zone owner = player faction)**
+
+Rally if any of the following is true:
 
 | Source | Bridge call |
 |---|---|
@@ -42,6 +61,28 @@ the composite signal is evaluated every tick with no per-ped scanning.
 `HasBeenDamagedByAnyPed` boolean and clears it. This is the only "event-ish"
 signal — the engine sets the flag asynchronously when damage occurs, we
 consume it on tick.
+
+**Case 2: player in enemy zone (current zone owner ≠ player faction and
+zone has an owner)**
+
+Rally as long as the player remains in the zone. Rationale: the player IS
+the aggressive NPC from the defenders' point of view — there is no
+additional "is there combat?" question to answer.
+
+**Case 3: player in neutral zone or no current zone**
+
+No rally. Defenders wander as normal.
+
+Pseudocode:
+
+```
+shouldRally =
+    (currentZone.OwnerFactionId == playerFactionId && isUnderAttackNow)
+ || (currentZone.OwnerFactionId != null && currentZone.OwnerFactionId != playerFactionId)
+```
+
+The cool-down (below) only applies to case 1 — in case 2, the rally simply
+ends when the player leaves the enemy zone.
 
 ## Cool-down
 
@@ -162,13 +203,17 @@ in-memory implementations of `IFriendlyDefenderQuery` and
 `ICombatActivityQuery`, and a deterministic clock:
 
 - `Update_NoThreat_DoesNothing`
-- `Update_ThreatDetected_IssuesGoToAndCombatTasks`
-- `Update_ThreatPersists_DoesNotReissueTasks`
-- `Update_ThreatClears_ButCoolDownActive_KeepsRally`
-- `Update_ThreatClears_AfterCoolDown_RestoresWander`
+- `Update_PlayerInOwnZone_ThreatDetected_IssuesGoToAndCombatTasks`
+- `Update_PlayerInOwnZone_ThreatPersists_DoesNotReissueTasks`
+- `Update_PlayerInOwnZone_ThreatClears_ButCoolDownActive_KeepsRally`
+- `Update_PlayerInOwnZone_ThreatClears_AfterCoolDown_RestoresWander`
 - `Update_DefenderInDifferentZone_NotRallied`
-- `Update_PlayerNotInOwnedZone_DoesNotRally`
+- `Update_PlayerInNeutralZone_DoesNotRally`
 - `Update_PlayerDamagedByPed_RefreshesCoolDown`
+- `Update_PlayerInEnemyZone_RalliesEnemyDefenders`
+- `Update_PlayerLeavesEnemyZone_EnemyDefendersResumeWander`
+- `Update_PlayerInEnemyZone_NoCoolDownAfterLeave` — leaving the zone ends
+  the rally immediately
 
 In-game verification (manual):
 - Stand in player-owned zone, draw police attention → defenders converge.
@@ -177,6 +222,8 @@ In-game verification (manual):
 - Threat ends → defenders return to wander after cool-down.
 - Stand in non-player-owned zone with police on → defenders in your owned
   zones do NOT rally (they're not in your current zone).
+- Walk into Trevor's zone as Michael → Trevor's defenders converge on you.
+- Leave Trevor's zone → Trevor's defenders resume wander immediately.
 
 ## Risks / open questions
 
