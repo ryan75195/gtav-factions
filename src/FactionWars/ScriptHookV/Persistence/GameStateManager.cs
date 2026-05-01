@@ -2,6 +2,7 @@ using FactionWars.Core.Interfaces;
 using FactionWars.Core.Models;
 using FactionWars.Factions.Interfaces;
 using FactionWars.Factions.Models;
+using FactionWars.Persistence;
 using FactionWars.Persistence.Models;
 using FactionWars.ScriptHookV.Data;
 using FactionWars.ScriptHookV.Logging;
@@ -9,7 +10,6 @@ using FactionWars.Territory.Interfaces;
 using FactionWars.Territory.Models;
 using System;
 using System.Linq;
-using System.Threading.Tasks;
 
 namespace FactionWars.ScriptHookV.Persistence
 {
@@ -19,23 +19,18 @@ namespace FactionWars.ScriptHookV.Persistence
     /// </summary>
     public class GameStateManager : IGameStateManager
     {
-        private readonly ISaveSlotManager _saveSlotManager;
+        private readonly ISidecarStore _sidecarStore;
         private readonly IZoneRepository _zoneRepository;
         private readonly IFactionRepository _factionRepository;
         private readonly IZoneDefenderAllocationRepository _allocationRepository;
-        private readonly IGameBridge? _gameBridge;
 
         private bool _hasGameLoaded;
-        private string? _currentSaveName;
         private long _totalPlayTimeSeconds;
         private float _playTimeAccumulator;
         private Difficulty _currentDifficulty = Difficulty.Normal;
 
         /// <inheritdoc />
         public bool HasGameLoaded => _hasGameLoaded;
-
-        /// <inheritdoc />
-        public string? CurrentSaveName => _currentSaveName;
 
         /// <inheritdoc />
         public long TotalPlayTimeSeconds => _totalPlayTimeSeconds;
@@ -46,29 +41,18 @@ namespace FactionWars.ScriptHookV.Persistence
         /// <inheritdoc />
         public event EventHandler<GameStateLoadedEventArgs>? OnGameLoaded;
 
-        /// <summary>
-        /// Creates a new GameStateManager with the specified dependencies.
-        /// </summary>
-        /// <param name="saveSlotManager">The save slot manager for persistence operations.</param>
-        /// <param name="zoneRepository">The zone repository.</param>
-        /// <param name="factionRepository">The faction repository.</param>
-        /// <param name="allocationRepository">The zone defender allocation repository.</param>
-        /// <param name="gameBridge">Optional game bridge for saving/loading player state (money/weapons).</param>
         public GameStateManager(
-            ISaveSlotManager saveSlotManager,
+            ISidecarStore sidecarStore,
             IZoneRepository zoneRepository,
             IFactionRepository factionRepository,
-            IZoneDefenderAllocationRepository allocationRepository,
-            IGameBridge? gameBridge = null)
+            IZoneDefenderAllocationRepository allocationRepository)
         {
-            _saveSlotManager = saveSlotManager ?? throw new ArgumentNullException(nameof(saveSlotManager));
+            _sidecarStore = sidecarStore ?? throw new ArgumentNullException(nameof(sidecarStore));
             _zoneRepository = zoneRepository ?? throw new ArgumentNullException(nameof(zoneRepository));
             _factionRepository = factionRepository ?? throw new ArgumentNullException(nameof(factionRepository));
             _allocationRepository = allocationRepository ?? throw new ArgumentNullException(nameof(allocationRepository));
-            _gameBridge = gameBridge;
 
             _hasGameLoaded = false;
-            _currentSaveName = null;
             _totalPlayTimeSeconds = 0;
             _playTimeAccumulator = 0f;
         }
@@ -89,16 +73,8 @@ namespace FactionWars.ScriptHookV.Persistence
                 _allocationRepository.GetAll());
 
             gameState.TotalPlayTimeSeconds = _totalPlayTimeSeconds;
-            gameState.SaveName = _currentSaveName ?? "Unnamed Save";
+            gameState.SaveName = "Unnamed Save";
             gameState.Difficulty = _currentDifficulty;
-
-            // Capture player state (money and weapons) if game bridge is available
-            if (_gameBridge != null)
-            {
-                gameState.PlayerMoney = _gameBridge.GetPlayerMoney();
-                gameState.PlayerWeapons = _gameBridge.GetPlayerWeapons();
-                FileLogger.Info($"GetCurrentGameState: Captured player money=${gameState.PlayerMoney:N0}, weapons={gameState.PlayerWeapons.Count}");
-            }
 
             gameState.MarkModified();
 
@@ -106,109 +82,49 @@ namespace FactionWars.ScriptHookV.Persistence
         }
 
         /// <inheritdoc />
-        public void SaveToSlot(int slotNumber, string? saveName = null)
+        public void WriteCurrentSidecar(SaveFingerprint fingerprint, PlayerPosition position, string nativeSaveFilename)
         {
             if (!_hasGameLoaded)
             {
-                throw new InvalidOperationException("Cannot save: no game is currently loaded.");
+                FileLogger.Debug("WriteCurrentSidecar: no game loaded; skipping.");
+                return;
             }
 
-            var effectiveSaveName = saveName ?? _currentSaveName ?? "Save";
+            if (fingerprint == null) throw new ArgumentNullException(nameof(fingerprint));
+            if (position == null) throw new ArgumentNullException(nameof(position));
+            if (nativeSaveFilename == null) throw new ArgumentNullException(nameof(nativeSaveFilename));
 
-            try
+            var gameState = GetCurrentGameState()!;
+            var sidecar = new Sidecar
             {
-                var gameState = GetCurrentGameState()!;
-                gameState.SaveName = effectiveSaveName;
-                gameState.MarkModified();
+                Fingerprint = fingerprint,
+                WrittenAtUtc = DateTime.UtcNow,
+                NativeSaveFilename = nativeSaveFilename,
+                PlayerPosition = position,
+                GameState = gameState,
+            };
 
-                _saveSlotManager.SaveToSlot(slotNumber, gameState);
-                _currentSaveName = effectiveSaveName;
-
-                OnGameSaved?.Invoke(this, new GameStateSavedEventArgs(slotNumber, effectiveSaveName, true));
-            }
-            catch (Exception ex)
-            {
-                OnGameSaved?.Invoke(this, new GameStateSavedEventArgs(slotNumber, effectiveSaveName, false, ex));
-                throw;
-            }
+            _sidecarStore.WriteSidecar(sidecar);
+            OnGameSaved?.Invoke(this, new GameStateSavedEventArgs(0, gameState.SaveName, true));
         }
 
         /// <inheritdoc />
-        public async Task SaveToSlotAsync(int slotNumber, string? saveName = null)
+        public void HydrateFromSidecar(Sidecar sidecar)
         {
-            if (!_hasGameLoaded)
-            {
-                throw new InvalidOperationException("Cannot save: no game is currently loaded.");
-            }
-
-            var effectiveSaveName = saveName ?? _currentSaveName ?? "Save";
+            if (sidecar == null) throw new ArgumentNullException(nameof(sidecar));
+            if (sidecar.GameState == null) throw new ArgumentException("Sidecar.GameState required.", nameof(sidecar));
 
             try
             {
-                var gameState = GetCurrentGameState()!;
-                gameState.SaveName = effectiveSaveName;
-                gameState.MarkModified();
-
-                await _saveSlotManager.SaveToSlotAsync(slotNumber, gameState);
-                _currentSaveName = effectiveSaveName;
-
-                OnGameSaved?.Invoke(this, new GameStateSavedEventArgs(slotNumber, effectiveSaveName, true));
-            }
-            catch (Exception ex)
-            {
-                OnGameSaved?.Invoke(this, new GameStateSavedEventArgs(slotNumber, effectiveSaveName, false, ex));
-                throw;
-            }
-        }
-
-        /// <inheritdoc />
-        public void LoadFromSlot(int slotNumber)
-        {
-            string saveName = "Unknown";
-
-            try
-            {
-                var gameState = _saveSlotManager.LoadFromSlot(slotNumber);
-                saveName = gameState.SaveName;
-
-                ApplyGameState(gameState);
-
-                _currentSaveName = gameState.SaveName;
-                _totalPlayTimeSeconds = gameState.TotalPlayTimeSeconds;
-                _playTimeAccumulator = 0f;
+                ApplyGameState(sidecar.GameState);
+                _totalPlayTimeSeconds = sidecar.GameState.TotalPlayTimeSeconds;
                 _hasGameLoaded = true;
 
-                OnGameLoaded?.Invoke(this, new GameStateLoadedEventArgs(slotNumber, saveName, true));
+                OnGameLoaded?.Invoke(this, new GameStateLoadedEventArgs(0, sidecar.GameState.SaveName, true));
             }
             catch (Exception ex)
             {
-                OnGameLoaded?.Invoke(this, new GameStateLoadedEventArgs(slotNumber, saveName, false, ex));
-                throw;
-            }
-        }
-
-        /// <inheritdoc />
-        public async Task LoadFromSlotAsync(int slotNumber)
-        {
-            string saveName = "Unknown";
-
-            try
-            {
-                var gameState = await _saveSlotManager.LoadFromSlotAsync(slotNumber);
-                saveName = gameState.SaveName;
-
-                ApplyGameState(gameState);
-
-                _currentSaveName = gameState.SaveName;
-                _totalPlayTimeSeconds = gameState.TotalPlayTimeSeconds;
-                _playTimeAccumulator = 0f;
-                _hasGameLoaded = true;
-
-                OnGameLoaded?.Invoke(this, new GameStateLoadedEventArgs(slotNumber, saveName, true));
-            }
-            catch (Exception ex)
-            {
-                OnGameLoaded?.Invoke(this, new GameStateLoadedEventArgs(slotNumber, saveName, false, ex));
+                OnGameLoaded?.Invoke(this, new GameStateLoadedEventArgs(0, sidecar.GameState.SaveName, false, ex));
                 throw;
             }
         }
@@ -217,7 +133,6 @@ namespace FactionWars.ScriptHookV.Persistence
         public void NewGame()
         {
             _hasGameLoaded = true;
-            _currentSaveName = null;
             _totalPlayTimeSeconds = 0;
             _playTimeAccumulator = 0f;
         }
@@ -294,28 +209,6 @@ namespace FactionWars.ScriptHookV.Persistence
                 {
                     var allocation = allocationData.ToAllocation();
                     _allocationRepository.Add(allocation);
-                }
-            }
-
-            // Restore player state (money and weapons) if game bridge is available
-            if (_gameBridge != null)
-            {
-                // Restore player money
-                if (gameState.PlayerMoney > 0)
-                {
-                    _gameBridge.SetPlayerMoney(gameState.PlayerMoney);
-                    FileLogger.Info($"ApplyGameState: Restored player money=${gameState.PlayerMoney:N0}");
-                }
-
-                // Restore player weapons
-                if (gameState.PlayerWeapons != null && gameState.PlayerWeapons.Count > 0)
-                {
-                    _gameBridge.RemoveAllPlayerWeapons();
-                    foreach (var weapon in gameState.PlayerWeapons)
-                    {
-                        _gameBridge.GivePlayerWeapon(weapon.Key, weapon.Value);
-                    }
-                    FileLogger.Info($"ApplyGameState: Restored {gameState.PlayerWeapons.Count} player weapons");
                 }
             }
         }

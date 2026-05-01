@@ -527,5 +527,37 @@ namespace FactionWars.Tests.Unit.Core
         }
 
         #endregion
+
+        #region Fingerprint Method Tests
+
+        [Fact]
+        public void GetTotalPlayTimeSeconds_DefaultsToZero()
+        {
+            var bridge = new MockGameBridge();
+            Assert.Equal(0L, bridge.GetTotalPlayTimeSeconds());
+        }
+
+        [Fact]
+        public void GetTotalPlayTimeSeconds_ReturnsSeededValue()
+        {
+            var bridge = new MockGameBridge { TotalPlayTimeSeconds = 12340 };
+            Assert.Equal(12340L, bridge.GetTotalPlayTimeSeconds());
+        }
+
+        [Fact]
+        public void GetCompletedMissionCount_ReturnsSeededValue()
+        {
+            var bridge = new MockGameBridge { CompletedMissionCount = 23 };
+            Assert.Equal(23, bridge.GetCompletedMissionCount());
+        }
+
+        [Fact]
+        public void GetInGameClockMinutes_ReturnsSeededValue()
+        {
+            var bridge = new MockGameBridge { InGameClockMinutes = 854 };
+            Assert.Equal(854, bridge.GetInGameClockMinutes());
+        }
+
+        #endregion
     }
 }

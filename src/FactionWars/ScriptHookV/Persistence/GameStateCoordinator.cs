@@ -1,4 +1,5 @@
 using FactionWars.Core.Interfaces;
+using FactionWars.ScriptHookV.Logging;
 using System;
 
 namespace FactionWars.ScriptHookV.Persistence
@@ -34,29 +35,13 @@ namespace FactionWars.ScriptHookV.Persistence
         /// <inheritdoc />
         public void SaveToSlot(int slotNumber)
         {
-            _isSaving = true;
-            try
-            {
-                _gameStateManager.SaveToSlot(slotNumber, null);
-            }
-            finally
-            {
-                _isSaving = false;
-            }
+            FileLogger.Warn($"GameStateCoordinator.SaveToSlot({slotNumber}) called but slot-based saves are deprecated; sidecar saves are tied to native saves.");
         }
 
         /// <inheritdoc />
         public void LoadFromSlot(int slotNumber)
         {
-            _isLoading = true;
-            try
-            {
-                _gameStateManager.LoadFromSlot(slotNumber);
-            }
-            finally
-            {
-                _isLoading = false;
-            }
+            FileLogger.Warn($"GameStateCoordinator.LoadFromSlot({slotNumber}) called but slot-based loads are deprecated; sidecar loads are triggered by native saves.");
         }
     }
 }

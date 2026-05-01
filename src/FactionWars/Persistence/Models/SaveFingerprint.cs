@@ -34,5 +34,18 @@ namespace FactionWars.Persistence.Models
             if (other == null) return false;
             return TotalPlayTimeSeconds == other.TotalPlayTimeSeconds;
         }
+
+        /// <summary>Captures a fingerprint from the current game state via the bridge.</summary>
+        public static SaveFingerprint Capture(FactionWars.Core.Interfaces.IGameBridge bridge)
+        {
+            if (bridge == null) throw new System.ArgumentNullException(nameof(bridge));
+            return new SaveFingerprint
+            {
+                TotalPlayTimeSeconds = bridge.GetTotalPlayTimeSeconds(),
+                Money = bridge.GetPlayerMoney(),
+                CompletedMissionCount = bridge.GetCompletedMissionCount(),
+                InGameClockMinutes = bridge.GetInGameClockMinutes(),
+            };
+        }
     }
 }

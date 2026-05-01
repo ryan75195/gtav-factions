@@ -146,6 +146,28 @@ namespace FactionWars.Core.Interfaces
         void SetPlayerMoney(int amount);
 
         /// <summary>
+        /// Gets the player's total play time in seconds, as tracked by GTA V's stats system
+        /// (e.g., MP0_TOTAL_PLAYING_TIME or its single-player equivalent). Persisted in the
+        /// savegame and restored exactly on load — primary key for save identification.
+        /// </summary>
+        /// <returns>Total seconds played, monotonically increasing across the campaign.</returns>
+        long GetTotalPlayTimeSeconds();
+
+        /// <summary>
+        /// Gets the count of completed story missions for the active character.
+        /// Used as a tiebreaker for save fingerprint matching.
+        /// </summary>
+        /// <returns>Number of completed missions.</returns>
+        int GetCompletedMissionCount();
+
+        /// <summary>
+        /// Gets the in-game wall clock as minutes-of-day (HH*60+MM, 0-1439).
+        /// Used as a tiebreaker for save fingerprint matching.
+        /// </summary>
+        /// <returns>Minutes-of-day in [0, 1440).</returns>
+        int GetInGameClockMinutes();
+
+        /// <summary>
         /// Removes all weapons from the player.
         /// </summary>
         void RemoveAllPlayerWeapons();

@@ -502,6 +502,49 @@ namespace FactionWars.ScriptHookV
         }
 
         /// <inheritdoc />
+        public long GetTotalPlayTimeSeconds()
+        {
+            int activeChar = GetActiveSpCharacterIndex();
+            string statName = $"SP{activeChar}_TOTAL_PLAYING_TIME";
+            int hash = Function.Call<int>(Hash.GET_HASH_KEY, statName);
+            int millisOut = 0;
+            Function.Call(Hash.STAT_GET_INT, hash, new OutputArgument(millisOut), -1);
+            long seconds = millisOut / 1000L;
+            FileLogger.Debug($"GetTotalPlayTimeSeconds: stat={statName} ms={millisOut} s={seconds}");
+            return seconds;
+        }
+
+        /// <inheritdoc />
+        public int GetCompletedMissionCount()
+        {
+            int activeChar = GetActiveSpCharacterIndex();
+            string statName = $"SP{activeChar}_TOTAL_MISSIONS_PASSED";
+            int hash = Function.Call<int>(Hash.GET_HASH_KEY, statName);
+            int valueOut = 0;
+            Function.Call(Hash.STAT_GET_INT, hash, new OutputArgument(valueOut), -1);
+            FileLogger.Debug($"GetCompletedMissionCount: stat={statName} value={valueOut}");
+            return valueOut;
+        }
+
+        /// <inheritdoc />
+        public int GetInGameClockMinutes()
+        {
+            int hours = Function.Call<int>(Hash.GET_CLOCK_HOURS);
+            int minutes = Function.Call<int>(Hash.GET_CLOCK_MINUTES);
+            int total = hours * 60 + minutes;
+            FileLogger.Debug($"GetInGameClockMinutes: {hours:D2}:{minutes:D2} = {total}");
+            return total;
+        }
+
+        private int GetActiveSpCharacterIndex()
+        {
+            string model = GetPlayerCharacterModel();
+            if (string.Equals(model, "player_one", StringComparison.OrdinalIgnoreCase)) return 1;
+            if (string.Equals(model, "player_two", StringComparison.OrdinalIgnoreCase)) return 2;
+            return 0;
+        }
+
+        /// <inheritdoc />
         public void RemoveAllPlayerWeapons()
         {
             try

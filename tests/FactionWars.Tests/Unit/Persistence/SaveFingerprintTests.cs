@@ -1,3 +1,4 @@
+using FactionWars.Core.Utils;
 using FactionWars.Persistence.Models;
 using Xunit;
 
@@ -68,6 +69,25 @@ namespace FactionWars.Tests.Unit.Persistence
             var a = Make(playTime: 12340);
             var b = Make(playTime: 12341);
             Assert.False(a.PrimaryMatch(b));
+        }
+
+        [Fact]
+        public void Capture_FromBridge_BuildsFingerprintFromCurrentState()
+        {
+            var bridge = new MockGameBridge
+            {
+                TotalPlayTimeSeconds = 12340,
+                CompletedMissionCount = 23,
+                InGameClockMinutes = 854,
+            };
+            bridge.SetPlayerMoney(50000);
+
+            var fp = SaveFingerprint.Capture(bridge);
+
+            Assert.Equal(12340L, fp.TotalPlayTimeSeconds);
+            Assert.Equal(50000, fp.Money);
+            Assert.Equal(23, fp.CompletedMissionCount);
+            Assert.Equal(854, fp.InGameClockMinutes);
         }
     }
 }

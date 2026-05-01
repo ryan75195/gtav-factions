@@ -1,6 +1,7 @@
 using FactionWars.Core.Interfaces;
 using FactionWars.Factions.Interfaces;
 using FactionWars.Factions.Models;
+using FactionWars.Persistence;
 using FactionWars.Persistence.Models;
 using FactionWars.ScriptHookV.Persistence;
 using FactionWars.Territory.Interfaces;
@@ -14,7 +15,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Persistence
 {
     public class GameStateManagerTests
     {
-        private readonly Mock<ISaveSlotManager> _mockSaveSlotManager;
+        private readonly Mock<ISidecarStore> _mockSidecarStore;
         private readonly Mock<IZoneRepository> _mockZoneRepository;
         private readonly Mock<IFactionRepository> _mockFactionRepository;
         private readonly Mock<IZoneDefenderAllocationRepository> _mockAllocationRepository;
@@ -22,13 +23,13 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Persistence
 
         public GameStateManagerTests()
         {
-            _mockSaveSlotManager = new Mock<ISaveSlotManager>();
+            _mockSidecarStore = new Mock<ISidecarStore>();
             _mockZoneRepository = new Mock<IZoneRepository>();
             _mockFactionRepository = new Mock<IFactionRepository>();
             _mockAllocationRepository = new Mock<IZoneDefenderAllocationRepository>();
 
             _sut = new GameStateManager(
-                _mockSaveSlotManager.Object,
+                _mockSidecarStore.Object,
                 _mockZoneRepository.Object,
                 _mockFactionRepository.Object,
                 _mockAllocationRepository.Object);
@@ -37,7 +38,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Persistence
         #region Constructor Tests
 
         [Fact]
-        public void Constructor_WithNullSaveSlotManager_ThrowsArgumentNullException()
+        public void Constructor_WithNullSidecarStore_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() =>
                 new GameStateManager(
@@ -52,7 +53,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Persistence
         {
             Assert.Throws<ArgumentNullException>(() =>
                 new GameStateManager(
-                    _mockSaveSlotManager.Object,
+                    _mockSidecarStore.Object,
                     null!,
                     _mockFactionRepository.Object,
                     _mockAllocationRepository.Object));
@@ -63,7 +64,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Persistence
         {
             Assert.Throws<ArgumentNullException>(() =>
                 new GameStateManager(
-                    _mockSaveSlotManager.Object,
+                    _mockSidecarStore.Object,
                     _mockZoneRepository.Object,
                     null!,
                     _mockAllocationRepository.Object));
@@ -74,7 +75,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Persistence
         {
             Assert.Throws<ArgumentNullException>(() =>
                 new GameStateManager(
-                    _mockSaveSlotManager.Object,
+                    _mockSidecarStore.Object,
                     _mockZoneRepository.Object,
                     _mockFactionRepository.Object,
                     null!));
@@ -85,7 +86,6 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Persistence
         {
             Assert.NotNull(_sut);
             Assert.False(_sut.HasGameLoaded);
-            Assert.Null(_sut.CurrentSaveName);
             Assert.Equal(0, _sut.TotalPlayTimeSeconds);
         }
 
@@ -104,7 +104,6 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Persistence
         [Fact]
         public void GetCurrentGameState_WithLoadedGame_ReturnsGameState()
         {
-            // Arrange - Set up repositories with data
             var zones = new List<Zone>
             {
                 new Zone("zone1", "Downtown", Vector3.Zero, 100f)
@@ -121,13 +120,10 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Persistence
             _mockFactionRepository.Setup(r => r.GetAll()).Returns(factions);
             _mockFactionRepository.Setup(r => r.GetAllStates()).Returns(factionStates);
 
-            // Simulate a game being loaded
             _sut.NewGame();
 
-            // Act
             var result = _sut.GetCurrentGameState();
 
-            // Assert
             Assert.NotNull(result);
             Assert.Single(result.Zones);
             Assert.Single(result.Factions);
@@ -136,228 +132,108 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Persistence
 
         #endregion
 
-        #region SaveToSlot Tests
+        #region WriteCurrentSidecar Tests
 
         [Fact]
-        public void SaveToSlot_WhenNoGameLoaded_ThrowsInvalidOperationException()
+        public void WriteCurrentSidecar_CallsStoreWithExpectedPayload()
         {
-            Assert.Throws<InvalidOperationException>(() => _sut.SaveToSlot(0));
-        }
-
-        [Fact]
-        public void SaveToSlot_WithLoadedGame_SavesSuccessfully()
-        {
-            // Arrange
             SetupEmptyRepositories();
             _sut.NewGame();
+            var fp = new SaveFingerprint { TotalPlayTimeSeconds = 12340, Money = 50000, CompletedMissionCount = 23, InGameClockMinutes = 854 };
+            var pos = new PlayerPosition { X = 1, Y = 2, Z = 3, Heading = 90 };
 
-            // Act
-            _sut.SaveToSlot(0, "Test Save");
+            _sut.WriteCurrentSidecar(fp, pos, "SGTA00003");
 
-            // Assert
-            _mockSaveSlotManager.Verify(m => m.SaveToSlot(0, It.IsAny<GameState>()), Times.Once);
+            _mockSidecarStore.Verify(
+                s => s.WriteSidecar(It.Is<Sidecar>(sc =>
+                    sc.Fingerprint.TotalPlayTimeSeconds == 12340 &&
+                    sc.NativeSaveFilename == "SGTA00003" &&
+                    sc.PlayerPosition.X == 1f)),
+                Times.Once);
         }
 
         [Fact]
-        public void SaveToSlot_WithSaveName_SetsSaveNameInGameState()
+        public void WriteCurrentSidecar_NoGameLoaded_DoesNotCallStore()
         {
-            // Arrange
-            SetupEmptyRepositories();
-            _sut.NewGame();
-            GameState? savedState = null;
-            _mockSaveSlotManager
-                .Setup(m => m.SaveToSlot(It.IsAny<int>(), It.IsAny<GameState>()))
-                .Callback<int, GameState>((slot, state) => savedState = state);
+            var fp = new SaveFingerprint { TotalPlayTimeSeconds = 12340 };
+            var pos = new PlayerPosition();
 
-            // Act
-            _sut.SaveToSlot(0, "My Custom Save");
+            _sut.WriteCurrentSidecar(fp, pos, "SGTA00003");
 
-            // Assert
-            Assert.NotNull(savedState);
-            Assert.Equal("My Custom Save", savedState.SaveName);
+            _mockSidecarStore.Verify(s => s.WriteSidecar(It.IsAny<Sidecar>()), Times.Never);
         }
 
         [Fact]
-        public void SaveToSlot_RaisesOnGameSavedEvent()
+        public void WriteCurrentSidecar_RaisesOnGameSavedEvent()
         {
-            // Arrange
             SetupEmptyRepositories();
             _sut.NewGame();
             GameStateSavedEventArgs? eventArgs = null;
-            _sut.OnGameSaved += (sender, args) => eventArgs = args;
+            _sut.OnGameSaved += (_, args) => eventArgs = args;
 
-            // Act
-            _sut.SaveToSlot(0, "Test Save");
+            var fp = new SaveFingerprint { TotalPlayTimeSeconds = 12340 };
+            var pos = new PlayerPosition();
+            _sut.WriteCurrentSidecar(fp, pos, "SGTA00003");
 
-            // Assert
             Assert.NotNull(eventArgs);
-            Assert.Equal(0, eventArgs.SlotNumber);
-            Assert.Equal("Test Save", eventArgs.SaveName);
-            Assert.True(eventArgs.Success);
-        }
-
-        [Fact]
-        public void SaveToSlot_WhenSaveFails_RaisesEventWithError()
-        {
-            // Arrange
-            SetupEmptyRepositories();
-            _sut.NewGame();
-            var expectedException = new InvalidOperationException("Save failed");
-            _mockSaveSlotManager
-                .Setup(m => m.SaveToSlot(It.IsAny<int>(), It.IsAny<GameState>()))
-                .Throws(expectedException);
-
-            GameStateSavedEventArgs? eventArgs = null;
-            _sut.OnGameSaved += (sender, args) => eventArgs = args;
-
-            // Act & Assert
-            Assert.Throws<InvalidOperationException>(() => _sut.SaveToSlot(0, "Test Save"));
-            Assert.NotNull(eventArgs);
-            Assert.False(eventArgs.Success);
-            Assert.Equal(expectedException, eventArgs.Error);
+            Assert.True(eventArgs!.Success);
         }
 
         #endregion
 
-        #region LoadFromSlot Tests
+        #region HydrateFromSidecar Tests
 
         [Fact]
-        public void LoadFromSlot_WithValidSlot_LoadsGameState()
+        public void HydrateFromSidecar_AppliesGameStateAndMarksLoaded()
         {
-            // Arrange
             SetupEmptyRepositories();
-            var gameState = CreateTestGameState();
-            _mockSaveSlotManager.Setup(m => m.LoadFromSlot(0)).Returns(gameState);
-
-            // Act
-            _sut.LoadFromSlot(0);
-
-            // Assert
-            Assert.True(_sut.HasGameLoaded);
-            Assert.Equal("Test Save", _sut.CurrentSaveName);
-        }
-
-        [Fact]
-        public void LoadFromSlot_AppliesZonesToRepository()
-        {
-            // Arrange
-            SetupEmptyRepositories();
-            var gameState = CreateTestGameState();
-            _mockSaveSlotManager.Setup(m => m.LoadFromSlot(0)).Returns(gameState);
-
-            // Act
-            _sut.LoadFromSlot(0);
-
-            // Assert
-            _mockZoneRepository.Verify(r => r.Clear(), Times.Once);
-            _mockZoneRepository.Verify(r => r.Add(It.IsAny<Zone>()), Times.Once);
-        }
-
-        [Fact]
-        public void LoadFromSlot_AppliesFactionsToRepository()
-        {
-            // Arrange
-            SetupEmptyRepositories();
-            var gameState = CreateTestGameState();
-            _mockSaveSlotManager.Setup(m => m.LoadFromSlot(0)).Returns(gameState);
-
-            // Act
-            _sut.LoadFromSlot(0);
-
-            // Assert
-            _mockFactionRepository.Verify(r => r.Clear(), Times.Once);
-            _mockFactionRepository.Verify(r => r.Add(It.IsAny<Faction>()), Times.Once);
-        }
-
-        [Fact]
-        public void LoadFromSlot_AppliesFactionStatesToRepository()
-        {
-            // Arrange
-            SetupEmptyRepositories();
-            var gameState = CreateTestGameState();
-            _mockSaveSlotManager.Setup(m => m.LoadFromSlot(0)).Returns(gameState);
-
-            // Act
-            _sut.LoadFromSlot(0);
-
-            // Assert
-            _mockFactionRepository.Verify(r => r.SetState(It.IsAny<FactionState>()), Times.Once);
-        }
-
-        [Fact]
-        public void LoadFromSlot_AppliesRelationshipsToRepository()
-        {
-            // Arrange
-            SetupEmptyRepositories();
-            var gameState = CreateTestGameState();
-            gameState.Relationships.Add(new RelationshipData
+            var sidecar = new Sidecar
             {
-                FactionId1 = "faction1",
-                FactionId2 = "faction2",
-                Value = -100
-            });
-            _mockSaveSlotManager.Setup(m => m.LoadFromSlot(0)).Returns(gameState);
+                Fingerprint = new SaveFingerprint { TotalPlayTimeSeconds = 12340 },
+                GameState = new GameState { SaveName = "test", TotalPlayTimeSeconds = 12340 },
+            };
 
-            // Act
-            _sut.LoadFromSlot(0);
+            _sut.HydrateFromSidecar(sidecar);
 
-            // Assert - relationships no longer stored/restored
+            Assert.True(_sut.HasGameLoaded);
+            Assert.Equal(12340, _sut.TotalPlayTimeSeconds);
         }
 
         [Fact]
-        public void LoadFromSlot_RaisesOnGameLoadedEvent()
+        public void HydrateFromSidecar_RaisesOnGameLoadedEvent()
         {
-            // Arrange
             SetupEmptyRepositories();
-            var gameState = CreateTestGameState();
-            _mockSaveSlotManager.Setup(m => m.LoadFromSlot(0)).Returns(gameState);
-
+            var sidecar = new Sidecar
+            {
+                Fingerprint = new SaveFingerprint { TotalPlayTimeSeconds = 12340 },
+                GameState = new GameState { SaveName = "loaded-save" },
+            };
             GameStateLoadedEventArgs? eventArgs = null;
-            _sut.OnGameLoaded += (sender, args) => eventArgs = args;
+            _sut.OnGameLoaded += (_, args) => eventArgs = args;
 
-            // Act
-            _sut.LoadFromSlot(0);
+            _sut.HydrateFromSidecar(sidecar);
 
-            // Assert
             Assert.NotNull(eventArgs);
-            Assert.Equal(0, eventArgs.SlotNumber);
-            Assert.Equal("Test Save", eventArgs.SaveName);
-            Assert.True(eventArgs.Success);
+            Assert.True(eventArgs!.Success);
+            Assert.Equal("loaded-save", eventArgs.SaveName);
         }
 
         [Fact]
-        public void LoadFromSlot_WhenLoadFails_RaisesEventWithError()
+        public void HydrateFromSidecar_NullSidecar_Throws()
         {
-            // Arrange
-            var expectedException = new InvalidOperationException("Load failed");
-            _mockSaveSlotManager
-                .Setup(m => m.LoadFromSlot(It.IsAny<int>()))
-                .Throws(expectedException);
-
-            GameStateLoadedEventArgs? eventArgs = null;
-            _sut.OnGameLoaded += (sender, args) => eventArgs = args;
-
-            // Act & Assert
-            Assert.Throws<InvalidOperationException>(() => _sut.LoadFromSlot(0));
-            Assert.NotNull(eventArgs);
-            Assert.False(eventArgs.Success);
-            Assert.Equal(expectedException, eventArgs.Error);
+            Assert.Throws<ArgumentNullException>(() => _sut.HydrateFromSidecar(null!));
         }
 
         [Fact]
-        public void LoadFromSlot_RestoresPlayTime()
+        public void HydrateFromSidecar_NullGameState_Throws()
         {
-            // Arrange
-            SetupEmptyRepositories();
-            var gameState = CreateTestGameState();
-            gameState.TotalPlayTimeSeconds = 3600; // 1 hour
-            _mockSaveSlotManager.Setup(m => m.LoadFromSlot(0)).Returns(gameState);
+            var sidecar = new Sidecar
+            {
+                Fingerprint = new SaveFingerprint(),
+                GameState = null!,
+            };
 
-            // Act
-            _sut.LoadFromSlot(0);
-
-            // Assert
-            Assert.Equal(3600, _sut.TotalPlayTimeSeconds);
+            Assert.Throws<ArgumentException>(() => _sut.HydrateFromSidecar(sidecar));
         }
 
         #endregion
@@ -384,22 +260,6 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Persistence
             _sut.NewGame();
 
             Assert.Equal(0, _sut.TotalPlayTimeSeconds);
-        }
-
-        [Fact]
-        public void NewGame_ClearsCurrentSaveName()
-        {
-            // Arrange
-            SetupEmptyRepositories();
-            var gameState = CreateTestGameState();
-            _mockSaveSlotManager.Setup(m => m.LoadFromSlot(0)).Returns(gameState);
-            _sut.LoadFromSlot(0);
-
-            // Act
-            _sut.NewGame();
-
-            // Assert
-            Assert.Null(_sut.CurrentSaveName);
         }
 
         #endregion
@@ -451,14 +311,11 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Persistence
         [Fact]
         public void ApplyGameState_ClearsAndPopulatesRepositories()
         {
-            // Arrange
             SetupEmptyRepositories();
             var gameState = CreateTestGameState();
 
-            // Act
             _sut.ApplyGameState(gameState);
 
-            // Assert
             _mockZoneRepository.Verify(r => r.Clear(), Times.Once);
             _mockFactionRepository.Verify(r => r.Clear(), Times.Once);
         }

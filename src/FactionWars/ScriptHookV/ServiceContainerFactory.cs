@@ -230,15 +230,21 @@ namespace FactionWars.ScriptHookV
                     config.Persistence.MaxSaveSlots);
             });
 
+            // Sidecar store - persists mod state alongside GTA V's native saves.
+            container.RegisterSingleton<ISidecarStore>(() =>
+            {
+                var documentsPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+                var sidecarDirectory = Path.Combine(documentsPath, config.Persistence.SaveDirectoryName, "sidecars");
+                return new SidecarStore(sidecarDirectory);
+            });
+
             // Game state manager - coordinates save/load between domain repositories and persistence
-            // Includes game bridge for saving/loading player state (money/weapons)
             container.RegisterSingleton<IGameStateManager>(() =>
                 new GameStateManager(
-                    container.Resolve<ISaveSlotManager>(),
+                    container.Resolve<ISidecarStore>(),
                     container.Resolve<IZoneRepository>(),
                     container.Resolve<IFactionRepository>(),
-                    container.Resolve<IZoneDefenderAllocationRepository>(),
-                    container.Resolve<IGameBridge>()));
+                    container.Resolve<IZoneDefenderAllocationRepository>()));
 
             // Game state coordinator - provides simplified interface for UI save/load operations
             container.RegisterSingleton<IGameStateCoordinator>(() =>
