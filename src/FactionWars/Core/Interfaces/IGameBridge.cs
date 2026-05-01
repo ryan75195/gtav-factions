@@ -69,6 +69,12 @@ namespace FactionWars.Core.Interfaces
         void SetBlipColor(int blipHandle, BlipColor color);
 
         /// <summary>
+        /// Sets the alpha (opacity) of a blip. Range 0 (invisible) to 255 (fully opaque).
+        /// Useful for radius blips where the default opacity hides the underlying map.
+        /// </summary>
+        void SetBlipAlpha(int blipHandle, int alpha);
+
+        /// <summary>
         /// Sets the sprite (icon) of a blip.
         /// </summary>
         /// <param name="blipHandle">Handle of the blip.</param>

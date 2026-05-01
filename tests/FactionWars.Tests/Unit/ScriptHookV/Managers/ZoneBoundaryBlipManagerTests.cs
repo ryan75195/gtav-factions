@@ -81,6 +81,19 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         }
 
         [Fact]
+        public void OnZoneEntered_SetsLowAlphaSoMapStaysReadable()
+        {
+            _bridge.Setup(b => b.CreateRadiusBlip(It.IsAny<Vector3>(), It.IsAny<float>())).Returns(99);
+            BuildSut();
+
+            _territory.Raise(t => t.ZoneEntered += null, this, _zone);
+
+            // 0 = invisible, 255 = solid. Anything <= 80 is roughly the GTA-native
+            // "translucent overlay" range that lets roads remain visible through it.
+            _bridge.Verify(b => b.SetBlipAlpha(99, It.Is<int>(a => a > 0 && a <= 80)), Times.Once);
+        }
+
+        [Fact]
         public void OnZoneEntered_NeutralZone_UsesWhiteColor()
         {
             _bridge.Setup(b => b.CreateRadiusBlip(It.IsAny<Vector3>(), It.IsAny<float>())).Returns(99);

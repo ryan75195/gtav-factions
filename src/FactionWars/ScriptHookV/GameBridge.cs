@@ -277,6 +277,19 @@ namespace FactionWars.ScriptHookV
         }
 
         /// <inheritdoc />
+        public void SetBlipAlpha(int blipHandle, int alpha)
+        {
+            try
+            {
+                Function.Call(Hash.SET_BLIP_ALPHA, blipHandle, alpha);
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error("SetBlipAlpha exception", ex);
+            }
+        }
+
+        /// <inheritdoc />
         public void SetBlipColor(int blipHandle, DomainBlipColor color)
         {
             try

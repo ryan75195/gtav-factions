@@ -13,6 +13,12 @@ namespace FactionWars.ScriptHookV.Managers
     /// </summary>
     public sealed class ZoneBoundaryBlipManager : IDisposable
     {
+        /// <summary>
+        /// Blip alpha (0-255). Tuned subtle so the road network and zone-owner
+        /// blip remain readable through the radius overlay.
+        /// </summary>
+        private const int BoundaryAlpha = 64;
+
         private readonly IGameBridge _bridge;
         private readonly ITerritoryEvents _territory;
         private int _activeBlip = -1;
@@ -42,6 +48,7 @@ namespace FactionWars.ScriptHookV.Managers
 
             _activeBlip = handle;
             _bridge.SetBlipColor(handle, GetBoundaryColor(zone.OwnerFactionId));
+            _bridge.SetBlipAlpha(handle, BoundaryAlpha);
             FileLogger.Zone($"ZoneBoundaryBlipManager: drew boundary for {zone.Name} (radius={zone.Radius:F0})");
         }
 

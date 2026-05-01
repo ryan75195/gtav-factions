@@ -164,6 +164,11 @@ namespace FactionWars.Core.Utils
             return handle;
         }
 
+        public void SetBlipAlpha(int blipHandle, int alpha)
+        {
+            // Mock: no-op
+        }
+
         public void SetBlipColor(int blipHandle, BlipColor color)
         {
             if (_blips.TryGetValue(blipHandle, out var blip))
