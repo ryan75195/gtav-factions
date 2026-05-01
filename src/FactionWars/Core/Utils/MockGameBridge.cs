@@ -63,6 +63,12 @@ namespace FactionWars.Core.Utils
         public int WantedLevel { get; set; } = 0;
 
         /// <summary>
+        /// Gets or sets whether the player has been damaged by a ped.
+        /// Cleared by ConsumePlayerDamagedByPedFlag().
+        /// </summary>
+        public bool PlayerDamagedByPed { get; set; } = false;
+
+        /// <summary>
         /// Gets or sets the total play time in seconds.
         /// </summary>
         public long TotalPlayTimeSeconds { get; set; } = 0;
@@ -258,6 +264,13 @@ namespace FactionWars.Core.Utils
         public bool IsPlayerDead() => IsPlayerDeadValue;
 
         public int GetWantedLevel() => WantedLevel;
+
+        public bool ConsumePlayerDamagedByPedFlag()
+        {
+            var was = PlayerDamagedByPed;
+            PlayerDamagedByPed = false;
+            return was;
+        }
 
         public int GetPlayerMoney() => PlayerMoney;
 

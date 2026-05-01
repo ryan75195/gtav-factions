@@ -504,6 +504,33 @@ namespace FactionWars.ScriptHookV
         }
 
         /// <inheritdoc />
+        public bool ConsumePlayerDamagedByPedFlag()
+        {
+            try
+            {
+                var player = Game.Player.Character;
+                if (player == null || !player.Exists())
+                    return false;
+
+                // HAS_ENTITY_BEEN_DAMAGED_BY_ANY_PED reads the engine-set flag indicating
+                // if the player has taken damage from a ped. We then clear it so the next
+                // call only returns true if NEW damage has occurred.
+                var damaged = Function.Call<bool>(Hash.HAS_ENTITY_BEEN_DAMAGED_BY_ANY_PED, player.Handle, 0);
+                if (damaged)
+                {
+                    // CLEAR_ENTITY_LAST_DAMAGE_ENTITY clears the flag for the next read.
+                    Function.Call(Hash.CLEAR_ENTITY_LAST_DAMAGE_ENTITY, player.Handle);
+                }
+                return damaged;
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error("ConsumePlayerDamagedByPedFlag exception", ex);
+                return false;
+            }
+        }
+
+        /// <inheritdoc />
         public int GetPlayerMoney()
         {
             try

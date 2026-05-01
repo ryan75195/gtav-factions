@@ -150,6 +150,14 @@ namespace FactionWars.Core.Interfaces
         int GetWantedLevel();
 
         /// <summary>
+        /// Reads-and-clears the engine-set "player has been damaged by any ped" flag.
+        /// Returns true if the player took damage from a ped since the last call,
+        /// then resets the flag. Used as an event-ish signal for the rally controller.
+        /// </summary>
+        /// <returns>True if the player has been damaged by any ped since the last call; the flag is cleared as a side-effect.</returns>
+        bool ConsumePlayerDamagedByPedFlag();
+
+        /// <summary>
         /// Gets the player's current money amount.
         /// </summary>
         /// <returns>The player's money in GTA V dollars.</returns>
