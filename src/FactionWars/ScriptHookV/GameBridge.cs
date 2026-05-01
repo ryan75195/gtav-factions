@@ -262,6 +262,21 @@ namespace FactionWars.ScriptHookV
         }
 
         /// <inheritdoc />
+        public int CreateRadiusBlip(DomainVector3 center, float radius)
+        {
+            try
+            {
+                int handle = Function.Call<int>(Hash.ADD_BLIP_FOR_RADIUS, center.X, center.Y, center.Z, radius);
+                return handle;
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error("CreateRadiusBlip exception", ex);
+                return -1;
+            }
+        }
+
+        /// <inheritdoc />
         public void SetBlipColor(int blipHandle, DomainBlipColor color)
         {
             try

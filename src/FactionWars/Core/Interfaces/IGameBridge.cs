@@ -53,6 +53,15 @@ namespace FactionWars.Core.Interfaces
         void DeleteBlip(int blipHandle);
 
         /// <summary>
+        /// Creates a translucent filled-circle blip on the minimap and pause map,
+        /// rendered as a radius around the given world position.
+        /// </summary>
+        /// <param name="center">World position at the centre of the radius.</param>
+        /// <param name="radius">Radius in world units.</param>
+        /// <returns>Handle to the created blip, or -1 on failure.</returns>
+        int CreateRadiusBlip(Vector3 center, float radius);
+
+        /// <summary>
         /// Sets the color of a blip.
         /// </summary>
         /// <param name="blipHandle">Handle of the blip.</param>

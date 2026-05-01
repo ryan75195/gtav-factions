@@ -158,6 +158,12 @@ namespace FactionWars.Core.Utils
             _blipsDeleted.Add(blipHandle);
         }
 
+        public int CreateRadiusBlip(Vector3 center, float radius)
+        {
+            var handle = CreateBlip(center);
+            return handle;
+        }
+
         public void SetBlipColor(int blipHandle, BlipColor color)
         {
             if (_blips.TryGetValue(blipHandle, out var blip))

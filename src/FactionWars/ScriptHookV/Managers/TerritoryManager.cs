@@ -10,7 +10,7 @@ namespace FactionWars.ScriptHookV.Managers
     /// Manages territory detection based on player position.
     /// Tracks when the player enters and exits zones and raises appropriate events.
     /// </summary>
-    public class TerritoryManager
+    public class TerritoryManager : ITerritoryEvents
     {
         private readonly IGameBridge _gameBridge;
         private readonly IZoneService _zoneService;

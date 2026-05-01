@@ -45,6 +45,7 @@ namespace FactionWars.ScriptHookV
         private EconomyManager? _economyManager;
         private FollowerManager? _followerManager;
         private TerritoryManager? _territoryManager;
+        private ZoneBoundaryBlipManager? _zoneBoundaryBlipManager;
         private CombatManager? _combatManager;
         private AIManager? _aiManager;
         private BackgroundBattleSimulator? _backgroundBattleSimulator;
@@ -644,6 +645,9 @@ namespace FactionWars.ScriptHookV
             _territoryManager.ZoneEntered += (sender, zone) => _commanderManager?.OnZoneEntered(zone);
             _territoryManager.ZoneExited += (sender, zone) => _commanderManager?.OnZoneExited(zone);
 
+            // Show a translucent radius blip around the zone the player is currently in
+            _zoneBoundaryBlipManager = new ZoneBoundaryBlipManager(_gameBridge, _territoryManager);
+
             // Subscribe to defender death events to sync with ZoneBattleManager
             _friendlyDefenderManager.DefenderDied += (sender, e) =>
             {
@@ -1104,6 +1108,9 @@ namespace FactionWars.ScriptHookV
             // Clean up map blips
             _mapBlipManager?.Dispose();
             _mapBlipManager = null;
+
+            _zoneBoundaryBlipManager?.Dispose();
+            _zoneBoundaryBlipManager = null;
 
             // Unsubscribe from territory events and clean up
             if (_territoryManager != null)
