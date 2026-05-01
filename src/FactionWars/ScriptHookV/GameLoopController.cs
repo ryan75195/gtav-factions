@@ -883,8 +883,8 @@ namespace FactionWars.ScriptHookV
             // Subscribe to game state events for difficulty persistence
             _gameStateManager.OnGameLoaded += OnGameLoaded;
 
-            // Configure player settings (weapon persistence, starting cash)
-            ConfigurePlayerStartupSettings();
+            // Per-session GTA flags (e.g. don't drop weapons on death)
+            ConfigureSessionSettings();
 
             FileLogger.Separator("INITIALIZATION COMPLETE");
             FileLogger.Info($"Player faction: {CurrentPlayerFactionId ?? "UNKNOWN"}");
@@ -892,22 +892,12 @@ namespace FactionWars.ScriptHookV
         }
 
         /// <summary>
-        /// Resets player to fair starting state (weapons, cash).
+        /// Applies per-session GTA flags. Must run every launch because GTA does
+        /// not persist these across sessions. Does NOT touch weapons or cash —
+        /// those are owned by the native save now.
         /// </summary>
-        private void ConfigurePlayerStartupSettings()
+        private void ConfigureSessionSettings()
         {
-            const int StartingCash = 15000;
-
-            // Remove all weapons for fair gameplay
-            _gameBridge.RemoveAllPlayerWeapons();
-            FileLogger.Info("Reset player weapons for fair gameplay");
-
-            // Set starting cash to fixed amount for fair gameplay
-            var currentMoney = _gameBridge.GetPlayerMoney();
-            _gameBridge.SetPlayerMoney(StartingCash);
-            FileLogger.Info($"Set starting cash to ${StartingCash:N0} (was ${currentMoney:N0})");
-
-            // Configure weapon persistence (don't drop weapons on death)
             _gameBridge.ConfigurePlayerSettings();
         }
 
