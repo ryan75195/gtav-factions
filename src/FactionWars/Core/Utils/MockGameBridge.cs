@@ -58,6 +58,11 @@ namespace FactionWars.Core.Utils
         public int PlayerMoney { get; set; } = 0;
 
         /// <summary>
+        /// Gets or sets the player's wanted level returned from GetWantedLevel.
+        /// </summary>
+        public int WantedLevel { get; set; } = 0;
+
+        /// <summary>
         /// Gets or sets the total play time in seconds.
         /// </summary>
         public long TotalPlayTimeSeconds { get; set; } = 0;
@@ -251,6 +256,8 @@ namespace FactionWars.Core.Utils
         public float GetPlayerHeading() => PlayerHeading;
 
         public bool IsPlayerDead() => IsPlayerDeadValue;
+
+        public int GetWantedLevel() => WantedLevel;
 
         public int GetPlayerMoney() => PlayerMoney;
 

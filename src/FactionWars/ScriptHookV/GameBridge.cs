@@ -490,6 +490,20 @@ namespace FactionWars.ScriptHookV
         }
 
         /// <inheritdoc />
+        public int GetWantedLevel()
+        {
+            try
+            {
+                return Game.Player.WantedLevel;
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error("GetWantedLevel exception", ex);
+                return 0;
+            }
+        }
+
+        /// <inheritdoc />
         public int GetPlayerMoney()
         {
             try

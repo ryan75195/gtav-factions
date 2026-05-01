@@ -143,6 +143,12 @@ namespace FactionWars.Core.Interfaces
         bool IsPlayerDead();
 
         /// <summary>
+        /// Gets the player's current wanted level (0 = no stars, 5 = max).
+        /// Used as a cheap composite signal that police are actively engaging the player.
+        /// </summary>
+        int GetWantedLevel();
+
+        /// <summary>
         /// Gets the player's current money amount.
         /// </summary>
         /// <returns>The player's money in GTA V dollars.</returns>
