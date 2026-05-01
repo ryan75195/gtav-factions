@@ -158,6 +158,13 @@ namespace FactionWars.Core.Interfaces
         bool ConsumePlayerDamagedByPedFlag();
 
         /// <summary>
+        /// Gets the entity handle of the player character. Used as the target entity for
+        /// tasks like TaskGoToEntity that need an entity handle (not a position).
+        /// </summary>
+        /// <returns>The player ped's entity handle, or -1 if the player character does not exist.</returns>
+        int GetPlayerPedHandle();
+
+        /// <summary>
         /// Gets the player's current money amount.
         /// </summary>
         /// <returns>The player's money in GTA V dollars.</returns>

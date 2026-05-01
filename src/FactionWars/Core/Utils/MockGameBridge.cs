@@ -69,6 +69,12 @@ namespace FactionWars.Core.Utils
         public bool PlayerDamagedByPed { get; set; } = false;
 
         /// <summary>
+        /// Gets or sets the player ped handle returned from GetPlayerPedHandle.
+        /// Defaults to 1 so test code doesn't have to set it up to use rally tasks.
+        /// </summary>
+        public int PlayerPedHandle { get; set; } = 1;
+
+        /// <summary>
         /// Gets or sets the total play time in seconds.
         /// </summary>
         public long TotalPlayTimeSeconds { get; set; } = 0;
@@ -271,6 +277,8 @@ namespace FactionWars.Core.Utils
             PlayerDamagedByPed = false;
             return was;
         }
+
+        public int GetPlayerPedHandle() => PlayerPedHandle;
 
         public int GetPlayerMoney() => PlayerMoney;
 

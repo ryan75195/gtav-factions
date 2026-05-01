@@ -537,6 +537,23 @@ namespace FactionWars.ScriptHookV
         }
 
         /// <inheritdoc />
+        public int GetPlayerPedHandle()
+        {
+            try
+            {
+                var player = Game.Player.Character;
+                if (player == null || !player.Exists())
+                    return -1;
+                return player.Handle;
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error("GetPlayerPedHandle exception", ex);
+                return -1;
+            }
+        }
+
+        /// <inheritdoc />
         public int GetPlayerMoney()
         {
             try
