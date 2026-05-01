@@ -265,5 +265,43 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             sut.Update(); // false -> true: rallies the new defender.
             Assert.True(_bridge.IsPedGoingToEntity(defender2));
         }
+
+        // ---- Cross-zone / neutral-zone guard tests ---------------------------
+
+        [Fact]
+        public void Update_DefenderInDifferentZone_NotRallied()
+        {
+            // Player is in vinewood_hills, but spawn a defender in a DIFFERENT zone.
+            var current = OwnedZone("vinewood_hills", "michael");
+            SetCurrentZone(current);
+
+            int otherZoneDefender = _bridge.CreatePed("a_m_y_business_01", new Vector3(0, 0, 0));
+            _defenders.Setup(d => d.GetDefendersInZone("vinewood_hills"))
+                .Returns(new Dictionary<int, DefenderTier>()); // No defenders in current zone.
+            _defenders.Setup(d => d.GetDefendersInZone("other_zone"))
+                .Returns(new Dictionary<int, DefenderTier> { [otherZoneDefender] = DefenderTier.Basic });
+
+            _bridge.WantedLevel = 3;
+
+            var sut = BuildSut();
+            sut.Update();
+
+            Assert.False(_bridge.IsPedGoingToEntity(otherZoneDefender));
+        }
+
+        [Fact]
+        public void Update_PlayerInNeutralZone_DoesNotRally()
+        {
+            var neutral = new Zone("alamo", "Alamo Sea",
+                new Vector3(0, 0, 0), radius: 100f, strategicValue: 1);
+            SetCurrentZone(neutral);
+            int defender = SpawnDefenderInZone(neutral.Id);
+            _bridge.WantedLevel = 5;
+
+            var sut = BuildSut();
+            sut.Update();
+
+            Assert.False(_bridge.IsPedGoingToEntity(defender));
+        }
     }
 }
