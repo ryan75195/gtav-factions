@@ -94,6 +94,30 @@ namespace FactionWars.Persistence
             }
         }
 
+        public bool TryFindClosestByPlayTime(long currentPlayTime, long maxBackwardSeconds, out Sidecar sidecar)
+        {
+            sidecar = null!;
+            Sidecar best = null!;
+            long bestPlayTime = -1;
+
+            foreach (var candidate in ListAll())
+            {
+                if (candidate?.Fingerprint == null) continue;
+                var pt = candidate.Fingerprint.TotalPlayTimeSeconds;
+                if (pt > currentPlayTime) continue;
+                if (currentPlayTime - pt > maxBackwardSeconds) continue;
+                if (pt > bestPlayTime)
+                {
+                    bestPlayTime = pt;
+                    best = candidate;
+                }
+            }
+
+            if (best == null) return false;
+            sidecar = best;
+            return true;
+        }
+
         public IReadOnlyList<Sidecar> ListAll()
         {
             var results = new List<Sidecar>();

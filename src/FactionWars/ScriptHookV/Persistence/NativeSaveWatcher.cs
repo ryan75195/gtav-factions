@@ -73,7 +73,12 @@ namespace FactionWars.ScriptHookV.Persistence
         private static bool IsSgtaFile(string path)
         {
             var name = Path.GetFileName(path);
-            return name != null && name.StartsWith("SGTA", StringComparison.OrdinalIgnoreCase);
+            if (name == null) return false;
+            if (!name.StartsWith("SGTA", StringComparison.OrdinalIgnoreCase)) return false;
+            // GTA writes .bak alongside the real save; the .bak holds the previous
+            // snapshot, so reacting to it captures stale stats and a stale filename.
+            if (name.EndsWith(".bak", StringComparison.OrdinalIgnoreCase)) return false;
+            return true;
         }
 
         private void Fire(string path)

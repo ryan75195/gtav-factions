@@ -7,19 +7,27 @@ using System;
 namespace FactionWars.ScriptHookV.Persistence
 {
     /// <summary>
-    /// Observes loading-screen edges and reacts when a new save has been loaded.
-    /// Pure logic — no SHVDN dependencies; the host script feeds it the IsLoading
-    /// flag each tick and supplies callbacks for hydrate / newGame.
+    /// Detects savegame loads by watching TOTAL_PLAYING_TIME for discontinuities.
+    /// On the first tick we attempt a sidecar match (handles fresh-launch + auto-load).
+    /// On subsequent ticks any backwards play-time jump is treated as a load. We
+    /// never use Game.IsLoading because (a) it is obsolete and (b) SHVDN scripts
+    /// do not reliably tick during loading screens, so the IsLoading edge is missed.
+    ///
+    /// TOTAL_PLAYING_TIME advances by ~30s during the post-load animation, so we
+    /// match the closest sidecar within a backward window rather than expecting an
+    /// exact fingerprint match.
     /// </summary>
     public sealed class LoadDetector
     {
+        private const long PostLoadDriftWindowSeconds = 60;
+
         private readonly IGameBridge _bridge;
         private readonly ISidecarStore _store;
         private readonly Action<Sidecar> _onHydrate;
         private readonly Action _onNewGame;
 
-        private bool _wasLoading;
-        private long _lastKnownTotalPlayTimeSeconds = -1;
+        private bool _initialized;
+        private long _lastPlayTimeSeconds;
 
         public LoadDetector(IGameBridge bridge, ISidecarStore store, Action<Sidecar> onHydrate, Action onNewGame)
         {
@@ -30,43 +38,52 @@ namespace FactionWars.ScriptHookV.Persistence
         }
 
         /// <summary>
-        /// Called once per script tick. Detects the IsLoading edge and reacts.
+        /// Called once per script tick. No SHVDN dependencies — pure logic.
         /// </summary>
-        public void Tick(bool isLoading)
+        public void Tick()
         {
-            if (!isLoading && !_wasLoading)
+            long currentPlayTime;
+            try
             {
-                _lastKnownTotalPlayTimeSeconds = _bridge.GetTotalPlayTimeSeconds();
+                currentPlayTime = _bridge.GetTotalPlayTimeSeconds();
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error("LoadDetector: GetTotalPlayTimeSeconds threw", ex);
                 return;
             }
 
-            if (_wasLoading && !isLoading)
+            bool isLoadEvent;
+            if (!_initialized)
             {
-                var currentPlayTime = _bridge.GetTotalPlayTimeSeconds();
-
-                if (currentPlayTime == _lastKnownTotalPlayTimeSeconds)
-                {
-                    FileLogger.Debug("LoadDetector: loading-end transition with unchanged play time — skipping (likely cutscene/fast-travel).");
-                    _wasLoading = isLoading;
-                    return;
-                }
-
-                var fingerprint = SaveFingerprint.Capture(_bridge);
-                if (_store.TryFindByFingerprint(fingerprint, out var sidecar))
-                {
-                    FileLogger.Info($"LoadDetector: matched sidecar for play time {fingerprint.TotalPlayTimeSeconds}s — hydrating.");
-                    _onHydrate(sidecar);
-                }
-                else
-                {
-                    FileLogger.Info($"LoadDetector: no sidecar matched play time {fingerprint.TotalPlayTimeSeconds}s — starting new game.");
-                    _onNewGame();
-                }
-
-                _lastKnownTotalPlayTimeSeconds = currentPlayTime;
+                isLoadEvent = true;
+                FileLogger.Info($"LoadDetector: first tick at play-time {currentPlayTime}s — attempting sidecar match.");
+            }
+            else if (currentPlayTime < _lastPlayTimeSeconds)
+            {
+                isLoadEvent = true;
+                FileLogger.Info($"LoadDetector: play-time jumped backwards {_lastPlayTimeSeconds}s -> {currentPlayTime}s — treating as load.");
+            }
+            else
+            {
+                isLoadEvent = false;
             }
 
-            _wasLoading = isLoading;
+            _initialized = true;
+            _lastPlayTimeSeconds = currentPlayTime;
+
+            if (!isLoadEvent) return;
+
+            if (_store.TryFindClosestByPlayTime(currentPlayTime, PostLoadDriftWindowSeconds, out var sidecar))
+            {
+                FileLogger.Info($"LoadDetector: matched sidecar (play-time {sidecar.Fingerprint.TotalPlayTimeSeconds}s, current {currentPlayTime}s) — hydrating.");
+                _onHydrate(sidecar);
+            }
+            else
+            {
+                FileLogger.Info($"LoadDetector: no sidecar within {PostLoadDriftWindowSeconds}s of play-time {currentPlayTime}s — starting new game.");
+                _onNewGame();
+            }
         }
     }
 }

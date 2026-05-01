@@ -122,5 +122,57 @@ namespace FactionWars.Tests.Unit.Persistence
 
             Assert.True(File.Exists(Path.Combine(_tempDir, "sidecar_12340.json")));
         }
+
+        [Fact]
+        public void TryFindClosestByPlayTime_EmptyStore_ReturnsFalse()
+        {
+            var store = new SidecarStore(_tempDir);
+
+            Assert.False(store.TryFindClosestByPlayTime(12340, maxBackwardSeconds: 60, out _));
+        }
+
+        [Fact]
+        public void TryFindClosestByPlayTime_ExactMatch_Returns()
+        {
+            var store = new SidecarStore(_tempDir);
+            store.WriteSidecar(Make(playTime: 12340));
+
+            Assert.True(store.TryFindClosestByPlayTime(12340, maxBackwardSeconds: 60, out var found));
+            Assert.Equal(12340L, found.Fingerprint.TotalPlayTimeSeconds);
+        }
+
+        [Fact]
+        public void TryFindClosestByPlayTime_PicksLargestUnderCurrent()
+        {
+            var store = new SidecarStore(_tempDir);
+            store.WriteSidecar(Make(playTime: 100));
+            store.WriteSidecar(Make(playTime: 200));
+            store.WriteSidecar(Make(playTime: 300));
+
+            // Current = 250 → nearest under is 200 (within 60s window).
+            Assert.True(store.TryFindClosestByPlayTime(250, maxBackwardSeconds: 60, out var found));
+            Assert.Equal(200L, found.Fingerprint.TotalPlayTimeSeconds);
+        }
+
+        [Fact]
+        public void TryFindClosestByPlayTime_OutsideWindow_ReturnsFalse()
+        {
+            var store = new SidecarStore(_tempDir);
+            store.WriteSidecar(Make(playTime: 100));
+
+            // Current = 1000, window = 60. 1000 - 100 = 900 > 60 → no match.
+            Assert.False(store.TryFindClosestByPlayTime(1000, maxBackwardSeconds: 60, out _));
+        }
+
+        [Fact]
+        public void TryFindClosestByPlayTime_AllAboveCurrent_ReturnsFalse()
+        {
+            var store = new SidecarStore(_tempDir);
+            store.WriteSidecar(Make(playTime: 200));
+            store.WriteSidecar(Make(playTime: 300));
+
+            // Current = 100. All sidecars represent saves "from the future" relative to now.
+            Assert.False(store.TryFindClosestByPlayTime(100, maxBackwardSeconds: 60, out _));
+        }
     }
 }

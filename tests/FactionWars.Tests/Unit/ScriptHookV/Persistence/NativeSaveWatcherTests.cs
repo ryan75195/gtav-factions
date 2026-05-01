@@ -104,5 +104,19 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Persistence
 
             Assert.Equal(0, eventCount);
         }
+
+        [Fact]
+        public void BakFile_IsIgnored()
+        {
+            int eventCount = 0;
+            using var watcher = new NativeSaveWatcher(_tempDir, debounceMs: DebounceMs);
+            watcher.OnNativeSaveWritten += (_, _) => Interlocked.Increment(ref eventCount);
+            watcher.Start();
+
+            WriteSgta("SGTA00003.bak");
+            Thread.Sleep(SettleMs);
+
+            Assert.Equal(0, eventCount);
+        }
     }
 }

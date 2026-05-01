@@ -73,12 +73,7 @@ namespace FactionWars.ScriptHookV
         private void TickLoadDetector()
         {
             if (_loadDetector == null) return;
-
-            bool isLoading;
-            try { isLoading = Game.IsLoading; }
-            catch { isLoading = false; }
-
-            _loadDetector.Tick(isLoading);
+            _loadDetector.Tick();
         }
 
         private void EnsureInitialized()

@@ -27,5 +27,13 @@ namespace FactionWars.Persistence
         /// Returns all sidecar files currently on disk (in arbitrary order).
         /// </summary>
         IReadOnlyList<Sidecar> ListAll();
+
+        /// <summary>
+        /// Finds the sidecar with the largest TotalPlayTimeSeconds that is &lt;= currentPlayTime
+        /// and within (currentPlayTime - maxBackwardSeconds, currentPlayTime]. Used at load time
+        /// because GTA's TOTAL_PLAYING_TIME stat advances during the post-load animation, so the
+        /// value the script reads is slightly larger than the value embedded in the save file.
+        /// </summary>
+        bool TryFindClosestByPlayTime(long currentPlayTime, long maxBackwardSeconds, out Sidecar sidecar);
     }
 }
