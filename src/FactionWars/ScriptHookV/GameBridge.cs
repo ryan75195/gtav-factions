@@ -512,9 +512,7 @@ namespace FactionWars.ScriptHookV
                 var outArg = new OutputArgument();
                 bool ok = Function.Call<bool>(Hash.STAT_GET_INT, hash, outArg, -1);
                 int millisOut = ok ? outArg.GetResult<int>() : 0;
-                long seconds = millisOut / 1000L;
-                FileLogger.Debug($"GetTotalPlayTimeSeconds: stat={statName} ok={ok} ms={millisOut} s={seconds}");
-                return seconds;
+                return millisOut / 1000L;
             }
             catch (Exception ex)
             {
