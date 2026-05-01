@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using FactionWars.Combat.Models;
 using FactionWars.Core.Models;
 
 namespace FactionWars.Combat.Interfaces
