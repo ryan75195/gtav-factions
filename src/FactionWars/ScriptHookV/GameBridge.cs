@@ -494,7 +494,10 @@ namespace FactionWars.ScriptHookV
         {
             try
             {
-                return Game.Player.WantedLevel;
+                var level = Game.Player.WantedLevel;
+                if (level > 0)
+                    FileLogger.Combat($"GetWantedLevel: player has wanted level {level}");
+                return level;
             }
             catch (Exception ex)
             {
@@ -512,13 +515,16 @@ namespace FactionWars.ScriptHookV
                 if (player == null || !player.Exists())
                     return false;
 
-                // HAS_ENTITY_BEEN_DAMAGED_BY_ANY_PED reads the engine-set flag indicating
-                // if the player has taken damage from a ped. We then clear it so the next
-                // call only returns true if NEW damage has occurred.
-                var damaged = Function.Call<bool>(Hash.HAS_ENTITY_BEEN_DAMAGED_BY_ANY_PED, player.Handle, 0);
+                // HAS_ENTITY_BEEN_DAMAGED_BY_ANY_PED reads the engine-set "damaged by ped"
+                // flag. Second argument (updateHasBeenDamagedThisFrame=true) marks the frame
+                // as processed so subsequent same-tick reads don't see stale state, matching
+                // the conventional one-shot consume behaviour. We pair it with
+                // CLEAR_ENTITY_LAST_DAMAGE_ENTITY so the next call only returns true if NEW
+                // damage has occurred.
+                var damaged = Function.Call<bool>(Hash.HAS_ENTITY_BEEN_DAMAGED_BY_ANY_PED, player.Handle, 1);
                 if (damaged)
                 {
-                    // CLEAR_ENTITY_LAST_DAMAGE_ENTITY clears the flag for the next read.
+                    FileLogger.Combat("ConsumePlayerDamagedByPedFlag: player damaged by ped, clearing flag");
                     Function.Call(Hash.CLEAR_ENTITY_LAST_DAMAGE_ENTITY, player.Handle);
                 }
                 return damaged;
