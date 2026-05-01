@@ -47,7 +47,7 @@ namespace FactionWars.ScriptHookV.Managers
     /// Defenders patrol the zone independently (NOT as followers) and despawn when player exits.
     /// Supports death detection, replacement spawning from reserve, and territory loss.
     /// </summary>
-    public class FriendlyDefenderManager
+    public class FriendlyDefenderManager : IFriendlyDefenderQuery
     {
         private readonly IGameBridge _gameBridge;
         private readonly IZoneDefenderAllocationService _allocationService;
@@ -330,6 +330,18 @@ namespace FactionWars.ScriptHookV.Managers
         public int GetSpawnedDefenderCount(string zoneId)
         {
             return _spawnedPedTierByZone.TryGetValue(zoneId, out var pedTiers) ? pedTiers.Count : 0;
+        }
+
+        /// <inheritdoc />
+        public IReadOnlyDictionary<int, DefenderTier> GetDefendersInZone(string zoneId)
+        {
+            if (_spawnedPedTierByZone.TryGetValue(zoneId, out var pedTiers))
+            {
+                // Return a snapshot copy so callers iterating in a tick aren't affected by
+                // concurrent additions/removals from the same tick (e.g. defender death).
+                return new Dictionary<int, DefenderTier>(pedTiers);
+            }
+            return new Dictionary<int, DefenderTier>();
         }
 
         /// <summary>
