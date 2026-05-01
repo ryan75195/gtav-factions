@@ -618,6 +618,41 @@ namespace FactionWars.Core.Utils
             return _combatTargetingPeds.TryGetValue(pedHandle, out var radius) ? radius : (float?)null;
         }
 
+        private readonly Dictionary<int, GoToEntityState> _goToEntityPeds = new Dictionary<int, GoToEntityState>();
+
+        public void TaskGoToEntity(int pedHandle, int targetEntityHandle, float stoppingRange)
+        {
+            if (_peds.ContainsKey(pedHandle))
+            {
+                // Clear other task states when assigning go-to-entity (mock convention).
+                _wanderingPeds.Remove(pedHandle);
+                _pedsFacingPosition.Remove(pedHandle);
+                _combatTargetingPeds.Remove(pedHandle);
+                _goToEntityPeds[pedHandle] = new GoToEntityState
+                {
+                    TargetEntityHandle = targetEntityHandle,
+                    StoppingRange = stoppingRange
+                };
+            }
+        }
+
+        /// <summary>Gets whether a ped is currently going to an entity.</summary>
+        public bool IsPedGoingToEntity(int pedHandle) => _goToEntityPeds.ContainsKey(pedHandle);
+
+        /// <summary>Gets the target entity handle for a go-to-entity task.</summary>
+        public int? GetGoToEntityTarget(int pedHandle)
+            => _goToEntityPeds.TryGetValue(pedHandle, out var state) ? state.TargetEntityHandle : (int?)null;
+
+        /// <summary>Gets the stopping range for a go-to-entity task.</summary>
+        public float? GetGoToEntityStoppingRange(int pedHandle)
+            => _goToEntityPeds.TryGetValue(pedHandle, out var state) ? state.StoppingRange : (float?)null;
+
+        private class GoToEntityState
+        {
+            public int TargetEntityHandle { get; set; }
+            public float StoppingRange { get; set; }
+        }
+
         public void SetPedAsFriendly(int pedHandle)
         {
             if (_peds.TryGetValue(pedHandle, out var ped))
@@ -708,6 +743,8 @@ namespace FactionWars.Core.Utils
                 _clearedPeds.Add(pedHandle);
                 _wanderingPeds.Remove(pedHandle);
                 _pedsFacingPosition.Remove(pedHandle);
+                _combatTargetingPeds.Remove(pedHandle);
+                _goToEntityPeds.Remove(pedHandle);
             }
         }
 

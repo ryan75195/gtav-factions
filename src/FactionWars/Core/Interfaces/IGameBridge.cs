@@ -402,6 +402,16 @@ namespace FactionWars.Core.Interfaces
         void TaskCombatHatedTargetsAroundPed(int pedHandle, float radius);
 
         /// <summary>
+        /// Tasks a ped to move toward another entity (player, vehicle, etc.) until
+        /// they are within stoppingRange meters. Wraps TASK_GO_TO_ENTITY.
+        /// Used by the defender rally controller to make defenders converge on the player.
+        /// </summary>
+        /// <param name="pedHandle">The ped to task.</param>
+        /// <param name="targetEntityHandle">Entity to walk/sprint toward.</param>
+        /// <param name="stoppingRange">Distance in meters at which to stop.</param>
+        void TaskGoToEntity(int pedHandle, int targetEntityHandle, float stoppingRange);
+
+        /// <summary>
         /// Makes a ped friendly to the player by setting them to the player's relationship group.
         /// Unlike SetPedAsFollower, this does NOT make them follow the player or join the ped group.
         /// Used for friendly zone defenders who should not attack the player or followers.

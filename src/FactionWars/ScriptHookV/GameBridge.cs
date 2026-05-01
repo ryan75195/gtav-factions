@@ -1394,6 +1394,40 @@ namespace FactionWars.ScriptHookV
         }
 
         /// <inheritdoc />
+        public void TaskGoToEntity(int pedHandle, int targetEntityHandle, float stoppingRange)
+        {
+            FileLogger.AI($"TaskGoToEntity: CALLED for ped {pedHandle} -> entity {targetEntityHandle} stopRange={stoppingRange:F1}");
+
+            try
+            {
+                var ped = Entity.FromHandle(pedHandle) as Ped;
+                if (ped == null || !ped.Exists())
+                {
+                    FileLogger.Warn($"TaskGoToEntity: Ped {pedHandle} is null or doesn't exist, aborting");
+                    return;
+                }
+
+                // TASK_GO_TO_ENTITY signature: ped, target, duration (-1=indefinite),
+                // stoppingRange, speed (3.0=sprint), targetOffset (0=current pos), flags.
+                Function.Call(
+                    Hash.TASK_GO_TO_ENTITY,
+                    ped.Handle,
+                    targetEntityHandle,
+                    -1,
+                    stoppingRange,
+                    3.0f,
+                    0f,
+                    0);
+
+                FileLogger.AI($"TaskGoToEntity: COMPLETED for ped {pedHandle}");
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error($"TaskGoToEntity exception for ped {pedHandle}", ex);
+            }
+        }
+
+        /// <inheritdoc />
         public void SetPedAsFriendly(int pedHandle)
         {
             FileLogger.AI($"SetPedAsFriendly: CALLED for ped {pedHandle}");
