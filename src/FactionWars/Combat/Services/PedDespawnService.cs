@@ -66,6 +66,25 @@ namespace FactionWars.Combat.Services
         }
 
         /// <inheritdoc />
+        public bool UntrackPed(int handle)
+        {
+            var ped = _pedPool.GetByHandle(handle);
+            if (ped == null)
+            {
+                return false;
+            }
+
+            _pedPool.Remove(handle);
+            return true;
+        }
+
+        /// <inheritdoc />
+        public void DeletePedEntity(int handle)
+        {
+            _gameBridge.DeletePed(handle);
+        }
+
+        /// <inheritdoc />
         public IList<PedHandle> DespawnDeadPeds()
         {
             var deadPeds = _pedPool.GetAll()

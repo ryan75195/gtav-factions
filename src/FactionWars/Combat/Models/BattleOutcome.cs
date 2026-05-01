@@ -18,6 +18,11 @@ namespace FactionWars.Combat.Models
         /// <summary>
         /// Neither side won decisively (rare - both eliminated).
         /// </summary>
-        Draw = 2
+        Draw = 2,
+
+        /// <summary>
+        /// Battle was cancelled due to external intervention (e.g., player captured the zone).
+        /// </summary>
+        Cancelled = 3
     }
 }

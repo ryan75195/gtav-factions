@@ -25,6 +25,22 @@ namespace FactionWars.Combat.Interfaces
         bool DespawnPed(int handle);
 
         /// <summary>
+        /// Removes a ped from the pool tracking without deleting the entity from the game world.
+        /// Use this when a ped dies but you want to keep the corpse visible for a period of time.
+        /// The corpse can be deleted later using DeletePedEntity.
+        /// </summary>
+        /// <param name="handle">The handle of the ped to untrack.</param>
+        /// <returns>True if the ped was successfully untracked, false if it wasn't in the pool.</returns>
+        bool UntrackPed(int handle);
+
+        /// <summary>
+        /// Deletes a ped entity from the game world without requiring it to be in the pool.
+        /// Use this to clean up corpses that were previously untracked with UntrackPed.
+        /// </summary>
+        /// <param name="handle">The handle of the ped entity to delete.</param>
+        void DeletePedEntity(int handle);
+
+        /// <summary>
         /// Despawns all dead peds from the game world.
         /// Uses IGameBridge.IsPedAlive to check ped status.
         /// </summary>

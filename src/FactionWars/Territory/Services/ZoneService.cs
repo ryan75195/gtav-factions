@@ -1,5 +1,6 @@
 using FactionWars.Core.Interfaces;
 using FactionWars.Factions.Interfaces;
+using FactionWars.ScriptHookV.Logging;
 using FactionWars.Territory.Interfaces;
 using FactionWars.Territory.Models;
 using System;
@@ -122,6 +123,9 @@ namespace FactionWars.Territory.Services
                 return false;
 
             var previousOwner = zone.OwnerFactionId;
+
+            FileLogger.Separator("ZONE OWNERSHIP TRANSFER");
+            FileLogger.Zone($"Zone '{zone.Name}' (ID: {zoneId}): {previousOwner ?? "NONE"} -> {newOwnerFactionId ?? "NONE"}");
 
             zone.OwnerFactionId = newOwnerFactionId;
             zone.ControlPercentage = 100f;
