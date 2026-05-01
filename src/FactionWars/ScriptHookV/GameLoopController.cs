@@ -52,6 +52,7 @@ namespace FactionWars.ScriptHookV
         private AIDecisionExecutor? _aiDecisionExecutor;
         private VictoryManager? _victoryManager;
         private FriendlyDefenderManager? _friendlyDefenderManager;
+        private DefenderRallyController? _defenderRallyController;
         private EnemyDefenderManager? _enemyDefenderManager;
         private BattleAttackerManager? _battleAttackerManager;
         private CommanderManager? _commanderManager;
@@ -359,6 +360,7 @@ namespace FactionWars.ScriptHookV
 
             // Update friendly defender manager (death detection, replacement spawning)
             _friendlyDefenderManager?.Update();
+            _defenderRallyController?.Update();
 
             // Update commander manager (death detection, interaction prompt)
             _commanderManager?.Update();
@@ -742,6 +744,14 @@ namespace FactionWars.ScriptHookV
             // Subscribe to combat ended event to show claim prompt after victory
             _combatManager.CombatStarted += OnCombatStarted;
             _combatManager.CombatEnded += OnCombatEnded;
+
+            _defenderRallyController = new DefenderRallyController(
+                _gameBridge,
+                _territoryManager,
+                _friendlyDefenderManager,
+                _combatManager,
+                () => CurrentPlayerFactionId,
+                () => System.Environment.TickCount);
 
             // Initialize AI manager for AI faction decisions
             var strategies = _container.Resolve<IDictionary<string, IAIStrategy>>();
@@ -1131,6 +1141,7 @@ namespace FactionWars.ScriptHookV
                 _combatManager.EndCombat(CombatStatus.Aborted);
             }
             _combatManager = null;
+            _defenderRallyController = null;
 
             // Unsubscribe from AI events and stop AI manager
             if (_aiManager != null && _backgroundBattleSimulator != null)
