@@ -68,13 +68,9 @@ namespace FactionWars.AI.Services
             // Calculate the force we would actually commit (not all troops)
             int neededForce = GetOverwhelmingAttackForce(ourTroops, enemyDefenders);
 
-            // Calculate how many troops we can afford
-            int affordableTroops = _budgetService.CostPerTroop > 0
-                ? context.FactionState.Cash / _budgetService.CostPerTroop
-                : ourTroops;
-
-            // Use the minimum of: what we need, what we have, what we can afford
-            int effectiveTroops = Math.Min(Math.Min(neededForce, ourTroops), affordableTroops);
+            // Use the minimum of: what we need and what we have
+            // NOTE: Deployment cost removed - troops are free to deploy once recruited
+            int effectiveTroops = Math.Min(neededForce, ourTroops);
 
             // Win probability based on effective troops we can deploy
             float winProbability = effectiveTroops / (float)(enemyDefenders * 2 + 1);
@@ -82,11 +78,11 @@ namespace FactionWars.AI.Services
             // Zone value normalized to 0-1
             float zoneValue = target.StrategicValue / MaxStrategicValue;
 
-            // Affordability: can we afford at least some troops? (minimum threshold of 10)
-            float affordability = effectiveTroops >= 10 ? 1.0f : 0.0f;
+            // Minimum troop requirement: need at least 10 troops to consider attack
+            float hasEnoughTroops = effectiveTroops >= 10 ? 1.0f : 0.0f;
 
-            // Result: min(1, winProbability) * zoneValue * affordability
-            return Math.Min(1f, winProbability) * zoneValue * affordability;
+            // Result: min(1, winProbability) * zoneValue * hasEnoughTroops
+            return Math.Min(1f, winProbability) * zoneValue * hasEnoughTroops;
         }
 
         /// <inheritdoc />
@@ -170,11 +166,9 @@ namespace FactionWars.AI.Services
                 int enemyDefenders = GetDefenderCount(bestAttackTarget.OwnerFactionId, bestAttackTarget.Id);
                 int desiredForce = GetOverwhelmingAttackForce(context.FactionState.TroopCount, enemyDefenders);
 
-                // Cap troops by what we can afford
-                int affordableTroops = _budgetService.CostPerTroop > 0
-                    ? context.FactionState.Cash / _budgetService.CostPerTroop
-                    : context.FactionState.TroopCount;
-                int troopsToCommit = Math.Min(Math.Min(desiredForce, context.FactionState.TroopCount), affordableTroops);
+                // NOTE: Deployment cost removed - troops are free to deploy once recruited
+                // Commit what we need, capped by what we have
+                int troopsToCommit = Math.Min(desiredForce, context.FactionState.TroopCount);
 
                 return new AIDecision(
                     AIDecisionType.Attack,

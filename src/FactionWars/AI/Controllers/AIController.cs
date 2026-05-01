@@ -28,12 +28,13 @@ namespace FactionWars.AI.Controllers
         private readonly IGameBridge _gameBridge;
         private readonly IDictionary<string, IAIStrategy> _strategies;
         private readonly IZoneBattleManager _zoneBattleManager;
+        private readonly IAIRecruitmentService? _recruitmentService;
 
         // Configuration
         private const float DefaultDecisionIntervalSeconds = 60f;  // Slowed from 30s for better pacing
         private const float DefaultRecruitmentIntervalSeconds = 60f;
         private const int RecruitCostPerTroop = 200;  // Aligned with player Basic tier cost
-        private const int AttackCostPerTroop = 50;
+        // NOTE: Deployment cost removed - troops are free to deploy once recruited
         private const int MaxRecruitPerCycle = 5;
 
         // State
@@ -69,6 +70,22 @@ namespace FactionWars.AI.Controllers
             IGameBridge gameBridge,
             IDictionary<string, IAIStrategy> strategies,
             IZoneBattleManager zoneBattleManager)
+            : this(factionService, zoneService, battleSimulationService, allocationService, gameBridge, strategies, zoneBattleManager, null)
+        {
+        }
+
+        /// <summary>
+        /// Creates a new AIController with recruitment service for scaled recruitment.
+        /// </summary>
+        public AIController(
+            IFactionService factionService,
+            IZoneService zoneService,
+            IBattleSimulationService battleSimulationService,
+            IZoneDefenderAllocationService allocationService,
+            IGameBridge gameBridge,
+            IDictionary<string, IAIStrategy> strategies,
+            IZoneBattleManager zoneBattleManager,
+            IAIRecruitmentService? recruitmentService)
         {
             _factionService = factionService ?? throw new ArgumentNullException(nameof(factionService));
             _zoneService = zoneService ?? throw new ArgumentNullException(nameof(zoneService));
@@ -77,6 +94,7 @@ namespace FactionWars.AI.Controllers
             _gameBridge = gameBridge ?? throw new ArgumentNullException(nameof(gameBridge));
             _strategies = strategies ?? throw new ArgumentNullException(nameof(strategies));
             _zoneBattleManager = zoneBattleManager ?? throw new ArgumentNullException(nameof(zoneBattleManager));
+            _recruitmentService = recruitmentService;
 
             _isRunning = false;
             _decisionTimer = 0f;
@@ -143,7 +161,16 @@ namespace FactionWars.AI.Controllers
                 if (faction.Id == _playerFactionId)
                     continue;
 
-                TryRecruitTroops(faction.Id);
+                // Use recruitment service if available (scaled recruitment)
+                // Otherwise fall back to hardcoded internal logic
+                if (_recruitmentService != null)
+                {
+                    _recruitmentService.TryAutoRecruit(faction.Id, MaxRecruitPerCycle);
+                }
+                else
+                {
+                    TryRecruitTroops(faction.Id);
+                }
             }
         }
 
@@ -219,6 +246,10 @@ namespace FactionWars.AI.Controllers
                 {
                     ExecuteAttackDecision(factionId, decision);
                 }
+                else if (decision.DecisionType == AIDecisionType.Defend)
+                {
+                    ExecuteDefendDecision(factionId, factionState, decision);
+                }
             }
         }
 
@@ -245,24 +276,10 @@ namespace FactionWars.AI.Controllers
                 return;
             }
 
-            // Check budget
-            var state = _factionService.GetFactionState(attackerFactionId);
-            if (state == null)
-            {
-                FileLogger.AI($"      ExecuteAttack: Could not get faction state");
-                return;
-            }
+            // NOTE: Deployment cost removed - troops are free to deploy once recruited
+            // Cash is only spent during recruitment, not during attack execution
 
-            int cost = decision.TroopsToCommit * AttackCostPerTroop;
-            if (state.Cash < cost)
-            {
-                FileLogger.AI($"      ExecuteAttack: Insufficient funds (need ${cost}, have ${state.Cash})");
-                return;
-            }
-
-            // Spend cash
-            _factionService.SpendCash(attackerFactionId, cost);
-            FileLogger.AI($"      ExecuteAttack: {attackerFactionId} attacking {decision.TargetZoneId} with {decision.TroopsToCommit} troops (cost ${cost})");
+            FileLogger.AI($"      ExecuteAttack: {attackerFactionId} attacking {decision.TargetZoneId} with {decision.TroopsToCommit} troops (deployment free)");
 
             // Raise attack started event
             OnAttackStarted?.Invoke(this, new AIAttackEventArgs(
@@ -275,6 +292,45 @@ namespace FactionWars.AI.Controllers
             bool playerInZone = _playerZoneId == decision.TargetZoneId;
             FileLogger.AI($"      ExecuteAttack: Starting battle (player in zone: {playerInZone})...");
             SimulateBattle(attackerFactionId, decision, playerInZone);
+        }
+
+        private void ExecuteDefendDecision(string factionId, FactionState factionState, AIDecision decision)
+        {
+            if (decision.TargetZoneId == null)
+            {
+                FileLogger.AI($"      ExecuteDefend: No target zone specified");
+                return;
+            }
+
+            // Desperation scaling based on zones owned
+            float deployPercent = factionState.ZoneCount switch
+            {
+                1 => 0.80f,  // Last stand - deploy 80%
+                2 => 0.50f,  // Significant threat - deploy 50%
+                _ => 0.30f   // Conservative - deploy 30%
+            };
+
+            FileLogger.AI($"      ExecuteDefend: {factionId} reinforcing {decision.TargetZoneId} ({factionState.ZoneCount} zones, {deployPercent:P0} deploy)");
+
+            int totalDeployed = 0;
+
+            // Deploy all tiers proportionally
+            foreach (var tier in new[] { DefenderTier.Basic, DefenderTier.Medium, DefenderTier.Heavy, DefenderTier.Elite })
+            {
+                int reserves = factionState.GetReserveTroops(tier);
+                int toDeploy = (int)(reserves * deployPercent);
+
+                if (toDeploy > 0)
+                {
+                    if (_allocationService.AllocateTroops(factionState, decision.TargetZoneId, tier, toDeploy))
+                    {
+                        totalDeployed += toDeploy;
+                        FileLogger.AI($"      ExecuteDefend: Allocated {toDeploy} {tier} to {decision.TargetZoneId}");
+                    }
+                }
+            }
+
+            FileLogger.AI($"      ExecuteDefend: Total {totalDeployed} troops allocated to {decision.TargetZoneId}");
         }
 
         private void SimulateBattle(string attackerFactionId, AIDecision decision, bool playerInZone = false)
