@@ -146,6 +146,7 @@ namespace FactionWars.Core.Interfaces
         /// Gets the player's current wanted level (0 = no stars, 5 = max).
         /// Used as a cheap composite signal that police are actively engaging the player.
         /// </summary>
+        /// <returns>An integer from 0 (no stars) to 5 (maximum wanted level).</returns>
         int GetWantedLevel();
 
         /// <summary>
