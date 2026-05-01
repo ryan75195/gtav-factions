@@ -1,4 +1,5 @@
 using FactionWars.Core.Interfaces;
+using FactionWars.Core.Models;
 using FactionWars.Factions.Interfaces;
 using FactionWars.Factions.Models;
 using FactionWars.Persistence;
@@ -168,6 +169,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Persistence
         {
             SetupEmptyRepositories();
             _sut.NewGame();
+            _mockSidecarStore.Setup(s => s.WriteSidecar(It.IsAny<Sidecar>())).Returns(true);
             GameStateSavedEventArgs? eventArgs = null;
             _sut.OnGameSaved += (_, args) => eventArgs = args;
 
@@ -179,7 +181,37 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Persistence
             Assert.True(eventArgs!.Success);
         }
 
+        [Fact]
+        public void WriteCurrentSidecar_StoreReturnsFalse_RaisesEventWithFailure()
+        {
+            SetupEmptyRepositories();
+            _sut.NewGame();
+            _mockSidecarStore.Setup(s => s.WriteSidecar(It.IsAny<Sidecar>())).Returns(false);
+            GameStateSavedEventArgs? eventArgs = null;
+            _sut.OnGameSaved += (_, args) => eventArgs = args;
+
+            var fp = new SaveFingerprint { TotalPlayTimeSeconds = 12340 };
+            var pos = new PlayerPosition();
+            _sut.WriteCurrentSidecar(fp, pos, "SGTA00003");
+
+            Assert.NotNull(eventArgs);
+            Assert.False(eventArgs!.Success);
+        }
+
         #endregion
+
+        [Fact]
+        public void NewGame_ResetsDifficultyToNormal()
+        {
+            SetupEmptyRepositories();
+            _sut.SetCurrentDifficulty(Difficulty.Hard);
+
+            _sut.NewGame();
+
+            var snapshot = _sut.GetCurrentGameState();
+            Assert.NotNull(snapshot);
+            Assert.Equal(Difficulty.Normal, snapshot!.Difficulty);
+        }
 
         #region HydrateFromSidecar Tests
 

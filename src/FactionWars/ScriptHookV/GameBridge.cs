@@ -502,7 +502,7 @@ namespace FactionWars.ScriptHookV
         }
 
         /// <inheritdoc />
-        public long GetTotalPlayTimeSeconds()
+        public long? GetTotalPlayTimeSeconds()
         {
             try
             {
@@ -511,15 +511,17 @@ namespace FactionWars.ScriptHookV
                 int hash = Function.Call<int>(Hash.GET_HASH_KEY, statName);
                 var outArg = new OutputArgument();
                 bool ok = Function.Call<bool>(Hash.STAT_GET_INT, hash, outArg, -1);
-                int millisOut = ok ? outArg.GetResult<int>() : 0;
-                return millisOut / 1000L;
+                if (!ok) return null;
+                return outArg.GetResult<int>() / 1000L;
             }
             catch (Exception ex)
             {
                 FileLogger.Error("GetTotalPlayTimeSeconds exception", ex);
-                return 0;
+                return null;
             }
         }
+
+        public int GetActiveCharacterIndex() => GetActiveSpCharacterIndex();
 
         /// <inheritdoc />
         public int GetCompletedMissionCount()

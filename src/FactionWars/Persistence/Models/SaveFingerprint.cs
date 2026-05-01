@@ -41,7 +41,7 @@ namespace FactionWars.Persistence.Models
             if (bridge == null) throw new System.ArgumentNullException(nameof(bridge));
             return new SaveFingerprint
             {
-                TotalPlayTimeSeconds = bridge.GetTotalPlayTimeSeconds(),
+                TotalPlayTimeSeconds = bridge.GetTotalPlayTimeSeconds() ?? 0,
                 Money = bridge.GetPlayerMoney(),
                 CompletedMissionCount = bridge.GetCompletedMissionCount(),
                 InGameClockMinutes = bridge.GetInGameClockMinutes(),

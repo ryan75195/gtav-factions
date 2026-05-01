@@ -150,8 +150,15 @@ namespace FactionWars.Core.Interfaces
         /// (e.g., MP0_TOTAL_PLAYING_TIME or its single-player equivalent). Persisted in the
         /// savegame and restored exactly on load — primary key for save identification.
         /// </summary>
-        /// <returns>Total seconds played, monotonically increasing across the campaign.</returns>
-        long GetTotalPlayTimeSeconds();
+        /// <returns>Total seconds played, or null if the stat read failed.</returns>
+        long? GetTotalPlayTimeSeconds();
+
+        /// <summary>
+        /// Returns the active SP character index: 0=Michael, 1=Franklin, 2=Trevor.
+        /// Each character has an independent TOTAL_PLAYING_TIME stat, so save-load
+        /// detection must scope play-time comparisons to a single character.
+        /// </summary>
+        int GetActiveCharacterIndex();
 
         /// <summary>
         /// Gets the count of completed story missions for the active character.

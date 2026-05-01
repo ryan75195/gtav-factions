@@ -138,6 +138,35 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Persistence
         }
 
         [Fact]
+        public void CharacterSwitch_BackwardsPlayTime_DoesNotFireLoad()
+        {
+            _bridge.TotalPlayTimeSeconds = 50000;
+            _bridge.ActiveCharacterIndex = 0;
+            SetupClosestMiss();
+            _sut.Tick();
+            _hydrateCalled = false;
+            _newGameCalled = false;
+
+            _bridge.TotalPlayTimeSeconds = 30000;
+            _bridge.ActiveCharacterIndex = 2;
+            _sut.Tick();
+
+            Assert.False(_hydrateCalled);
+            Assert.False(_newGameCalled);
+        }
+
+        [Fact]
+        public void PlayTimeReadFailed_SkipsTick()
+        {
+            _bridge.SimulateTotalPlayTimeReadFailure = true;
+
+            _sut.Tick();
+
+            Assert.False(_hydrateCalled);
+            Assert.False(_newGameCalled);
+        }
+
+        [Fact]
         public void UsesClosestByPlayTime_ForPostLoadDrift()
         {
             _bridge.TotalPlayTimeSeconds = 46473;

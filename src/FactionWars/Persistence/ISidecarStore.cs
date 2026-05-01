@@ -11,10 +11,11 @@ namespace FactionWars.Persistence
     {
         /// <summary>
         /// Writes a sidecar to disk. Overwrites any existing sidecar with the same
-        /// primary key. Atomic via tmp+rename. Failures are caught and logged;
+        /// primary key. Atomic via tmp+File.Replace. Failures are caught and logged;
         /// this method does not throw on IO errors.
         /// </summary>
-        void WriteSidecar(Sidecar sidecar);
+        /// <returns>True if the sidecar was successfully written to disk.</returns>
+        bool WriteSidecar(Sidecar sidecar);
 
         /// <summary>
         /// Looks up a sidecar by fingerprint. Performs an O(1) filename lookup

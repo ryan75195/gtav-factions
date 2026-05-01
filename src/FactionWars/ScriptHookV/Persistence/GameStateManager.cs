@@ -104,8 +104,8 @@ namespace FactionWars.ScriptHookV.Persistence
                 GameState = gameState,
             };
 
-            _sidecarStore.WriteSidecar(sidecar);
-            OnGameSaved?.Invoke(this, new GameStateSavedEventArgs(0, gameState.SaveName, true));
+            bool success = _sidecarStore.WriteSidecar(sidecar);
+            OnGameSaved?.Invoke(this, new GameStateSavedEventArgs(0, gameState.SaveName, success));
         }
 
         /// <inheritdoc />
@@ -135,6 +135,7 @@ namespace FactionWars.ScriptHookV.Persistence
             _hasGameLoaded = true;
             _totalPlayTimeSeconds = 0;
             _playTimeAccumulator = 0f;
+            _currentDifficulty = Difficulty.Normal;
         }
 
         /// <inheritdoc />

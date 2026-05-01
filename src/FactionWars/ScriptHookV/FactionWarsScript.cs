@@ -121,6 +121,16 @@ namespace FactionWars.ScriptHookV
             {
                 if (_gameBridge == null || _gameStateManager == null) return;
 
+                // Fingerprint is captured ~debounce-ms after the user pressed save.
+                // Play-time/clock drift is sub-second and absorbed by LoadDetector's
+                // match window; Money/missions are stable in normal save contexts.
+                var playTime = _gameBridge.GetTotalPlayTimeSeconds();
+                if (playTime == null)
+                {
+                    FileLogger.Warn("HandleNativeSaveWritten: play-time read failed; skipping sidecar write to avoid orphaning state at TotalPlayTimeSeconds=0.");
+                    return;
+                }
+
                 var fingerprint = SaveFingerprint.Capture(_gameBridge);
                 var pos = _gameBridge.GetPlayerPosition();
                 var heading = _gameBridge.GetPlayerHeading();

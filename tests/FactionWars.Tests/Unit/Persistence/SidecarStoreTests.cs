@@ -38,6 +38,14 @@ namespace FactionWars.Tests.Unit.Persistence
             };
 
         [Fact]
+        public void WriteSidecar_Successful_ReturnsTrue()
+        {
+            var store = new SidecarStore(_tempDir);
+
+            Assert.True(store.WriteSidecar(Make()));
+        }
+
+        [Fact]
         public void WriteSidecar_ThenTryFind_RoundTrips()
         {
             var store = new SidecarStore(_tempDir);

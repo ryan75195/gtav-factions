@@ -32,7 +32,7 @@ namespace FactionWars.Persistence
             };
         }
 
-        public void WriteSidecar(Sidecar sidecar)
+        public bool WriteSidecar(Sidecar sidecar)
         {
             if (sidecar == null) throw new ArgumentNullException(nameof(sidecar));
             if (sidecar.Fingerprint == null) throw new ArgumentException("Sidecar.Fingerprint required.", nameof(sidecar));
@@ -47,16 +47,23 @@ namespace FactionWars.Persistence
 
                 if (File.Exists(finalPath))
                 {
-                    File.Delete(finalPath);
+                    // File.Replace is atomic on Windows — no window where both files
+                    // are missing if the process is killed mid-operation.
+                    File.Replace(tmpPath, finalPath, destinationBackupFileName: null);
                 }
-                File.Move(tmpPath, finalPath);
+                else
+                {
+                    File.Move(tmpPath, finalPath);
+                }
 
                 FileLogger.Info($"SidecarStore: wrote {Path.GetFileName(finalPath)} (totalPlayTime={sidecar.Fingerprint.TotalPlayTimeSeconds})");
+                return true;
             }
             catch (Exception ex)
             {
                 FileLogger.Error($"SidecarStore: failed to write {Path.GetFileName(finalPath)}", ex);
                 try { if (File.Exists(tmpPath)) File.Delete(tmpPath); } catch { }
+                return false;
             }
         }
 

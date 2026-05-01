@@ -62,6 +62,11 @@ namespace FactionWars.Core.Utils
         /// </summary>
         public long TotalPlayTimeSeconds { get; set; } = 0;
 
+        /// <summary>When true, GetTotalPlayTimeSeconds() returns null to simulate a failed stat read.</summary>
+        public bool SimulateTotalPlayTimeReadFailure { get; set; } = false;
+
+        public int ActiveCharacterIndex { get; set; } = 0;
+
         /// <summary>
         /// Gets or sets the number of completed missions.
         /// </summary>
@@ -238,7 +243,9 @@ namespace FactionWars.Core.Utils
 
         public int GetPlayerMoney() => PlayerMoney;
 
-        public long GetTotalPlayTimeSeconds() => TotalPlayTimeSeconds;
+        public long? GetTotalPlayTimeSeconds() => SimulateTotalPlayTimeReadFailure ? (long?)null : TotalPlayTimeSeconds;
+
+        public int GetActiveCharacterIndex() => ActiveCharacterIndex;
 
         public int GetCompletedMissionCount() => CompletedMissionCount;
 

@@ -9,8 +9,12 @@ namespace FactionWars.ScriptHookV.Persistence
     /// <summary>
     /// Detects savegame loads by watching TOTAL_PLAYING_TIME for discontinuities.
     /// On the first tick we attempt a sidecar match (handles fresh-launch + auto-load).
-    /// On subsequent ticks any backwards play-time jump is treated as a load. We
-    /// never use Game.IsLoading because (a) it is obsolete and (b) SHVDN scripts
+    /// On subsequent ticks any backwards play-time jump is treated as a load — except
+    /// when the active character has changed, because each SP character has an
+    /// independent TOTAL_PLAYING_TIME stat and switching characters looks like a
+    /// play-time jump even though no save was loaded.
+    ///
+    /// We never use Game.IsLoading because (a) it is obsolete and (b) SHVDN scripts
     /// do not reliably tick during loading screens, so the IsLoading edge is missed.
     ///
     /// TOTAL_PLAYING_TIME advances by ~30s during the post-load animation, so we
@@ -28,6 +32,7 @@ namespace FactionWars.ScriptHookV.Persistence
 
         private bool _initialized;
         private long _lastPlayTimeSeconds;
+        private int _lastCharacterIndex;
 
         public LoadDetector(IGameBridge bridge, ISidecarStore store, Action<Sidecar> onHydrate, Action onNewGame)
         {
@@ -42,16 +47,27 @@ namespace FactionWars.ScriptHookV.Persistence
         /// </summary>
         public void Tick()
         {
-            long currentPlayTime;
+            long? playTimeRead;
+            int characterIndex;
             try
             {
-                currentPlayTime = _bridge.GetTotalPlayTimeSeconds();
+                playTimeRead = _bridge.GetTotalPlayTimeSeconds();
+                characterIndex = _bridge.GetActiveCharacterIndex();
             }
             catch (Exception ex)
             {
-                FileLogger.Error("LoadDetector: GetTotalPlayTimeSeconds threw", ex);
+                FileLogger.Error("LoadDetector: bridge read threw", ex);
                 return;
             }
+
+            if (playTimeRead == null)
+            {
+                // Stat read failed; defer the tick rather than risk a spurious NewGame()
+                // that would wipe mod state for a loaded save.
+                return;
+            }
+
+            long currentPlayTime = playTimeRead.Value;
 
             bool isLoadEvent;
             if (!_initialized)
@@ -59,10 +75,15 @@ namespace FactionWars.ScriptHookV.Persistence
                 isLoadEvent = true;
                 FileLogger.Info($"LoadDetector: first tick at play-time {currentPlayTime}s — attempting sidecar match.");
             }
+            else if (characterIndex != _lastCharacterIndex)
+            {
+                isLoadEvent = false;
+                FileLogger.Debug($"LoadDetector: active character changed {_lastCharacterIndex} -> {characterIndex}; skipping load detection this tick.");
+            }
             else if (currentPlayTime < _lastPlayTimeSeconds)
             {
                 isLoadEvent = true;
-                FileLogger.Info($"LoadDetector: play-time jumped backwards {_lastPlayTimeSeconds}s -> {currentPlayTime}s — treating as load.");
+                FileLogger.Info($"LoadDetector: play-time jumped backwards {_lastPlayTimeSeconds}s -> {currentPlayTime}s on character {characterIndex} — treating as load.");
             }
             else
             {
@@ -71,6 +92,7 @@ namespace FactionWars.ScriptHookV.Persistence
 
             _initialized = true;
             _lastPlayTimeSeconds = currentPlayTime;
+            _lastCharacterIndex = characterIndex;
 
             if (!isLoadEvent) return;
 
@@ -81,7 +103,7 @@ namespace FactionWars.ScriptHookV.Persistence
             }
             else
             {
-                FileLogger.Info($"LoadDetector: no sidecar within {PostLoadDriftWindowSeconds}s of play-time {currentPlayTime}s — starting new game.");
+                FileLogger.Info($"LoadDetector: no sidecar within {PostLoadDriftWindowSeconds}s of play-time {currentPlayTime}s — initializing fresh mod state for this save.");
                 _onNewGame();
             }
         }
