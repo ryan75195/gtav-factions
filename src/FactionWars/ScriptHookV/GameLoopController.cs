@@ -511,6 +511,13 @@ namespace FactionWars.ScriptHookV
                 _playTimeHudRenderer.Draw();
             }
 
+            // Show claim prompt as help text (auto-adapts button label for controller)
+            if (_showingClaimPrompt && _currentNeutralZone != null)
+            {
+                var cost = GetBasicTroopCost();
+                _gameBridge.DisplayHelpText($"Press ~INPUT_CONTEXT~ to claim for ~g~${cost}");
+            }
+
             // Combat HUD disabled - TerritoryIndicatorRenderer now shows all combat info
             // including reserves in the "nicer graphics" top-right display
             _combatHudRenderer?.HideCombatHud();
@@ -1512,7 +1519,7 @@ namespace FactionWars.ScriptHookV
             _showingClaimPrompt = true;
 
             var cost = GetBasicTroopCost();
-            _gameBridge.ShowNotification($"~y~Unclaimed territory: {zone.Name}~n~Press ~g~E~w~ to claim for ~g~${cost}");
+            _gameBridge.ShowNotification($"~y~Unclaimed territory: {zone.Name}");
         }
 
         /// <summary>

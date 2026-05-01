@@ -23,6 +23,7 @@ namespace FactionWars.ScriptHookV.Persistence
         private readonly IZoneRepository _zoneRepository;
         private readonly IFactionRepository _factionRepository;
         private readonly IZoneDefenderAllocationRepository _allocationRepository;
+        private readonly IGameBridge? _gameBridge;
 
         private bool _hasGameLoaded;
         private string? _currentSaveName;
@@ -52,16 +53,19 @@ namespace FactionWars.ScriptHookV.Persistence
         /// <param name="zoneRepository">The zone repository.</param>
         /// <param name="factionRepository">The faction repository.</param>
         /// <param name="allocationRepository">The zone defender allocation repository.</param>
+        /// <param name="gameBridge">Optional game bridge for saving/loading player state (money/weapons).</param>
         public GameStateManager(
             ISaveSlotManager saveSlotManager,
             IZoneRepository zoneRepository,
             IFactionRepository factionRepository,
-            IZoneDefenderAllocationRepository allocationRepository)
+            IZoneDefenderAllocationRepository allocationRepository,
+            IGameBridge? gameBridge = null)
         {
             _saveSlotManager = saveSlotManager ?? throw new ArgumentNullException(nameof(saveSlotManager));
             _zoneRepository = zoneRepository ?? throw new ArgumentNullException(nameof(zoneRepository));
             _factionRepository = factionRepository ?? throw new ArgumentNullException(nameof(factionRepository));
             _allocationRepository = allocationRepository ?? throw new ArgumentNullException(nameof(allocationRepository));
+            _gameBridge = gameBridge;
 
             _hasGameLoaded = false;
             _currentSaveName = null;
@@ -87,6 +91,15 @@ namespace FactionWars.ScriptHookV.Persistence
             gameState.TotalPlayTimeSeconds = _totalPlayTimeSeconds;
             gameState.SaveName = _currentSaveName ?? "Unnamed Save";
             gameState.Difficulty = _currentDifficulty;
+
+            // Capture player state (money and weapons) if game bridge is available
+            if (_gameBridge != null)
+            {
+                gameState.PlayerMoney = _gameBridge.GetPlayerMoney();
+                gameState.PlayerWeapons = _gameBridge.GetPlayerWeapons();
+                FileLogger.Info($"GetCurrentGameState: Captured player money=${gameState.PlayerMoney:N0}, weapons={gameState.PlayerWeapons.Count}");
+            }
+
             gameState.MarkModified();
 
             return gameState;
@@ -281,6 +294,28 @@ namespace FactionWars.ScriptHookV.Persistence
                 {
                     var allocation = allocationData.ToAllocation();
                     _allocationRepository.Add(allocation);
+                }
+            }
+
+            // Restore player state (money and weapons) if game bridge is available
+            if (_gameBridge != null)
+            {
+                // Restore player money
+                if (gameState.PlayerMoney > 0)
+                {
+                    _gameBridge.SetPlayerMoney(gameState.PlayerMoney);
+                    FileLogger.Info($"ApplyGameState: Restored player money=${gameState.PlayerMoney:N0}");
+                }
+
+                // Restore player weapons
+                if (gameState.PlayerWeapons != null && gameState.PlayerWeapons.Count > 0)
+                {
+                    _gameBridge.RemoveAllPlayerWeapons();
+                    foreach (var weapon in gameState.PlayerWeapons)
+                    {
+                        _gameBridge.GivePlayerWeapon(weapon.Key, weapon.Value);
+                    }
+                    FileLogger.Info($"ApplyGameState: Restored {gameState.PlayerWeapons.Count} player weapons");
                 }
             }
         }

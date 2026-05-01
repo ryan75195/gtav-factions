@@ -21,6 +21,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
         private readonly Mock<ISaveSlotManager> _saveSlotManagerMock;
         private readonly Mock<IGameStateCoordinator> _gameStateCoordinatorMock;
         private readonly Mock<IDifficultyService> _difficultyServiceMock;
+        private readonly Mock<IGameBridge> _gameBridgeMock;
         private readonly SettingsMenuController _controller;
 
         public SettingsMenuControllerTests()
@@ -29,6 +30,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
             _saveSlotManagerMock = new Mock<ISaveSlotManager>();
             _gameStateCoordinatorMock = new Mock<IGameStateCoordinator>();
             _difficultyServiceMock = new Mock<IDifficultyService>();
+            _gameBridgeMock = new Mock<IGameBridge>();
 
             // Setup default save slot configuration
             _saveSlotManagerMock.Setup(s => s.MaxSlots).Returns(5);
@@ -48,7 +50,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
                 _menuProvider,
                 _saveSlotManagerMock.Object,
                 _gameStateCoordinatorMock.Object,
-                _difficultyServiceMock.Object);
+                _difficultyServiceMock.Object,
+                _gameBridgeMock.Object);
         }
 
         private SaveSlotInfo CreateEmptySlotInfo(int slotNumber)
@@ -72,7 +75,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
                 null!,
                 _saveSlotManagerMock.Object,
                 _gameStateCoordinatorMock.Object,
-                _difficultyServiceMock.Object));
+                _difficultyServiceMock.Object,
+                _gameBridgeMock.Object));
         }
 
         [Fact]
@@ -82,7 +86,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
                 _menuProvider,
                 null!,
                 _gameStateCoordinatorMock.Object,
-                _difficultyServiceMock.Object));
+                _difficultyServiceMock.Object,
+                _gameBridgeMock.Object));
         }
 
         [Fact]
@@ -92,7 +97,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
                 _menuProvider,
                 _saveSlotManagerMock.Object,
                 null!,
-                _difficultyServiceMock.Object));
+                _difficultyServiceMock.Object,
+                _gameBridgeMock.Object));
         }
 
         [Fact]
@@ -102,6 +108,18 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
                 _menuProvider,
                 _saveSlotManagerMock.Object,
                 _gameStateCoordinatorMock.Object,
+                null!,
+                _gameBridgeMock.Object));
+        }
+
+        [Fact]
+        public void Constructor_WithNullGameBridge_ShouldThrowArgumentNullException()
+        {
+            Assert.Throws<ArgumentNullException>(() => new SettingsMenuController(
+                _menuProvider,
+                _saveSlotManagerMock.Object,
+                _gameStateCoordinatorMock.Object,
+                _difficultyServiceMock.Object,
                 null!));
         }
 

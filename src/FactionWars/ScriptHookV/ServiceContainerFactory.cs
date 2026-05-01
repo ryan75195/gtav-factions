@@ -231,12 +231,14 @@ namespace FactionWars.ScriptHookV
             });
 
             // Game state manager - coordinates save/load between domain repositories and persistence
+            // Includes game bridge for saving/loading player state (money/weapons)
             container.RegisterSingleton<IGameStateManager>(() =>
                 new GameStateManager(
                     container.Resolve<ISaveSlotManager>(),
                     container.Resolve<IZoneRepository>(),
                     container.Resolve<IFactionRepository>(),
-                    container.Resolve<IZoneDefenderAllocationRepository>()));
+                    container.Resolve<IZoneDefenderAllocationRepository>(),
+                    container.Resolve<IGameBridge>()));
 
             // Game state coordinator - provides simplified interface for UI save/load operations
             container.RegisterSingleton<IGameStateCoordinator>(() =>

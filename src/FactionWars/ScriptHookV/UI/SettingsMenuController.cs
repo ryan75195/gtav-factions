@@ -1,5 +1,6 @@
 using FactionWars.Core.Interfaces;
 using FactionWars.Core.Models;
+using FactionWars.ScriptHookV.Logging;
 using FactionWars.UI.Interfaces;
 using FactionWars.UI.Models;
 using System;
@@ -61,10 +62,36 @@ namespace FactionWars.ScriptHookV.UI
         /// </summary>
         public const string DifficultyConfirmMenuId = "difficulty_confirm_menu";
 
+        /// <summary>
+        /// Item ID for the initialize starting conditions option.
+        /// </summary>
+        public const string InitializeConditionsItemId = "init_conditions";
+
+        /// <summary>
+        /// Menu ID for the initialize conditions confirmation menu.
+        /// </summary>
+        public const string InitConditionsConfirmMenuId = "init_conditions_confirm_menu";
+
+        /// <summary>
+        /// The starting cash amount for initialized conditions.
+        /// </summary>
+        public const int StartingCashAmount = 15000;
+
+        /// <summary>
+        /// The starting weapon for initialized conditions.
+        /// </summary>
+        public const string StartingWeapon = "WEAPON_PISTOL";
+
+        /// <summary>
+        /// The starting ammo count for the pistol.
+        /// </summary>
+        public const int StartingAmmo = 100;
+
         private readonly IMenuProvider _menuProvider;
         private readonly ISaveSlotManager _saveSlotManager;
         private readonly IGameStateCoordinator _gameStateCoordinator;
         private readonly IDifficultyService _difficultyService;
+        private readonly IGameBridge _gameBridge;
         private bool _isDebugModeEnabled;
         private Difficulty? _pendingDifficulty;
 
@@ -110,17 +137,20 @@ namespace FactionWars.ScriptHookV.UI
         /// <param name="saveSlotManager">The save slot manager for managing save files.</param>
         /// <param name="gameStateCoordinator">The game state coordinator for save/load operations.</param>
         /// <param name="difficultyService">The difficulty service for managing game difficulty.</param>
+        /// <param name="gameBridge">The game bridge for applying player changes.</param>
         /// <exception cref="ArgumentNullException">Thrown if any parameter is null.</exception>
         public SettingsMenuController(
             IMenuProvider menuProvider,
             ISaveSlotManager saveSlotManager,
             IGameStateCoordinator gameStateCoordinator,
-            IDifficultyService difficultyService)
+            IDifficultyService difficultyService,
+            IGameBridge gameBridge)
         {
             _menuProvider = menuProvider ?? throw new ArgumentNullException(nameof(menuProvider));
             _saveSlotManager = saveSlotManager ?? throw new ArgumentNullException(nameof(saveSlotManager));
             _gameStateCoordinator = gameStateCoordinator ?? throw new ArgumentNullException(nameof(gameStateCoordinator));
             _difficultyService = difficultyService ?? throw new ArgumentNullException(nameof(difficultyService));
+            _gameBridge = gameBridge ?? throw new ArgumentNullException(nameof(gameBridge));
             _isDebugModeEnabled = false;
 
             // Subscribe to menu item selection events
@@ -155,6 +185,11 @@ namespace FactionWars.ScriptHookV.UI
                 DebugModeItemId,
                 $"Debug Mode: {debugStateText}",
                 "Toggle debug information display"));
+
+            menu.AddItem(new MenuItem(
+                InitializeConditionsItemId,
+                "Initialize Starting Conditions",
+                $"Reset to ${StartingCashAmount:N0} and pistol only"));
 
             menu.AddItem(new MenuItem(
                 BackItemId,
@@ -257,6 +292,9 @@ namespace FactionWars.ScriptHookV.UI
                 case DifficultyConfirmMenuId:
                     HandleDifficultyConfirmSelection(e.ItemId);
                     break;
+                case InitConditionsConfirmMenuId:
+                    HandleInitConditionsConfirmSelection(e.ItemId);
+                    break;
             }
         }
 
@@ -281,6 +319,9 @@ namespace FactionWars.ScriptHookV.UI
                     DebugModeChanged?.Invoke(this, _isDebugModeEnabled);
                     // Refresh menu to show updated state
                     Show();
+                    break;
+                case InitializeConditionsItemId:
+                    ShowInitConditionsConfirmation();
                     break;
                 case BackItemId:
                     _menuProvider.CloseMenu();
@@ -469,6 +510,69 @@ namespace FactionWars.ScriptHookV.UI
             _difficultyService.SetDifficulty(level);
             _pendingDifficulty = null;
             Show(); // Return to settings menu instead of closing
+        }
+
+        /// <summary>
+        /// Shows the initialize starting conditions confirmation menu with warning.
+        /// </summary>
+        private void ShowInitConditionsConfirmation()
+        {
+            var menu = new MenuDefinition(
+                InitConditionsConfirmMenuId,
+                "Warning",
+                "This will modify your GTA V character!");
+
+            menu.AddItem(new MenuItem(
+                "confirm",
+                "Yes, Apply Changes",
+                $"Set cash to ${StartingCashAmount:N0}, remove weapons, give pistol"));
+
+            menu.AddItem(new MenuItem(
+                "cancel",
+                "Cancel",
+                "Go back without changing"));
+
+            _menuProvider.ShowMenu(menu);
+        }
+
+        /// <summary>
+        /// Handles selections from the initialize conditions confirmation menu.
+        /// </summary>
+        private void HandleInitConditionsConfirmSelection(string itemId)
+        {
+            if (itemId == "confirm")
+            {
+                ApplyStartingConditions();
+            }
+            else if (itemId == "cancel")
+            {
+                Show();
+            }
+        }
+
+        /// <summary>
+        /// Applies the starting conditions: sets cash to $15,000, removes all weapons, gives pistol.
+        /// </summary>
+        private void ApplyStartingConditions()
+        {
+            FileLogger.Info($"ApplyStartingConditions: Setting player cash to ${StartingCashAmount:N0}, removing weapons, giving {StartingWeapon}");
+
+            // Set player money to starting amount
+            _gameBridge.SetPlayerMoney(StartingCashAmount);
+
+            // Remove all weapons
+            _gameBridge.RemoveAllPlayerWeapons();
+
+            // Give starting weapon
+            _gameBridge.GivePlayerWeapon(StartingWeapon, StartingAmmo);
+
+            // Show notification
+            _gameBridge.ShowNotification($"~g~Starting conditions applied!~n~~w~Cash: ${StartingCashAmount:N0}~n~Weapon: Pistol");
+
+            FileLogger.Info("ApplyStartingConditions: Complete");
+
+            // Return to settings menu
+            Show();
         }
     }
 }
