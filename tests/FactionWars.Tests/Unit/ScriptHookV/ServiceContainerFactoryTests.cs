@@ -547,46 +547,57 @@ namespace FactionWars.Tests.Unit.ScriptHookV
         }
 
         [Fact]
-        public void Create_ShouldRegisterSaveSlotManagerWithPersistenceService()
+        public void Create_ShouldRegisterSidecarStore()
         {
-            // Arrange
             var gameBridge = CreateMockGameBridge();
 
-            // Act
             var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
 
-            // Assert
-            Assert.True(container.IsRegistered<ISaveSlotManager>());
-            var saveSlotManager = container.Resolve<ISaveSlotManager>();
-            // Should be a real SaveSlotManager, not a stub
-            Assert.IsType<FactionWars.Persistence.SaveSlotManager>(saveSlotManager);
+            Assert.True(container.IsRegistered<FactionWars.Persistence.ISidecarStore>());
+            var sidecarStore = container.Resolve<FactionWars.Persistence.ISidecarStore>();
+            Assert.IsType<FactionWars.Persistence.SidecarStore>(sidecarStore);
         }
 
         [Fact]
-        public void Create_ShouldReturnSingletonSaveSlotManager()
+        public void Create_ShouldReturnSingletonSidecarStore()
         {
-            // Arrange
             var gameBridge = CreateMockGameBridge();
             var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
 
-            // Act
-            var service1 = container.Resolve<ISaveSlotManager>();
-            var service2 = container.Resolve<ISaveSlotManager>();
+            var service1 = container.Resolve<FactionWars.Persistence.ISidecarStore>();
+            var service2 = container.Resolve<FactionWars.Persistence.ISidecarStore>();
 
-            // Assert
             Assert.Same(service1, service2);
+        }
+
+        [Fact]
+        public void Create_ShouldRegisterLegacyBackupTask()
+        {
+            var gameBridge = CreateMockGameBridge();
+
+            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
+
+            Assert.True(container.IsRegistered<FactionWars.ScriptHookV.Persistence.LegacyBackupTask>());
+            Assert.NotNull(container.Resolve<FactionWars.ScriptHookV.Persistence.LegacyBackupTask>());
+        }
+
+        [Fact]
+        public void Create_ShouldRegisterNativeSaveWatcher()
+        {
+            var gameBridge = CreateMockGameBridge();
+
+            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
+
+            Assert.True(container.IsRegistered<FactionWars.ScriptHookV.Persistence.NativeSaveWatcher>());
         }
 
         [Fact]
         public void Create_ShouldRegisterGameStateManager()
         {
-            // Arrange
             var gameBridge = CreateMockGameBridge();
 
-            // Act
             var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
 
-            // Assert
             Assert.True(container.IsRegistered<FactionWars.ScriptHookV.Persistence.IGameStateManager>());
             var manager = container.Resolve<FactionWars.ScriptHookV.Persistence.IGameStateManager>();
             Assert.IsType<FactionWars.ScriptHookV.Persistence.GameStateManager>(manager);
@@ -595,107 +606,13 @@ namespace FactionWars.Tests.Unit.ScriptHookV
         [Fact]
         public void Create_ShouldReturnSingletonGameStateManager()
         {
-            // Arrange
             var gameBridge = CreateMockGameBridge();
             var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
 
-            // Act
             var service1 = container.Resolve<FactionWars.ScriptHookV.Persistence.IGameStateManager>();
             var service2 = container.Resolve<FactionWars.ScriptHookV.Persistence.IGameStateManager>();
 
-            // Assert
             Assert.Same(service1, service2);
-        }
-
-        [Fact]
-        public void Create_ShouldRegisterGameStateCoordinatorWithRealImplementation()
-        {
-            // Arrange
-            var gameBridge = CreateMockGameBridge();
-
-            // Act
-            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
-
-            // Assert
-            Assert.True(container.IsRegistered<IGameStateCoordinator>());
-            var coordinator = container.Resolve<IGameStateCoordinator>();
-            // Should be a real GameStateCoordinator, not a stub
-            Assert.IsType<FactionWars.ScriptHookV.Persistence.GameStateCoordinator>(coordinator);
-        }
-
-        [Fact]
-        public void Create_ShouldReturnSingletonGameStateCoordinator()
-        {
-            // Arrange
-            var gameBridge = CreateMockGameBridge();
-            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
-
-            // Act
-            var service1 = container.Resolve<IGameStateCoordinator>();
-            var service2 = container.Resolve<IGameStateCoordinator>();
-
-            // Assert
-            Assert.Same(service1, service2);
-        }
-
-        [Fact]
-        public void Create_ShouldRegisterAutoSaveService()
-        {
-            // Arrange
-            var gameBridge = CreateMockGameBridge();
-
-            // Act
-            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
-
-            // Assert
-            Assert.True(container.IsRegistered<IAutoSaveService>());
-            var autoSaveService = container.Resolve<IAutoSaveService>();
-            Assert.IsType<FactionWars.Persistence.AutoSaveService>(autoSaveService);
-        }
-
-        [Fact]
-        public void Create_ShouldReturnSingletonAutoSaveService()
-        {
-            // Arrange
-            var gameBridge = CreateMockGameBridge();
-            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
-
-            // Act
-            var service1 = container.Resolve<IAutoSaveService>();
-            var service2 = container.Resolve<IAutoSaveService>();
-
-            // Assert
-            Assert.Same(service1, service2);
-        }
-
-        [Fact]
-        public void Create_AutoSaveService_ShouldHaveCorrectSaveDirectory()
-        {
-            // Arrange
-            var gameBridge = CreateMockGameBridge();
-            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
-
-            // Act
-            var autoSaveService = container.Resolve<IAutoSaveService>();
-
-            // Assert
-            // The auto-save file path should be in the user's documents/FactionWars directory
-            Assert.Contains("FactionWars", autoSaveService.AutoSaveFilePath);
-            Assert.Contains("autosave.json", autoSaveService.AutoSaveFilePath);
-        }
-
-        [Fact]
-        public void Create_AutoSaveService_ShouldHaveDefaultFiveMinuteInterval()
-        {
-            // Arrange
-            var gameBridge = CreateMockGameBridge();
-            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
-
-            // Act
-            var autoSaveService = container.Resolve<IAutoSaveService>();
-
-            // Assert
-            Assert.Equal(TimeSpan.FromMinutes(5), autoSaveService.Interval);
         }
     }
 }

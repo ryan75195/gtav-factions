@@ -8,6 +8,9 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Persistence
 {
     public class NativeSaveWatcherTests : IDisposable
     {
+        private const int DebounceMs = 250;
+        private const int SettleMs = 1500;
+
         private readonly string _tempDir;
 
         public NativeSaveWatcherTests()
@@ -26,16 +29,28 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Persistence
             File.WriteAllText(Path.Combine(_tempDir, name), Guid.NewGuid().ToString());
         }
 
+        private static bool WaitForEventCount(Func<int> getCount, int target, int timeoutMs)
+        {
+            var start = Environment.TickCount;
+            while (Environment.TickCount - start < timeoutMs)
+            {
+                if (getCount() >= target) return true;
+                Thread.Sleep(20);
+            }
+            return getCount() >= target;
+        }
+
         [Fact]
         public void SingleSave_FiresOneEvent()
         {
             int eventCount = 0;
-            using var watcher = new NativeSaveWatcher(_tempDir, debounceMs: 100);
+            using var watcher = new NativeSaveWatcher(_tempDir, debounceMs: DebounceMs);
             watcher.OnNativeSaveWritten += (_, _) => Interlocked.Increment(ref eventCount);
             watcher.Start();
 
             WriteSgta("SGTA00003");
-            Thread.Sleep(400);
+            WaitForEventCount(() => Volatile.Read(ref eventCount), 1, SettleMs);
+            Thread.Sleep(DebounceMs);
 
             Assert.Equal(1, eventCount);
         }
@@ -44,7 +59,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Persistence
         public void MultipleRapidWritesSamePath_DebouncesToOneEvent()
         {
             int eventCount = 0;
-            using var watcher = new NativeSaveWatcher(_tempDir, debounceMs: 100);
+            using var watcher = new NativeSaveWatcher(_tempDir, debounceMs: DebounceMs);
             watcher.OnNativeSaveWritten += (_, _) => Interlocked.Increment(ref eventCount);
             watcher.Start();
 
@@ -53,7 +68,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Persistence
             WriteSgta("SGTA00003");
             Thread.Sleep(20);
             WriteSgta("SGTA00003");
-            Thread.Sleep(400);
+            WaitForEventCount(() => Volatile.Read(ref eventCount), 1, SettleMs);
+            Thread.Sleep(DebounceMs);
 
             Assert.Equal(1, eventCount);
         }
@@ -62,14 +78,15 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Persistence
         public void DistinctSaves_FireDistinctEvents()
         {
             int eventCount = 0;
-            using var watcher = new NativeSaveWatcher(_tempDir, debounceMs: 100);
+            using var watcher = new NativeSaveWatcher(_tempDir, debounceMs: DebounceMs);
             watcher.OnNativeSaveWritten += (_, _) => Interlocked.Increment(ref eventCount);
             watcher.Start();
 
             WriteSgta("SGTA00003");
-            Thread.Sleep(300);
+            Assert.True(WaitForEventCount(() => Volatile.Read(ref eventCount), 1, SettleMs), "first event did not fire");
+
             WriteSgta("SGTA00007");
-            Thread.Sleep(400);
+            Assert.True(WaitForEventCount(() => Volatile.Read(ref eventCount), 2, SettleMs), "second event did not fire");
 
             Assert.Equal(2, eventCount);
         }
@@ -78,12 +95,12 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Persistence
         public void NonSgtaFile_IsIgnored()
         {
             int eventCount = 0;
-            using var watcher = new NativeSaveWatcher(_tempDir, debounceMs: 100);
+            using var watcher = new NativeSaveWatcher(_tempDir, debounceMs: DebounceMs);
             watcher.OnNativeSaveWritten += (_, _) => Interlocked.Increment(ref eventCount);
             watcher.Start();
 
             File.WriteAllText(Path.Combine(_tempDir, "ignore.txt"), "hello");
-            Thread.Sleep(300);
+            Thread.Sleep(SettleMs);
 
             Assert.Equal(0, eventCount);
         }

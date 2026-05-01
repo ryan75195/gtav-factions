@@ -1,6 +1,12 @@
-using System;
-using System.Windows.Forms;
+using FactionWars.Core.Interfaces;
+using FactionWars.Persistence;
+using FactionWars.Persistence.Models;
+using FactionWars.ScriptHookV.Logging;
+using FactionWars.ScriptHookV.Persistence;
 using GTA;
+using System;
+using System.IO;
+using System.Windows.Forms;
 
 namespace FactionWars.ScriptHookV
 {
@@ -14,57 +20,67 @@ namespace FactionWars.ScriptHookV
         private GameLoopController? _controller;
         private bool _initializationAttempted;
 
-        /// <summary>
-        /// Initializes the FactionWars script.
-        /// </summary>
+        private NativeSaveWatcher? _nativeSaveWatcher;
+        private LoadDetector? _loadDetector;
+        private IGameBridge? _gameBridge;
+        private IGameStateManager? _gameStateManager;
+
         public FactionWarsScript()
         {
             Tick += OnTick;
             KeyDown += OnKeyDown;
             KeyUp += OnKeyUp;
             Aborted += OnAborted;
-
-            // Defer initialization to first tick to ensure game is ready
         }
 
-        /// <summary>
-        /// Called every frame by ScriptHookVDotNet.
-        /// </summary>
         private void OnTick(object sender, EventArgs e)
         {
             EnsureInitialized();
             _controller?.OnTick();
+            TickLoadDetector();
         }
 
-        /// <summary>
-        /// Called when a key is pressed.
-        /// </summary>
         private void OnKeyDown(object sender, KeyEventArgs e)
         {
             _controller?.OnKeyDown((int)e.KeyCode);
         }
 
-        /// <summary>
-        /// Called when a key is released.
-        /// </summary>
         private void OnKeyUp(object sender, KeyEventArgs e)
         {
             _controller?.OnKeyUp((int)e.KeyCode);
         }
 
-        /// <summary>
-        /// Called when the script is aborted/unloaded.
-        /// </summary>
         private void OnAborted(object sender, EventArgs e)
         {
+            try
+            {
+                if (_nativeSaveWatcher != null)
+                {
+                    _nativeSaveWatcher.OnNativeSaveWritten -= HandleNativeSaveWritten;
+                    _nativeSaveWatcher.Dispose();
+                    _nativeSaveWatcher = null;
+                }
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error("OnAborted: failed to dispose NativeSaveWatcher", ex);
+            }
+
             _controller?.OnAbort();
             _controller = null;
         }
 
-        /// <summary>
-        /// Initializes the game controller and all services.
-        /// Called on first tick to ensure the game is fully loaded.
-        /// </summary>
+        private void TickLoadDetector()
+        {
+            if (_loadDetector == null) return;
+
+            bool isLoading;
+            try { isLoading = Game.IsLoading; }
+            catch { isLoading = false; }
+
+            _loadDetector.Tick(isLoading);
+        }
+
         private void EnsureInitialized()
         {
             if (_initializationAttempted)
@@ -74,20 +90,53 @@ namespace FactionWars.ScriptHookV
 
             try
             {
-                // Create the game bridge that connects to GTA V natives
-                var gameBridge = new GameBridge();
+                _gameBridge = new GameBridge();
 
-                // Create the service container with all services wired up
-                var container = ServiceContainerFactory.Create(gameBridge);
+                var container = ServiceContainerFactory.Create((GameBridge)_gameBridge);
 
-                // Create the game loop controller
                 _controller = new GameLoopController(container);
+
+                container.Resolve<LegacyBackupTask>().Run();
+
+                _gameStateManager = container.Resolve<IGameStateManager>();
+                var sidecarStore = container.Resolve<ISidecarStore>();
+
+                _loadDetector = new LoadDetector(
+                    _gameBridge,
+                    sidecarStore,
+                    onHydrate: sidecar => _gameStateManager.HydrateFromSidecar(sidecar),
+                    onNewGame: () => _gameStateManager.NewGame());
+
+                _nativeSaveWatcher = container.Resolve<NativeSaveWatcher>();
+                _nativeSaveWatcher.OnNativeSaveWritten += HandleNativeSaveWritten;
+                _nativeSaveWatcher.Start();
 
                 GTA.UI.Notification.Show("~b~FactionWars~w~ loaded successfully!");
             }
             catch (Exception ex)
             {
+                FileLogger.Error("FactionWarsScript: initialization failed", ex);
                 GTA.UI.Notification.Show($"~r~FactionWars failed to load:~w~ {ex.Message}");
+            }
+        }
+
+        private void HandleNativeSaveWritten(object? sender, NativeSaveWatcher.SaveEvent e)
+        {
+            try
+            {
+                if (_gameBridge == null || _gameStateManager == null) return;
+
+                var fingerprint = SaveFingerprint.Capture(_gameBridge);
+                var pos = _gameBridge.GetPlayerPosition();
+                var heading = _gameBridge.GetPlayerHeading();
+                var position = new PlayerPosition { X = pos.X, Y = pos.Y, Z = pos.Z, Heading = heading };
+                var nativeFilename = Path.GetFileName(e.Path);
+
+                _gameStateManager.WriteCurrentSidecar(fingerprint, position, nativeFilename);
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error("HandleNativeSaveWritten: failed", ex);
             }
         }
     }
