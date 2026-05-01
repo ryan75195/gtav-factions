@@ -17,7 +17,7 @@ namespace FactionWars.ScriptHookV.Managers
     /// Coordinates ped tracking, control percentage calculations, and takeover detection.
     /// Supports wave-based spawning where Heavy defenders spawn first, then Medium, then Basic.
     /// </summary>
-    public class CombatManager
+    public class CombatManager : ICombatActivityQuery
     {
         private readonly IGameBridge _gameBridge;
         private readonly IPedPool _pedPool;
@@ -46,6 +46,9 @@ namespace FactionWars.ScriptHookV.Managers
         /// Gets whether the player is currently in combat.
         /// </summary>
         public bool IsInCombat => _currentEncounter != null;
+
+        /// <inheritdoc />
+        public bool HasActiveEncounter => _currentEncounter != null;
 
         /// <summary>
         /// Gets the current wave state for wave-based spawning, or null if not in combat.
