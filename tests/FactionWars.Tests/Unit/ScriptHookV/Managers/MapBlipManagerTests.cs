@@ -296,6 +296,88 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             Assert.Equal(-1, handle);
         }
 
+        private MapBlipManager BuildInitializedManagerWithContestedZone(string zoneId, long initialClockMs, out Zone zone)
+        {
+            zone = new Zone(zoneId, "Test Zone", new Vector3(0, 0, 0), 100f, 5)
+            {
+                OwnerFactionId = "michael",
+                IsContested = true,
+            };
+            _zoneRepositoryMock.Setup(r => r.GetAll()).Returns(new List<Zone> { zone });
+            _gameBridgeMock.Setup(g => g.CreateBlip(It.IsAny<Vector3>())).Returns(42);
+
+            long now = initialClockMs;
+            var manager = new MapBlipManager(_gameBridgeMock.Object, _zoneRepositoryMock.Object, _factionServiceMock.Object, () => now);
+            manager.Initialize();
+            _gameBridgeMock.Invocations.Clear();
+            return manager;
+        }
+
+        [Fact]
+        public void UpdateBlipColors_ContestedZone_FlashesRedOnFirstHalfOfPhase()
+        {
+            long clock = 0;
+            var zone = new Zone("z1", "Z", new Vector3(0, 0, 0), 100f, 5)
+            {
+                OwnerFactionId = "michael",
+                IsContested = true,
+            };
+            _zoneRepositoryMock.Setup(r => r.GetAll()).Returns(new List<Zone> { zone });
+            _gameBridgeMock.Setup(g => g.CreateBlip(It.IsAny<Vector3>())).Returns(42);
+
+            var manager = new MapBlipManager(_gameBridgeMock.Object, _zoneRepositoryMock.Object, _factionServiceMock.Object, () => clock);
+            manager.Initialize();
+            _gameBridgeMock.Invocations.Clear();
+
+            clock = 100; // first half of a 1Hz cycle (0-499 → red)
+            manager.UpdateBlipColors();
+
+            _gameBridgeMock.Verify(g => g.SetBlipColor(42, BlipColor.Red), Times.Once);
+        }
+
+        [Fact]
+        public void UpdateBlipColors_ContestedZone_FlashesWhiteOnSecondHalfOfPhase()
+        {
+            long clock = 0;
+            var zone = new Zone("z1", "Z", new Vector3(0, 0, 0), 100f, 5)
+            {
+                OwnerFactionId = "michael",
+                IsContested = true,
+            };
+            _zoneRepositoryMock.Setup(r => r.GetAll()).Returns(new List<Zone> { zone });
+            _gameBridgeMock.Setup(g => g.CreateBlip(It.IsAny<Vector3>())).Returns(42);
+
+            var manager = new MapBlipManager(_gameBridgeMock.Object, _zoneRepositoryMock.Object, _factionServiceMock.Object, () => clock);
+            manager.Initialize();
+            _gameBridgeMock.Invocations.Clear();
+
+            clock = 700; // second half of a 1Hz cycle (500-999 → white)
+            manager.UpdateBlipColors();
+
+            _gameBridgeMock.Verify(g => g.SetBlipColor(42, BlipColor.White), Times.Once);
+        }
+
+        [Fact]
+        public void UpdateBlipColors_UncontestedZone_KeepsOwnerColor()
+        {
+            long clock = 200;
+            var zone = new Zone("z1", "Z", new Vector3(0, 0, 0), 100f, 5)
+            {
+                OwnerFactionId = "michael",
+                IsContested = false,
+            };
+            _zoneRepositoryMock.Setup(r => r.GetAll()).Returns(new List<Zone> { zone });
+            _gameBridgeMock.Setup(g => g.CreateBlip(It.IsAny<Vector3>())).Returns(42);
+
+            var manager = new MapBlipManager(_gameBridgeMock.Object, _zoneRepositoryMock.Object, _factionServiceMock.Object, () => clock);
+            manager.Initialize();
+            _gameBridgeMock.Invocations.Clear();
+
+            manager.UpdateBlipColors();
+
+            _gameBridgeMock.Verify(g => g.SetBlipColor(42, BlipColor.MichaelBlue), Times.Once);
+        }
+
         [Fact]
         public void Initialize_WhenBlipCreationFails_ShouldNotTrackBlip()
         {

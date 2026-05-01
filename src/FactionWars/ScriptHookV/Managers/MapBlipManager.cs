@@ -19,9 +19,13 @@ namespace FactionWars.ScriptHookV.Managers
         /// </summary>
         private const int SkullBlipSprite = 84;
 
+        /// <summary>Full cycle of the contested-zone red/white flash, in milliseconds.</summary>
+        private const long ContestedFlashPeriodMs = 1000;
+
         private readonly IGameBridge _gameBridge;
         private readonly IZoneRepository _zoneRepository;
         private readonly IFactionService _factionService;
+        private readonly Func<long> _nowMs;
         private readonly Dictionary<string, int> _zoneBlips;
         private bool _disposed;
 
@@ -33,10 +37,19 @@ namespace FactionWars.ScriptHookV.Managers
         /// <param name="factionService">The faction service for faction information.</param>
         /// <exception cref="ArgumentNullException">Thrown if any parameter is null.</exception>
         public MapBlipManager(IGameBridge gameBridge, IZoneRepository zoneRepository, IFactionService factionService)
+            : this(gameBridge, zoneRepository, factionService, () => Environment.TickCount)
+        {
+        }
+
+        /// <summary>
+        /// Test-friendly overload that accepts an injected clock for deterministic flash phasing.
+        /// </summary>
+        public MapBlipManager(IGameBridge gameBridge, IZoneRepository zoneRepository, IFactionService factionService, Func<long> nowMs)
         {
             _gameBridge = gameBridge ?? throw new ArgumentNullException(nameof(gameBridge));
             _zoneRepository = zoneRepository ?? throw new ArgumentNullException(nameof(zoneRepository));
             _factionService = factionService ?? throw new ArgumentNullException(nameof(factionService));
+            _nowMs = nowMs ?? throw new ArgumentNullException(nameof(nowMs));
             _zoneBlips = new Dictionary<string, int>();
         }
 
@@ -82,11 +95,14 @@ namespace FactionWars.ScriptHookV.Managers
         /// </summary>
         public void UpdateBlipColors()
         {
+            bool flashRedPhase = (_nowMs() % ContestedFlashPeriodMs) < (ContestedFlashPeriodMs / 2);
             foreach (var zone in _zoneRepository.GetAll())
             {
                 if (_zoneBlips.TryGetValue(zone.Id, out var blipHandle))
                 {
-                    var color = GetBlipColorForFaction(zone.OwnerFactionId);
+                    var color = zone.IsContested
+                        ? (flashRedPhase ? BlipColor.Red : BlipColor.White)
+                        : GetBlipColorForFaction(zone.OwnerFactionId);
                     _gameBridge.SetBlipColor(blipHandle, color);
                 }
             }
