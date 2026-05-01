@@ -46,6 +46,8 @@ namespace FactionWars.ScriptHookV.Managers
         /// </summary>
         public void Initialize()
         {
+            FileLogger.Separator("MAP BLIP INITIALIZATION");
+
             // Clean up existing blips if re-initializing
             CleanupBlips();
 
@@ -58,16 +60,25 @@ namespace FactionWars.ScriptHookV.Managers
                 if (blipHandle != -1)
                 {
                     _zoneBlips[zone.Id] = blipHandle;
-                    _gameBridge.SetBlipSprite(blipHandle, SkullBlipSprite);
+                    var sprite = SkullBlipSprite;
+                    _gameBridge.SetBlipSprite(blipHandle, sprite);
                     _gameBridge.SetBlipName(blipHandle, zone.Name);
                     var color = GetBlipColorForFaction(zone.OwnerFactionId);
                     _gameBridge.SetBlipColor(blipHandle, color);
+
+                    FileLogger.Zone($"Blip created: '{zone.Name}' (ID: {zone.Id}) -> Owner: {zone.OwnerFactionId ?? "NONE"} -> Color: {color} -> Sprite: {sprite}");
+                }
+                else
+                {
+                    FileLogger.Warn($"Failed to create blip for zone '{zone.Name}' (ID: {zone.Id})");
                 }
             }
+
+            FileLogger.Info($"MapBlipManager: Created {_zoneBlips.Count} zone blips");
         }
 
         /// <summary>
-        /// Updates all blip colors based on current zone ownership.
+        /// Updates all blip colors and sprites based on current zone ownership and contest status.
         /// </summary>
         public void UpdateBlipColors()
         {
@@ -82,7 +93,7 @@ namespace FactionWars.ScriptHookV.Managers
         }
 
         /// <summary>
-        /// Updates the blip color for a specific zone.
+        /// Updates the blip color and sprite for a specific zone.
         /// </summary>
         /// <param name="zoneId">The ID of the zone to update.</param>
         public void UpdateBlipColor(string zoneId)
@@ -94,6 +105,7 @@ namespace FactionWars.ScriptHookV.Managers
                 {
                     var color = GetBlipColorForFaction(zone.OwnerFactionId);
                     _gameBridge.SetBlipColor(blipHandle, color);
+                    FileLogger.Zone($"Blip updated: '{zone.Name}' -> Owner: {zone.OwnerFactionId ?? "NONE"} -> Color: {color} -> Contested: {zone.IsContested}");
                 }
             }
         }

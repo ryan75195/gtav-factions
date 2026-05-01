@@ -15,7 +15,7 @@ namespace FactionWars.ScriptHookV.UI
         // Position constants - right side, below weapon/ammo HUD
         private const float BoxX = 0.92f;       // Right side of screen
         private const float BoxY = 0.76f;       // Below weapon/ammo HUD area
-        private const float BoxWidth = 0.14f;   // Compact width
+        private const float BoxWidth = 0.19f;   // Wide enough for battle stats
         private const float BoxPadding = 0.005f;
         private const float AccentBarWidth = 0.003f;
 

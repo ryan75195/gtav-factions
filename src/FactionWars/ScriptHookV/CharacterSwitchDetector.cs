@@ -1,5 +1,6 @@
 using System;
 using FactionWars.Core.Interfaces;
+using FactionWars.ScriptHookV.Logging;
 
 namespace FactionWars.ScriptHookV
 {
@@ -73,6 +74,8 @@ namespace FactionWars.ScriptHookV
             _currentFactionId = _factionDetector.GetFactionIdFromCharacterModel(_currentCharacterModel);
             _previousFactionId = null;
             _isInitialized = true;
+
+            FileLogger.Info($"CharacterSwitchDetector initialized: Model={_currentCharacterModel}, Faction={_currentFactionId ?? "UNKNOWN"}");
         }
 
         /// <summary>
@@ -105,6 +108,10 @@ namespace FactionWars.ScriptHookV
             // Update current values
             _currentCharacterModel = currentModel;
             _currentFactionId = newFactionId;
+
+            FileLogger.Separator("CHARACTER SWITCH DETECTED");
+            FileLogger.Info($"Character switch: {_previousFactionId ?? "UNKNOWN"} -> {_currentFactionId ?? "UNKNOWN"}");
+            FileLogger.Info($"Model changed: {oldFactionId} -> {currentModel}");
 
             // Raise event
             OnCharacterSwitched?.Invoke(oldFactionId, newFactionId);
