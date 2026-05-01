@@ -504,36 +504,62 @@ namespace FactionWars.ScriptHookV
         /// <inheritdoc />
         public long GetTotalPlayTimeSeconds()
         {
-            int activeChar = GetActiveSpCharacterIndex();
-            string statName = $"SP{activeChar}_TOTAL_PLAYING_TIME";
-            int hash = Function.Call<int>(Hash.GET_HASH_KEY, statName);
-            int millisOut = 0;
-            Function.Call(Hash.STAT_GET_INT, hash, new OutputArgument(millisOut), -1);
-            long seconds = millisOut / 1000L;
-            FileLogger.Debug($"GetTotalPlayTimeSeconds: stat={statName} ms={millisOut} s={seconds}");
-            return seconds;
+            try
+            {
+                int activeChar = GetActiveSpCharacterIndex();
+                string statName = $"SP{activeChar}_TOTAL_PLAYING_TIME";
+                int hash = Function.Call<int>(Hash.GET_HASH_KEY, statName);
+                var outArg = new OutputArgument();
+                bool ok = Function.Call<bool>(Hash.STAT_GET_INT, hash, outArg, -1);
+                int millisOut = ok ? outArg.GetResult<int>() : 0;
+                long seconds = millisOut / 1000L;
+                FileLogger.Debug($"GetTotalPlayTimeSeconds: stat={statName} ok={ok} ms={millisOut} s={seconds}");
+                return seconds;
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error("GetTotalPlayTimeSeconds exception", ex);
+                return 0;
+            }
         }
 
         /// <inheritdoc />
         public int GetCompletedMissionCount()
         {
-            int activeChar = GetActiveSpCharacterIndex();
-            string statName = $"SP{activeChar}_TOTAL_MISSIONS_PASSED";
-            int hash = Function.Call<int>(Hash.GET_HASH_KEY, statName);
-            int valueOut = 0;
-            Function.Call(Hash.STAT_GET_INT, hash, new OutputArgument(valueOut), -1);
-            FileLogger.Debug($"GetCompletedMissionCount: stat={statName} value={valueOut}");
-            return valueOut;
+            try
+            {
+                int activeChar = GetActiveSpCharacterIndex();
+                string statName = $"SP{activeChar}_TOTAL_MISSIONS_PASSED";
+                int hash = Function.Call<int>(Hash.GET_HASH_KEY, statName);
+                var outArg = new OutputArgument();
+                bool ok = Function.Call<bool>(Hash.STAT_GET_INT, hash, outArg, -1);
+                int valueOut = ok ? outArg.GetResult<int>() : 0;
+                FileLogger.Debug($"GetCompletedMissionCount: stat={statName} ok={ok} value={valueOut}");
+                return valueOut;
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error("GetCompletedMissionCount exception", ex);
+                return 0;
+            }
         }
 
         /// <inheritdoc />
         public int GetInGameClockMinutes()
         {
-            int hours = Function.Call<int>(Hash.GET_CLOCK_HOURS);
-            int minutes = Function.Call<int>(Hash.GET_CLOCK_MINUTES);
-            int total = hours * 60 + minutes;
-            FileLogger.Debug($"GetInGameClockMinutes: {hours:D2}:{minutes:D2} = {total}");
-            return total;
+            try
+            {
+                int hours = Function.Call<int>(Hash.GET_CLOCK_HOURS);
+                int minutes = Function.Call<int>(Hash.GET_CLOCK_MINUTES);
+                int total = hours * 60 + minutes;
+                FileLogger.Debug($"GetInGameClockMinutes: {hours:D2}:{minutes:D2} = {total}");
+                return total;
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error("GetInGameClockMinutes exception", ex);
+                return 0;
+            }
         }
 
         private int GetActiveSpCharacterIndex()
