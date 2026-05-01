@@ -73,6 +73,10 @@ namespace FactionWars.ScriptHookV.Managers
             {
                 IssueRallyTasks(zone!);
             }
+            else if (!shouldRally && _wasUnderAttack)
+            {
+                IssueStandDownTasks(zone);
+            }
 
             _wasUnderAttack = shouldRally;
         }
@@ -90,6 +94,23 @@ namespace FactionWars.ScriptHookV.Managers
                 _bridge.TaskCombatHatedTargetsAroundPed(pedHandle, RallyCombatRadiusM);
                 _rallyingPeds.Add(pedHandle);
             }
+        }
+
+        private void IssueStandDownTasks(Zone? zone)
+        {
+            if (zone == null)
+            {
+                // The player left the zone; defenders that were rallying are out of scope
+                // (they belong to a zone we no longer track). Just clear our tracking.
+                _rallyingPeds.Clear();
+                return;
+            }
+
+            foreach (var pedHandle in _rallyingPeds)
+            {
+                _bridge.TaskPedWanderInArea(pedHandle, zone.Center, zone.Radius);
+            }
+            _rallyingPeds.Clear();
         }
     }
 }
