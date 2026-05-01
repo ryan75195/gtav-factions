@@ -49,12 +49,12 @@ namespace FactionWars.ScriptHookV.Managers
             var zone = _territory.CurrentZone;
             var playerFactionId = _currentPlayerFactionIdAccessor();
 
-            bool isUnderAttackNow = false;
             bool inOwnZone = zone != null && zone.OwnerFactionId != null && zone.OwnerFactionId == playerFactionId;
+            bool inEnemyZone = zone != null && zone.OwnerFactionId != null && zone.OwnerFactionId != playerFactionId;
 
+            bool isUnderAttackNow = false;
             if (inOwnZone)
             {
-                // Cheap composite signal: any ONE of these triggers rally.
                 bool wanted = _bridge.GetWantedLevel() > 0;
                 bool encounter = _combat.HasActiveEncounter;
                 bool damaged = _bridge.ConsumePlayerDamagedByPedFlag();
@@ -65,9 +65,10 @@ namespace FactionWars.ScriptHookV.Managers
             if (isUnderAttackNow)
                 _underAttackUntilTickMs = now + UnderAttackCoolDownMs;
 
-            bool isUnderAttack = inOwnZone && now < _underAttackUntilTickMs;
+            bool friendlyRally = inOwnZone && now < _underAttackUntilTickMs;
+            bool hostileRally = inEnemyZone;
 
-            bool shouldRally = isUnderAttack;
+            bool shouldRally = friendlyRally || hostileRally;
 
             if (shouldRally && !_wasUnderAttack)
             {

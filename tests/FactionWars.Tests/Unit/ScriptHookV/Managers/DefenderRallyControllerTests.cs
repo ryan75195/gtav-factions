@@ -303,5 +303,77 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
 
             Assert.False(_bridge.IsPedGoingToEntity(defender));
         }
+
+        // ---- Hostile rally: player invading enemy zone -----------------------
+
+        [Fact]
+        public void Update_PlayerInEnemyZone_RalliesEnemyDefenders()
+        {
+            // Player is michael; zone is owned by trevor.
+            _playerFactionId = "michael";
+            var enemy = OwnedZone("sandy_shores", "trevor");
+            SetCurrentZone(enemy);
+            int defender = SpawnDefenderInZone(enemy.Id);
+            _bridge.PlayerPedHandle = 99;
+
+            // No threat signals at all (no wanted level, no combat, no damage).
+            var sut = BuildSut();
+            sut.Update();
+
+            Assert.True(_bridge.IsPedGoingToEntity(defender));
+            Assert.Equal(99, _bridge.GetGoToEntityTarget(defender));
+        }
+
+        [Fact]
+        public void Update_PlayerLeavesEnemyZone_EnemyDefendersResumeWander()
+        {
+            _playerFactionId = "michael";
+            var enemy = OwnedZone("sandy_shores", "trevor");
+            SetCurrentZone(enemy);
+            int defender = SpawnDefenderInZone(enemy.Id);
+
+            var sut = BuildSut();
+            sut.Update(); // Hostile rally starts.
+
+            // Player leaves the zone (no current zone).
+            SetCurrentZone(null);
+            sut.Update(); // Should immediately stand down — no cool-down for hostile case.
+
+            // After stand-down, defender's wander task: we cannot verify the wander because
+            // we have no zone reference. The contract is: _rallyingPeds is cleared without
+            // re-issuing wander (zone is null in IssueStandDownTasks).
+            // Re-arm: a NEW rally must transition false -> true cleanly on the next zone.
+            var newEnemy = OwnedZone("grapeseed", "trevor");
+            SetCurrentZone(newEnemy);
+            int newDefender = SpawnDefenderInZone(newEnemy.Id);
+            sut.Update();
+
+            Assert.True(_bridge.IsPedGoingToEntity(newDefender));
+        }
+
+        [Fact]
+        public void Update_PlayerInEnemyZone_NoCoolDownAfterLeave()
+        {
+            // The cool-down only applies in own-zone case. In enemy-zone case,
+            // leaving the zone immediately ends the rally on the same tick.
+            _playerFactionId = "michael";
+            var enemy = OwnedZone("sandy_shores", "trevor");
+            SetCurrentZone(enemy);
+            int defender = SpawnDefenderInZone(enemy.Id);
+
+            var sut = BuildSut();
+            sut.Update(); // Rally starts.
+
+            SetCurrentZone(null);
+            sut.Update();
+            // Stand-down should have been issued without waiting 5s.
+
+            // Verify: re-entering the zone fires a fresh false -> true rally.
+            // First re-task the defender to wander so we can confirm the new tick re-rallies it.
+            _bridge.TaskPedWanderInArea(defender, enemy.Center, enemy.Radius);
+            SetCurrentZone(enemy);
+            sut.Update();
+            Assert.True(_bridge.IsPedGoingToEntity(defender));
+        }
     }
 }
