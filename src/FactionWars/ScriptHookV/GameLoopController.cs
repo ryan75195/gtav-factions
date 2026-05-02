@@ -446,10 +446,7 @@ namespace FactionWars.ScriptHookV
                             var allocation = _allocationService.GetAllocation(playerFactionId, currentZone.Id);
                             if (allocation != null)
                             {
-                                int totalAllocated = allocation.GetTroopCount(DefenderTier.Basic)
-                                                  + allocation.GetTroopCount(DefenderTier.Medium)
-                                                  + allocation.GetTroopCount(DefenderTier.Heavy);
-                                reserveCount = Math.Max(0, totalAllocated - deployedCount);
+                                reserveCount = Math.Max(0, allocation.TotalTroops - deployedCount);
                             }
                         }
                     }
