@@ -206,9 +206,13 @@ namespace FactionWars.ScriptHookV
                     container.Resolve<IPedPool>(),
                     container.Resolve<IZoneDefenderAllocationRepository>()));
 
-            // Zone battle manager - unified manager for battle lifecycle
+            // Zone battle manager - unified manager for battle lifecycle. Takes the
+            // allocation/faction services so simulated kills decrement source-of-truth
+            // troop counts, not just per-battle state.
             container.RegisterSingleton<IZoneBattleManager>(() =>
-                new ZoneBattleManager());
+                new ZoneBattleManager(
+                    container.Resolve<IZoneDefenderAllocationService>(),
+                    container.Resolve<IFactionService>()));
         }
 
         private static void RegisterPersistenceServices(ServiceContainer container)

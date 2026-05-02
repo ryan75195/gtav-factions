@@ -4,8 +4,11 @@ using System.Linq;
 using FactionWars.Combat.Interfaces;
 using FactionWars.Combat.Models;
 using FactionWars.Combat.Services;
+using FactionWars.Core.Interfaces;
 using FactionWars.Core.Models;
+using FactionWars.Factions.Interfaces;
 using FactionWars.Territory.Models;
+using Moq;
 using Xunit;
 
 namespace FactionWars.Tests.Unit.Combat
@@ -20,7 +23,12 @@ namespace FactionWars.Tests.Unit.Combat
 
         private ZoneBattleManager CreateManager(string? playerFactionId = null)
         {
-            return new ZoneBattleManager(playerFactionId);
+            // These tests don't exercise the simulated-kill reconciliation path, so
+            // pass loose mocks. The dedicated reconciliation tests live in
+            // ZoneBattleManagerAllocationSyncTests.
+            var allocationService = new Mock<IZoneDefenderAllocationService>().Object;
+            var factionService = new Mock<IFactionService>().Object;
+            return new ZoneBattleManager(allocationService, factionService, playerFactionId);
         }
 
         private Dictionary<DefenderTier, int> CreateTroops(int basic, int medium, int heavy)

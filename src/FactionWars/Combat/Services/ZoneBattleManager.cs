@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using FactionWars.Combat.Interfaces;
 using FactionWars.Combat.Models;
+using FactionWars.Core.Interfaces;
 using FactionWars.Core.Models;
+using FactionWars.Factions.Interfaces;
 using FactionWars.Territory.Models;
 
 namespace FactionWars.Combat.Services
@@ -16,6 +18,8 @@ namespace FactionWars.Combat.Services
     {
         private readonly Dictionary<string, ZoneBattle> _battlesByZone;
         private readonly Random _random;
+        private readonly IZoneDefenderAllocationService _allocationService;
+        private readonly IFactionService _factionService;
         private string? _playerFactionId;
 
         // Configuration constants (matching ActiveBattleManager)
@@ -49,9 +53,16 @@ namespace FactionWars.Combat.Services
         /// <summary>
         /// Creates a new ZoneBattleManager.
         /// </summary>
+        /// <param name="allocationService">Source of truth for per-zone defender allocations. Simulated defender losses decrement the matching allocation so the next player visit doesn't see phantom troops.</param>
+        /// <param name="factionService">Source of truth for faction reserves. Simulated attacker losses decrement the attacking faction's reserve so attacks actually deplete forces.</param>
         /// <param name="playerFactionId">The player's faction ID, if known.</param>
-        public ZoneBattleManager(string? playerFactionId = null)
+        public ZoneBattleManager(
+            IZoneDefenderAllocationService allocationService,
+            IFactionService factionService,
+            string? playerFactionId = null)
         {
+            _allocationService = allocationService ?? throw new ArgumentNullException(nameof(allocationService));
+            _factionService = factionService ?? throw new ArgumentNullException(nameof(factionService));
             _battlesByZone = new Dictionary<string, ZoneBattle>();
             _random = new Random();
             _playerFactionId = playerFactionId;
@@ -272,6 +283,10 @@ namespace FactionWars.Combat.Services
                 // Attacker kills a defender
                 victimTier = SelectVictimTier(battle.DefenderTroops);
                 battle.RemoveDefenderTroop(victimTier);
+                // Reconcile the simulated kill back to the defender's allocation so the
+                // next player visit doesn't see a phantom troop that was already lost.
+                _allocationService.GetAllocation(battle.DefenderFactionId, battle.ZoneId)
+                    ?.RemoveTroops(victimTier, 1);
                 victimSide = "defender";
             }
             else
@@ -279,6 +294,10 @@ namespace FactionWars.Combat.Services
                 // Defender kills an attacker
                 victimTier = SelectVictimTier(battle.AttackerTroops);
                 battle.RemoveAttackerTroop(victimTier);
+                // Decrement the attacking faction's reserve so combat losses actually
+                // deplete the attacker's forces (today's "free deployment" never debited).
+                _factionService.GetFactionState(battle.AttackerFactionId)
+                    ?.RemoveReserveTroops(victimTier, 1);
                 victimSide = "attacker";
             }
 
