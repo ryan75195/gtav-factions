@@ -151,6 +151,32 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         }
 
         [Fact]
+        public void Update_WhenDefenderStreamedOut_DoesNotDecrementAllocation()
+        {
+            // Arrange — distinguish "ped culled by GTA streaming/population manager"
+            // (DoesPedExist=false) from "ped died" (DoesPedExist=true, IsPedAlive=false).
+            // Streaming-out is GTA's housekeeping; the troop is still alive in our model
+            // and the allocation must NOT decrement.
+            SetupManager();
+            var zone = CreateFriendlyZone();
+            var allocation = CreateAllocationWithDefenders(basic: 2);
+
+            _allocationServiceMock.Setup(a => a.GetAllocation(PlayerFactionId, TestZoneId))
+                .Returns(allocation);
+
+            _manager.OnZoneEntered(zone);
+
+            var spawnedPedHandle = _gameBridge.GetSpawnedPeds()[0];
+            _gameBridge.DeletePed(spawnedPedHandle); // simulate streamed-out
+
+            // Act
+            _manager.Update();
+
+            // Assert — allocation unchanged: streamed-out ped is not a kill.
+            Assert.Equal(2, allocation.GetTroopCount(DefenderTier.Basic));
+        }
+
+        [Fact]
         public void Update_WhenDefenderDies_ShouldDecrementAllocation()
         {
             // Arrange

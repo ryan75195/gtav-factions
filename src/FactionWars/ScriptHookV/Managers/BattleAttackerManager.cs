@@ -259,6 +259,7 @@ namespace FactionWars.ScriptHookV.Managers
 
             var currentGameTime = _gameBridge.GetGameTime();
             var deadPeds = new List<(string zoneId, int pedHandle, DefenderTier tier)>();
+            var streamedOutPeds = new List<(string zoneId, int pedHandle)>();
 
             // Check all spawned attackers for death
             foreach (var kvp in _spawnedPedTierByZone)
@@ -275,11 +276,27 @@ namespace FactionWars.ScriptHookV.Managers
                     if (_corpseDeathTimes.ContainsKey(pedHandle))
                         continue;
 
-                    if (!_gameBridge.IsPedAlive(pedHandle))
+                    // Streamed-out (entity gone) is not a kill — don't report to battle.
+                    if (!_gameBridge.DoesPedExist(pedHandle))
+                    {
+                        streamedOutPeds.Add((zoneId, pedHandle));
+                    }
+                    else if (!_gameBridge.IsPedAlive(pedHandle))
                     {
                         deadPeds.Add((zoneId, pedHandle, tier));
                     }
                 }
+            }
+
+            // Quietly untrack peds the engine culled.
+            foreach (var (zoneId, pedHandle) in streamedOutPeds)
+            {
+                if (_spawnedPedTierByZone.TryGetValue(zoneId, out var pedTiers))
+                {
+                    pedTiers.Remove(pedHandle);
+                }
+                _pedBlipService.RemoveBlipForPed(pedHandle);
+                _pedDespawnService.UntrackPed(pedHandle);
             }
 
             // Process each dead attacker

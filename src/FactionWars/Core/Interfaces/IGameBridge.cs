@@ -33,6 +33,19 @@ namespace FactionWars.Core.Interfaces
         bool IsPedAlive(int pedHandle);
 
         /// <summary>
+        /// Checks whether the ped entity still exists in the world. Returns true for
+        /// both alive and dead peds (GTA keeps a corpse around for a while before
+        /// cleanup) and false for handles that have been streamed out by the
+        /// population manager or never existed. Use this to distinguish
+        /// "ped died" (DoesPedExist=true, IsPedAlive=false) from "ped culled by
+        /// streaming" (DoesPedExist=false), so we don't decrement allocation for
+        /// peds that simply went out of range.
+        /// </summary>
+        /// <param name="pedHandle">Handle of the ped to check.</param>
+        /// <returns>True if the ped entity still exists.</returns>
+        bool DoesPedExist(int pedHandle);
+
+        /// <summary>
         /// Sets the relationship group for a ped, affecting combat behavior.
         /// </summary>
         /// <param name="pedHandle">Handle of the ped.</param>

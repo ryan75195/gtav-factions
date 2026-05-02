@@ -365,6 +365,7 @@ namespace FactionWars.ScriptHookV.Managers
         public void Update()
         {
             var newlyDeadPeds = new List<(string zoneId, int pedHandle, DefenderTier tier)>();
+            var streamedOutPeds = new List<(string zoneId, int pedHandle)>();
             var currentGameTime = _gameBridge.GetGameTime();
 
             // Check all spawned defenders for death
@@ -382,11 +383,30 @@ namespace FactionWars.ScriptHookV.Managers
                     if (_corpseDeathTimes.ContainsKey(pedHandle))
                         continue;
 
-                    if (!_gameBridge.IsPedAlive(pedHandle))
+                    // Distinguish "ped culled by GTA's streaming/population manager"
+                    // (entity gone) from "ped died in combat" (entity still here, just
+                    // dead). Decrementing allocation for streamed-out peds would shed
+                    // troops we never actually lost.
+                    if (!_gameBridge.DoesPedExist(pedHandle))
+                    {
+                        streamedOutPeds.Add((zoneId, pedHandle));
+                    }
+                    else if (!_gameBridge.IsPedAlive(pedHandle))
                     {
                         newlyDeadPeds.Add((zoneId, pedHandle, tier));
                     }
                 }
+            }
+
+            // Quietly untrack peds the engine culled — no allocation change, no event.
+            foreach (var (zoneId, pedHandle) in streamedOutPeds)
+            {
+                if (_spawnedPedTierByZone.TryGetValue(zoneId, out var pedTiers))
+                {
+                    pedTiers.Remove(pedHandle);
+                }
+                _pedBlipService.RemoveBlipForPed(pedHandle);
+                _pedDespawnService.UntrackPed(pedHandle);
             }
 
             // Process each newly dead defender

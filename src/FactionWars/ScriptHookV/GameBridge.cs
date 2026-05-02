@@ -212,6 +212,21 @@ namespace FactionWars.ScriptHookV
         }
 
         /// <inheritdoc />
+        public bool DoesPedExist(int pedHandle)
+        {
+            try
+            {
+                var ped = Entity.FromHandle(pedHandle) as Ped;
+                return ped != null && ped.Exists();
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error($"DoesPedExist exception for ped {pedHandle}", ex);
+                return false;
+            }
+        }
+
+        /// <inheritdoc />
         public void SetPedRelationshipGroup(int pedHandle, string groupName)
         {
             try

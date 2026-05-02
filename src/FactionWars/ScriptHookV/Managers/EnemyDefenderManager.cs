@@ -209,6 +209,7 @@ namespace FactionWars.ScriptHookV.Managers
             if (_currentEnemyZoneId == null || string.IsNullOrEmpty(enemyFactionId)) return;
 
             var newlyDeadPeds = new List<(string zoneId, int pedHandle, DefenderTier tier)>();
+            var streamedOutPeds = new List<(string zoneId, int pedHandle)>();
             var currentGameTime = _gameBridge.GetGameTime();
 
             // Check all spawned enemy defenders for death
@@ -226,11 +227,27 @@ namespace FactionWars.ScriptHookV.Managers
                     if (_corpseDeathTimes.ContainsKey(pedHandle))
                         continue;
 
-                    if (!_gameBridge.IsPedAlive(pedHandle))
+                    // Streamed-out (entity gone) is not a kill — don't shed allocation.
+                    if (!_gameBridge.DoesPedExist(pedHandle))
+                    {
+                        streamedOutPeds.Add((zoneId, pedHandle));
+                    }
+                    else if (!_gameBridge.IsPedAlive(pedHandle))
                     {
                         newlyDeadPeds.Add((zoneId, pedHandle, tier));
                     }
                 }
+            }
+
+            // Quietly untrack peds the engine culled.
+            foreach (var (zoneId, pedHandle) in streamedOutPeds)
+            {
+                if (_spawnedPedTierByZone.TryGetValue(zoneId, out var pedTiers))
+                {
+                    pedTiers.Remove(pedHandle);
+                }
+                _pedBlipService.RemoveBlipForPed(pedHandle);
+                _pedDespawnService.UntrackPed(pedHandle);
             }
 
             // Process each newly dead defender (track as corpse, decrement allocation, spawn replacement)

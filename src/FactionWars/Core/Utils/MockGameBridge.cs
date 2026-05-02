@@ -149,6 +149,13 @@ namespace FactionWars.Core.Utils
             return _peds.TryGetValue(pedHandle, out var ped) && ped.IsAlive;
         }
 
+        public bool DoesPedExist(int pedHandle)
+        {
+            // Mirrors DOES_ENTITY_EXIST: true for both alive and dead peds; false only
+            // when the ped record is gone (streamed out / explicitly deleted).
+            return _peds.ContainsKey(pedHandle);
+        }
+
         public void SetPedRelationshipGroup(int pedHandle, string groupName)
         {
             if (_peds.TryGetValue(pedHandle, out var ped))

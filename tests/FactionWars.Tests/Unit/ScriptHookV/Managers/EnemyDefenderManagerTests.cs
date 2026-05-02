@@ -198,6 +198,28 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         }
 
         [Fact]
+        public void Update_WhenDefenderStreamedOut_DoesNotDecrementAllocation()
+        {
+            // Streaming-out (entity removed by GTA's population manager) is not a kill.
+            // Allocation must stay intact so the troop is preserved when streamed back in.
+            SetupManager();
+            var zone = CreateEnemyZone();
+            var allocation = CreateAllocationWithDefenders(basic: 2);
+
+            _allocationServiceMock.Setup(a => a.GetAllocation(EnemyFactionId, TestZoneId))
+                .Returns(allocation);
+            _zoneServiceMock.Setup(z => z.GetZone(TestZoneId)).Returns(zone);
+
+            _manager.OnEnemyZoneEntered(zone, EnemyFactionId);
+
+            _gameBridge.DeletePed(1); // simulate streamed-out
+
+            _manager.Update(EnemyFactionId);
+
+            Assert.Equal(2, allocation.GetTroopCount(DefenderTier.Basic));
+        }
+
+        [Fact]
         public void Update_WhenDefenderDies_StillDecrementsAllocationImmediately()
         {
             // Arrange

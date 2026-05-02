@@ -34,6 +34,10 @@ namespace FactionWars.Tests.Unit.ScriptHookV
 
             _tierServiceMock.Setup(t => t.GetTierConfig(It.IsAny<DefenderTier>()))
                 .Returns(new DefenderTierConfig(DefenderTier.Basic, 100, 100, 0, "weapon_pistol", 50, 1.0f));
+
+            // Default to "ped exists" so Update treats !IsPedAlive as a real death rather
+            // than streamed-out culling. Tests that want to simulate streaming override this.
+            _gameBridgeMock.Setup(g => g.DoesPedExist(It.IsAny<int>())).Returns(true);
         }
 
         [Fact]
