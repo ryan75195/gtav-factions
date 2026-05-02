@@ -832,6 +832,7 @@ namespace FactionWars.Core.Utils
 
         private readonly HashSet<int> _clearedPeds = new HashSet<int>();
         private readonly Dictionary<int, Vector3> _pedsFacingPosition = new Dictionary<int, Vector3>();
+        private readonly Dictionary<int, Vector3> _goToCoordPeds = new Dictionary<int, Vector3>();
 
         public void ClearPedTasks(int pedHandle)
         {
@@ -839,11 +840,34 @@ namespace FactionWars.Core.Utils
             {
                 _clearedPeds.Add(pedHandle);
                 _wanderingPeds.Remove(pedHandle);
+                _boundedWanderingPeds.Remove(pedHandle);
                 _pedsFacingPosition.Remove(pedHandle);
                 _combatTargetingPeds.Remove(pedHandle);
                 _goToEntityPeds.Remove(pedHandle);
                 _followEntityPeds.Remove(pedHandle);
+                _goToCoordPeds.Remove(pedHandle);
             }
+        }
+
+        public void TaskGoToCoord(int pedHandle, Vector3 destination)
+        {
+            if (_peds.ContainsKey(pedHandle))
+            {
+                _wanderingPeds.Remove(pedHandle);
+                _boundedWanderingPeds.Remove(pedHandle);
+                _pedsFacingPosition.Remove(pedHandle);
+                _combatTargetingPeds.Remove(pedHandle);
+                _goToEntityPeds.Remove(pedHandle);
+                _followEntityPeds.Remove(pedHandle);
+                _goToCoordPeds[pedHandle] = destination;
+            }
+        }
+
+        public bool IsPedGoingToCoord(int pedHandle) => _goToCoordPeds.ContainsKey(pedHandle);
+
+        public Vector3? GetPedGoToCoordDestination(int pedHandle)
+        {
+            return _goToCoordPeds.TryGetValue(pedHandle, out var dest) ? dest : (Vector3?)null;
         }
 
         public void TaskPedTurnToFacePosition(int pedHandle, Vector3 position)

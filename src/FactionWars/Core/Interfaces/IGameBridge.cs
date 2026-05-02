@@ -437,6 +437,16 @@ namespace FactionWars.Core.Interfaces
         void TaskGoToEntity(int pedHandle, int targetEntityHandle, float stoppingRange);
 
         /// <summary>
+        /// Tasks a ped to walk to a fixed world coordinate. Wraps
+        /// TASK_GO_TO_COORD_ANY_MEANS so the ped will navigate around
+        /// obstacles. Used by the zone leash to pull strays back inside
+        /// their zone.
+        /// </summary>
+        /// <param name="pedHandle">The ped's entity handle.</param>
+        /// <param name="destination">World position to walk to.</param>
+        void TaskGoToCoord(int pedHandle, Vector3 destination);
+
+        /// <summary>
         /// Tasks a ped to persistently follow another entity at a configurable offset.
         /// Wraps TASK_FOLLOW_TO_OFFSET_FROM_ENTITY. Unlike TaskGoToEntity, the task does
         /// not terminate when the ped reaches the target — when persistFollowing is true

@@ -1477,6 +1477,35 @@ namespace FactionWars.ScriptHookV
         }
 
         /// <inheritdoc />
+        public void TaskGoToCoord(int pedHandle, DomainVector3 destination)
+        {
+            FileLogger.AI($"TaskGoToCoord: CALLED for ped {pedHandle} to ({destination.X:F1}, {destination.Y:F1}, {destination.Z:F1})");
+
+            try
+            {
+                var ped = Entity.FromHandle(pedHandle) as Ped;
+                if (ped == null || !ped.Exists())
+                {
+                    FileLogger.Warn($"TaskGoToCoord: Ped {pedHandle} is null or doesn't exist, aborting");
+                    return;
+                }
+
+                // TASK_GO_TO_COORD_ANY_MEANS:
+                //   ped, x, y, z, moveSpeed, vehicle, useLongRangePath, drivingFlags, finalHeading
+                Function.Call(
+                    Hash.TASK_GO_TO_COORD_ANY_MEANS,
+                    ped.Handle,
+                    destination.X, destination.Y, destination.Z,
+                    2.0f, 0, false, 786603, 0.0f);
+                FileLogger.AI($"TaskGoToCoord: TASK_GO_TO_COORD_ANY_MEANS issued for ped {pedHandle}");
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error($"TaskGoToCoord exception for ped {pedHandle}", ex);
+            }
+        }
+
+        /// <inheritdoc />
         public void TaskFollowToOffsetFromEntity(int pedHandle, int targetEntityHandle, DomainVector3 offset, float moveBlendRatio, float stoppingRadius, bool persistFollowing)
         {
             FileLogger.AI($"TaskFollowToOffsetFromEntity: CALLED for ped {pedHandle} -> entity {targetEntityHandle} radius={stoppingRadius:F1} persist={persistFollowing}");
