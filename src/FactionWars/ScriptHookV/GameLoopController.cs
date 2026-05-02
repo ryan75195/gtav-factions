@@ -718,6 +718,7 @@ namespace FactionWars.ScriptHookV
                 defenderTierService,
                 pedBlipService,
                 _zoneService,
+                _factionService,
                 CurrentPlayerFactionId ?? "");
 
             // Initialize combat manager for combat encounters

@@ -5,6 +5,7 @@ using FactionWars.Combat.Interfaces;
 using FactionWars.Combat.Models;
 using FactionWars.Core.Interfaces;
 using FactionWars.Core.Models;
+using FactionWars.Factions.Interfaces;
 using FactionWars.Territory.Interfaces;
 using FactionWars.Territory.Models;
 using FactionWars.UI.Interfaces;
@@ -25,6 +26,7 @@ namespace FactionWars.ScriptHookV.Managers
         private readonly IDefenderTierService _defenderTierService;
         private readonly IPedBlipService _pedBlipService;
         private readonly IZoneService _zoneService;
+        private readonly IFactionService _factionService;
         private string _playerFactionId;
 
         private readonly Dictionary<DefenderTier, string> _modelsByTier;
@@ -51,6 +53,7 @@ namespace FactionWars.ScriptHookV.Managers
             IDefenderTierService defenderTierService,
             IPedBlipService pedBlipService,
             IZoneService zoneService,
+            IFactionService factionService,
             string playerFactionId)
         {
             _gameBridge = gameBridge ?? throw new ArgumentNullException(nameof(gameBridge));
@@ -60,6 +63,7 @@ namespace FactionWars.ScriptHookV.Managers
             _defenderTierService = defenderTierService ?? throw new ArgumentNullException(nameof(defenderTierService));
             _pedBlipService = pedBlipService ?? throw new ArgumentNullException(nameof(pedBlipService));
             _zoneService = zoneService ?? throw new ArgumentNullException(nameof(zoneService));
+            _factionService = factionService ?? throw new ArgumentNullException(nameof(factionService));
             _playerFactionId = playerFactionId ?? throw new ArgumentNullException(nameof(playerFactionId));
 
             // Enemy faction ped models (hostile attackers)
@@ -336,6 +340,12 @@ namespace FactionWars.ScriptHookV.Managers
             if (battle != null && battle.IsPlayerPresent)
             {
                 _zoneBattleManager.ReportTroopKilled(zoneId, battle.AttackerFactionId, tier);
+
+                // Mirror simulated-kill behavior in ZoneBattleManager.ProcessKill: real
+                // attacker deaths must also debit the attacking faction's reserve so
+                // attacks deplete forces (today's "free deployment" never debited).
+                _factionService.GetFactionState(battle.AttackerFactionId)
+                    ?.RemoveReserveTroops(tier, 1);
             }
 
             // Try to spawn replacement from remaining battle troops

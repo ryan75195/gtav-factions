@@ -2,6 +2,8 @@ using FactionWars.Combat.Interfaces;
 using FactionWars.Combat.Models;
 using FactionWars.Core.Interfaces;
 using FactionWars.Core.Models;
+using FactionWars.Factions.Interfaces;
+using FactionWars.Factions.Models;
 using FactionWars.ScriptHookV.Managers;
 using FactionWars.Territory.Interfaces;
 using FactionWars.Territory.Models;
@@ -21,6 +23,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
         private readonly Mock<IDefenderTierService> _tierServiceMock;
         private readonly Mock<IPedBlipService> _blipServiceMock;
         private readonly Mock<IZoneService> _zoneServiceMock;
+        private readonly Mock<IFactionService> _factionServiceMock;
 
         public BattleAttackerManagerTests()
         {
@@ -31,6 +34,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             _tierServiceMock = new Mock<IDefenderTierService>();
             _blipServiceMock = new Mock<IPedBlipService>();
             _zoneServiceMock = new Mock<IZoneService>();
+            _factionServiceMock = new Mock<IFactionService>();
 
             _tierServiceMock.Setup(t => t.GetTierConfig(It.IsAny<DefenderTier>()))
                 .Returns(new DefenderTierConfig(DefenderTier.Basic, 100, 100, 0, "weapon_pistol", 50, 1.0f));
@@ -309,6 +313,38 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             Assert.Equal(5, manager.GetSpawnedAttackerCount("downtown"));
         }
 
+        [Fact]
+        public void Update_WhenAttackerDies_DecrementsAttackingFactionReserve()
+        {
+            // Real attacker ped death (player witnessing combat) must reduce the
+            // attacking faction's reserve so attacks actually deplete forces.
+            var zone = new Zone("downtown", "Downtown", new Vector3(0, 0, 0), 100f) { OwnerFactionId = "player" };
+            var attackerTroops = new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 1 } };
+            var defenderTroops = new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 1 } };
+            var battle = new ZoneBattle("enemy", "player", "downtown", attackerTroops, defenderTroops, "player");
+            battle.IsPlayerPresent = true;
+
+            var enemyState = new FactionState("enemy");
+            enemyState.AddReserveTroops(DefenderTier.Basic, 5);
+            _factionServiceMock.Setup(f => f.GetFactionState("enemy")).Returns(enemyState);
+
+            _battleManagerMock.Setup(b => b.GetBattleForZone("downtown")).Returns(battle);
+            _pedSpawningMock.Setup(p => p.CanSpawn()).Returns(true);
+            _pedSpawningMock.Setup(p => p.SpawnPed(It.IsAny<string>(), It.IsAny<Vector3>(), "enemy", "downtown"))
+                .Returns(new PedHandle(100));
+            _zoneServiceMock.Setup(z => z.GetZone("downtown")).Returns(zone);
+
+            var manager = CreateManager("player");
+            manager.OnPlayerZoneEntered(zone);
+
+            _gameBridgeMock.Setup(g => g.IsPedAlive(100)).Returns(false);
+
+            manager.Update();
+
+            // Reserve was 5, one attacker died → reserve should now be 4.
+            Assert.Equal(4, enemyState.GetReserveTroops(DefenderTier.Basic));
+        }
+
         private BattleAttackerManager CreateManager(string playerFactionId)
         {
             return new BattleAttackerManager(
@@ -319,6 +355,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
                 _tierServiceMock.Object,
                 _blipServiceMock.Object,
                 _zoneServiceMock.Object,
+                _factionServiceMock.Object,
                 playerFactionId);
         }
     }
