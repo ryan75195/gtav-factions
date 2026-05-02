@@ -407,6 +407,18 @@ namespace FactionWars.Core.Interfaces
         void TaskPedWanderInAreaSprinting(int pedHandle, Vector3 center, float radius);
 
         /// <summary>
+        /// Tasks a ped to wander within a bounded circular area. Unlike
+        /// <see cref="TaskPedWanderInArea"/> (which calls TASK_WANDER_STANDARD
+        /// and ignores the radius), this wraps TASK_WANDER_IN_AREA which
+        /// natively keeps the ped inside (center, radius). Used for zone
+        /// defenders so idle wandering respects the zone boundary.
+        /// </summary>
+        /// <param name="pedHandle">The ped's entity handle.</param>
+        /// <param name="center">Center point of the wander area.</param>
+        /// <param name="radius">Radius of the wander area in meters.</param>
+        void TaskPedWanderInBoundedArea(int pedHandle, Vector3 center, float radius);
+
+        /// <summary>
         /// Tasks a ped to actively seek out and fight any hated targets within range.
         /// Used for friendly defenders during battles to make them engage enemies.
         /// </summary>

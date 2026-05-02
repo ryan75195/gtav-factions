@@ -540,6 +540,7 @@ namespace FactionWars.Core.Utils
                 _combatTargetingPeds.Remove(pedHandle);
                 _goToEntityPeds.Remove(pedHandle);
                 _followEntityPeds.Remove(pedHandle);
+                _boundedWanderingPeds.Remove(pedHandle);
                 _wanderingPeds[pedHandle] = new WanderState
                 {
                     Center = center,
@@ -565,6 +566,43 @@ namespace FactionWars.Core.Utils
                     IsSprinting = true
                 };
             }
+        }
+
+        private readonly Dictionary<int, WanderState> _boundedWanderingPeds = new Dictionary<int, WanderState>();
+
+        public void TaskPedWanderInBoundedArea(int pedHandle, Vector3 center, float radius)
+        {
+            if (_peds.ContainsKey(pedHandle))
+            {
+                _pedsFacingPosition.Remove(pedHandle);
+                _combatTargetingPeds.Remove(pedHandle);
+                _goToEntityPeds.Remove(pedHandle);
+                _followEntityPeds.Remove(pedHandle);
+                _wanderingPeds.Remove(pedHandle);
+                _boundedWanderingPeds[pedHandle] = new WanderState
+                {
+                    Center = center,
+                    Radius = radius,
+                    IsSprinting = false
+                };
+            }
+        }
+
+        /// <summary>
+        /// Gets whether a ped is currently bounded-wandering (TASK_WANDER_IN_AREA).
+        /// Distinct from <see cref="IsPedWandering"/> which reports
+        /// TASK_WANDER_STANDARD.
+        /// </summary>
+        public bool IsPedBoundedWandering(int pedHandle) => _boundedWanderingPeds.ContainsKey(pedHandle);
+
+        public Vector3? GetBoundedWanderCenter(int pedHandle)
+        {
+            return _boundedWanderingPeds.TryGetValue(pedHandle, out var state) ? state.Center : (Vector3?)null;
+        }
+
+        public float? GetBoundedWanderRadius(int pedHandle)
+        {
+            return _boundedWanderingPeds.TryGetValue(pedHandle, out var state) ? state.Radius : (float?)null;
         }
 
         /// <summary>

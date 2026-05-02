@@ -1343,6 +1343,40 @@ namespace FactionWars.ScriptHookV
         }
 
         /// <inheritdoc />
+        public void TaskPedWanderInBoundedArea(int pedHandle, DomainVector3 center, float radius)
+        {
+            FileLogger.AI($"TaskPedWanderInBoundedArea: CALLED for ped {pedHandle} at center ({center.X:F1}, {center.Y:F1}, {center.Z:F1}) radius {radius:F1}");
+
+            try
+            {
+                var ped = Entity.FromHandle(pedHandle) as Ped;
+                if (ped == null || !ped.Exists())
+                {
+                    FileLogger.Warn($"TaskPedWanderInBoundedArea: Ped {pedHandle} is null or doesn't exist, aborting");
+                    return;
+                }
+
+                ped.Task.ClearAllImmediately();
+
+                // TASK_WANDER_IN_AREA params: ped, x, y, z, radius, minLength, timeBetweenWalks
+                Function.Call(
+                    Hash.TASK_WANDER_IN_AREA,
+                    ped.Handle,
+                    center.X, center.Y, center.Z,
+                    radius,
+                    10.0f, 10.0f);
+                FileLogger.AI($"TaskPedWanderInBoundedArea: TASK_WANDER_IN_AREA called for ped {pedHandle}");
+
+                Function.Call(Hash.SET_PED_DESIRED_MOVE_BLEND_RATIO, ped.Handle, 1.0f);
+                FileLogger.AI($"TaskPedWanderInBoundedArea: COMPLETED successfully for ped {pedHandle}");
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error($"TaskPedWanderInBoundedArea exception for ped {pedHandle}", ex);
+            }
+        }
+
+        /// <inheritdoc />
         public void TaskPedWanderInAreaSprinting(int pedHandle, DomainVector3 center, float radius)
         {
             FileLogger.AI($"TaskPedWanderInAreaSprinting: CALLED for ped {pedHandle} at center ({center.X:F1}, {center.Y:F1}, {center.Z:F1}) radius {radius:F1}");
