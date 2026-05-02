@@ -12,54 +12,24 @@ namespace FactionWars.Combat.Models
     /// </summary>
     public class ZoneBattle
     {
-        /// <summary>
-        /// Unique identifier for this battle.
-        /// </summary>
+        private readonly List<BattleParticipant> _participants;
+
+        /// <summary>Unique identifier for this battle.</summary>
         public string Id { get; }
 
-        /// <summary>
-        /// The zone being contested.
-        /// </summary>
+        /// <summary>The zone being contested.</summary>
         public string ZoneId { get; }
 
-        /// <summary>
-        /// The faction attacking the zone.
-        /// </summary>
-        public string AttackerFactionId { get; }
-
-        /// <summary>
-        /// The faction defending the zone.
-        /// </summary>
-        public string DefenderFactionId { get; }
-
-        /// <summary>
-        /// Attacker troop counts by tier. Mutable during battle.
-        /// </summary>
-        public Dictionary<DefenderTier, int> AttackerTroops { get; }
-
-        /// <summary>
-        /// Defender troop counts by tier. Mutable during battle.
-        /// </summary>
-        public Dictionary<DefenderTier, int> DefenderTroops { get; }
-
-        /// <summary>
-        /// Initial total attacker troops at battle start (immutable).
-        /// </summary>
+        /// <summary>Initial total attacker troops at battle start (immutable).</summary>
         public int InitialAttackerTroops { get; }
 
-        /// <summary>
-        /// Initial total defender troops at battle start (immutable).
-        /// </summary>
+        /// <summary>Initial total defender troops at battle start (immutable).</summary>
         public int InitialDefenderTroops { get; }
 
-        /// <summary>
-        /// Maps ped handles to their tier for spawned attackers.
-        /// </summary>
+        /// <summary>Maps ped handles to their tier for spawned attackers.</summary>
         public Dictionary<int, DefenderTier> SpawnedAttackers { get; }
 
-        /// <summary>
-        /// Maps ped handles to their tier for spawned defenders.
-        /// </summary>
+        /// <summary>Maps ped handles to their tier for spawned defenders.</summary>
         public Dictionary<int, DefenderTier> SpawnedDefenders { get; }
 
         /// <summary>
@@ -69,68 +39,76 @@ namespace FactionWars.Combat.Models
         public bool IsPlayerPresent { get; set; }
 
         /// <summary>
-        /// The player's faction ID, if known. Used to determine IsPlayerDefending/IsPlayerAttacking.
+        /// The player's faction ID, if known. Used by <see cref="IsPlayerDefending"/>
+        /// / <see cref="IsPlayerAttacking"/>. (In Plan 1 the player is not yet a
+        /// participant — this stays as a passive flag set by the caller.)
         /// </summary>
         public string? PlayerFactionId { get; }
 
-        /// <summary>
-        /// Time elapsed since battle start in seconds.
-        /// </summary>
+        /// <summary>Time elapsed since battle start in seconds.</summary>
         public float ElapsedTime { get; private set; }
 
-        /// <summary>
-        /// Time until next kill event in seconds (for tick-based simulation).
-        /// </summary>
+        /// <summary>Time until next kill event in seconds (for tick-based simulation).</summary>
         public float TimeUntilNextKill { get; private set; }
 
-        /// <summary>
-        /// The interval between kill events in seconds.
-        /// </summary>
+        /// <summary>The interval between kill events in seconds.</summary>
         public float KillInterval { get; private set; }
 
         /// <summary>
-        /// Gets total attacker troop count across all tiers.
+        /// All participants in this battle. In Plan 1 this is always exactly one
+        /// Defender + one Attacker (a 2-way battle). Plan 2 will add a second Attacker
+        /// for 3-way melees.
         /// </summary>
-        public int TotalAttackerTroops => GetTotalTroops(AttackerTroops);
+        public IReadOnlyList<BattleParticipant> Participants => _participants;
+
+        /// <summary>The single Defender-role participant. Throws if missing.</summary>
+        public BattleParticipant Defender => _participants.First(p => p.Role == BattleRole.Defender);
+
+        /// <summary>All Attacker-role participants. In Plan 1 always length 1.</summary>
+        public IReadOnlyList<BattleParticipant> Attackers
+            => _participants.Where(p => p.Role == BattleRole.Attacker).ToList();
+
+        // === Backward-compatible legacy accessors (forward to _participants) ===
+
+        /// <summary>The (single) attacking faction. Backward-compat for Plan 1.</summary>
+        public string AttackerFactionId => Attackers[0].FactionId;
+
+        /// <summary>The defending faction.</summary>
+        public string DefenderFactionId => Defender.FactionId;
 
         /// <summary>
-        /// Gets total defender troop count across all tiers.
+        /// Attacker troop counts by tier. Backward-compat: returns the dict of
+        /// the single attacker. Mutable — callers that mutate it (existing
+        /// behaviour) mutate the participant's storage directly.
         /// </summary>
-        public int TotalDefenderTroops => GetTotalTroops(DefenderTroops);
+        public Dictionary<DefenderTier, int> AttackerTroops => Attackers[0].Troops;
 
-        /// <summary>
-        /// Gets total spawned attacker count.
-        /// </summary>
+        /// <summary>Defender troop counts by tier. Same backward-compat shape.</summary>
+        public Dictionary<DefenderTier, int> DefenderTroops => Defender.Troops;
+
+        /// <summary>Sum of all attackers' troop counts.</summary>
+        public int TotalAttackerTroops
+        {
+            get
+            {
+                int total = 0;
+                foreach (var p in _participants)
+                    if (p.Role == BattleRole.Attacker) total += p.AliveCount;
+                return total;
+            }
+        }
+
+        /// <summary>Defender's troop count.</summary>
+        public int TotalDefenderTroops => Defender.AliveCount;
+
         public int TotalSpawnedAttackers => SpawnedAttackers.Count;
-
-        /// <summary>
-        /// Gets total spawned defender count.
-        /// </summary>
         public int TotalSpawnedDefenders => SpawnedDefenders.Count;
 
-        /// <summary>
-        /// Gets whether the battle is still ongoing (both sides have troops).
-        /// </summary>
         public bool IsOngoing => TotalAttackerTroops > 0 && TotalDefenderTroops > 0;
-
-        /// <summary>
-        /// Gets whether attackers won (defenders eliminated, attackers remain).
-        /// </summary>
         public bool AttackersWon => TotalDefenderTroops <= 0 && TotalAttackerTroops > 0;
-
-        /// <summary>
-        /// Gets whether defenders won (attackers eliminated, defenders remain).
-        /// </summary>
         public bool DefendersWon => TotalAttackerTroops <= 0 && TotalDefenderTroops > 0;
 
-        /// <summary>
-        /// Gets whether the player is on the defending side.
-        /// </summary>
         public bool IsPlayerDefending => PlayerFactionId != null && PlayerFactionId == DefenderFactionId;
-
-        /// <summary>
-        /// Gets whether the player is on the attacking side.
-        /// </summary>
         public bool IsPlayerAttacking => PlayerFactionId != null && PlayerFactionId == AttackerFactionId;
 
         public ZoneBattle(
@@ -141,204 +119,86 @@ namespace FactionWars.Combat.Models
             Dictionary<DefenderTier, int> defenderTroops,
             string? playerFactionId = null)
         {
+            if (attackerFactionId == null) throw new ArgumentNullException(nameof(attackerFactionId));
+            if (defenderFactionId == null) throw new ArgumentNullException(nameof(defenderFactionId));
+            if (zoneId == null) throw new ArgumentNullException(nameof(zoneId));
+            if (attackerTroops == null) throw new ArgumentNullException(nameof(attackerTroops));
+            if (defenderTroops == null) throw new ArgumentNullException(nameof(defenderTroops));
+
             Id = Guid.NewGuid().ToString("N").Substring(0, 8);
-            AttackerFactionId = attackerFactionId ?? throw new ArgumentNullException(nameof(attackerFactionId));
-            DefenderFactionId = defenderFactionId ?? throw new ArgumentNullException(nameof(defenderFactionId));
-            ZoneId = zoneId ?? throw new ArgumentNullException(nameof(zoneId));
-            AttackerTroops = new Dictionary<DefenderTier, int>(attackerTroops ?? throw new ArgumentNullException(nameof(attackerTroops)));
-            DefenderTroops = new Dictionary<DefenderTier, int>(defenderTroops ?? throw new ArgumentNullException(nameof(defenderTroops)));
-            InitialAttackerTroops = GetTotalTroops(AttackerTroops);
-            InitialDefenderTroops = GetTotalTroops(DefenderTroops);
-            SpawnedAttackers = new Dictionary<int, DefenderTier>();
-            SpawnedDefenders = new Dictionary<int, DefenderTier>();
+            ZoneId = zoneId;
             PlayerFactionId = playerFactionId;
             IsPlayerPresent = false;
             ElapsedTime = 0f;
             TimeUntilNextKill = 0f;
             KillInterval = 0f;
+            SpawnedAttackers = new Dictionary<int, DefenderTier>();
+            SpawnedDefenders = new Dictionary<int, DefenderTier>();
+
+            _participants = new List<BattleParticipant>
+            {
+                BattleParticipant.ForAi(defenderFactionId, BattleRole.Defender, defenderTroops),
+                BattleParticipant.ForAi(attackerFactionId, BattleRole.Attacker, attackerTroops)
+            };
+
+            // Cache initial totals so they remain stable even as participant
+            // troop counts decrement during the battle.
+            InitialAttackerTroops = TotalAttackerTroops;
+            InitialDefenderTroops = TotalDefenderTroops;
         }
 
-        /// <summary>
-        /// Advances elapsed time and decrements the kill timer.
-        /// </summary>
         public void AdvanceTime(float deltaSeconds)
         {
             ElapsedTime += deltaSeconds;
             TimeUntilNextKill -= deltaSeconds;
         }
 
-        /// <summary>
-        /// Resets the kill timer to the current kill interval.
-        /// </summary>
         public void ResetKillTimer()
         {
             TimeUntilNextKill = KillInterval;
         }
 
-        /// <summary>
-        /// Sets the kill interval and resets the timer.
-        /// </summary>
         public void SetKillInterval(float interval)
         {
             KillInterval = interval;
             TimeUntilNextKill = interval;
         }
 
-        /// <summary>
-        /// Removes one troop of the specified tier from the attacker.
-        /// </summary>
-        /// <returns>True if a troop was removed, false if no troops of that tier exist.</returns>
-        public bool RemoveAttackerTroop(DefenderTier tier)
-        {
-            if (AttackerTroops.TryGetValue(tier, out int count) && count > 0)
-            {
-                AttackerTroops[tier] = count - 1;
-                return true;
-            }
-            return false;
-        }
+        public bool RemoveAttackerTroop(DefenderTier tier) => Attackers[0].RemoveTroop(tier);
+        public bool RemoveDefenderTroop(DefenderTier tier) => Defender.RemoveTroop(tier);
 
-        /// <summary>
-        /// Removes one troop of the specified tier from the defender.
-        /// </summary>
-        /// <returns>True if a troop was removed, false if no troops of that tier exist.</returns>
-        public bool RemoveDefenderTroop(DefenderTier tier)
-        {
-            if (DefenderTroops.TryGetValue(tier, out int count) && count > 0)
-            {
-                DefenderTroops[tier] = count - 1;
-                return true;
-            }
-            return false;
-        }
+        public void AddAttackerTroops(DefenderTier tier, int count) => Attackers[0].AddTroops(tier, count);
+        public void AddDefenderTroops(DefenderTier tier, int count) => Defender.AddTroops(tier, count);
 
-        /// <summary>
-        /// Adds troops of the specified tier to the attacker.
-        /// </summary>
-        public void AddAttackerTroops(DefenderTier tier, int count)
-        {
-            if (count <= 0) return;
-
-            if (AttackerTroops.ContainsKey(tier))
-            {
-                AttackerTroops[tier] += count;
-            }
-            else
-            {
-                AttackerTroops[tier] = count;
-            }
-        }
-
-        /// <summary>
-        /// Adds troops of the specified tier to the defender.
-        /// </summary>
-        public void AddDefenderTroops(DefenderTier tier, int count)
-        {
-            if (count <= 0) return;
-
-            if (DefenderTroops.ContainsKey(tier))
-            {
-                DefenderTroops[tier] += count;
-            }
-            else
-            {
-                DefenderTroops[tier] = count;
-            }
-        }
-
-        /// <summary>
-        /// Registers a spawned attacker ped with its tier.
-        /// </summary>
         public void RegisterSpawnedAttacker(int pedHandle, DefenderTier tier)
         {
             SpawnedAttackers[pedHandle] = tier;
         }
 
-        /// <summary>
-        /// Registers a spawned defender ped with its tier.
-        /// </summary>
         public void RegisterSpawnedDefender(int pedHandle, DefenderTier tier)
         {
             SpawnedDefenders[pedHandle] = tier;
         }
 
-        /// <summary>
-        /// Unregisters a spawned attacker ped.
-        /// </summary>
-        /// <returns>True if the ped was found and removed, false otherwise.</returns>
-        public bool UnregisterSpawnedAttacker(int pedHandle)
-        {
-            return SpawnedAttackers.Remove(pedHandle);
-        }
+        public bool UnregisterSpawnedAttacker(int pedHandle) => SpawnedAttackers.Remove(pedHandle);
+        public bool UnregisterSpawnedDefender(int pedHandle) => SpawnedDefenders.Remove(pedHandle);
 
-        /// <summary>
-        /// Unregisters a spawned defender ped.
-        /// </summary>
-        /// <returns>True if the ped was found and removed, false otherwise.</returns>
-        public bool UnregisterSpawnedDefender(int pedHandle)
-        {
-            return SpawnedDefenders.Remove(pedHandle);
-        }
-
-        /// <summary>
-        /// Gets the tier of a spawned attacker by ped handle.
-        /// </summary>
-        /// <returns>The tier if found, null otherwise.</returns>
         public DefenderTier? GetSpawnedAttackerTier(int pedHandle)
-        {
-            if (SpawnedAttackers.TryGetValue(pedHandle, out var tier))
-            {
-                return tier;
-            }
-            return null;
-        }
+            => SpawnedAttackers.TryGetValue(pedHandle, out var tier) ? tier : (DefenderTier?)null;
 
-        /// <summary>
-        /// Gets the tier of a spawned defender by ped handle.
-        /// </summary>
-        /// <returns>The tier if found, null otherwise.</returns>
         public DefenderTier? GetSpawnedDefenderTier(int pedHandle)
-        {
-            if (SpawnedDefenders.TryGetValue(pedHandle, out var tier))
-            {
-                return tier;
-            }
-            return null;
-        }
+            => SpawnedDefenders.TryGetValue(pedHandle, out var tier) ? tier : (DefenderTier?)null;
 
-        /// <summary>
-        /// Clears all spawned ped tracking.
-        /// </summary>
         public void ClearSpawnedPeds()
         {
             SpawnedAttackers.Clear();
             SpawnedDefenders.Clear();
         }
 
-        /// <summary>
-        /// Gets the count of spawned attackers for a specific tier.
-        /// </summary>
         public int GetSpawnedAttackerCountByTier(DefenderTier tier)
-        {
-            return SpawnedAttackers.Values.Count(t => t == tier);
-        }
+            => SpawnedAttackers.Values.Count(t => t == tier);
 
-        /// <summary>
-        /// Gets the count of spawned defenders for a specific tier.
-        /// </summary>
         public int GetSpawnedDefenderCountByTier(DefenderTier tier)
-        {
-            return SpawnedDefenders.Values.Count(t => t == tier);
-        }
-
-        private static int GetTotalTroops(Dictionary<DefenderTier, int> troops)
-        {
-            int total = 0;
-            foreach (var kvp in troops)
-            {
-                total += kvp.Value;
-            }
-            return total;
-        }
+            => SpawnedDefenders.Values.Count(t => t == tier);
     }
 }
