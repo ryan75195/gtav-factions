@@ -9,6 +9,7 @@ using FactionWars.Territory.Interfaces;
 using FactionWars.Territory.Models;
 using FactionWars.UI.Interfaces;
 using FactionWars.ScriptHookV.Logging;
+using FactionWars.ScriptHookV.Services;
 
 namespace FactionWars.ScriptHookV.Managers
 {
@@ -30,6 +31,8 @@ namespace FactionWars.ScriptHookV.Managers
         private readonly Dictionary<string, Dictionary<int, DefenderTier>> _spawnedPedTierByZone;
         private readonly Dictionary<int, int> _corpseDeathTimes; // pedHandle -> game time when died
         private string? _currentEnemyZoneId;
+        private int _lastLeashCheckMs = 0;
+        private readonly Random _leashRandom = new Random();
 
         private const float SpawnRadiusFraction = 0.8f;  // 80% of zone radius
         private const int CorpseDelayMs = 15000;  // 15 seconds before despawning corpses
@@ -258,6 +261,49 @@ namespace FactionWars.ScriptHookV.Managers
 
             // Clean up corpses that have exceeded the delay
             CleanupExpiredCorpses(currentGameTime);
+
+            EnforceZoneLeash(currentGameTime);
+        }
+
+        /// <summary>
+        /// Every <see cref="ZoneLeashEnforcer.LeashCheckIntervalMs"/>, scan all
+        /// tracked enemy defenders. Any whose distance from their zone center
+        /// exceeds the hysteresis threshold gets its tasks cleared and a
+        /// TaskGoToCoord back to a random point inside the inner half of the
+        /// zone.
+        /// </summary>
+        private void EnforceZoneLeash(int currentGameTime)
+        {
+            if (currentGameTime - _lastLeashCheckMs < ZoneLeashEnforcer.LeashCheckIntervalMs)
+                return;
+            _lastLeashCheckMs = currentGameTime;
+
+            foreach (var kvp in _spawnedPedTierByZone)
+            {
+                var zoneId = kvp.Key;
+                var pedTiers = kvp.Value;
+
+                var zone = _zoneService.GetZone(zoneId);
+                if (zone == null)
+                    continue;
+
+                foreach (var pedHandle in pedTiers.Keys)
+                {
+                    if (_corpseDeathTimes.ContainsKey(pedHandle))
+                        continue;
+                    if (!_gameBridge.DoesPedExist(pedHandle) || !_gameBridge.IsPedAlive(pedHandle))
+                        continue;
+
+                    var pedPos = _gameBridge.GetPedPosition(pedHandle);
+                    if (!ZoneLeashEnforcer.ShouldLeash(pedPos, zone.Center, zone.Radius))
+                        continue;
+
+                    var returnPoint = ZoneLeashEnforcer.PickReturnPoint(zone.Center, zone.Radius, _leashRandom);
+                    _gameBridge.ClearPedTasks(pedHandle);
+                    _gameBridge.TaskGoToCoord(pedHandle, returnPoint);
+                    FileLogger.AI($"EnemyDefenderManager: leashed ped {pedHandle} in zone {zoneId} from ({pedPos.X:F1},{pedPos.Y:F1}) back to ({returnPoint.X:F1},{returnPoint.Y:F1})");
+                }
+            }
         }
 
         /// <summary>
