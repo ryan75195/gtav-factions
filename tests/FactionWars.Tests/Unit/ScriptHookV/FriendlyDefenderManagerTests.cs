@@ -680,11 +680,12 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             // Re-enable spawning for replacement
             _pedSpawningServiceMock.Setup(p => p.CanSpawn()).Returns(true);
 
-            // All initial defenders should be walking (not sprinting)
+            // All initial defenders should be doing the bounded walk-wander
+            // (zone-bounded native, walking pace — not sprinting).
             foreach (var pedHandle in initialPeds)
             {
-                Assert.True(_gameBridge.IsPedWandering(pedHandle),
-                    $"Ped {pedHandle} should be wandering");
+                Assert.True(_gameBridge.IsPedBoundedWandering(pedHandle),
+                    $"Ped {pedHandle} should be bounded-wandering");
                 Assert.False(_gameBridge.IsPedWanderingSprinting(pedHandle),
                     $"Ped {pedHandle} should NOT be sprinting outside of battle");
             }
@@ -700,14 +701,14 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             Assert.Equal(3, _manager.GetSpawnedDefenderCount(TestZoneId));
             Assert.Equal(3, allocation.TotalTroops);
 
-            // Replacement should also use walking wander
+            // Replacement should also use the bounded walk-wander
             var currentPeds = _gameBridge.GetSpawnedPeds();
             foreach (var pedHandle in currentPeds)
             {
                 if (_gameBridge.IsPedAlive(pedHandle))
                 {
-                    Assert.True(_gameBridge.IsPedWandering(pedHandle),
-                        $"Ped {pedHandle} should be wandering");
+                    Assert.True(_gameBridge.IsPedBoundedWandering(pedHandle),
+                        $"Ped {pedHandle} should be bounded-wandering");
                     Assert.False(_gameBridge.IsPedWanderingSprinting(pedHandle),
                         $"Ped {pedHandle} should NOT be sprinting outside of battle");
                 }

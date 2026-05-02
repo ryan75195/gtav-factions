@@ -54,6 +54,17 @@ namespace FactionWars.Tests.Unit.ScriptHookV
         }
 
         [Fact]
+        public void OnZoneEntered_TasksDefendersWithBoundedWander()
+        {
+            var (_, bridge, defenderHandle) = SpawnSingleDefender();
+
+            Assert.True(bridge.IsPedBoundedWandering(defenderHandle),
+                "Friendly defenders must use TaskPedWanderInBoundedArea so GTA's native enforces the zone radius for idle wander.");
+            Assert.False(bridge.IsPedWandering(defenderHandle),
+                "Friendly defenders must NOT use the unbounded TaskPedWanderInArea anymore.");
+        }
+
+        [Fact]
         public void Update_StrayDefender_NoRetaskBeforeIntervalElapsed()
         {
             var (manager, bridge, defenderHandle) = SpawnSingleDefender();

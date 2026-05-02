@@ -199,8 +199,10 @@ namespace FactionWars.ScriptHookV.Managers
                     // Set friendly relationship with player
                     _gameBridge.SetPedAsFriendly(pedHandle.Handle);
                     ConfigureDefenderCombat(pedHandle.Handle, tierConfig);
-                    // Wander using zone radius for full coverage
-                    _gameBridge.TaskPedWanderInArea(pedHandle.Handle, zone.Center, zone.Radius);
+                    // Bounded native wander — keeps idle peds inside the zone
+                    // without per-tick checks. The leash sweep handles the
+                    // combat-chase case separately.
+                    _gameBridge.TaskPedWanderInBoundedArea(pedHandle.Handle, zone.Center, zone.Radius);
                     _pedBlipService.CreateBlipForPed(pedHandle.Handle, BlipColor.LightBlue);
 
                     // Track ped with its tier
@@ -295,8 +297,8 @@ namespace FactionWars.ScriptHookV.Managers
 
             foreach (var pedHandle in pedTiers.Keys)
             {
-                // Switch back to walking wander for peaceful patrol
-                _gameBridge.TaskPedWanderInArea(pedHandle, zone.Center, zone.Radius);
+                // Switch back to bounded walking wander for peaceful patrol
+                _gameBridge.TaskPedWanderInBoundedArea(pedHandle, zone.Center, zone.Radius);
             }
         }
 
@@ -631,7 +633,7 @@ namespace FactionWars.ScriptHookV.Managers
             }
             else
             {
-                _gameBridge.TaskPedWanderInArea(pedHandle.Handle, center, zoneRadius);
+                _gameBridge.TaskPedWanderInBoundedArea(pedHandle.Handle, center, zoneRadius);
             }
 
             _pedBlipService.CreateBlipForPed(pedHandle.Handle, BlipColor.LightBlue);
@@ -692,7 +694,7 @@ namespace FactionWars.ScriptHookV.Managers
                 }
                 else
                 {
-                    _gameBridge.TaskPedWanderInArea(pedHandle.Handle, zoneCenter, zoneRadius);
+                    _gameBridge.TaskPedWanderInBoundedArea(pedHandle.Handle, zoneCenter, zoneRadius);
                 }
 
                 _pedBlipService.CreateBlipForPed(pedHandle.Handle, BlipColor.LightBlue);
