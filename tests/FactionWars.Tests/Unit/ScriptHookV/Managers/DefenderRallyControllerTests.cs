@@ -104,11 +104,16 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             var sut = BuildSut();
             sut.Update();
 
-            Assert.True(_bridge.IsPedGoingToEntity(defender));
-            Assert.Equal(99, _bridge.GetGoToEntityTarget(defender));
-            Assert.Equal(DefenderRallyController.RallyStoppingRangeM, _bridge.GetGoToEntityStoppingRange(defender));
-            Assert.True(_bridge.IsPedCombatTargeting(defender));
-            Assert.Equal(DefenderRallyController.RallyCombatRadiusM, _bridge.GetPedCombatTargetingRadius(defender));
+            // Rally uses TASK_FOLLOW_TO_OFFSET_OF_ENTITY so defenders persistently track
+            // the player rather than freezing on arrival the way TASK_GO_TO_ENTITY does.
+            Assert.True(_bridge.IsPedFollowingEntity(defender));
+            Assert.Equal(99, _bridge.GetFollowEntityTarget(defender));
+            Assert.Equal(DefenderRallyController.RallyStoppingRangeM, _bridge.GetFollowEntityStoppingRadius(defender));
+            // Engagement is handled by relationship-based combat AI: defenders react to
+            // hostile events near the player. Issuing TaskCombatHatedTargetsAroundPed
+            // back-to-back would replace the follow task in-game.
+            Assert.False(_bridge.IsPedCombatTargeting(defender));
+            Assert.False(_bridge.IsPedGoingToEntity(defender));
         }
 
         [Fact]
@@ -122,7 +127,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             var sut = BuildSut();
             sut.Update();
 
-            Assert.True(_bridge.IsPedGoingToEntity(defender));
+            Assert.True(_bridge.IsPedFollowingEntity(defender));
         }
 
         [Fact]
@@ -136,7 +141,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             var sut = BuildSut();
             sut.Update();
 
-            Assert.True(_bridge.IsPedGoingToEntity(defender));
+            Assert.True(_bridge.IsPedFollowingEntity(defender));
         }
 
         [Fact]
@@ -156,9 +161,9 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             var sut = BuildSut();
             sut.Update();
 
-            // After rally, no longer wandering (cleared) and now going-to-entity.
+            // After rally, no longer wandering (cleared) and now persistently following.
             Assert.False(_bridge.IsPedWandering(defender));
-            Assert.True(_bridge.IsPedGoingToEntity(defender));
+            Assert.True(_bridge.IsPedFollowingEntity(defender));
         }
 
         [Fact]
@@ -263,7 +268,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             int defender2 = SpawnDefenderInZone(zone.Id, DefenderTier.Basic);
             _bridge.WantedLevel = 1;
             sut.Update(); // false -> true: rallies the new defender.
-            Assert.True(_bridge.IsPedGoingToEntity(defender2));
+            Assert.True(_bridge.IsPedFollowingEntity(defender2));
         }
 
         // ---- Cross-zone / neutral-zone guard tests ---------------------------
@@ -320,8 +325,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             var sut = BuildSut();
             sut.Update();
 
-            Assert.True(_bridge.IsPedGoingToEntity(defender));
-            Assert.Equal(99, _bridge.GetGoToEntityTarget(defender));
+            Assert.True(_bridge.IsPedFollowingEntity(defender));
+            Assert.Equal(99, _bridge.GetFollowEntityTarget(defender));
         }
 
         [Fact]
@@ -348,7 +353,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             int newDefender = SpawnDefenderInZone(newEnemy.Id);
             sut.Update();
 
-            Assert.True(_bridge.IsPedGoingToEntity(newDefender));
+            Assert.True(_bridge.IsPedFollowingEntity(newDefender));
         }
 
         [Fact]
@@ -373,7 +378,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             _bridge.TaskPedWanderInArea(defender, enemy.Center, enemy.Radius);
             SetCurrentZone(enemy);
             sut.Update();
-            Assert.True(_bridge.IsPedGoingToEntity(defender));
+            Assert.True(_bridge.IsPedFollowingEntity(defender));
         }
     }
 }

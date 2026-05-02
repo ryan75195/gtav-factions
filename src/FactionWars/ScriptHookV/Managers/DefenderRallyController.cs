@@ -14,7 +14,6 @@ namespace FactionWars.ScriptHookV.Managers
     public sealed class DefenderRallyController
     {
         public const float RallyStoppingRangeM = 8.0f;
-        public const float RallyCombatRadiusM = 12.0f;
         public const long UnderAttackCoolDownMs = 5000;
 
         private readonly IGameBridge _bridge;
@@ -90,9 +89,20 @@ namespace FactionWars.ScriptHookV.Managers
 
             foreach (var pedHandle in defenders.Keys)
             {
+                // TASK_FOLLOW_TO_OFFSET_OF_ENTITY with persistFollowing=true keeps the
+                // defender glued to the player throughout the rally. TASK_GO_TO_ENTITY,
+                // by contrast, terminates once the ped is within stoppingRange — they
+                // would freeze on arrival and never re-pursue when the player walked off.
+                // Engagement of hostiles is left to relationship-based combat AI; chaining
+                // TaskCombatHatedTargetsAroundPed here would replace the follow task.
                 _bridge.ClearPedTasks(pedHandle);
-                _bridge.TaskGoToEntity(pedHandle, playerHandle, RallyStoppingRangeM);
-                _bridge.TaskCombatHatedTargetsAroundPed(pedHandle, RallyCombatRadiusM);
+                _bridge.TaskFollowToOffsetFromEntity(
+                    pedHandle,
+                    playerHandle,
+                    new Vector3(0, 0, 0),
+                    moveBlendRatio: 3.0f,
+                    stoppingRadius: RallyStoppingRangeM,
+                    persistFollowing: true);
                 _rallyingPeds.Add(pedHandle);
             }
         }

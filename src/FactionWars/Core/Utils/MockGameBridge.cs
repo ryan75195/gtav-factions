@@ -532,6 +532,7 @@ namespace FactionWars.Core.Utils
                 _pedsFacingPosition.Remove(pedHandle);
                 _combatTargetingPeds.Remove(pedHandle);
                 _goToEntityPeds.Remove(pedHandle);
+                _followEntityPeds.Remove(pedHandle);
                 _wanderingPeds[pedHandle] = new WanderState
                 {
                     Center = center,
@@ -549,6 +550,7 @@ namespace FactionWars.Core.Utils
                 _pedsFacingPosition.Remove(pedHandle);
                 _combatTargetingPeds.Remove(pedHandle);
                 _goToEntityPeds.Remove(pedHandle);
+                _followEntityPeds.Remove(pedHandle);
                 _wanderingPeds[pedHandle] = new WanderState
                 {
                     Center = center,
@@ -600,14 +602,14 @@ namespace FactionWars.Core.Utils
         {
             if (_peds.ContainsKey(pedHandle))
             {
-                // Clear conflicting task states when assigning combat targeting.
-                // NOTE: deliberately does NOT clear _goToEntityPeds — the rally controller
-                // stacks combat-targeting on top of go-to-entity (sprint toward player THEN
-                // engage hated targets while close), and tests assert both states are
-                // active simultaneously after a rally. See spec section "State machine
-                // and tasking" in 2026-05-01-defender-rally-on-threat-design.md.
+                // In GTA V, every TASK_X call is a primary-task replacement: the new task
+                // wipes the previous one. Mirror that here so tests catch double-tasking
+                // bugs (e.g. issuing TaskGoToEntity then TaskCombatHatedTargetsAroundPed
+                // back-to-back leaves only the second active in-game).
                 _wanderingPeds.Remove(pedHandle);
                 _pedsFacingPosition.Remove(pedHandle);
+                _goToEntityPeds.Remove(pedHandle);
+                _followEntityPeds.Remove(pedHandle);
                 _combatTargetingPeds[pedHandle] = radius;
             }
         }
@@ -637,10 +639,11 @@ namespace FactionWars.Core.Utils
         {
             if (_peds.ContainsKey(pedHandle))
             {
-                // Clear other task states when assigning go-to-entity (mock convention).
+                // In GTA V, every TASK_X call is a primary-task replacement.
                 _wanderingPeds.Remove(pedHandle);
                 _pedsFacingPosition.Remove(pedHandle);
                 _combatTargetingPeds.Remove(pedHandle);
+                _followEntityPeds.Remove(pedHandle);
                 _goToEntityPeds[pedHandle] = new GoToEntityState
                 {
                     TargetEntityHandle = targetEntityHandle,
@@ -659,6 +662,48 @@ namespace FactionWars.Core.Utils
         /// <summary>Gets the stopping range for a go-to-entity task.</summary>
         public float? GetGoToEntityStoppingRange(int pedHandle)
             => _goToEntityPeds.TryGetValue(pedHandle, out var state) ? state.StoppingRange : (float?)null;
+
+        private readonly Dictionary<int, FollowEntityState> _followEntityPeds = new Dictionary<int, FollowEntityState>();
+
+        private class FollowEntityState
+        {
+            public int TargetEntityHandle { get; set; }
+            public Vector3 Offset { get; set; }
+            public float MoveBlendRatio { get; set; }
+            public float StoppingRadius { get; set; }
+            public bool PersistFollowing { get; set; }
+        }
+
+        public void TaskFollowToOffsetFromEntity(int pedHandle, int targetEntityHandle, Vector3 offset, float moveBlendRatio, float stoppingRadius, bool persistFollowing)
+        {
+            if (_peds.ContainsKey(pedHandle))
+            {
+                // In GTA V, every TASK_X call is a primary-task replacement.
+                _wanderingPeds.Remove(pedHandle);
+                _pedsFacingPosition.Remove(pedHandle);
+                _combatTargetingPeds.Remove(pedHandle);
+                _goToEntityPeds.Remove(pedHandle);
+                _followEntityPeds[pedHandle] = new FollowEntityState
+                {
+                    TargetEntityHandle = targetEntityHandle,
+                    Offset = offset,
+                    MoveBlendRatio = moveBlendRatio,
+                    StoppingRadius = stoppingRadius,
+                    PersistFollowing = persistFollowing,
+                };
+            }
+        }
+
+        /// <summary>Gets whether a ped is currently following an entity.</summary>
+        public bool IsPedFollowingEntity(int pedHandle) => _followEntityPeds.ContainsKey(pedHandle);
+
+        /// <summary>Gets the target entity handle for a follow task.</summary>
+        public int? GetFollowEntityTarget(int pedHandle)
+            => _followEntityPeds.TryGetValue(pedHandle, out var state) ? state.TargetEntityHandle : (int?)null;
+
+        /// <summary>Gets the stopping radius for a follow task.</summary>
+        public float? GetFollowEntityStoppingRadius(int pedHandle)
+            => _followEntityPeds.TryGetValue(pedHandle, out var state) ? state.StoppingRadius : (float?)null;
 
         public void SetPedAsFriendly(int pedHandle)
         {
@@ -752,6 +797,7 @@ namespace FactionWars.Core.Utils
                 _pedsFacingPosition.Remove(pedHandle);
                 _combatTargetingPeds.Remove(pedHandle);
                 _goToEntityPeds.Remove(pedHandle);
+                _followEntityPeds.Remove(pedHandle);
             }
         }
 

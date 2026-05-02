@@ -108,15 +108,26 @@ For each defender ped in `player.CurrentZone` whose zone owner =
 `CurrentPlayerFactionId`:
 
 1. `ClearPedTasks(handle)` — wipe the wander task.
-2. `TaskGoToEntity(handle, playerHandle, stoppingRange = RallyStoppingRangeM)`
-   — sprint toward the player, stop at 8m.
-3. `TaskCombatHatedTargetsAroundPed(handle, radius = RallyCombatRadiusM)` —
-   stays stacked on the previous task; while engaging hated targets, the
-   defender remains within ~12m of the player.
+2. `TaskFollowToOffsetFromEntity(handle, playerHandle, offset=(0,0,0),`
+   `moveBlendRatio=3 (sprint), stoppingRadius=RallyStoppingRangeM, persistFollowing=true)`
+   — sprint toward the player, idle within 8m, resume following whenever the
+   player moves away.
+
+`TASK_GO_TO_ENTITY` was tried first but it terminates as soon as the ped
+arrives within `stoppingRange` — once the rally completed, defenders would
+freeze in place and ignore the player walking away. `TASK_FOLLOW_TO_OFFSET_OF_ENTITY`
+with `persistFollowing=true` is the canonical companion-AI native and stays
+active for the duration of the rally.
+
+In GTA V, every `TASK_X` native is a primary-task replacement. Issuing a
+follow-up `TaskCombatHatedTargetsAroundPed` would simply wipe the follow task
+and the ped would idle if no hated target sat in the small combat radius.
+Engagement is left to the ped's relationship-based combat AI: while the
+defender sprints to the player, they react to hostile events nearby (cops,
+attackers) through the standard GTA combat behavior.
 
 Constants:
 - `RallyStoppingRangeM = 8.0f`
-- `RallyCombatRadiusM = 12.0f`
 
 ### `true → false` (stand down)
 

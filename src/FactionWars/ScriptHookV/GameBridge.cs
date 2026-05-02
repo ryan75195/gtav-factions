@@ -1428,6 +1428,41 @@ namespace FactionWars.ScriptHookV
         }
 
         /// <inheritdoc />
+        public void TaskFollowToOffsetFromEntity(int pedHandle, int targetEntityHandle, DomainVector3 offset, float moveBlendRatio, float stoppingRadius, bool persistFollowing)
+        {
+            FileLogger.AI($"TaskFollowToOffsetFromEntity: CALLED for ped {pedHandle} -> entity {targetEntityHandle} radius={stoppingRadius:F1} persist={persistFollowing}");
+
+            try
+            {
+                var ped = Entity.FromHandle(pedHandle) as Ped;
+                if (ped == null || !ped.Exists())
+                {
+                    FileLogger.Warn($"TaskFollowToOffsetFromEntity: Ped {pedHandle} is null or doesn't exist, aborting");
+                    return;
+                }
+
+                // TASK_FOLLOW_TO_OFFSET_OF_ENTITY signature:
+                // (ped, entity, offsetX, offsetY, offsetZ, moveBlendRatio, timer (-1=indefinite),
+                //  stoppingRadius, persistFollowing).
+                Function.Call(
+                    Hash.TASK_FOLLOW_TO_OFFSET_OF_ENTITY,
+                    ped.Handle,
+                    targetEntityHandle,
+                    offset.X, offset.Y, offset.Z,
+                    moveBlendRatio,
+                    -1,
+                    stoppingRadius,
+                    persistFollowing);
+
+                FileLogger.AI($"TaskFollowToOffsetFromEntity: COMPLETED for ped {pedHandle}");
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error($"TaskFollowToOffsetFromEntity exception for ped {pedHandle}", ex);
+            }
+        }
+
+        /// <inheritdoc />
         public void SetPedAsFriendly(int pedHandle)
         {
             FileLogger.AI($"SetPedAsFriendly: CALLED for ped {pedHandle}");

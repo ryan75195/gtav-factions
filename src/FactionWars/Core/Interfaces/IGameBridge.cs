@@ -412,6 +412,22 @@ namespace FactionWars.Core.Interfaces
         void TaskGoToEntity(int pedHandle, int targetEntityHandle, float stoppingRange);
 
         /// <summary>
+        /// Tasks a ped to persistently follow another entity at a configurable offset.
+        /// Wraps TASK_FOLLOW_TO_OFFSET_FROM_ENTITY. Unlike TaskGoToEntity, the task does
+        /// not terminate when the ped reaches the target — when persistFollowing is true
+        /// the ped idles inside the stoppingRadius and resumes following automatically
+        /// once the target moves away. Used by the defender rally controller so defenders
+        /// stay glued to the player throughout a rally rather than freezing on arrival.
+        /// </summary>
+        /// <param name="pedHandle">The ped to task.</param>
+        /// <param name="targetEntityHandle">Entity to follow.</param>
+        /// <param name="offset">Offset in meters from the target's local space.</param>
+        /// <param name="moveBlendRatio">Movement speed: 1=walk, 2=run, 3=sprint.</param>
+        /// <param name="stoppingRadius">Idle radius — within this the ped stops moving.</param>
+        /// <param name="persistFollowing">If true, the task never terminates.</param>
+        void TaskFollowToOffsetFromEntity(int pedHandle, int targetEntityHandle, Vector3 offset, float moveBlendRatio, float stoppingRadius, bool persistFollowing);
+
+        /// <summary>
         /// Makes a ped friendly to the player by setting them to the player's relationship group.
         /// Unlike SetPedAsFollower, this does NOT make them follow the player or join the ped group.
         /// Used for friendly zone defenders who should not attack the player or followers.
