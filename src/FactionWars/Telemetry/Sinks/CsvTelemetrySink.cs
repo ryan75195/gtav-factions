@@ -41,6 +41,9 @@ namespace FactionWars.Telemetry.Sinks
         private readonly string _baseDir;
         private string? _saveDir;
         private bool _disposed;
+        // First-error-wins per file: prevents log spam when a path is persistently
+        // broken (disk full, permissions). Never reset — bounded by the number of
+        // distinct file paths the sink writes (9 currently).
         private readonly HashSet<string> _erroredFiles = new HashSet<string>();
 
         // Buffers (used until _saveDir is set)

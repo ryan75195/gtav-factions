@@ -109,5 +109,29 @@ namespace FactionWars.Tests.Unit.Telemetry
             sink.Dispose();
             sink.WriteSnapshot(new[] { Snap("a") }); // must not throw
         }
+
+        [Fact]
+        public void WriteSnapshot_BufferOverflow_DropsOldestRows()
+        {
+            using var sink = new CsvTelemetrySink(_tempDir);
+
+            // Write 10001 single-row snapshots before SetSaveFile.
+            // Each row uniquely identified by faction id "f0", "f1", ..., "f10000".
+            for (int i = 0; i <= 10000; i++)
+            {
+                sink.WriteSnapshot(new[] { Snap("f" + i) });
+            }
+
+            sink.SetSaveFile("SGTA_overflow");
+
+            var path = Path.Combine(_tempDir, "SGTA_overflow", "snapshots.csv");
+            var lines = File.ReadAllLines(path);
+
+            // Header + 10000 rows (oldest "f0" dropped, newest "f10000" kept).
+            Assert.Equal(10001, lines.Length);
+            Assert.DoesNotContain(lines.Skip(1), l => l.Contains(",f0,"));
+            Assert.Contains(lines.Skip(1), l => l.Contains(",f1,"));
+            Assert.Contains(lines.Skip(1), l => l.Contains(",f10000,"));
+        }
     }
 }
