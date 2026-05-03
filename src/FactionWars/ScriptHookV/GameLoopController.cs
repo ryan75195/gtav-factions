@@ -1698,21 +1698,4 @@ namespace FactionWars.ScriptHookV
         }
     }
 
-    /// <summary>
-    /// Adapts <see cref="IZoneBattleManager"/> to <see cref="ICombatActivityQuery"/>
-    /// so that <see cref="DefenderRallyController"/> can use the new manager without
-    /// taking a direct dependency on the legacy CombatManager.
-    /// </summary>
-    public sealed class ZoneBattleCombatActivityAdapter : ICombatActivityQuery
-    {
-        private readonly IZoneBattleManager _battleManager;
-
-        public ZoneBattleCombatActivityAdapter(IZoneBattleManager battleManager)
-        {
-            _battleManager = battleManager ?? throw new ArgumentNullException(nameof(battleManager));
-        }
-
-        /// <inheritdoc />
-        public bool HasActiveEncounter => _battleManager.IsPlayerInBattle();
-    }
 }
