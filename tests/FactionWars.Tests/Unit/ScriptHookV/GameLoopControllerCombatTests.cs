@@ -5,7 +5,6 @@ using FactionWars.Core.Interfaces;
 using FactionWars.Core.Models;
 using FactionWars.Core.Utils;
 using FactionWars.ScriptHookV;
-using FactionWars.ScriptHookV.Managers;
 using FactionWars.Territory.Interfaces;
 using FactionWars.Tests.Mocks;
 using Xunit;
@@ -43,20 +42,6 @@ namespace FactionWars.Tests.Unit.ScriptHookV
         }
 
         [Fact]
-        public void CombatManager_AfterInitialization_IsNotNull()
-        {
-            // Arrange
-            SetupController();
-            var controller = new GameLoopController(_container);
-
-            // Act
-            controller.OnTick();
-
-            // Assert
-            Assert.NotNull(controller.CombatManager);
-        }
-
-        [Fact]
         public void TerritoryManager_OnTick_GetsUpdated()
         {
             // Arrange
@@ -73,27 +58,6 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             // Assert - TerritoryManager should have detected the zone
             Assert.NotNull(controller.TerritoryManager);
             // CurrentZone may or may not be set depending on zone definitions
-        }
-
-        [Fact]
-        public void CombatManager_WhenPlayerEntersEnemyZone_StartsCombat()
-        {
-            // Arrange
-            SetupController("player_one"); // Franklin
-            var controller = new GameLoopController(_container);
-            controller.OnTick(); // Initialize
-
-            // Move player to a zone owned by another faction (Michael's territory)
-            // Vinewood Hills is owned by Michael in starting conditions
-            _gameBridge.PlayerPosition = new Vector3(-150, 950, 235);
-
-            // Act
-            controller.OnTick();
-            controller.OnTick(); // Second tick to process combat start
-
-            // Assert
-            Assert.NotNull(controller.CombatManager);
-            // Combat state depends on zone ownership setup
         }
 
         [Fact]
@@ -121,43 +85,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
         }
 
         [Fact]
-        public void OnCombatStarted_MarksZoneAsContested()
-        {
-            SetupController();
-            var controller = new GameLoopController(_container);
-            controller.OnTick(); // Initialize
-
-            var zoneRepo = _container.Resolve<IZoneRepository>();
-            var zone = zoneRepo.GetById("vinewood_hills")!;
-            zone.OwnerFactionId = "trevor";
-            Assert.False(zone.IsContested);
-
-            controller.CombatManager!.StartCombat(zone, attackingFactionId: "michael");
-
-            Assert.True(zoneRepo.GetById("vinewood_hills")!.IsContested);
-        }
-
-        [Fact]
-        public void OnCombatEnded_ClearsContestedFlag()
-        {
-            SetupController();
-            var controller = new GameLoopController(_container);
-            controller.OnTick();
-
-            var zoneRepo = _container.Resolve<IZoneRepository>();
-            var zone = zoneRepo.GetById("vinewood_hills")!;
-            zone.OwnerFactionId = "trevor";
-
-            controller.CombatManager!.StartCombat(zone, attackingFactionId: "michael");
-            Assert.True(zoneRepo.GetById("vinewood_hills")!.IsContested);
-
-            controller.CombatManager.AbortCombat();
-
-            Assert.False(zoneRepo.GetById("vinewood_hills")!.IsContested);
-        }
-
-        [Fact]
-        public void OnAbort_CleansUpCombatManager()
+        public void OnAbort_ClearsInitializationState()
         {
             // Arrange
             SetupController();

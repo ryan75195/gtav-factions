@@ -48,7 +48,6 @@ namespace FactionWars.ScriptHookV
         private IFollowerService? _followerService;
         private TerritoryManager? _territoryManager;
         private ZoneBoundaryBlipManager? _zoneBoundaryBlipManager;
-        private CombatManager? _combatManager;
         private AIManager? _aiManager;
         private BackgroundBattleSimulator? _backgroundBattleSimulator;
         private AIDecisionExecutor? _aiDecisionExecutor;
@@ -87,10 +86,6 @@ namespace FactionWars.ScriptHookV
         private bool _isInitialized;
         private bool _characterSwitchInitialized;
         private bool _gameDataInitialized;
-
-        // Debug tracking
-        private int _debugLogCounter;
-        private bool _wasInCombat;
 
         // Threat decay tracking
         private float _threatDecayTimer = 0f;
@@ -173,12 +168,6 @@ namespace FactionWars.ScriptHookV
         /// Returns null if not yet initialized.
         /// </summary>
         public TerritoryManager? TerritoryManager => _territoryManager;
-
-        /// <summary>
-        /// Gets the CombatManager for combat encounters.
-        /// Returns null if not yet initialized.
-        /// </summary>
-        public CombatManager? CombatManager => _combatManager;
 
         /// <summary>
         /// Gets the AIManager for AI faction decisions.
@@ -279,74 +268,6 @@ namespace FactionWars.ScriptHookV
 
             // Update territory detection (checks player position against zones)
             _territoryManager?.Update();
-
-            // Update combat manager (handles ped spawning, combat state, takeover)
-            _combatManager?.Update();
-
-            // Debug: Log combat state every tick if we're supposed to be in combat
-            if (_combatManager != null)
-            {
-                bool isInCombat = _combatManager.IsInCombat;
-                bool waveComplete = _combatManager.IsWaveSpawningComplete();
-                int remaining = _combatManager.GetRemainingDefendersToSpawn();
-
-                // Only log once per second to reduce spam (deltaTime is in seconds)
-                if (isInCombat && (_debugLogCounter++ % 60 == 0))
-                {
-                    FileLogger.Debug($"Combat state: IsInCombat={isInCombat}, WaveComplete={waveComplete}, Remaining={remaining}");
-                }
-
-                // Log if combat ends unexpectedly
-                if (!isInCombat && _wasInCombat)
-                {
-                    FileLogger.Combat($"Combat ended! Was in combat but now IsInCombat={isInCombat}");
-                }
-                _wasInCombat = isInCombat;
-            }
-
-            // Spawn defender waves during active combat
-            if (_combatManager?.IsInCombat == true && !_combatManager.IsWaveSpawningComplete())
-            {
-                var modelsByTier = new Dictionary<DefenderTier, string>
-                {
-                    { DefenderTier.Basic, "a_m_y_mexthug_01" },
-                    { DefenderTier.Medium, "g_m_y_salvagoon_01" },
-                    { DefenderTier.Heavy, "s_m_y_swat_01" }
-                };
-
-                string defenderFactionId = _combatManager.CurrentEncounter?.DefendingFactionId ?? "";
-                var currentTier = _combatManager.GetNextWaveTier();
-                int remaining = _combatManager.GetRemainingDefendersToSpawn();
-
-                FileLogger.Spawn($"Attempting spawn: Tier={currentTier}, Remaining={remaining}, FactionId={defenderFactionId}");
-
-                try
-                {
-                    var spawnedPeds = _combatManager.SpawnNextWave(modelsByTier, defenderFactionId, maxPerTick: 2);
-                    FileLogger.Spawn($"SpawnNextWave returned {spawnedPeds.Count} peds");
-
-                    // Configure spawned peds with weapons, stats, and combat behavior
-                    if (spawnedPeds.Count > 0 && currentTier.HasValue)
-                    {
-                        FileLogger.Spawn($"Configuring {spawnedPeds.Count} spawned peds as {currentTier.Value}");
-                        ConfigureSpawnedDefenders(spawnedPeds, currentTier.Value, defenderFactionId);
-                        _gameBridge.ShowNotification($"~g~Spawned {spawnedPeds.Count} {currentTier.Value} defenders! ({remaining - spawnedPeds.Count} left)");
-
-                        foreach (var ped in spawnedPeds)
-                        {
-                            FileLogger.Spawn($"  Ped Handle={ped.Handle}, Valid={ped.IsValid}");
-                        }
-                    }
-                    else if (spawnedPeds.Count == 0)
-                    {
-                        FileLogger.Warn($"No peds spawned! Tier={currentTier}, Remaining={remaining}");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    FileLogger.Error("Exception during SpawnNextWave", ex);
-                }
-            }
 
             // Update AI controller (handles decisions, recruitment, battles)
             _aiController?.Update(deltaTime);
@@ -706,9 +627,6 @@ namespace FactionWars.ScriptHookV
                 _zoneService,
                 _zoneBattleManager);
 
-            // Initialize combat manager dependencies (needed by multiple managers)
-            var pedPool = _container.Resolve<IPedPool>();
-
             // Initialize battle attacker manager for spawning attackers when player defends their zone
             _battleAttackerManager = new BattleAttackerManager(
                 _gameBridge,
@@ -721,36 +639,11 @@ namespace FactionWars.ScriptHookV
                 _factionService,
                 CurrentPlayerFactionId ?? "");
 
-            // Initialize combat manager for combat encounters
-            var spawnPositionCalculator = _container.Resolve<ISpawnPositionCalculator>();
-            var controlCalculator = _container.Resolve<IControlPercentageCalculator>();
-            var takeoverDetector = _container.Resolve<ITakeoverDetector>();
-            var combatResultHandler = _container.Resolve<ICombatResultHandler>();
-            var waveSpawnerService = _container.Resolve<IWaveSpawnerService>();
-            var aggressionResponseService = _container.Resolve<IAggressionResponseService>();
-            // followerService already resolved above for FollowerManager
-            _combatManager = new CombatManager(
-                _gameBridge,
-                pedPool,
-                pedSpawningService,
-                pedDespawnService,
-                spawnPositionCalculator,
-                controlCalculator,
-                takeoverDetector,
-                combatResultHandler,
-                waveSpawnerService,
-                followerService,
-                aggressionResponseService);
-
-            // Subscribe to combat ended event to show claim prompt after victory
-            _combatManager.CombatStarted += OnCombatStarted;
-            _combatManager.CombatEnded += OnCombatEnded;
-
             _defenderRallyController = new DefenderRallyController(
                 _gameBridge,
                 _territoryManager,
                 _friendlyDefenderManager,
-                _combatManager,
+                new ZoneBattleCombatActivityAdapter(_zoneBattleManager),
                 () => CurrentPlayerFactionId,
                 () => System.Environment.TickCount);
 
@@ -1134,14 +1027,6 @@ namespace FactionWars.ScriptHookV
                 _territoryManager = null;
             }
 
-            // Stop and clean up combat manager
-            if (_combatManager != null)
-            {
-                _combatManager.CombatStarted -= OnCombatStarted;
-                _combatManager.CombatEnded -= OnCombatEnded;
-                _combatManager.EndCombat(CombatStatus.Aborted);
-            }
-            _combatManager = null;
             _defenderRallyController = null;
 
             // Unsubscribe from AI events and stop AI manager
@@ -1472,55 +1357,6 @@ namespace FactionWars.ScriptHookV
                         _zoneBattleManager.RemoveParticipant(zone.Id, playerFactionId);
                         _gameBridge.ShowNotification($"~y~Retreated from:~w~ {zone.Name}");
                     }
-                }
-            }
-        }
-
-        /// <summary>
-        /// Called when a combat encounter starts. Marks the zone contested so the
-        /// minimap blip flashes red/white. Symmetric clear lives in OnCombatEnded.
-        /// </summary>
-        private void OnCombatStarted(object? sender, CombatEncounter encounter)
-        {
-            _zoneService?.SetZoneContested(encounter.ZoneId, true);
-        }
-
-        /// <summary>
-        /// Called when a combat encounter ends.
-        /// If the player won (AttackerVictory), shows the claim prompt for the now-neutral zone.
-        /// </summary>
-        private void OnCombatEnded(object? sender, CombatEncounter encounter)
-        {
-            // Always clear contested state. CombatResultHandler also clears it on
-            // win/loss; calling it again is idempotent. This handler also covers
-            // abort/retreat/stalemate where ProcessCombatResult is skipped.
-            _zoneService?.SetZoneContested(encounter.ZoneId, false);
-
-            // Add combat result event to event feed
-            if (_eventFeedService != null)
-            {
-                var zone = _zoneService?.GetZone(encounter.ZoneId);
-                if (encounter.Status == CombatStatus.AttackerVictory)
-                {
-                    _eventFeedService.AddZoneCaptured(zone?.Name ?? "Unknown", "You");
-                }
-                else if (encounter.Status == CombatStatus.DefenderVictory)
-                {
-                    var defenderFaction = _factionService.GetFaction(encounter.DefendingFactionId);
-                    _eventFeedService.AddCombatEnded(
-                        zone?.Name ?? "Unknown",
-                        defenderFaction?.Name ?? "Defender",
-                        defenderWon: true);
-                }
-            }
-
-            if (encounter.Status == CombatStatus.AttackerVictory)
-            {
-                // Zone is now neutral after attacker victory, show claim prompt
-                var zone = _zoneService?.GetZone(encounter.ZoneId);
-                if (zone != null)
-                {
-                    OnNeutralZoneEntered(this, zone);
                 }
             }
         }
@@ -1860,5 +1696,23 @@ namespace FactionWars.ScriptHookV
                 // Silently ignore - relationship setup failed but combat may still work
             }
         }
+    }
+
+    /// <summary>
+    /// Adapts <see cref="IZoneBattleManager"/> to <see cref="ICombatActivityQuery"/>
+    /// so that <see cref="DefenderRallyController"/> can use the new manager without
+    /// taking a direct dependency on the legacy CombatManager.
+    /// </summary>
+    public sealed class ZoneBattleCombatActivityAdapter : ICombatActivityQuery
+    {
+        private readonly IZoneBattleManager _battleManager;
+
+        public ZoneBattleCombatActivityAdapter(IZoneBattleManager battleManager)
+        {
+            _battleManager = battleManager ?? throw new ArgumentNullException(nameof(battleManager));
+        }
+
+        /// <inheritdoc />
+        public bool HasActiveEncounter => _battleManager.IsPlayerInBattle();
     }
 }
