@@ -136,7 +136,10 @@ namespace FactionWars.ScriptHookV.UI
 
         private void DrawEnemyTerritoryHud(TerritoryIndicatorData data)
         {
-            float boxHeight = data.IsContested ? 0.072f : 0.055f;
+            bool hasThirdParty = data.IsContested && data.ThirdPartyCount > 0 && data.ThirdPartyFactionColor.HasValue;
+            float boxHeight = data.IsContested
+                ? (hasThirdParty ? 0.083f : 0.072f)
+                : 0.055f;
             float centerY = BoxY + (boxHeight / 2);
 
             // Draw box
@@ -162,6 +165,14 @@ namespace FactionWars.ScriptHookV.UI
                     ? $"{data.ControlPercentage:F0}%  |  You: {data.PlayerTroopCount}  Enemies: {data.EnemyDefenderCount} (+{data.EnemyReserveCount})"
                     : $"{data.ControlPercentage:F0}%  |  You: {data.PlayerTroopCount}  Enemies: {data.EnemyDefenderCount}";
                 DrawTextLeft(statsText, textX, BoxY + 0.054f, DetailScale, Color.White);
+
+                // Third-party row: shown only in 3-way battles
+                if (hasThirdParty)
+                {
+                    var fc = data.ThirdPartyFactionColor!.Value;
+                    var thirdPartyColor = Color.FromArgb(fc.A, fc.R, fc.G, fc.B);
+                    DrawTextLeft($"3rd party: {data.ThirdPartyCount}", textX, BoxY + 0.065f, DetailScale, thirdPartyColor);
+                }
             }
         }
 
