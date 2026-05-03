@@ -119,6 +119,48 @@ namespace FactionWars.Combat.Services
         }
 
         /// <inheritdoc />
+        public ZoneBattle? StartPlayerCombat(
+            Zone zone,
+            string playerFactionId,
+            Func<int> aliveCountCallback)
+        {
+            if (zone == null) throw new ArgumentNullException(nameof(zone));
+            if (string.IsNullOrEmpty(playerFactionId)) throw new ArgumentNullException(nameof(playerFactionId));
+            if (aliveCountCallback == null) throw new ArgumentNullException(nameof(aliveCountCallback));
+            if (string.IsNullOrEmpty(zone.OwnerFactionId))
+                throw new ArgumentException("Zone must have an owner to start player combat.", nameof(zone));
+            if (zone.OwnerFactionId == playerFactionId)
+                throw new ArgumentException("Player cannot attack their own zone.", nameof(zone));
+
+            FileLogger.Combat($"StartPlayerCombat: zone={zone.Id}, player={playerFactionId}, defender={zone.OwnerFactionId}");
+
+            // Case 2: existing battle — join it.
+            if (_battlesByZone.ContainsKey(zone.Id))
+            {
+                bool joined = JoinAsAttacker(zone.Id, playerFactionId, isPlayer: true,
+                    aliveCountCallback: aliveCountCallback, troops: null);
+                return joined ? _battlesByZone[zone.Id] : null;
+            }
+
+            // Case 1: new battle. Defender troops come from the deployed allocation.
+            var allocation = _allocationService.GetAllocation(zone.OwnerFactionId, zone.Id);
+            var defenderTroops = allocation != null
+                ? allocation.GetTroopsCopy()
+                : new Dictionary<DefenderTier, int>();
+
+            var defender = BattleParticipant.ForAi(zone.OwnerFactionId, BattleRole.Defender, defenderTroops);
+            var attacker = BattleParticipant.ForPlayer(playerFactionId, BattleRole.Attacker, aliveCountCallback);
+            var battle = new ZoneBattle(zone.Id,
+                new List<BattleParticipant> { defender, attacker },
+                playerFactionId: playerFactionId);
+            battle.IsPlayerPresent = true;
+            _battlesByZone[zone.Id] = battle;
+            BattleStarted?.Invoke(battle);
+            FileLogger.Combat($"StartPlayerCombat: created new battle id={battle.Id} in zone {zone.Id}");
+            return battle;
+        }
+
+        /// <inheritdoc />
         public event Action<ZoneBattle>? BattleStarted;
 
         /// <inheritdoc />

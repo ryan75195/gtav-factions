@@ -104,6 +104,18 @@ namespace FactionWars.Combat.Interfaces
         IReadOnlyList<ZoneBattle> GetAllActiveBattles();
 
         /// <summary>
+        /// Begins or joins a player-led battle in the given zone.
+        /// </summary>
+        /// <param name="zone">The zone the player is entering for combat.</param>
+        /// <param name="playerFactionId">The player's faction id.</param>
+        /// <param name="aliveCountCallback">Returns the player's currently-alive squad count (player + followers).</param>
+        /// <returns>
+        /// The battle (new or joined). Null if join failed (e.g. attacker cap reached
+        /// or player is already a participant).
+        /// </returns>
+        ZoneBattle? StartPlayerCombat(Zone zone, string playerFactionId, Func<int> aliveCountCallback);
+
+        /// <summary>
         /// Adds an Attacker-role participant to an existing battle in the given zone.
         /// </summary>
         /// <param name="zoneId">The zone whose battle to modify.</param>

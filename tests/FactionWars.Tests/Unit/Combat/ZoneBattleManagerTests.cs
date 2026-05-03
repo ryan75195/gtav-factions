@@ -820,6 +820,64 @@ namespace FactionWars.Tests.Unit.Combat
 
         #endregion
 
+        #region StartPlayerCombat
+
+        [Fact]
+        public void StartPlayerCombat_CreatesNewBattle_WhenNoneExists()
+        {
+            var allocSvc = new Mock<IZoneDefenderAllocationService>();
+            allocSvc.Setup(a => a.GetAllocation("michael", "zone_1"))
+                .Returns((ZoneDefenderAllocation?)null);
+            var factionSvc = new Mock<IFactionService>();
+            var manager = new ZoneBattleManager(allocSvc.Object, factionSvc.Object, "player_faction");
+            var zone = CreateTestZone("zone_1");
+            zone.OwnerFactionId = "michael";
+
+            var battle = manager.StartPlayerCombat(zone, "player_faction", () => 4);
+
+            Assert.NotNull(battle);
+            Assert.Equal("zone_1", battle!.ZoneId);
+            Assert.Equal("michael", battle.Defender.FactionId);
+            Assert.Single(battle.Attackers);
+            Assert.Equal("player_faction", battle.Attackers[0].FactionId);
+            Assert.True(battle.Attackers[0].IsPlayer);
+            Assert.Equal(4, battle.Attackers[0].AliveCount);
+        }
+
+        [Fact]
+        public void StartPlayerCombat_JoinsExistingBattle_AsThirdAttacker()
+        {
+            var manager = CreateManager(playerFactionId: "player_faction");
+            manager.StartBattle("zone_1", "trevor", "michael",
+                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 3 } },
+                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 5 } });
+            var zone = CreateTestZone("zone_1");
+            zone.OwnerFactionId = "michael";
+
+            var battle = manager.StartPlayerCombat(zone, "player_faction", () => 4);
+
+            Assert.NotNull(battle);
+            Assert.Equal(2, battle!.Attackers.Count);
+            Assert.True(battle.Attackers.Any(p => p.IsPlayer));
+            Assert.True(battle.Attackers.Any(p => p.FactionId == "trevor" && !p.IsPlayer));
+        }
+
+        [Fact]
+        public void StartPlayerCombat_ReturnsNull_WhenAlreadyAParticipant()
+        {
+            var manager = CreateManager(playerFactionId: "player_faction");
+            var zone = CreateTestZone("zone_1");
+            zone.OwnerFactionId = "michael";
+            var first = manager.StartPlayerCombat(zone, "player_faction", () => 4);
+            Assert.NotNull(first);
+
+            var second = manager.StartPlayerCombat(zone, "player_faction", () => 4);
+
+            Assert.Null(second);
+        }
+
+        #endregion
+
         #region JoinAsAttacker
 
         [Fact]
