@@ -1451,7 +1451,7 @@ namespace FactionWars.ScriptHookV
             // Notify zone battle manager that player exited this zone
             _zoneBattleManager?.OnPlayerExitedZone(zone);
 
-            if (_combatManager == null || zone == null)
+            if (zone == null)
                 return;
 
             // If exiting an enemy zone, despawn enemy defenders
@@ -1460,11 +1460,19 @@ namespace FactionWars.ScriptHookV
                 _enemyDefenderManager?.OnEnemyZoneExited(zone);
             }
 
-            // If we were in combat in this zone, end it (retreat)
-            if (_combatManager.IsInCombat && _combatManager.CurrentEncounter?.ZoneId == zone.Id)
+            // If we were in combat in this zone, remove the player as a participant (retreat)
+            if (_zoneBattleManager != null && _zoneBattleManager.IsPlayerInBattle())
             {
-                _combatManager.EndCombat(CombatStatus.PlayerRetreat);
-                _gameBridge.ShowNotification($"~y~Retreated from:~w~ {zone.Name}");
+                var currentBattle = _zoneBattleManager.GetPlayerCurrentBattle();
+                if (currentBattle != null && currentBattle.ZoneId == zone.Id)
+                {
+                    string? playerFactionId = CurrentPlayerFactionId;
+                    if (!string.IsNullOrEmpty(playerFactionId))
+                    {
+                        _zoneBattleManager.RemoveParticipant(zone.Id, playerFactionId);
+                        _gameBridge.ShowNotification($"~y~Retreated from:~w~ {zone.Name}");
+                    }
+                }
             }
         }
 
