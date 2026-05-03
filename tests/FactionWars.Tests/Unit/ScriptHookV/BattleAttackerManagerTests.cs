@@ -1,3 +1,4 @@
+using FactionWars.Combat.Events;
 using FactionWars.Combat.Interfaces;
 using FactionWars.Combat.Models;
 using FactionWars.Core.Interfaces;
@@ -343,6 +344,45 @@ namespace FactionWars.Tests.Unit.ScriptHookV
 
             // Reserve was 5, one attacker died → reserve should now be 4.
             Assert.Equal(4, enemyState.GetReserveTroops(DefenderTier.Basic));
+        }
+
+        [Fact]
+        public void HandleAttackerDeath_RaisesAttackerKilledEvent()
+        {
+            // Arrange: set up a battle with the player as defender, simulate spawning
+            // one Basic attacker ped, then mark that ped dead and run Update.
+            var zone = new Zone("downtown", "Downtown", new Vector3(0, 0, 0), 100f) { OwnerFactionId = "player" };
+            var attackerTroops = new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 1 } };
+            var defenderTroops = new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 1 } };
+            var battle = new ZoneBattle("enemy", "player", "downtown", attackerTroops, defenderTroops, "player");
+            _battleManagerMock.Setup(b => b.GetBattleForZone("downtown")).Returns(battle);
+            _pedSpawningMock.Setup(p => p.CanSpawn()).Returns(true);
+            _pedSpawningMock.Setup(p => p.SpawnPed(It.IsAny<string>(), It.IsAny<Vector3>(), It.IsAny<string>(), It.IsAny<string>()))
+                .Returns(new PedHandle(42));
+            _gameBridgeMock.Setup(g => g.GetGroundZ(It.IsAny<float>(), It.IsAny<float>(), It.IsAny<float>())).Returns(0f);
+
+            var manager = CreateManager("player");
+            manager.OnPlayerZoneEntered(zone);
+
+            // Capture the event
+            AttackerKilledEventArgs? captured = null;
+            manager.AttackerKilled += (_, args) => captured = args;
+
+            // Mark the spawned ped as dead, with killer ped handle 99
+            _gameBridgeMock.Setup(g => g.IsPedAlive(42)).Returns(false);
+            _gameBridgeMock.Setup(g => g.DoesPedExist(42)).Returns(true);
+            _gameBridgeMock.Setup(g => g.GetPedKiller(42)).Returns(99);
+
+            // Act
+            manager.Update();
+
+            // Assert
+            Assert.NotNull(captured);
+            Assert.Equal("downtown", captured!.ZoneId);
+            Assert.Equal("enemy", captured.FactionId);
+            Assert.Equal(DefenderTier.Basic, captured.Tier);
+            Assert.Equal(42, captured.PedHandle);
+            Assert.Equal(99, captured.KillerPedHandle);
         }
 
         private BattleAttackerManager CreateManager(string playerFactionId)

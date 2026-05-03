@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using FactionWars.Combat.Events;
 using FactionWars.Combat.Interfaces;
 using FactionWars.Combat.Models;
 using FactionWars.Core.Interfaces;
@@ -42,6 +43,12 @@ namespace FactionWars.ScriptHookV.Managers
         /// Maximum number of enemy attackers that can be spawned at once per zone.
         /// </summary>
         public const int MaxSpawnedAttackers = 12;
+
+        /// <summary>
+        /// Raised when a tracked enemy attacker ped is detected dead during Update().
+        /// Args expose the killer ped handle so consumers can resolve player-attributed kills.
+        /// </summary>
+        public event EventHandler<AttackerKilledEventArgs>? AttackerKilled;
 
         /// <summary>
         /// Creates a new BattleAttackerManager instance.
@@ -321,6 +328,18 @@ namespace FactionWars.ScriptHookV.Managers
         {
             FileLogger.Combat($"BattleAttackerManager: Attacker died in {zoneId}, tier={tier}");
 
+            // Look up the battle once; used both for the telemetry event and later side-effects.
+            var battle = _zoneBattleManager.GetBattleForZone(zoneId);
+
+            // Raise telemetry event before any other side-effects so the killer is still resolvable.
+            var attackerFactionId = battle?.AttackerFactionId;
+            if (attackerFactionId != null)
+            {
+                int killerHandle = _gameBridge.GetPedKiller(pedHandle);
+                AttackerKilled?.Invoke(this, new AttackerKilledEventArgs(
+                    zoneId, attackerFactionId, tier, pedHandle, killerHandle));
+            }
+
             // Track death time for corpse cleanup (don't despawn yet - leave corpse visible)
             _corpseDeathTimes[pedHandle] = _gameBridge.GetGameTime();
 
@@ -337,7 +356,6 @@ namespace FactionWars.ScriptHookV.Managers
             _pedDespawnService.UntrackPed(pedHandle);
 
             // Report kill to active battle manager
-            var battle = _zoneBattleManager.GetBattleForZone(zoneId);
             if (battle != null && battle.IsPlayerPresent)
             {
                 _zoneBattleManager.ReportTroopKilled(zoneId, battle.AttackerFactionId, tier);

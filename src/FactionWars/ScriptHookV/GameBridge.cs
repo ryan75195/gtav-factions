@@ -227,6 +227,28 @@ namespace FactionWars.ScriptHookV
         }
 
         /// <inheritdoc />
+        public int GetPedKiller(int pedHandle)
+        {
+            try
+            {
+                var ped = Entity.FromHandle(pedHandle) as Ped;
+                if (ped == null || !ped.Exists())
+                    return 0;
+
+                var killer = ped.Killer;
+                if (killer == null || !killer.Exists())
+                    return 0;
+
+                return killer.Handle;
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error($"GetPedKiller exception for ped {pedHandle}", ex);
+                return 0;
+            }
+        }
+
+        /// <inheritdoc />
         public void SetPedRelationshipGroup(int pedHandle, string groupName)
         {
             try
