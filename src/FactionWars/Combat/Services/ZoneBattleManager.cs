@@ -6,6 +6,7 @@ using FactionWars.Combat.Models;
 using FactionWars.Core.Interfaces;
 using FactionWars.Core.Models;
 using FactionWars.Factions.Interfaces;
+using FactionWars.ScriptHookV.Logging;
 using FactionWars.Territory.Models;
 
 namespace FactionWars.Combat.Services
@@ -40,6 +41,24 @@ namespace FactionWars.Combat.Services
 
         /// <inheritdoc />
         public int BattleCount => _battlesByZone.Count;
+
+        /// <inheritdoc />
+        public bool IsPlayerInBattle() => GetPlayerCurrentBattle() != null;
+
+        /// <inheritdoc />
+        public ZoneBattle? GetPlayerCurrentBattle()
+        {
+            if (_playerFactionId == null) return null;
+            foreach (var battle in _battlesByZone.Values)
+            {
+                foreach (var participant in battle.Participants)
+                {
+                    if (participant.IsPlayer && participant.FactionId == _playerFactionId)
+                        return battle;
+                }
+            }
+            return null;
+        }
 
         /// <inheritdoc />
         public event Action<ZoneBattle>? BattleStarted;

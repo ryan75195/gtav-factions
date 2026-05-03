@@ -103,6 +103,16 @@ namespace FactionWars.Combat.Interfaces
         /// </summary>
         IReadOnlyList<ZoneBattle> GetAllActiveBattles();
 
+        /// <summary>
+        /// Returns true if the player is currently a participant in any battle.
+        /// </summary>
+        bool IsPlayerInBattle();
+
+        /// <summary>
+        /// Returns the battle the player is currently a participant in, or null if none.
+        /// </summary>
+        ZoneBattle? GetPlayerCurrentBattle();
+
         #endregion
 
         #region Events

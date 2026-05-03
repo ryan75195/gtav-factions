@@ -819,5 +819,39 @@ namespace FactionWars.Tests.Unit.Combat
         }
 
         #endregion
+
+        #region IsPlayerInBattle / GetPlayerCurrentBattle
+
+        [Fact]
+        public void IsPlayerInBattle_ReturnsFalse_WhenNoBattle()
+        {
+            var manager = CreateManager(playerFactionId: "player_faction");
+
+            Assert.False(manager.IsPlayerInBattle());
+        }
+
+        [Fact]
+        public void IsPlayerInBattle_ReturnsFalse_WhenBattleHasNoPlayerParticipant()
+        {
+            var manager = CreateManager(playerFactionId: "player_faction");
+            manager.StartBattle("zone_1", "trevor", "michael",
+                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 3 } },
+                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 3 } });
+
+            Assert.False(manager.IsPlayerInBattle());
+        }
+
+        [Fact]
+        public void GetPlayerCurrentBattle_ReturnsNull_WhenNoPlayerParticipant()
+        {
+            var manager = CreateManager(playerFactionId: "player_faction");
+            manager.StartBattle("zone_1", "trevor", "michael",
+                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 3 } },
+                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 3 } });
+
+            Assert.Null(manager.GetPlayerCurrentBattle());
+        }
+
+        #endregion
     }
 }
