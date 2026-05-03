@@ -160,6 +160,39 @@ namespace FactionWars.Tests.Unit.UI
 
             Assert.False(data.IsEnemyOwned);
         }
+
+        [Fact]
+        public void TerritoryIndicatorData_ExposesThirdPartyFields()
+        {
+            var data = new TerritoryIndicatorData(
+                zoneName: "Test",
+                ownerFactionName: null,
+                ownerFactionColor: null,
+                controlPercentage: 0f,
+                isContested: false,
+                isPlayerOwned: false,
+                thirdPartyCount: 2,
+                thirdPartyFactionColor: new FactionColor(255, 150, 0));
+
+            Assert.Equal(2, data.ThirdPartyCount);
+            Assert.NotNull(data.ThirdPartyFactionColor);
+            Assert.Equal(new FactionColor(255, 150, 0), data.ThirdPartyFactionColor);
+        }
+
+        [Fact]
+        public void TerritoryIndicatorData_ThirdPartyDefaults_AreZeroAndNull()
+        {
+            var data = new TerritoryIndicatorData(
+                zoneName: "Test",
+                ownerFactionName: null,
+                ownerFactionColor: null,
+                controlPercentage: 0f,
+                isContested: false,
+                isPlayerOwned: false);
+
+            Assert.Equal(0, data.ThirdPartyCount);
+            Assert.Null(data.ThirdPartyFactionColor);
+        }
     }
 
     public class TerritoryIndicatorServiceTests

@@ -77,6 +77,17 @@ namespace FactionWars.UI.Models
         public int EnemyReserveCount { get; }
 
         /// <summary>
+        /// Count of the AI third-party participant in a 3-way battle (the AI attacker that
+        /// isn't the player). Zero in 2-way scenarios.
+        /// </summary>
+        public int ThirdPartyCount { get; }
+
+        /// <summary>
+        /// Faction color of the AI third-party participant. Null when no third party (i.e., 2-way).
+        /// </summary>
+        public FactionColor? ThirdPartyFactionColor { get; }
+
+        /// <summary>
         /// Creates a new territory indicator data instance.
         /// </summary>
         /// <param name="zoneName">The display name of the zone.</param>
@@ -90,6 +101,8 @@ namespace FactionWars.UI.Models
         /// <param name="playerTroopCount">Number of player's troops in combat.</param>
         /// <param name="enemyDefenderCount">Number of enemy defenders in combat.</param>
         /// <param name="enemyReserveCount">Number of enemy reserves remaining.</param>
+        /// <param name="thirdPartyCount">Count of AI third-party troops in a 3-way battle. Zero in 2-way scenarios.</param>
+        /// <param name="thirdPartyFactionColor">Faction color of the AI third party. Null in 2-way scenarios.</param>
         /// <exception cref="ArgumentNullException">Thrown if zoneName is null.</exception>
         /// <exception cref="ArgumentException">Thrown if zoneName is empty or whitespace.</exception>
         /// <exception cref="ArgumentOutOfRangeException">Thrown if controlPercentage is not between 0 and 100.</exception>
@@ -104,7 +117,9 @@ namespace FactionWars.UI.Models
             int reserveDefenderCount = 0,
             int playerTroopCount = 0,
             int enemyDefenderCount = 0,
-            int enemyReserveCount = 0)
+            int enemyReserveCount = 0,
+            int thirdPartyCount = 0,
+            FactionColor? thirdPartyFactionColor = null)
         {
             if (zoneName == null)
                 throw new ArgumentNullException(nameof(zoneName));
@@ -125,6 +140,8 @@ namespace FactionWars.UI.Models
             PlayerTroopCount = Math.Max(0, playerTroopCount);
             EnemyDefenderCount = Math.Max(0, enemyDefenderCount);
             EnemyReserveCount = Math.Max(0, enemyReserveCount);
+            ThirdPartyCount = Math.Max(0, thirdPartyCount);
+            ThirdPartyFactionColor = thirdPartyFactionColor;
         }
     }
 }
