@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using FactionWars.AI.Interfaces;
 using FactionWars.AI.Models;
 using FactionWars.Combat.Interfaces;
@@ -44,6 +45,7 @@ namespace FactionWars.ScriptHookV
         private MapBlipManager? _mapBlipManager;
         private EconomyManager? _economyManager;
         private FollowerManager? _followerManager;
+        private IFollowerService? _followerService;
         private TerritoryManager? _territoryManager;
         private ZoneBoundaryBlipManager? _zoneBoundaryBlipManager;
         private CombatManager? _combatManager;
@@ -595,6 +597,7 @@ namespace FactionWars.ScriptHookV
 
             // Initialize follower manager for bodyguard management
             var followerService = _container.Resolve<IFollowerService>();
+            _followerService = followerService;
             var pedSpawningService = _container.Resolve<IPedSpawningService>();
             var pedDespawnService = _container.Resolve<IPedDespawnService>();
             var defenderTierService = _container.Resolve<IDefenderTierService>();
@@ -1177,6 +1180,7 @@ namespace FactionWars.ScriptHookV
 
             // Clean up follower manager
             _followerManager = null;
+            _followerService = null;
 
             // Clean up friendly defender manager
             _friendlyDefenderManager?.DespawnAllDefenders();
@@ -1287,9 +1291,9 @@ namespace FactionWars.ScriptHookV
             FileLogger.Separator("ZONE ENTERED");
             FileLogger.Zone($"OnZoneEntered triggered");
 
-            if (_combatManager == null || zone == null)
+            if (_zoneBattleManager == null || zone == null)
             {
-                FileLogger.Error($"OnZoneEntered: combatManager={_combatManager != null}, zone={zone != null}");
+                FileLogger.Error($"OnZoneEntered: zoneBattleManager={_zoneBattleManager != null}, zone={zone != null}");
                 return;
             }
 
@@ -1333,10 +1337,16 @@ namespace FactionWars.ScriptHookV
                         defenderFaction?.Name ?? "Defender");
                 }
 
-                // Start combat in enemy zone
-                var encounter = _combatManager.StartCombat(zone, playerFactionId);
-                FileLogger.Combat($"Combat encounter created: ID={encounter?.Id ?? "NULL"}");
-                FileLogger.Combat($"Defending Faction: {encounter?.DefendingFactionId ?? "NULL"}");
+                // Start combat in enemy zone via ZoneBattleManager
+                Func<int> aliveCountCallback = () => 1 + (_followerService?.GetFollowerCount(playerFactionId) ?? 0);
+                var battle = _zoneBattleManager.StartPlayerCombat(zone, playerFactionId, aliveCountCallback);
+                if (battle == null)
+                {
+                    FileLogger.Combat($"OnZoneEntered: StartPlayerCombat returned null for zone {zone.Id} — caller skipping.");
+                    return;
+                }
+                FileLogger.Combat($"Combat battle created: ID={battle.Id}");
+                FileLogger.Combat($"Defending Faction: {battle.Defender.FactionId}");
                 _gameBridge.ShowNotification($"~r~COMBAT STARTED in:~w~ {zone.Name}");
 
                 // Check for vehicle threat and allocate Elite anti-vehicle units BEFORE spawning
