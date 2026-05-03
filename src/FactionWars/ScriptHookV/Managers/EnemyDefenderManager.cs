@@ -10,6 +10,7 @@ using FactionWars.Territory.Models;
 using FactionWars.UI.Interfaces;
 using FactionWars.ScriptHookV.Logging;
 using FactionWars.ScriptHookV.Services;
+using FactionWars.ScriptHookV.Utils;
 
 namespace FactionWars.ScriptHookV.Managers
 {
@@ -117,7 +118,7 @@ namespace FactionWars.ScriptHookV.Managers
 
                     // Configure as hostile wanderer
                     ConfigureEnemyDefender(pedHandle.Handle, tierConfig, zone.Center, zone.Radius);
-                    _pedBlipService.CreateBlipForPed(pedHandle.Handle, BlipColor.Red);
+                    _pedBlipService.CreateBlipForPed(pedHandle.Handle, FactionBlipColor.ForFactionId(enemyFactionId));
 
                     // Track ped with its tier
                     _spawnedPedTierByZone[zone.Id][pedHandle.Handle] = tier;
@@ -435,7 +436,7 @@ namespace FactionWars.ScriptHookV.Managers
             if (!pedHandle.IsValid) return;
 
             ConfigureEnemyDefender(pedHandle.Handle, tierConfig, zone.Center, zone.Radius);
-            _pedBlipService.CreateBlipForPed(pedHandle.Handle, BlipColor.Red);
+            _pedBlipService.CreateBlipForPed(pedHandle.Handle, FactionBlipColor.ForFactionId(enemyFactionId));
 
             if (!_spawnedPedTierByZone.ContainsKey(zoneId))
             {
