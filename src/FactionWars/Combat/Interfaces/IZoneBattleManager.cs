@@ -104,6 +104,13 @@ namespace FactionWars.Combat.Interfaces
         IReadOnlyList<ZoneBattle> GetAllActiveBattles();
 
         /// <summary>
+        /// Removes a participant from the battle in the given zone (e.g. when the player
+        /// exits, or a participant is wiped). After removal, the victory check runs and
+        /// <c>BattleEnded</c> may fire if only one participant remains.
+        /// </summary>
+        bool RemoveParticipant(string zoneId, string factionId);
+
+        /// <summary>
         /// Begins or joins a player-led battle in the given zone.
         /// </summary>
         /// <param name="zone">The zone the player is entering for combat.</param>

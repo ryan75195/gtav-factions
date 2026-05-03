@@ -161,6 +161,30 @@ namespace FactionWars.Combat.Services
         }
 
         /// <inheritdoc />
+        public bool RemoveParticipant(string zoneId, string factionId)
+        {
+            if (string.IsNullOrEmpty(zoneId)) throw new ArgumentNullException(nameof(zoneId));
+            if (string.IsNullOrEmpty(factionId)) throw new ArgumentNullException(nameof(factionId));
+
+            if (!_battlesByZone.TryGetValue(zoneId, out var battle))
+            {
+                FileLogger.Combat($"RemoveParticipant: no battle in zone '{zoneId}'.");
+                return false;
+            }
+
+            bool removed = battle.RemoveParticipant(factionId);
+            if (!removed)
+            {
+                FileLogger.Combat($"RemoveParticipant: faction '{factionId}' not in battle '{zoneId}'.");
+                return false;
+            }
+
+            FileLogger.Combat($"RemoveParticipant: removed '{factionId}' from zone '{zoneId}'.");
+            ResolveBattleIfDone(battle);
+            return true;
+        }
+
+        /// <inheritdoc />
         public event Action<ZoneBattle>? BattleStarted;
 
         /// <inheritdoc />
@@ -421,6 +445,54 @@ namespace FactionWars.Combat.Services
             }
 
             TroopKilled?.Invoke(battle, victimTier, victimSide);
+        }
+
+        /// <summary>
+        /// Counts alive participants and ends the battle if exactly one remains
+        /// (defender or sole-attacker survivor). Caller already handled removal/decrement.
+        /// </summary>
+        private void ResolveBattleIfDone(ZoneBattle battle)
+        {
+            var alive = battle.Participants.Where(p => p.AliveCount > 0).ToList();
+            if (alive.Count >= 2) return;
+
+            BattleOutcome outcome;
+            if (alive.Count == 0)
+            {
+                outcome = BattleOutcome.DefendersWon;
+            }
+            else
+            {
+                outcome = alive[0].Role == BattleRole.Defender
+                    ? BattleOutcome.DefendersWon
+                    : BattleOutcome.AttackersWon;
+            }
+
+            _battlesByZone.Remove(battle.ZoneId);
+            ApplyBattleOutcome(battle, outcome, alive);
+            BattleEnded?.Invoke(battle, outcome);
+            FileLogger.Combat($"ResolveBattleIfDone: battle '{battle.ZoneId}' ended, outcome={outcome}.");
+        }
+
+        /// <summary>
+        /// Applies the side-effects of a battle outcome.
+        /// Player win → zone goes neutral (Q5.A). AI-side outcomes are handled by the
+        /// existing BattleEnded subscribers (no-op here).
+        /// </summary>
+        private void ApplyBattleOutcome(
+            ZoneBattle battle,
+            BattleOutcome outcome,
+            IList<BattleParticipant> aliveParticipants)
+        {
+            BattleParticipant? winner = aliveParticipants.Count == 1 ? aliveParticipants[0] : null;
+
+            if (outcome == BattleOutcome.AttackersWon && winner != null && winner.IsPlayer)
+            {
+                // Player win → zone goes neutral. IFactionService has no single SetZoneOwner(zoneId, null)
+                // method; zone neutralization is handled by BattleEnded subscribers in Phase B.
+                // _factionService.RemoveZoneFromFaction(battle.ZoneId, ...);  // Adapt when Phase B wires callers.
+                FileLogger.Combat($"ApplyBattleOutcome: player won zone '{battle.ZoneId}' — zone-neutral hook deferred to later task.");
+            }
         }
 
         private BattleOutcome DetermineOutcome(ZoneBattle battle)

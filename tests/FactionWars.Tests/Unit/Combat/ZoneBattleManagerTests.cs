@@ -820,6 +820,62 @@ namespace FactionWars.Tests.Unit.Combat
 
         #endregion
 
+        #region RemoveParticipant
+
+        [Fact]
+        public void RemoveParticipant_ReturnsFalse_WhenNoBattle()
+        {
+            var manager = CreateManager(playerFactionId: "player_faction");
+
+            bool result = manager.RemoveParticipant("zone_1", "player_faction");
+
+            Assert.False(result);
+        }
+
+        [Fact]
+        public void RemoveParticipant_PlayerLeavesContestedZone_BattleContinues2Way()
+        {
+            var manager = CreateManager(playerFactionId: "player_faction");
+            manager.StartBattle("zone_1", "trevor", "michael",
+                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 3 } },
+                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 5 } });
+            manager.JoinAsAttacker("zone_1", "player_faction", true, () => 4, null);
+
+            int endCount = 0;
+            manager.BattleEnded += (b, _) => endCount++;
+
+            bool result = manager.RemoveParticipant("zone_1", "player_faction");
+
+            Assert.True(result);
+            var battle = manager.GetBattleForZone("zone_1");
+            Assert.NotNull(battle);
+            Assert.Equal(2, battle!.Participants.Count);
+            Assert.False(battle.Participants.Any(p => p.IsPlayer));
+            Assert.Equal(0, endCount);
+        }
+
+        [Fact]
+        public void RemoveParticipant_LastAttackerLeaves_DefenderWinsAndBattleEnds()
+        {
+            var manager = CreateManager(playerFactionId: "player_faction");
+            manager.StartBattle("zone_1", "trevor", "michael",
+                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 3 } },
+                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 5 } });
+
+            ZoneBattle? endedBattle = null;
+            BattleOutcome? endedOutcome = null;
+            manager.BattleEnded += (b, o) => { endedBattle = b; endedOutcome = o; };
+
+            bool result = manager.RemoveParticipant("zone_1", "trevor");
+
+            Assert.True(result);
+            Assert.Null(manager.GetBattleForZone("zone_1"));
+            Assert.NotNull(endedBattle);
+            Assert.Equal(BattleOutcome.DefendersWon, endedOutcome);
+        }
+
+        #endregion
+
         #region StartPlayerCombat
 
         [Fact]
