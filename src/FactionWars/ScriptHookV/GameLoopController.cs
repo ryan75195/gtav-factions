@@ -1513,6 +1513,12 @@ namespace FactionWars.ScriptHookV
         {
             _commanderManager?.OnBattleEnded(battle.ZoneId);
 
+            // Mirror of OnZoneBattleStarted's IsContested=true. The
+            // TransferZoneOwnership path also clears this, but only fires on
+            // capture/neutralize — so a defended outcome (no ownership change)
+            // would otherwise leave the blip flashing forever.
+            _zoneService?.SetZoneContested(battle.ZoneId, false);
+
             // Identify the surviving participant (if any). Source of truth for
             // outcome routing in 3-way battles — Attackers[0] may be the wiped one.
             var winner = battle.Participants.FirstOrDefault(p => p.AliveCount > 0);

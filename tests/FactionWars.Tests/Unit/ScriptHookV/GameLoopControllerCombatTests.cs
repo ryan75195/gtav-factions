@@ -153,6 +153,41 @@ namespace FactionWars.Tests.Unit.ScriptHookV
         }
 
         [Fact]
+        public void OnZoneBattleEnded_DefenderWins_ClearsContestedFlag()
+        {
+            // In-game smoke test (FactionWars_2026-05-03_16-44-15.log): Trevor
+            // attacked Morningwood, player defended and won (DefendersWon at
+            // 16:49:33), but the minimap blip kept flashing red/white. Cause:
+            // OnZoneBattleStarted sets zone.IsContested=true, and only the
+            // TransferZoneOwnership path clears it. The DefendersWon branch
+            // doesn't transfer ownership, so the contested flag is never
+            // cleared. The orphaned comment in OnZoneBattleStarted ("clears
+            // this when the battle resolves") referred to CombatResultHandler,
+            // which was deleted in the refactor.
+            SetupController();
+            var controller = new GameLoopController(_container);
+            controller.OnTick();
+
+            var zoneRepo = _container.Resolve<IZoneRepository>();
+            var battleManager = _container.Resolve<IZoneBattleManager>();
+
+            var troops = new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 1 } };
+            battleManager.StartBattle(
+                zoneId: "vinewood_hills",
+                attackerFactionId: "trevor",
+                defenderFactionId: "michael",
+                attackerTroops: troops,
+                defenderTroops: troops);
+
+            Assert.True(zoneRepo.GetById("vinewood_hills")!.IsContested);
+
+            // Attacker leaves → defender wins; zone keeps its owner.
+            battleManager.RemoveParticipant("vinewood_hills", "trevor");
+
+            Assert.False(zoneRepo.GetById("vinewood_hills")!.IsContested);
+        }
+
+        [Fact]
         public void AIAllocateTroopsDuringPlayerBattle_GrowsBattleDefenderCount()
         {
             // Regression: when AI Defend strategy reinforces a zone with an active
