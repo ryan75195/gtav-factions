@@ -179,18 +179,6 @@ namespace FactionWars.ScriptHookV
                     container.Resolve<IGameBridge>(),
                     container.Resolve<IPedPool>()));
 
-            // Control percentage calculator - no dependencies
-            container.RegisterSingleton<IControlPercentageCalculator>(() =>
-                new ControlPercentageCalculator());
-
-            // Takeover detector - uses default config
-            container.RegisterSingleton<ITakeoverDetector>(() =>
-                new TakeoverDetector());
-
-            // Combat result handler depends on zone service
-            container.RegisterSingleton<ICombatResultHandler>(() =>
-                new CombatResultHandler(container.Resolve<IZoneService>()));
-
             // Wave spawner service - no dependencies
             container.RegisterSingleton<IWaveSpawnerService>(() =>
                 new WaveSpawnerService());

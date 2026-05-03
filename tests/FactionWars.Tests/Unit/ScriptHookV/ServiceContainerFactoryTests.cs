@@ -162,45 +162,6 @@ namespace FactionWars.Tests.Unit.ScriptHookV
         }
 
         [Fact]
-        public void Create_ShouldRegisterControlPercentageCalculator()
-        {
-            // Arrange
-            var gameBridge = CreateMockGameBridge();
-
-            // Act
-            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
-
-            // Assert
-            Assert.True(container.IsRegistered<IControlPercentageCalculator>());
-        }
-
-        [Fact]
-        public void Create_ShouldRegisterTakeoverDetector()
-        {
-            // Arrange
-            var gameBridge = CreateMockGameBridge();
-
-            // Act
-            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
-
-            // Assert
-            Assert.True(container.IsRegistered<ITakeoverDetector>());
-        }
-
-        [Fact]
-        public void Create_ShouldRegisterCombatResultHandler()
-        {
-            // Arrange
-            var gameBridge = CreateMockGameBridge();
-
-            // Act
-            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
-
-            // Assert
-            Assert.True(container.IsRegistered<ICombatResultHandler>());
-        }
-
-        [Fact]
         public void Create_ShouldRegisterResourceTickService()
         {
             // Arrange
