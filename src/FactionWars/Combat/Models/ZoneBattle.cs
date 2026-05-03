@@ -147,6 +147,48 @@ namespace FactionWars.Combat.Models
             InitialDefenderTroops = TotalDefenderTroops;
         }
 
+        /// <summary>
+        /// Constructs a battle from a pre-built participant list. Used by the manager
+        /// to create player-vs-AI and 3-way battles where one or more participants
+        /// are player-callback-backed. The list must contain exactly one Defender
+        /// and at least one Attacker. The list is copied — later mutations to the
+        /// caller's list do not affect this battle.
+        /// </summary>
+        public ZoneBattle(
+            string zoneId,
+            IList<BattleParticipant> participants,
+            string? playerFactionId = null)
+        {
+            if (zoneId == null) throw new ArgumentNullException(nameof(zoneId));
+            if (participants == null) throw new ArgumentNullException(nameof(participants));
+            int defenderCount = participants.Count(p => p.Role == BattleRole.Defender);
+            int attackerCount = participants.Count(p => p.Role == BattleRole.Attacker);
+            if (defenderCount != 1)
+                throw new ArgumentException(
+                    $"Battle must have exactly one Defender (got {defenderCount}).", nameof(participants));
+            if (attackerCount < 1)
+                throw new ArgumentException(
+                    $"Battle must have at least one Attacker (got {attackerCount}).", nameof(participants));
+
+            Id = Guid.NewGuid().ToString("N").Substring(0, 8);
+            ZoneId = zoneId;
+            PlayerFactionId = playerFactionId;
+            IsPlayerPresent = false;
+            ElapsedTime = 0f;
+            TimeUntilNextKill = 0f;
+            KillInterval = 0f;
+            SpawnedAttackers = new Dictionary<int, DefenderTier>();
+            SpawnedDefenders = new Dictionary<int, DefenderTier>();
+
+            // Defensive copy. Order is normalized: Defender first, then Attackers in caller order.
+            _participants = new List<BattleParticipant>(participants.Count);
+            _participants.AddRange(participants.Where(p => p.Role == BattleRole.Defender));
+            _participants.AddRange(participants.Where(p => p.Role == BattleRole.Attacker));
+
+            InitialAttackerTroops = TotalAttackerTroops;
+            InitialDefenderTroops = TotalDefenderTroops;
+        }
+
         public void AdvanceTime(float deltaSeconds)
         {
             ElapsedTime += deltaSeconds;

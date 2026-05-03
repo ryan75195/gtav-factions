@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using FactionWars.Combat.Models;
@@ -90,6 +91,38 @@ namespace FactionWars.Tests.Unit.Combat
 
             Assert.Equal(BattleRole.Defender, battle.Participants[0].Role);
             Assert.Equal(BattleRole.Attacker, battle.Participants[1].Role);
+        }
+
+        [Fact]
+        public void ConstructorWithParticipants_PreservesParticipantInstances()
+        {
+            var defender = BattleParticipant.ForAi("michael", BattleRole.Defender,
+                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 5 } });
+            var attacker = BattleParticipant.ForPlayer("player_faction", BattleRole.Attacker, () => 4);
+
+            var battle = new ZoneBattle("zone_42", new List<BattleParticipant> { defender, attacker },
+                playerFactionId: "player_faction");
+
+            Assert.Equal("zone_42", battle.ZoneId);
+            Assert.Equal("player_faction", battle.PlayerFactionId);
+            Assert.Same(defender, battle.Defender);
+            Assert.Same(attacker, battle.Attackers[0]);
+            Assert.True(battle.Attackers[0].IsPlayer);
+            Assert.Equal(4, battle.Attackers[0].AliveCount);
+            Assert.Equal(5, battle.InitialDefenderTroops);
+            Assert.Equal(4, battle.InitialAttackerTroops);
+        }
+
+        [Fact]
+        public void ConstructorWithParticipants_ThrowsWhenNoDefender()
+        {
+            var attacker1 = BattleParticipant.ForAi("trevor", BattleRole.Attacker,
+                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 1 } });
+            var attacker2 = BattleParticipant.ForAi("franklin", BattleRole.Attacker,
+                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 1 } });
+
+            Assert.Throws<ArgumentException>(() =>
+                new ZoneBattle("zone_42", new List<BattleParticipant> { attacker1, attacker2 }));
         }
     }
 }
