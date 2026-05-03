@@ -1,13 +1,14 @@
 namespace FactionWars.Combat.Interfaces
 {
     /// <summary>
-    /// Read-only query for "is there an active mod-managed combat encounter?".
-    /// Implemented by CombatManager. Used by DefenderRallyController as one of the
-    /// composite "should defenders rally?" signals.
+    /// Read-only query for "is the player currently in an active battle?".
+    /// Implemented by <see cref="ZoneBattleCombatActivityAdapter"/> over
+    /// <see cref="IZoneBattleManager"/>. Used by DefenderRallyController as one of
+    /// the composite "should defenders rally?" signals.
     /// </summary>
     public interface ICombatActivityQuery
     {
-        /// <summary>True if a CombatEncounter is currently active.</summary>
+        /// <summary>True if the player is currently a participant in any active zone battle.</summary>
         bool HasActiveEncounter { get; }
     }
 }

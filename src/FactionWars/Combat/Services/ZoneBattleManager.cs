@@ -25,7 +25,7 @@ namespace FactionWars.Combat.Services
         private readonly IZoneService _zoneService;
         private string? _playerFactionId;
 
-        // Configuration constants (matching ActiveBattleManager)
+        // Battle pacing tuning constants
         private const float MinBattleDuration = 60f;    // 1 minute minimum
         private const float MaxBattleDuration = 300f;   // 5 minutes maximum
         private const float SecondsPerTroop = 6f;       // Duration scaling factor
@@ -319,9 +319,7 @@ namespace FactionWars.Combat.Services
                     // Still check for battle end
                     if (!battle.IsOngoing)
                     {
-                        var outcome = DetermineOutcome(battle);
-                        battlesToRemove.Add(kvp.Key);
-                        BattleEnded?.Invoke(battle, outcome);
+                        EndBattleAtTick(battle, battlesToRemove);
                     }
                     continue;
                 }
@@ -338,9 +336,7 @@ namespace FactionWars.Combat.Services
                     // Check if battle ended
                     if (!battle.IsOngoing)
                     {
-                        var outcome = DetermineOutcome(battle);
-                        battlesToRemove.Add(kvp.Key);
-                        BattleEnded?.Invoke(battle, outcome);
+                        EndBattleAtTick(battle, battlesToRemove);
                     }
                 }
             }
@@ -350,6 +346,20 @@ namespace FactionWars.Combat.Services
             {
                 _battlesByZone.Remove(zoneId);
             }
+        }
+
+        /// <summary>
+        /// Routes a Tick-driven battle end through the same outcome-application
+        /// pipeline as <see cref="ResolveBattleIfDone"/>, so player wins still
+        /// neutralize the zone (Q5.A) regardless of which path detected the end.
+        /// </summary>
+        private void EndBattleAtTick(ZoneBattle battle, List<string> battlesToRemove)
+        {
+            var outcome = DetermineOutcome(battle);
+            var alive = battle.Participants.Where(p => p.AliveCount > 0).ToList();
+            battlesToRemove.Add(battle.ZoneId);
+            ApplyBattleOutcome(battle, outcome, alive);
+            BattleEnded?.Invoke(battle, outcome);
         }
 
         /// <inheritdoc />

@@ -1222,8 +1222,12 @@ namespace FactionWars.ScriptHookV
                         defenderFaction?.Name ?? "Defender");
                 }
 
-                // Start combat in enemy zone via ZoneBattleManager
-                Func<int> aliveCountCallback = () => 1 + (_followerService?.GetFollowerCount(playerFactionId) ?? 0);
+                // Start combat in enemy zone via ZoneBattleManager.
+                // Player counts as 0 alive when dead so the battle terminates instead
+                // of phantom-fighting through the death/respawn window.
+                Func<int> aliveCountCallback = () =>
+                    (_gameBridge.IsPlayerDead() ? 0 : 1)
+                    + (_followerService?.GetFollowerCount(playerFactionId) ?? 0);
                 var battle = _zoneBattleManager.StartPlayerCombat(zone, playerFactionId, aliveCountCallback);
                 if (battle == null)
                 {
@@ -1349,14 +1353,11 @@ namespace FactionWars.ScriptHookV
             if (_zoneBattleManager != null && _zoneBattleManager.IsPlayerInBattle())
             {
                 var currentBattle = _zoneBattleManager.GetPlayerCurrentBattle();
-                if (currentBattle != null && currentBattle.ZoneId == zone.Id)
+                string? playerFactionId = CurrentPlayerFactionId;
+                if (currentBattle != null && currentBattle.ZoneId == zone.Id && playerFactionId is { Length: > 0 })
                 {
-                    string? playerFactionId = CurrentPlayerFactionId;
-                    if (!string.IsNullOrEmpty(playerFactionId))
-                    {
-                        _zoneBattleManager.RemoveParticipant(zone.Id, playerFactionId);
-                        _gameBridge.ShowNotification($"~y~Retreated from:~w~ {zone.Name}");
-                    }
+                    _zoneBattleManager.RemoveParticipant(zone.Id, playerFactionId);
+                    _gameBridge.ShowNotification($"~y~Retreated from:~w~ {zone.Name}");
                 }
             }
         }

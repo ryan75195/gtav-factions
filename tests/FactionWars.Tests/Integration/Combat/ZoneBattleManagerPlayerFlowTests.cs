@@ -333,5 +333,69 @@ namespace FactionWars.Tests.Integration.Combat
 
             zoneSvc.Verify(z => z.TransferZoneOwnership(It.IsAny<string>(), It.IsAny<string?>()), Times.Never);
         }
+
+        [Fact]
+        public void PlayerFlow_AliveCountCallbackDropsToZero_BattleEndsAsDefenderWin()
+        {
+            // Player-death case: GameLoopController's aliveCountCallback drops to 0
+            // when the player is dead. Once the player is the only attacker and the
+            // callback returns 0, IsOngoing flips false and the next Tick must end
+            // the battle as a defender win (no Q5.A neutralization on a player loss).
+            var zoneSvc = new Mock<IZoneService>();
+            var allocation = MakeAllocation("michael", "zone_1", 5);
+            var manager = MakeManager(
+                playerFactionId: "player_faction",
+                allocation: allocation,
+                zoneService: zoneSvc.Object);
+            var zone = MakeZone("zone_1", ownerFactionId: "michael");
+
+            int aliveCount = 1;
+            var battle = manager.StartPlayerCombat(zone, "player_faction", () => aliveCount);
+            Assert.NotNull(battle);
+
+            // Player dies → callback now returns 0.
+            aliveCount = 0;
+            Assert.False(battle!.IsOngoing);
+
+            BattleOutcome? observed = null;
+            manager.BattleEnded += (b, o) => observed = o;
+
+            manager.Tick(0f);
+
+            Assert.Equal(BattleOutcome.DefendersWon, observed);
+            Assert.Null(manager.GetBattleForZone("zone_1"));
+            // Defender wins → no zone transfer.
+            zoneSvc.Verify(z => z.TransferZoneOwnership(It.IsAny<string>(), It.IsAny<string?>()), Times.Never);
+        }
+
+        [Fact]
+        public void PlayerFlow_PlayerWinsViaTick_ZoneIsStillNeutralized()
+        {
+            // Defense in depth: even if a battle reaches the !IsOngoing state without
+            // going through ReportTroopKilled (e.g., direct troop mutation in 3-way
+            // edge cases), the Tick-driven BattleEnded path must still apply the
+            // player-win zone neutralization. Otherwise the zone keeps its old
+            // owner and Q5.A is silently bypassed.
+            var zoneSvc = new Mock<IZoneService>();
+            var allocation = MakeAllocation("michael", "zone_1", 1);
+            var manager = MakeManager(
+                playerFactionId: "player_faction",
+                allocation: allocation,
+                zoneService: zoneSvc.Object);
+            var zone = MakeZone("zone_1", ownerFactionId: "michael");
+            var battle = manager.StartPlayerCombat(zone, "player_faction", () => 4);
+            Assert.NotNull(battle);
+
+            // Wipe the defender directly on the battle model — bypassing
+            // ReportTroopKilled / ResolveBattleIfDone — so the only path that can
+            // see "battle is over" is the Tick loop.
+            battle!.RemoveDefenderTroop(DefenderTier.Basic);
+            Assert.False(battle.IsOngoing);
+
+            manager.Tick(0f);
+
+            zoneSvc.Verify(z => z.TransferZoneOwnership("zone_1", null), Times.Once);
+            Assert.Null(manager.GetBattleForZone("zone_1"));
+        }
     }
 }
