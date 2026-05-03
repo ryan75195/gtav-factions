@@ -34,5 +34,23 @@ namespace FactionWars.Tests.Unit.Telemetry
         {
             Assert.Equal("\"line1\nline2\"", CsvFieldEscaper.Escape("line1\nline2"));
         }
+
+        [Fact]
+        public void Escape_EmptyString_ReturnsEmpty()
+        {
+            Assert.Equal(string.Empty, CsvFieldEscaper.Escape(string.Empty));
+        }
+
+        [Fact]
+        public void Escape_OnlyQuote_WrapsAndDoubles()
+        {
+            Assert.Equal("\"\"\"\"", CsvFieldEscaper.Escape("\""));
+        }
+
+        [Fact]
+        public void Escape_ContainsCrLf_WrapsInQuotes()
+        {
+            Assert.Equal("\"line1\r\nline2\"", CsvFieldEscaper.Escape("line1\r\nline2"));
+        }
     }
 }
