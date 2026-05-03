@@ -407,13 +407,18 @@ namespace FactionWars.ScriptHookV
                     }
 
                     bool isPlayerOwned = currentZone.OwnerFactionId == playerFactionId;
-                    bool isContested = _combatManager?.IsInCombat == true &&
-                                       _combatManager.CurrentEncounter?.ZoneId == currentZone.Id;
 
                     // Check if there's an active battle in this zone
                     var activeBattle = _zoneBattleManager?.GetBattleForZone(currentZone.Id);
                     bool isDefendingBattle = activeBattle != null &&
                                              activeBattle.DefenderFactionId == playerFactionId;
+
+                    // Check if the player is attacking this zone
+                    var playerBattle = _zoneBattleManager?.GetPlayerCurrentBattle();
+                    bool isPlayerAttackingHere = playerBattle != null && playerBattle.ZoneId == currentZone.Id &&
+                                                 playerBattle.IsPlayerAttacking;
+
+                    bool isContested = isDefendingBattle || isPlayerAttackingHere;
 
                     // Get deployed and reserve counts for player-owned zones
                     int deployedCount = 0;
@@ -434,9 +439,6 @@ namespace FactionWars.ScriptHookV
                         // Also populate enemy attacker counts for the Territory HUD
                         enemyDefenderCount = _battleAttackerManager?.GetSpawnedAttackerCount(currentZone.Id) ?? 0;
                         enemyReserveCount = Math.Max(0, activeBattle.TotalAttackerTroops - enemyDefenderCount);
-
-                        // Mark as contested since there's a battle
-                        isContested = true;
                     }
                     else if (isPlayerOwned && _friendlyDefenderManager != null)
                     {
@@ -452,21 +454,18 @@ namespace FactionWars.ScriptHookV
                             }
                         }
                     }
-                    else if (isContested && _combatManager != null)
+                    else if (isPlayerAttackingHere && playerBattle != null)
                     {
-                        // Get combat troop counts for enemy zone takeover
-                        var encounter = _combatManager.CurrentEncounter;
-                        if (encounter != null)
-                        {
-                            playerTroopCount = encounter.AttackerPedCount;
-                            enemyDefenderCount = encounter.DefenderPedCount;
+                        // Player is attacking this enemy zone - use ZoneBattleManager data
+                        var playerParticipant = playerBattle.Attackers.FirstOrDefault(p => p.IsPlayer);
+                        playerTroopCount = playerParticipant?.AliveCount ?? 0;
+                        enemyDefenderCount = playerBattle.Defender.AliveCount;
 
-                            // Get enemy reserves from enemy defender manager
-                            if (_enemyDefenderManager != null)
-                            {
-                                enemyReserveCount = _enemyDefenderManager.GetRemainingReserves(
-                                    encounter.ZoneId, encounter.DefendingFactionId);
-                            }
+                        // Get enemy reserves from enemy defender manager
+                        if (_enemyDefenderManager != null)
+                        {
+                            enemyReserveCount = _enemyDefenderManager.GetRemainingReserves(
+                                playerBattle.ZoneId, playerBattle.Defender.FactionId);
                         }
                     }
 
