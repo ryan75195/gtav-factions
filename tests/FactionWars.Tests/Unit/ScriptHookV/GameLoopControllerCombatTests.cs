@@ -120,6 +120,38 @@ namespace FactionWars.Tests.Unit.ScriptHookV
         }
 
         [Fact]
+        public void AfterInitialization_ZoneBattleManagerKnowsPlayerFaction()
+        {
+            // Regression: GameLoopController must propagate the player's faction id
+            // into ZoneBattleManager (matching every other player-faction-aware
+            // manager). If it doesn't, IZoneBattleManager.GetPlayerCurrentBattle
+            // permanently returns null because of its `_playerFactionId == null`
+            // early-return guard. That breaks OnZoneExited's retreat block (which
+            // gates on IsPlayerInBattle) and leaves the battle stuck in the manager,
+            // so re-entry's StartPlayerCombat → JoinAsAttacker rejects "already in
+            // battle" and the controller's early-return skips spawning defenders.
+            SetupController();
+            var controller = new GameLoopController(_container);
+            controller.OnTick();
+
+            var battleManager = _container.Resolve<IZoneBattleManager>();
+            var zoneRepo = _container.Resolve<IZoneRepository>();
+            var zoneService = _container.Resolve<IZoneService>();
+            var allocSvc = _container.Resolve<IZoneDefenderAllocationService>();
+
+            const string defenderFactionId = "trevor";
+            var zone = zoneRepo.GetById("vinewood_hills");
+            Assert.NotNull(zone);
+            zoneService.TransferZoneOwnership("vinewood_hills", defenderFactionId);
+            allocSvc.SetAllocation(defenderFactionId, "vinewood_hills", DefenderTier.Basic, 1);
+
+            battleManager.StartPlayerCombat(zone!, controller.CurrentPlayerFactionId!, () => 1);
+
+            Assert.True(battleManager.IsPlayerInBattle());
+            Assert.NotNull(battleManager.GetPlayerCurrentBattle());
+        }
+
+        [Fact]
         public void OnAbort_ClearsInitializationState()
         {
             // Arrange

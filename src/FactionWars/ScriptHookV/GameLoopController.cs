@@ -531,6 +531,7 @@ namespace FactionWars.ScriptHookV
 
             // Initialize zone battle manager and subscribe to its events for domain operations
             _zoneBattleManager = _container.Resolve<IZoneBattleManager>();
+            _zoneBattleManager.SetPlayerFaction(CurrentPlayerFactionId);
             _zoneBattleManager.BattleEnded += OnZoneBattleEnded;
             _zoneBattleManager.TroopKilled += OnZoneBattleTroopKilled;
             _zoneBattleManager.BattleStarted += OnZoneBattleStarted;
@@ -1140,6 +1141,7 @@ namespace FactionWars.ScriptHookV
             _economyManager?.SetPlayerFactionId(newFactionId);
             _aiManager?.SetPlayerFactionId(newFactionId);
             _aiController?.SetPlayerFactionId(newFactionId);
+            _zoneBattleManager?.SetPlayerFaction(newFactionId);
 
             // Sync player state to new faction (clear weapons, set cash to faction capital)
             SyncPlayerToFactionState(newFactionId);
