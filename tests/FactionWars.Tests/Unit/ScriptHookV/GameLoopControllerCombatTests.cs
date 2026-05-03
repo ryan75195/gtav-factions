@@ -152,6 +152,32 @@ namespace FactionWars.Tests.Unit.ScriptHookV
         }
 
         [Fact]
+        public void GetPlayerCombatAliveCount_PlayerDead_StaysAtLeastOne()
+        {
+            // Regression: the alive-count formula used by OnZoneEntered must NOT
+            // collapse to 0 just because IsPlayerDead is true. If it does, the
+            // battle that's created at zone entry is born non-Ongoing
+            // (TotalAttackerTroops=0) and Tick immediately ends it as
+            // DefendersWon — leaving hostile peds spawned but no real battle.
+            //
+            // Symptom in-game: respawn into an enemy-owned hospital → enemy
+            // peds spawn but no HUD, no kill tracking, the combat is "stillborn".
+            //
+            // Natural death-during-combat is already cleaned up by ZoneExited
+            // when GTA teleports the corpse to the hospital, so the dead-counts-
+            // as-zero transformation is solving a non-bug.
+            SetupController();
+            _gameBridge.IsPlayerDeadValue = true;
+            var controller = new GameLoopController(_container);
+            controller.OnTick();
+
+            int aliveCount = controller.GetPlayerCombatAliveCount(controller.CurrentPlayerFactionId!);
+
+            Assert.True(aliveCount >= 1,
+                $"Expected alive count >= 1 during respawn fade window, got {aliveCount}.");
+        }
+
+        [Fact]
         public void OnAbort_ClearsInitializationState()
         {
             // Arrange

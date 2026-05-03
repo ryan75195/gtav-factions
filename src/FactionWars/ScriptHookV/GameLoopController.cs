@@ -134,6 +134,18 @@ namespace FactionWars.ScriptHookV
         public string? CurrentPlayerFactionId => _characterSwitchDetector.CurrentFactionId;
 
         /// <summary>
+        /// How many "alive" combatants the player counts as for an active zone battle.
+        /// Used as the alive-count callback the player participant carries into a battle.
+        /// Survives the GTA death/respawn fade window because the natural ZoneExited
+        /// flow ends battles when the corpse is teleported out of the zone — collapsing
+        /// to 0 here would create stillborn battles on respawn-into-enemy-zone.
+        /// </summary>
+        public int GetPlayerCombatAliveCount(string playerFactionId)
+        {
+            return 1 + (_followerService?.GetFollowerCount(playerFactionId) ?? 0);
+        }
+
+        /// <summary>
         /// Gets the MapBlipManager for zone blip management.
         /// Returns null if not yet initialized.
         /// </summary>
@@ -1225,11 +1237,7 @@ namespace FactionWars.ScriptHookV
                 }
 
                 // Start combat in enemy zone via ZoneBattleManager.
-                // Player counts as 0 alive when dead so the battle terminates instead
-                // of phantom-fighting through the death/respawn window.
-                Func<int> aliveCountCallback = () =>
-                    (_gameBridge.IsPlayerDead() ? 0 : 1)
-                    + (_followerService?.GetFollowerCount(playerFactionId) ?? 0);
+                Func<int> aliveCountCallback = () => GetPlayerCombatAliveCount(playerFactionId);
                 var battle = _zoneBattleManager.StartPlayerCombat(zone, playerFactionId, aliveCountCallback);
                 if (battle == null)
                 {
