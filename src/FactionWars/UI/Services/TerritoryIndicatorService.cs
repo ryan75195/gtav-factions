@@ -1,4 +1,6 @@
 using System;
+using System.Linq;
+using FactionWars.Combat.Interfaces;
 using FactionWars.Factions.Interfaces;
 using FactionWars.Factions.Models;
 using FactionWars.Territory.Models;
@@ -15,6 +17,7 @@ namespace FactionWars.UI.Services
     {
         private readonly IFactionRepository _factionRepository;
         private readonly ITerritoryIndicatorRenderer _renderer;
+        private readonly IZoneBattleManager _battleManager;
 
         /// <summary>
         /// Gets whether the territory indicator is currently visible.
@@ -26,11 +29,13 @@ namespace FactionWars.UI.Services
         /// </summary>
         /// <param name="factionRepository">Repository for faction lookups.</param>
         /// <param name="renderer">The HUD renderer implementation.</param>
+        /// <param name="battleManager">The battle manager for 3-way battle data.</param>
         /// <exception cref="ArgumentNullException">Thrown if any parameter is null.</exception>
-        public TerritoryIndicatorService(IFactionRepository factionRepository, ITerritoryIndicatorRenderer renderer)
+        public TerritoryIndicatorService(IFactionRepository factionRepository, ITerritoryIndicatorRenderer renderer, IZoneBattleManager battleManager)
         {
             _factionRepository = factionRepository ?? throw new ArgumentNullException(nameof(factionRepository));
             _renderer = renderer ?? throw new ArgumentNullException(nameof(renderer));
+            _battleManager = battleManager ?? throw new ArgumentNullException(nameof(battleManager));
         }
 
         /// <summary>
@@ -77,13 +82,31 @@ namespace FactionWars.UI.Services
                 isPlayerOwned = currentZone.OwnerFactionId == playerFactionId;
             }
 
+            // Determine third-party in 3-way battles (an AI attacker when the player is also attacking)
+            int thirdPartyCount = 0;
+            FactionColor? thirdPartyColor = null;
+            var battle = _battleManager.GetBattleForZone(currentZone.Id);
+            if (battle != null)
+            {
+                var aiAttacker = battle.Attackers.FirstOrDefault(p => !p.IsPlayer);
+                bool playerIsAttacking = battle.Attackers.Any(p => p.IsPlayer);
+                if (aiAttacker != null && playerIsAttacking)
+                {
+                    thirdPartyCount = aiAttacker.AliveCount;
+                    var thirdPartyFaction = _factionRepository.GetById(aiAttacker.FactionId);
+                    thirdPartyColor = thirdPartyFaction?.Color;
+                }
+            }
+
             var indicatorData = new TerritoryIndicatorData(
                 zoneName: currentZone.Name,
                 ownerFactionName: ownerFactionName,
                 ownerFactionColor: ownerFactionColor,
                 controlPercentage: currentZone.ControlPercentage,
                 isContested: currentZone.IsContested,
-                isPlayerOwned: isPlayerOwned);
+                isPlayerOwned: isPlayerOwned,
+                thirdPartyCount: thirdPartyCount,
+                thirdPartyFactionColor: thirdPartyColor);
 
             _renderer.Render(indicatorData);
         }

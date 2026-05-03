@@ -7,7 +7,11 @@ using FactionWars.Territory.Models;
 using FactionWars.Factions.Models;
 using FactionWars.Factions.Interfaces;
 using FactionWars.Core.Interfaces;
+using FactionWars.Combat.Interfaces;
+using FactionWars.Combat.Models;
+using FactionWars.Core.Models;
 using System;
+using System.Collections.Generic;
 
 namespace FactionWars.Tests.Unit.UI
 {
@@ -199,29 +203,37 @@ namespace FactionWars.Tests.Unit.UI
     {
         private readonly Mock<IFactionRepository> _mockFactionRepository;
         private readonly Mock<ITerritoryIndicatorRenderer> _mockRenderer;
+        private readonly Mock<IZoneBattleManager> _mockBattleManager;
 
         public TerritoryIndicatorServiceTests()
         {
             _mockFactionRepository = new Mock<IFactionRepository>();
             _mockRenderer = new Mock<ITerritoryIndicatorRenderer>();
+            _mockBattleManager = new Mock<IZoneBattleManager>();
         }
 
         [Fact]
         public void Constructor_WithNullFactionRepository_ThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => new TerritoryIndicatorService(null!, _mockRenderer.Object));
+            Assert.Throws<ArgumentNullException>(() => new TerritoryIndicatorService(null!, _mockRenderer.Object, _mockBattleManager.Object));
         }
 
         [Fact]
         public void Constructor_WithNullRenderer_ThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => new TerritoryIndicatorService(_mockFactionRepository.Object, null!));
+            Assert.Throws<ArgumentNullException>(() => new TerritoryIndicatorService(_mockFactionRepository.Object, null!, _mockBattleManager.Object));
+        }
+
+        [Fact]
+        public void Constructor_WithNullBattleManager_ThrowsArgumentNullException()
+        {
+            Assert.Throws<ArgumentNullException>(() => new TerritoryIndicatorService(_mockFactionRepository.Object, _mockRenderer.Object, null!));
         }
 
         [Fact]
         public void Update_WithNullZone_HidesIndicator()
         {
-            var service = new TerritoryIndicatorService(_mockFactionRepository.Object, _mockRenderer.Object);
+            var service = new TerritoryIndicatorService(_mockFactionRepository.Object, _mockRenderer.Object, _mockBattleManager.Object);
 
             service.Update(null, "michael");
 
@@ -233,7 +245,7 @@ namespace FactionWars.Tests.Unit.UI
         public void Update_WithNullPlayerFactionId_ThrowsArgumentNullException()
         {
             var zone = CreateTestZone("zone1", "Downtown", "michael", 100f);
-            var service = new TerritoryIndicatorService(_mockFactionRepository.Object, _mockRenderer.Object);
+            var service = new TerritoryIndicatorService(_mockFactionRepository.Object, _mockRenderer.Object, _mockBattleManager.Object);
 
             Assert.Throws<ArgumentNullException>(() => service.Update(zone, null!));
         }
@@ -242,7 +254,7 @@ namespace FactionWars.Tests.Unit.UI
         public void Update_WithEmptyPlayerFactionId_ThrowsArgumentException()
         {
             var zone = CreateTestZone("zone1", "Downtown", "michael", 100f);
-            var service = new TerritoryIndicatorService(_mockFactionRepository.Object, _mockRenderer.Object);
+            var service = new TerritoryIndicatorService(_mockFactionRepository.Object, _mockRenderer.Object, _mockBattleManager.Object);
 
             Assert.Throws<ArgumentException>(() => service.Update(zone, ""));
         }
@@ -255,7 +267,7 @@ namespace FactionWars.Tests.Unit.UI
 
             _mockFactionRepository.Setup(r => r.GetById("michael")).Returns(faction);
 
-            var service = new TerritoryIndicatorService(_mockFactionRepository.Object, _mockRenderer.Object);
+            var service = new TerritoryIndicatorService(_mockFactionRepository.Object, _mockRenderer.Object, _mockBattleManager.Object);
             service.Update(zone, "michael");
 
             _mockRenderer.Verify(r => r.Render(It.Is<TerritoryIndicatorData>(d =>
@@ -275,7 +287,7 @@ namespace FactionWars.Tests.Unit.UI
 
             _mockFactionRepository.Setup(r => r.GetById("trevor")).Returns(faction);
 
-            var service = new TerritoryIndicatorService(_mockFactionRepository.Object, _mockRenderer.Object);
+            var service = new TerritoryIndicatorService(_mockFactionRepository.Object, _mockRenderer.Object, _mockBattleManager.Object);
             service.Update(zone, "michael");
 
             _mockRenderer.Verify(r => r.Render(It.Is<TerritoryIndicatorData>(d =>
@@ -291,7 +303,7 @@ namespace FactionWars.Tests.Unit.UI
         {
             var zone = CreateTestZone("zone1", "Downtown", null, 0f);
 
-            var service = new TerritoryIndicatorService(_mockFactionRepository.Object, _mockRenderer.Object);
+            var service = new TerritoryIndicatorService(_mockFactionRepository.Object, _mockRenderer.Object, _mockBattleManager.Object);
             service.Update(zone, "michael");
 
             _mockRenderer.Verify(r => r.Render(It.Is<TerritoryIndicatorData>(d =>
@@ -312,7 +324,7 @@ namespace FactionWars.Tests.Unit.UI
 
             _mockFactionRepository.Setup(r => r.GetById("michael")).Returns(faction);
 
-            var service = new TerritoryIndicatorService(_mockFactionRepository.Object, _mockRenderer.Object);
+            var service = new TerritoryIndicatorService(_mockFactionRepository.Object, _mockRenderer.Object, _mockBattleManager.Object);
             service.Update(zone, "michael");
 
             _mockRenderer.Verify(r => r.Render(It.Is<TerritoryIndicatorData>(d =>
@@ -327,7 +339,7 @@ namespace FactionWars.Tests.Unit.UI
             var zone = CreateTestZone("zone1", "Downtown", "unknown_faction", 100f);
             _mockFactionRepository.Setup(r => r.GetById("unknown_faction")).Returns((Faction?)null);
 
-            var service = new TerritoryIndicatorService(_mockFactionRepository.Object, _mockRenderer.Object);
+            var service = new TerritoryIndicatorService(_mockFactionRepository.Object, _mockRenderer.Object, _mockBattleManager.Object);
             service.Update(zone, "michael");
 
             _mockRenderer.Verify(r => r.Render(It.Is<TerritoryIndicatorData>(d =>
@@ -345,7 +357,7 @@ namespace FactionWars.Tests.Unit.UI
 
             _mockFactionRepository.Setup(r => r.GetById("michael")).Returns(faction);
 
-            var service = new TerritoryIndicatorService(_mockFactionRepository.Object, _mockRenderer.Object);
+            var service = new TerritoryIndicatorService(_mockFactionRepository.Object, _mockRenderer.Object, _mockBattleManager.Object);
             service.Update(zone, "michael");
 
             _mockRenderer.Verify(r => r.Render(It.Is<TerritoryIndicatorData>(d =>
@@ -359,7 +371,7 @@ namespace FactionWars.Tests.Unit.UI
         [Fact]
         public void Hide_CallsRendererHide()
         {
-            var service = new TerritoryIndicatorService(_mockFactionRepository.Object, _mockRenderer.Object);
+            var service = new TerritoryIndicatorService(_mockFactionRepository.Object, _mockRenderer.Object, _mockBattleManager.Object);
 
             service.Hide();
 
@@ -371,9 +383,69 @@ namespace FactionWars.Tests.Unit.UI
         {
             _mockRenderer.Setup(r => r.IsVisible).Returns(true);
 
-            var service = new TerritoryIndicatorService(_mockFactionRepository.Object, _mockRenderer.Object);
+            var service = new TerritoryIndicatorService(_mockFactionRepository.Object, _mockRenderer.Object, _mockBattleManager.Object);
 
             Assert.True(service.IsVisible);
+        }
+
+        [Fact]
+        public void BuildIndicatorData_PopulatesThirdParty_FromAiAttackerWhenPlayerIsAlsoAttacker()
+        {
+            // 3-way: defender = michael, attackers = [trevor (AI), player_faction (player)].
+            // Third party from player POV = trevor.
+            var trevorColor = new FactionColor(255, 150, 0);
+            var michaelColor = new FactionColor(0, 100, 255);
+
+            var zone = CreateTestZone("zone_1", "Downtown", "michael", 40f);
+            zone.IsContested = true;
+
+            var defender = BattleParticipant.ForAi("michael", BattleRole.Defender,
+                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 5 } });
+            var aiAttacker = BattleParticipant.ForAi("trevor", BattleRole.Attacker,
+                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 2 } });
+            var playerAttacker = BattleParticipant.ForPlayer("player_faction", BattleRole.Attacker, () => 4);
+            var battle = new ZoneBattle("zone_1",
+                new List<BattleParticipant> { defender, aiAttacker, playerAttacker },
+                playerFactionId: "player_faction");
+
+            _mockBattleManager.Setup(m => m.GetBattleForZone("zone_1")).Returns(battle);
+
+            var michaelFaction = new Faction("michael", "Michael's Crew", null, "", michaelColor);
+            var trevorFaction = new Faction("trevor", "Trevor's Enterprises", null, "", trevorColor);
+            _mockFactionRepository.Setup(r => r.GetById("michael")).Returns(michaelFaction);
+            _mockFactionRepository.Setup(r => r.GetById("trevor")).Returns(trevorFaction);
+
+            var service = new TerritoryIndicatorService(_mockFactionRepository.Object, _mockRenderer.Object, _mockBattleManager.Object);
+            service.Update(zone, "player_faction");
+
+            _mockRenderer.Verify(r => r.Render(It.Is<TerritoryIndicatorData>(d =>
+                d.ThirdPartyCount == 2 &&
+                d.ThirdPartyFactionColor != null &&
+                d.ThirdPartyFactionColor.Value.R == 255 &&
+                d.ThirdPartyFactionColor.Value.G == 150 &&
+                d.ThirdPartyFactionColor.Value.B == 0
+            )), Times.Once);
+        }
+
+        [Fact]
+        public void BuildIndicatorData_ThirdParty_IsZero_InTwoWayBattle()
+        {
+            var zone = CreateTestZone("zone_1", "Downtown", "michael", 40f);
+            zone.IsContested = true;
+
+            // No battle registered -> GetBattleForZone returns null -> no third party
+            _mockBattleManager.Setup(m => m.GetBattleForZone("zone_1")).Returns((ZoneBattle?)null);
+
+            var michaelFaction = new Faction("michael", "Michael's Crew", null, "", new FactionColor(0, 100, 255));
+            _mockFactionRepository.Setup(r => r.GetById("michael")).Returns(michaelFaction);
+
+            var service = new TerritoryIndicatorService(_mockFactionRepository.Object, _mockRenderer.Object, _mockBattleManager.Object);
+            service.Update(zone, "player_faction");
+
+            _mockRenderer.Verify(r => r.Render(It.Is<TerritoryIndicatorData>(d =>
+                d.ThirdPartyCount == 0 &&
+                d.ThirdPartyFactionColor == null
+            )), Times.Once);
         }
 
         private Zone CreateTestZone(string id, string name, string? ownerId, float controlPercentage)

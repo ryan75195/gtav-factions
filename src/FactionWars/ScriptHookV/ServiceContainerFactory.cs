@@ -334,7 +334,8 @@ namespace FactionWars.ScriptHookV
             container.RegisterSingleton<ITerritoryIndicatorService>(() =>
                 new TerritoryIndicatorService(
                     container.Resolve<IFactionRepository>(),
-                    container.Resolve<ITerritoryIndicatorRenderer>()));
+                    container.Resolve<ITerritoryIndicatorRenderer>(),
+                    container.Resolve<IZoneBattleManager>()));
 
             // Faction color service - manages faction color assignments
             container.RegisterSingleton<IFactionColorService>(() =>
