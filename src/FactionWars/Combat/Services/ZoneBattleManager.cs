@@ -7,6 +7,7 @@ using FactionWars.Core.Interfaces;
 using FactionWars.Core.Models;
 using FactionWars.Factions.Interfaces;
 using FactionWars.ScriptHookV.Logging;
+using FactionWars.Territory.Interfaces;
 using FactionWars.Territory.Models;
 
 namespace FactionWars.Combat.Services
@@ -21,6 +22,7 @@ namespace FactionWars.Combat.Services
         private readonly Random _random;
         private readonly IZoneDefenderAllocationService _allocationService;
         private readonly IFactionService _factionService;
+        private readonly IZoneService _zoneService;
         private string? _playerFactionId;
 
         // Configuration constants (matching ActiveBattleManager)
@@ -198,14 +200,17 @@ namespace FactionWars.Combat.Services
         /// </summary>
         /// <param name="allocationService">Source of truth for per-zone defender allocations. Simulated defender losses decrement the matching allocation so the next player visit doesn't see phantom troops.</param>
         /// <param name="factionService">Source of truth for faction reserves. Simulated attacker losses decrement the attacking faction's reserve so attacks actually deplete forces.</param>
+        /// <param name="zoneService">Source of truth for zone ownership. Used to neutralize zones when the player wins (Q5.A).</param>
         /// <param name="playerFactionId">The player's faction ID, if known.</param>
         public ZoneBattleManager(
             IZoneDefenderAllocationService allocationService,
             IFactionService factionService,
+            IZoneService zoneService,
             string? playerFactionId = null)
         {
             _allocationService = allocationService ?? throw new ArgumentNullException(nameof(allocationService));
             _factionService = factionService ?? throw new ArgumentNullException(nameof(factionService));
+            _zoneService = zoneService ?? throw new ArgumentNullException(nameof(zoneService));
             _battlesByZone = new Dictionary<string, ZoneBattle>();
             _random = new Random();
             _playerFactionId = playerFactionId;
@@ -471,10 +476,11 @@ namespace FactionWars.Combat.Services
 
             if (outcome == BattleOutcome.AttackersWon && winner != null && winner.IsPlayer)
             {
-                // Player win → zone goes neutral. IFactionService has no single SetZoneOwner(zoneId, null)
-                // method; zone neutralization is handled by BattleEnded subscribers in Phase B.
-                // _factionService.RemoveZoneFromFaction(battle.ZoneId, ...);  // Adapt when Phase B wires callers.
-                FileLogger.Combat($"ApplyBattleOutcome: player won zone '{battle.ZoneId}' — zone-neutral hook deferred to later task.");
+                // Q5.A: player win → zone goes neutral. Two-step capture is preserved by
+                // leaving downstream "claim zone" gameplay untouched (player must re-enter
+                // the now-neutral zone to claim it).
+                _zoneService.TransferZoneOwnership(battle.ZoneId, null);
+                FileLogger.Combat($"ApplyBattleOutcome: player won zone '{battle.ZoneId}' — set to neutral.");
             }
         }
 

@@ -7,6 +7,7 @@ using FactionWars.Combat.Services;
 using FactionWars.Core.Interfaces;
 using FactionWars.Core.Models;
 using FactionWars.Factions.Interfaces;
+using FactionWars.Territory.Interfaces;
 using FactionWars.Territory.Models;
 using Moq;
 using Xunit;
@@ -28,7 +29,8 @@ namespace FactionWars.Tests.Unit.Combat
             // ZoneBattleManagerAllocationSyncTests.
             var allocationService = new Mock<IZoneDefenderAllocationService>().Object;
             var factionService = new Mock<IFactionService>().Object;
-            return new ZoneBattleManager(allocationService, factionService, playerFactionId);
+            var zoneService = new Mock<IZoneService>().Object;
+            return new ZoneBattleManager(allocationService, factionService, zoneService, playerFactionId);
         }
 
         private Dictionary<DefenderTier, int> CreateTroops(int basic, int medium, int heavy)
@@ -942,7 +944,8 @@ namespace FactionWars.Tests.Unit.Combat
             allocSvc.Setup(a => a.GetAllocation("michael", "zone_1"))
                 .Returns((ZoneDefenderAllocation?)null);
             var factionSvc = new Mock<IFactionService>();
-            var manager = new ZoneBattleManager(allocSvc.Object, factionSvc.Object, "player_faction");
+            var zoneSvc = new Mock<IZoneService>();
+            var manager = new ZoneBattleManager(allocSvc.Object, factionSvc.Object, zoneSvc.Object, "player_faction");
             var zone = CreateTestZone("zone_1");
             zone.OwnerFactionId = "michael";
 

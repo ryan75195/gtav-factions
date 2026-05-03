@@ -4,6 +4,7 @@ using FactionWars.Core.Interfaces;
 using FactionWars.Core.Models;
 using FactionWars.Factions.Interfaces;
 using FactionWars.Factions.Models;
+using FactionWars.Territory.Interfaces;
 using Moq;
 using Xunit;
 
@@ -24,6 +25,7 @@ namespace FactionWars.Tests.Unit.Combat
 
         private readonly Mock<IZoneDefenderAllocationService> _allocationService = new Mock<IZoneDefenderAllocationService>();
         private readonly Mock<IFactionService> _factionService = new Mock<IFactionService>();
+        private readonly Mock<IZoneService> _zoneService = new Mock<IZoneService>();
 
         private readonly ZoneDefenderAllocation _defenderAllocation;
         private readonly FactionState _attackerState;
@@ -58,7 +60,7 @@ namespace FactionWars.Tests.Unit.Combat
 
         private ZoneBattleManager BuildManager()
         {
-            return new ZoneBattleManager(_allocationService.Object, _factionService.Object, playerFactionId: null);
+            return new ZoneBattleManager(_allocationService.Object, _factionService.Object, _zoneService.Object, playerFactionId: null);
         }
 
         private static Dictionary<DefenderTier, int> Troops(int basic)

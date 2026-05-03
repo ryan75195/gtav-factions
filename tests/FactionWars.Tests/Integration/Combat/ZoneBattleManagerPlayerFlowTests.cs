@@ -7,6 +7,7 @@ using FactionWars.Combat.Services;
 using FactionWars.Core.Interfaces;
 using FactionWars.Core.Models;
 using FactionWars.Factions.Interfaces;
+using FactionWars.Territory.Interfaces;
 using FactionWars.Territory.Models;
 using Moq;
 using Xunit;
@@ -33,14 +34,16 @@ namespace FactionWars.Tests.Integration.Combat
         /// </summary>
         private static ZoneBattleManager MakeManager(
             string? playerFactionId = null,
-            ZoneDefenderAllocation? allocation = null)
+            ZoneDefenderAllocation? allocation = null,
+            IZoneService? zoneService = null)
         {
             var allocSvc = new Mock<IZoneDefenderAllocationService>();
             allocSvc
                 .Setup(a => a.GetAllocation(It.IsAny<string>(), It.IsAny<string>()))
                 .Returns(allocation);
             var factionSvc = new Mock<IFactionService>().Object;
-            return new ZoneBattleManager(allocSvc.Object, factionSvc, playerFactionId);
+            var zoneSvc = zoneService ?? new Mock<IZoneService>().Object;
+            return new ZoneBattleManager(allocSvc.Object, factionSvc, zoneSvc, playerFactionId);
         }
 
         /// <summary>
@@ -289,6 +292,46 @@ namespace FactionWars.Tests.Integration.Combat
             Assert.True(endedEvents[0].Item1.Attackers.Any(p => p.IsPlayer));
             // Battle is removed from active battles.
             Assert.Null(manager.GetBattleForZone("zone_1"));
+        }
+
+        // -----------------------------------------------------------------------
+        // Player-win → zone goes neutral (Q5.A)
+        // -----------------------------------------------------------------------
+
+        [Fact]
+        public void PlayerFlow_PlayerWinsBattle_ZoneIsNeutralized()
+        {
+            // Q5.A: when the player wipes the defender (and any AI third party),
+            // the zone goes neutral — TransferZoneOwnership(zoneId, null).
+            var zoneSvc = new Mock<IZoneService>();
+            var allocation = MakeAllocation("michael", "zone_1", 1);
+            var manager = MakeManager(
+                playerFactionId: "player_faction",
+                allocation: allocation,
+                zoneService: zoneSvc.Object);
+            var zone = MakeZone("zone_1", ownerFactionId: "michael");
+            manager.StartPlayerCombat(zone, "player_faction", () => 4);
+
+            manager.ReportTroopKilled("zone_1", "michael", DefenderTier.Basic);
+
+            zoneSvc.Verify(z => z.TransferZoneOwnership("zone_1", null), Times.Once);
+        }
+
+        [Fact]
+        public void PlayerFlow_DefenderWinsBattle_ZoneIsNotNeutralized()
+        {
+            // Defender win: zone keeps its owner. No TransferZoneOwnership call.
+            var zoneSvc = new Mock<IZoneService>();
+            var manager = MakeManager(
+                playerFactionId: "player_faction",
+                zoneService: zoneSvc.Object);
+            manager.StartBattle("zone_1", "trevor", "michael",
+                Troops(1), Troops(1));
+
+            // Trevor leaves before fighting → defender wins.
+            manager.RemoveParticipant("zone_1", "trevor");
+
+            zoneSvc.Verify(z => z.TransferZoneOwnership(It.IsAny<string>(), It.IsAny<string?>()), Times.Never);
         }
     }
 }

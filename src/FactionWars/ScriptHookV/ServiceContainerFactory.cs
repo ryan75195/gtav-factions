@@ -200,7 +200,8 @@ namespace FactionWars.ScriptHookV
             container.RegisterSingleton<IZoneBattleManager>(() =>
                 new ZoneBattleManager(
                     container.Resolve<IZoneDefenderAllocationService>(),
-                    container.Resolve<IFactionService>()));
+                    container.Resolve<IFactionService>(),
+                    container.Resolve<IZoneService>()));
         }
 
         private static void RegisterPersistenceServices(ServiceContainer container)
