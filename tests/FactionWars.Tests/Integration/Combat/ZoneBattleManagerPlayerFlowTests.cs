@@ -1,0 +1,294 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using FactionWars.Combat.Interfaces;
+using FactionWars.Combat.Models;
+using FactionWars.Combat.Services;
+using FactionWars.Core.Interfaces;
+using FactionWars.Core.Models;
+using FactionWars.Factions.Interfaces;
+using FactionWars.Territory.Models;
+using Moq;
+using Xunit;
+
+namespace FactionWars.Tests.Integration.Combat
+{
+    /// <summary>
+    /// Integration tests for ZoneBattleManager covering player combat flows.
+    /// Tests end-to-end sequences: StartPlayerCombat, JoinAsAttacker, RemoveParticipant,
+    /// ReportTroopKilled, and BattleEnded outcome routing.
+    ///
+    /// Also includes a dedicated 3-way bug-repro test (Task 18) verifying that a single
+    /// BattleEnded fires when the player wins a 3-way contested zone.
+    /// </summary>
+    public class ZoneBattleManagerPlayerFlowTests
+    {
+        #region Helpers
+
+        /// <summary>
+        /// Creates a ZoneBattleManager with a real allocation service backed by a
+        /// minimal in-memory Moq setup. If <paramref name="allocation"/> is supplied it
+        /// is returned for every GetAllocation call; otherwise null is returned (empty
+        /// defender allocation).
+        /// </summary>
+        private static ZoneBattleManager MakeManager(
+            string? playerFactionId = null,
+            ZoneDefenderAllocation? allocation = null)
+        {
+            var allocSvc = new Mock<IZoneDefenderAllocationService>();
+            allocSvc
+                .Setup(a => a.GetAllocation(It.IsAny<string>(), It.IsAny<string>()))
+                .Returns(allocation);
+            var factionSvc = new Mock<IFactionService>().Object;
+            return new ZoneBattleManager(allocSvc.Object, factionSvc, playerFactionId);
+        }
+
+        /// <summary>
+        /// Creates a Zone with the given id and owner. Center and radius are arbitrary.
+        /// </summary>
+        private static Zone MakeZone(string id, string ownerFactionId)
+        {
+            var zone = new Zone(id, id, new Vector3(0, 0, 0), 150f);
+            zone.OwnerFactionId = ownerFactionId;
+            return zone;
+        }
+
+        /// <summary>
+        /// Builds a ZoneDefenderAllocation pre-populated with Basic troops.
+        /// </summary>
+        private static ZoneDefenderAllocation MakeAllocation(string factionId, string zoneId, int basicCount)
+        {
+            var alloc = new ZoneDefenderAllocation(factionId, zoneId);
+            alloc.AddTroops(DefenderTier.Basic, basicCount);
+            return alloc;
+        }
+
+        private static Dictionary<DefenderTier, int> Troops(int basic) =>
+            new Dictionary<DefenderTier, int> { { DefenderTier.Basic, basic } };
+
+        #endregion
+
+        // -----------------------------------------------------------------------
+        // Scenario 1: Player enters enemy zone, no existing battle → new battle
+        // -----------------------------------------------------------------------
+
+        [Fact]
+        public void PlayerFlow_PlayerEntersEnemyZone_StartsNewBattle()
+        {
+            // Arrange
+            var allocation = MakeAllocation("michael", "zone_1", 5);
+            var manager = MakeManager(playerFactionId: "player_faction", allocation: allocation);
+            var zone = MakeZone("zone_1", "michael");
+
+            // Act
+            var battle = manager.StartPlayerCombat(zone, "player_faction", () => 4);
+
+            // Assert
+            Assert.NotNull(battle);
+            Assert.Equal("zone_1", battle!.ZoneId);
+            Assert.Equal(1, manager.BattleCount);
+
+            // Defender troop count comes from the allocation (5 Basic)
+            Assert.Equal(5, battle.TotalDefenderTroops);
+            Assert.Equal("michael", battle.DefenderFactionId);
+
+            // Player is an attacker participant
+            Assert.Equal(2, battle.Participants.Count);
+            Assert.True(battle.Attackers.Any(p => p.IsPlayer && p.FactionId == "player_faction"));
+        }
+
+        // -----------------------------------------------------------------------
+        // Scenario 2: Existing AI vs AI battle → player joins as 3rd participant
+        // -----------------------------------------------------------------------
+
+        [Fact]
+        public void PlayerFlow_PlayerEntersZoneAlreadyContestedByAi_JoinsAsThirdAttacker()
+        {
+            // Arrange — AI battle already running
+            var manager = MakeManager(playerFactionId: "player_faction");
+            manager.StartBattle("zone_1", "trevor", "michael", Troops(3), Troops(3));
+            var zone = MakeZone("zone_1", "michael");
+
+            // Act
+            var battle = manager.StartPlayerCombat(zone, "player_faction", () => 4);
+
+            // Assert
+            Assert.NotNull(battle);
+            Assert.Equal(3, battle!.Participants.Count);
+            int attackerCount = battle.Participants.Count(p => p.Role == BattleRole.Attacker);
+            Assert.Equal(2, attackerCount);
+            Assert.True(battle.Attackers.Any(p => p.IsPlayer && p.FactionId == "player_faction"));
+        }
+
+        // -----------------------------------------------------------------------
+        // Scenario 3: Player wipes defender → BattleEnded with AttackersWon
+        // -----------------------------------------------------------------------
+
+        [Fact]
+        public void PlayerFlow_PlayerWipesDefender_BattleEndsAttackersWon()
+        {
+            // Arrange
+            var allocation = MakeAllocation("michael", "zone_1", 3);
+            var manager = MakeManager(playerFactionId: "player_faction", allocation: allocation);
+            var zone = MakeZone("zone_1", "michael");
+            var battle = manager.StartPlayerCombat(zone, "player_faction", () => 4);
+            Assert.NotNull(battle);
+
+            var endedEvents = new List<(ZoneBattle, BattleOutcome)>();
+            manager.BattleEnded += (b, o) => endedEvents.Add((b, o));
+
+            // Act — kill all 3 Basic defenders
+            manager.ReportTroopKilled("zone_1", "michael", DefenderTier.Basic);
+            manager.ReportTroopKilled("zone_1", "michael", DefenderTier.Basic);
+            manager.ReportTroopKilled("zone_1", "michael", DefenderTier.Basic);
+
+            // Assert
+            Assert.Single(endedEvents);
+            Assert.Equal(BattleOutcome.AttackersWon, endedEvents[0].Item2);
+            Assert.Null(manager.GetBattleForZone("zone_1"));
+        }
+
+        // -----------------------------------------------------------------------
+        // Scenario 4: Player squad reaches 0 — skipped
+        //
+        // ReportTroopKilled on a player participant is a no-op (BattleParticipant.
+        // RemoveTroop returns false for player). ResolveBattleIfDone is therefore
+        // never triggered by this path; the manager has no periodic check that
+        // polls the aliveCountCallback. There is no supported API to externally
+        // signal "player squad wiped" in the current implementation.
+        // This scenario would require a production change (e.g., a
+        // NotifyPlayerSquadWiped entry-point) — out of scope for this task.
+        // -----------------------------------------------------------------------
+
+        // -----------------------------------------------------------------------
+        // Scenario 5: Player exits zone as sole attacker → DefendersWon
+        // -----------------------------------------------------------------------
+
+        [Fact]
+        public void PlayerFlow_PlayerExitsZone_RemovesParticipant_DefenderWinsIfPlayerWasOnlyAttacker()
+        {
+            // Arrange
+            var allocation = MakeAllocation("michael", "zone_1", 5);
+            var manager = MakeManager(playerFactionId: "player_faction", allocation: allocation);
+            var zone = MakeZone("zone_1", "michael");
+            manager.StartPlayerCombat(zone, "player_faction", () => 4);
+
+            var endedEvents = new List<(ZoneBattle, BattleOutcome)>();
+            manager.BattleEnded += (b, o) => endedEvents.Add((b, o));
+
+            // Act
+            manager.RemoveParticipant("zone_1", "player_faction");
+
+            // Assert — no attackers left, defenders win
+            Assert.Single(endedEvents);
+            Assert.Equal(BattleOutcome.DefendersWon, endedEvents[0].Item2);
+            Assert.Null(manager.GetBattleForZone("zone_1"));
+        }
+
+        // -----------------------------------------------------------------------
+        // Scenario 6: Player exits contested zone → battle continues with AI pair
+        // -----------------------------------------------------------------------
+
+        [Fact]
+        public void PlayerFlow_PlayerExitsContestedZone_BattleContinues2Way()
+        {
+            // Arrange — AI battle already running
+            var manager = MakeManager(playerFactionId: "player_faction");
+            manager.StartBattle("zone_1", "trevor", "michael", Troops(3), Troops(3));
+            var zone = MakeZone("zone_1", "michael");
+            manager.StartPlayerCombat(zone, "player_faction", () => 4);
+
+            var endedFired = false;
+            manager.BattleEnded += (_, _) => endedFired = true;
+
+            // Act — player leaves
+            manager.RemoveParticipant("zone_1", "player_faction");
+
+            // Assert — battle still ongoing with trevor and michael
+            Assert.False(endedFired);
+            var remaining = manager.GetBattleForZone("zone_1");
+            Assert.NotNull(remaining);
+            Assert.Equal(2, remaining!.Participants.Count);
+        }
+
+        // -----------------------------------------------------------------------
+        // Scenario 7: StartPlayerCombat on player's own zone → ArgumentException
+        // -----------------------------------------------------------------------
+
+        [Fact]
+        public void PlayerFlow_StartPlayerCombat_OnPlayerOwnedZone_Throws()
+        {
+            // Arrange
+            var manager = MakeManager(playerFactionId: "player_faction");
+            var zone = MakeZone("zone_1", "player_faction"); // player owns this zone
+
+            // Act & Assert
+            Assert.Throws<ArgumentException>(() =>
+                manager.StartPlayerCombat(zone, "player_faction", () => 4));
+        }
+
+        // -----------------------------------------------------------------------
+        // Scenario 8: Calling StartPlayerCombat twice returns null the second time
+        // -----------------------------------------------------------------------
+
+        [Fact]
+        public void PlayerFlow_DoubleStartPlayerCombat_ReturnsNullSecondTime()
+        {
+            // Arrange
+            var allocation = MakeAllocation("michael", "zone_1", 3);
+            var manager = MakeManager(playerFactionId: "player_faction", allocation: allocation);
+            var zone = MakeZone("zone_1", "michael");
+
+            // Act
+            var first = manager.StartPlayerCombat(zone, "player_faction", () => 4);
+            var second = manager.StartPlayerCombat(zone, "player_faction", () => 4);
+
+            // Assert
+            Assert.NotNull(first);
+            Assert.Null(second); // JoinAsAttacker rejects duplicate faction id
+            Assert.Equal(1, manager.BattleCount);
+        }
+
+        // -----------------------------------------------------------------------
+        // Task 18: 3-way bug repro
+        // -----------------------------------------------------------------------
+
+        [Fact]
+        public void ThreeWay_PlayerWinsAfterJoiningContestedAiZone_OneBattleEndedFires()
+        {
+            // Bug repro: AI₁ attacking AI₂'s zone, player walks in, wipes everyone.
+            // Pre-Plan-2: two parallel battles — AI's resolution could overwrite player's.
+            // After Plan 2: single unified battle, single BattleEnded event, player wins.
+
+            var manager = MakeManager(playerFactionId: "player_faction");
+            var zone = MakeZone("zone_1", ownerFactionId: "michael");
+
+            // AI₁ (trevor) attacks AI₂ (michael).
+            manager.StartBattle("zone_1", "trevor", "michael",
+                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 1 } },
+                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 1 } });
+
+            // Player walks in.
+            int squadCount = 4;
+            var battle = manager.StartPlayerCombat(zone, "player_faction", () => squadCount);
+            Assert.NotNull(battle);
+            Assert.Equal(3, battle!.Participants.Count);
+
+            // Track BattleEnded firings.
+            var endedEvents = new List<(ZoneBattle, BattleOutcome)>();
+            manager.BattleEnded += (b, o) => endedEvents.Add((b, o));
+
+            // Player wipes both AI sides.
+            manager.ReportTroopKilled("zone_1", "trevor", DefenderTier.Basic);
+            manager.ReportTroopKilled("zone_1", "michael", DefenderTier.Basic);
+
+            // Exactly one BattleEnded fires.
+            Assert.Single(endedEvents);
+            // Outcome is AttackersWon and the surviving attacker is the player.
+            Assert.Equal(BattleOutcome.AttackersWon, endedEvents[0].Item2);
+            Assert.True(endedEvents[0].Item1.Attackers.Any(p => p.IsPlayer));
+            // Battle is removed from active battles.
+            Assert.Null(manager.GetBattleForZone("zone_1"));
+        }
+    }
+}
