@@ -4,6 +4,7 @@ using FactionWars.Combat.Models;
 using FactionWars.Core.Interfaces;
 using FactionWars.Core.Models;
 using FactionWars.Core.Utils;
+using FactionWars.Factions.Interfaces;
 using FactionWars.ScriptHookV;
 using FactionWars.Territory.Interfaces;
 using FactionWars.Tests.Mocks;
@@ -149,6 +150,84 @@ namespace FactionWars.Tests.Unit.ScriptHookV
 
             Assert.True(battleManager.IsPlayerInBattle());
             Assert.NotNull(battleManager.GetPlayerCurrentBattle());
+        }
+
+        [Fact]
+        public void AIAllocateTroopsDuringPlayerBattle_GrowsBattleDefenderCount()
+        {
+            // Regression: when AI Defend strategy reinforces a zone with an active
+            // player-vs-AI battle, the new allocation must flow into the battle's
+            // defender participant. Otherwise the player kills only the original
+            // participant count, the battle ends prematurely, and the unsynced
+            // reinforcements remain as "phantom troops" in the allocation —
+            // visible in the territory UI and resurrected on AI recapture.
+            //
+            // Smoke-test evidence (FactionWars_2026-05-03_16-11-19.log):
+            //   16:16:20 — Trevor's Defend allocated 17 to morningwood mid-battle
+            //   16:16:44 — player wins, allocation still shows 17 remaining
+            //   16:17:35 — Trevor recaptures with phantom troops resurrected
+            SetupController();
+            var controller = new GameLoopController(_container);
+            controller.OnTick();
+
+            var zoneRepo = _container.Resolve<IZoneRepository>();
+            var zoneService = _container.Resolve<IZoneService>();
+            var allocSvc = _container.Resolve<IZoneDefenderAllocationService>();
+            var factionService = _container.Resolve<IFactionService>();
+            var battleManager = _container.Resolve<IZoneBattleManager>();
+
+            const string defenderFactionId = "trevor";
+            var zone = zoneRepo.GetById("vinewood_hills");
+            Assert.NotNull(zone);
+            zoneService.TransferZoneOwnership("vinewood_hills", defenderFactionId);
+            allocSvc.SetAllocation(defenderFactionId, "vinewood_hills", DefenderTier.Basic, 5);
+
+            var trevorState = factionService.GetFactionState(defenderFactionId);
+            Assert.NotNull(trevorState);
+            trevorState!.AddReserveTroops(DefenderTier.Basic, 10);
+
+            var battle = battleManager.StartPlayerCombat(zone!, controller.CurrentPlayerFactionId!, () => 1);
+            Assert.NotNull(battle);
+            Assert.Equal(5, battle!.TotalDefenderTroops);
+
+            bool ok = allocSvc.AllocateTroops(trevorState, "vinewood_hills", DefenderTier.Basic, 10);
+            Assert.True(ok);
+
+            Assert.Equal(15, battle.TotalDefenderTroops);
+        }
+
+        [Fact]
+        public void OnZoneBattleEnded_PlayerRetreatsAsSoleAttacker_DoesNotThrow()
+        {
+            // Regression: in-game crash with IndexOutOfRange in
+            // ZoneBattle.AttackerFactionId when the player retreats from a zone
+            // where they were the only attacker. RemoveParticipant removes the
+            // player → Attackers list is empty → ResolveBattleIfDone fires
+            // BattleEnded → OnZoneBattleEnded reads battle.AttackerFactionId
+            // (which evaluates Attackers[0]) → script aborts.
+            SetupController();
+            var controller = new GameLoopController(_container);
+            controller.OnTick();
+
+            var zoneRepo = _container.Resolve<IZoneRepository>();
+            var zoneService = _container.Resolve<IZoneService>();
+            var allocSvc = _container.Resolve<IZoneDefenderAllocationService>();
+            var battleManager = _container.Resolve<IZoneBattleManager>();
+
+            const string defenderFactionId = "trevor";
+            var zone = zoneRepo.GetById("vinewood_hills");
+            Assert.NotNull(zone);
+            zoneService.TransferZoneOwnership("vinewood_hills", defenderFactionId);
+            allocSvc.SetAllocation(defenderFactionId, "vinewood_hills", DefenderTier.Basic, 5);
+
+            battleManager.StartPlayerCombat(zone!, controller.CurrentPlayerFactionId!, () => 1);
+
+            // Player retreats — this is what OnZoneExited triggers in-game.
+            // The crash happens inside ResolveBattleIfDone → BattleEnded → OnZoneBattleEnded.
+            var ex = Record.Exception(() =>
+                battleManager.RemoveParticipant("vinewood_hills", controller.CurrentPlayerFactionId!));
+
+            Assert.Null(ex);
         }
 
         [Fact]

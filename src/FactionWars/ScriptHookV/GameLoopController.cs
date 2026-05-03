@@ -615,8 +615,14 @@ namespace FactionWars.ScriptHookV
                     _friendlyDefenderManager.OnTroopsAllocated(e.FactionId, e.ZoneId, e.Tier, e.Count, zone.Center, zone.Radius);
                 }
 
-                // If there's an active battle in this zone where player is defender, add troops to battle
-                if (e.FactionId == CurrentPlayerFactionId)
+                // If there's an active battle in this zone where the allocating
+                // faction is the defender, add troops to the battle so the
+                // defender participant stays in sync with the allocation. This
+                // applies to AI Defend reinforcement just as much as to player
+                // allocations — without it, AI mid-battle reinforcements grow
+                // the allocation but not the participant, and the player can
+                // win by clearing the original participant count, leaving
+                // phantom troops in the allocation.
                 {
                     var battle = _zoneBattleManager?.GetBattleForZone(e.ZoneId);
                     if (battle != null && battle.DefenderFactionId == e.FactionId)
@@ -1507,50 +1513,64 @@ namespace FactionWars.ScriptHookV
         {
             _commanderManager?.OnBattleEnded(battle.ZoneId);
 
-            // Identify the surviving participant (if any). This is the source of truth
-            // for outcome routing in 3-way battles, where battle.AttackerFactionId only
-            // returns the first attacker — which may be the wiped one.
+            // Identify the surviving participant (if any). Source of truth for
+            // outcome routing in 3-way battles — Attackers[0] may be the wiped one.
             var winner = battle.Participants.FirstOrDefault(p => p.AliveCount > 0);
             bool playerWon = winner?.IsPlayer == true;
 
+            // Resolve names from the participant list rather than the legacy
+            // AttackerFactionId getter, which throws when Attackers is empty
+            // (e.g. the player retreated as the only attacker).
+            string? someAttackerFactionId =
+                battle.Participants.FirstOrDefault(p => p.Role == BattleRole.Attacker)?.FactionId;
+            string defenderFactionId = battle.DefenderFactionId;
+
             // Casualty debits only apply to AI factions — player troop count is
-            // callback-based (1 + alive followers) and not pool-managed.
+            // callback-based (1 + alive followers) and not pool-managed. We can
+            // only debit attacker losses if there's still an attacker we know
+            // about; if all attackers retreated, their losses are unaccounted
+            // (matches prior behaviour for the retreat path).
             int attackerCasualties = battle.InitialAttackerTroops - battle.TotalAttackerTroops;
             int defenderCasualties = battle.InitialDefenderTroops - battle.TotalDefenderTroops;
-            if (attackerCasualties > 0 && battle.AttackerFactionId != CurrentPlayerFactionId)
+            if (attackerCasualties > 0
+                && someAttackerFactionId != null
+                && someAttackerFactionId != CurrentPlayerFactionId)
             {
-                _factionService.LoseTroops(battle.AttackerFactionId, attackerCasualties);
+                _factionService.LoseTroops(someAttackerFactionId, attackerCasualties);
             }
-            if (defenderCasualties > 0 && battle.DefenderFactionId != CurrentPlayerFactionId)
+            if (defenderCasualties > 0 && defenderFactionId != CurrentPlayerFactionId)
             {
-                _factionService.LoseTroops(battle.DefenderFactionId, defenderCasualties);
+                _factionService.LoseTroops(defenderFactionId, defenderCasualties);
             }
 
             if (outcome == BattleOutcome.AttackersWon && _zoneService != null && !playerWon)
             {
-                // AI attacker wins. Use the actual surviving participant's faction id
+                // AI attacker wins — use the actual surviving participant's faction id
                 // (in 3-way battles Attackers[0] may be the wiped AI, not the winner).
-                string winnerFactionId = winner?.FactionId ?? battle.AttackerFactionId;
-                _zoneService.TransferZoneOwnership(battle.ZoneId, winnerFactionId);
-
-                int survivors = winner?.AliveCount ?? battle.TotalAttackerTroops;
-                int toAllocate = survivors > 0 ? Math.Max(1, Math.Min((survivors + 1) / 2, 5)) : 0;
-                if (toAllocate > 0)
+                string? winnerFactionId = winner?.FactionId ?? someAttackerFactionId;
+                if (winnerFactionId != null)
                 {
-                    _allocationService?.SetAllocation(winnerFactionId, battle.ZoneId, DefenderTier.Basic, toAllocate);
-                }
+                    _zoneService.TransferZoneOwnership(battle.ZoneId, winnerFactionId);
 
-                CheckFactionEliminated(battle.DefenderFactionId);
+                    int survivors = winner?.AliveCount ?? battle.TotalAttackerTroops;
+                    int toAllocate = survivors > 0 ? Math.Max(1, Math.Min((survivors + 1) / 2, 5)) : 0;
+                    if (toAllocate > 0)
+                    {
+                        _allocationService?.SetAllocation(winnerFactionId, battle.ZoneId, DefenderTier.Basic, toAllocate);
+                    }
+
+                    CheckFactionEliminated(defenderFactionId);
+                }
             }
             // Player wins: ZoneBattleManager.ApplyBattleOutcome already neutralized
             // the zone via TransferZoneOwnership(zoneId, null). Re-transferring here
-            // would defeat Q5.A. Two-step capture is preserved by the player having
-            // to re-enter the now-neutral zone to claim it.
+            // would defeat Q5.A.
 
-            var attackerFaction = _factionService.GetFaction(battle.AttackerFactionId);
-            var defenderFaction = _factionService.GetFaction(battle.DefenderFactionId);
-            string attackerName = attackerFaction?.Name ?? battle.AttackerFactionId;
-            string defenderName = defenderFaction?.Name ?? battle.DefenderFactionId;
+            string attackerName = someAttackerFactionId != null
+                ? (_factionService.GetFaction(someAttackerFactionId)?.Name ?? someAttackerFactionId)
+                : "Attacker";
+            var defenderFaction = _factionService.GetFaction(defenderFactionId);
+            string defenderName = defenderFaction?.Name ?? defenderFactionId;
             var zone = _zoneService?.GetZone(battle.ZoneId);
             string zoneName = zone?.Name ?? battle.ZoneId;
 
@@ -1561,8 +1581,10 @@ namespace FactionWars.ScriptHookV
             }
             else if (outcome == BattleOutcome.AttackersWon)
             {
-                string winnerName = _factionService.GetFaction(winner?.FactionId ?? battle.AttackerFactionId)?.Name
-                    ?? winner?.FactionId ?? battle.AttackerFactionId;
+                string? winnerFactionIdForName = winner?.FactionId ?? someAttackerFactionId;
+                string winnerName = winnerFactionIdForName != null
+                    ? (_factionService.GetFaction(winnerFactionIdForName)?.Name ?? winnerFactionIdForName)
+                    : attackerName;
                 _gameBridge.ShowNotification($"~g~[{winnerName}]~w~ captured ~b~{zoneName}~w~ from ~r~[{defenderName}]");
                 FileLogger.Combat($"OnZoneBattleEnded: {winnerName} captured {zoneName} from {defenderName}");
             }
