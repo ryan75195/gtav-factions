@@ -356,36 +356,19 @@ namespace FactionWars.Combat.Services
             if (!_battlesByZone.TryGetValue(zoneId, out var battle))
                 return;
 
-            string side;
-            bool removed = false;
-
-            if (factionId == battle.AttackerFactionId)
+            var victim = battle.Participants.FirstOrDefault(p => p.FactionId == factionId);
+            if (victim == null)
             {
-                removed = battle.RemoveAttackerTroop(tier);
-                side = "attacker";
-            }
-            else if (factionId == battle.DefenderFactionId)
-            {
-                removed = battle.RemoveDefenderTroop(tier);
-                side = "defender";
-            }
-            else
-            {
-                // Faction not involved in this battle
+                FileLogger.Combat($"ReportTroopKilled: faction '{factionId}' not in battle '{zoneId}'.");
                 return;
             }
 
+            bool removed = victim.RemoveTroop(tier);
             if (removed)
             {
+                string side = victim.Role == BattleRole.Defender ? "defender" : "attacker";
                 TroopKilled?.Invoke(battle, tier, side);
-
-                // Check if battle ended
-                if (!battle.IsOngoing)
-                {
-                    var outcome = DetermineOutcome(battle);
-                    _battlesByZone.Remove(zoneId);
-                    BattleEnded?.Invoke(battle, outcome);
-                }
+                ResolveBattleIfDone(battle);
             }
         }
 

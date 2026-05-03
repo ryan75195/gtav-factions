@@ -820,6 +820,63 @@ namespace FactionWars.Tests.Unit.Combat
 
         #endregion
 
+        #region ReportTroopKilled (participant-based)
+
+        [Fact]
+        public void ReportTroopKilled_DecrementsAiParticipant()
+        {
+            var manager = CreateManager(playerFactionId: "player_faction");
+            manager.StartBattle("zone_1", "trevor", "michael",
+                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 3 } },
+                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 5 } });
+
+            manager.ReportTroopKilled("zone_1", "trevor", DefenderTier.Basic);
+
+            var battle = manager.GetBattleForZone("zone_1");
+            Assert.Equal(2, battle!.Attackers[0].AliveCount);
+        }
+
+        [Fact]
+        public void ReportTroopKilled_PlayerWipesDefender_FiresBattleEndedAttackersWon()
+        {
+            var manager = CreateManager(playerFactionId: "player_faction");
+            // Defender has 1 troop, player has callback returning 4.
+            manager.StartBattle("zone_1", "trevor", "michael",
+                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 3 } },
+                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 1 } });
+            manager.JoinAsAttacker("zone_1", "player_faction", true, () => 4, null);
+            // Trevor leaves so it's only player vs michael (1 troop).
+            manager.RemoveParticipant("zone_1", "trevor");
+
+            ZoneBattle? endedBattle = null;
+            BattleOutcome? endedOutcome = null;
+            manager.BattleEnded += (b, o) => { endedBattle = b; endedOutcome = o; };
+
+            manager.ReportTroopKilled("zone_1", "michael", DefenderTier.Basic);
+
+            Assert.NotNull(endedBattle);
+            Assert.Equal(BattleOutcome.AttackersWon, endedOutcome);
+            Assert.True(endedBattle!.Attackers.Any(p => p.IsPlayer));
+        }
+
+        [Fact]
+        public void ReportTroopKilled_UnknownFaction_NoOp()
+        {
+            var manager = CreateManager(playerFactionId: "player_faction");
+            manager.StartBattle("zone_1", "trevor", "michael",
+                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 3 } },
+                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 5 } });
+
+            manager.ReportTroopKilled("zone_1", "franklin", DefenderTier.Basic);
+
+            var battle = manager.GetBattleForZone("zone_1");
+            Assert.NotNull(battle);
+            Assert.Equal(3, battle!.Attackers[0].AliveCount);
+            Assert.Equal(5, battle.Defender.AliveCount);
+        }
+
+        #endregion
+
         #region RemoveParticipant
 
         [Fact]
