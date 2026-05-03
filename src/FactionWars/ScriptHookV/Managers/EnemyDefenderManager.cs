@@ -27,6 +27,7 @@ namespace FactionWars.ScriptHookV.Managers
         private readonly IDefenderTierService _defenderTierService;
         private readonly IPedBlipService _pedBlipService;
         private readonly IZoneService _zoneService;
+        private readonly IZoneBattleManager? _zoneBattleManager;
 
         private readonly Dictionary<string, Dictionary<int, DefenderTier>> _spawnedPedTierByZone;
         private readonly Dictionary<int, int> _corpseDeathTimes; // pedHandle -> game time when died
@@ -52,7 +53,8 @@ namespace FactionWars.ScriptHookV.Managers
             IPedDespawnService pedDespawnService,
             IDefenderTierService defenderTierService,
             IPedBlipService pedBlipService,
-            IZoneService zoneService)
+            IZoneService zoneService,
+            IZoneBattleManager? zoneBattleManager = null)
         {
             _gameBridge = gameBridge ?? throw new ArgumentNullException(nameof(gameBridge));
             _allocationService = allocationService ?? throw new ArgumentNullException(nameof(allocationService));
@@ -61,6 +63,7 @@ namespace FactionWars.ScriptHookV.Managers
             _defenderTierService = defenderTierService ?? throw new ArgumentNullException(nameof(defenderTierService));
             _pedBlipService = pedBlipService ?? throw new ArgumentNullException(nameof(pedBlipService));
             _zoneService = zoneService ?? throw new ArgumentNullException(nameof(zoneService));
+            _zoneBattleManager = zoneBattleManager;
 
             _spawnedPedTierByZone = new Dictionary<string, Dictionary<int, DefenderTier>>();
             _corpseDeathTimes = new Dictionary<int, int>();
@@ -336,6 +339,10 @@ namespace FactionWars.ScriptHookV.Managers
                 allocation.RemoveTroops(tier, 1);
                 FileLogger.Combat($"EnemyDefenderManager: Decremented {tier} allocation in {zoneId}, remaining: {allocation.TotalTroops}");
             }
+
+            // Report kill to ZoneBattleManager so the active battle's troop count stays in sync
+            // and victory conditions are checked correctly.
+            _zoneBattleManager?.ReportTroopKilled(zoneId, enemyFactionId, tier);
 
             // Try to spawn replacement from remaining reserves
             TrySpawnReplacement(zoneId, tier, enemyFactionId, allocation);

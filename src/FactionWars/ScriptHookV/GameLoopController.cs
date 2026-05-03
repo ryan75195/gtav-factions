@@ -703,7 +703,8 @@ namespace FactionWars.ScriptHookV
                 pedDespawnService,
                 defenderTierService,
                 pedBlipService,
-                _zoneService);
+                _zoneService,
+                _zoneBattleManager);
 
             // Initialize combat manager dependencies (needed by multiple managers)
             var pedPool = _container.Resolve<IPedPool>();
