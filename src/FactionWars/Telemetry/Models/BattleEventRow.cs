@@ -1,4 +1,5 @@
 using System;
+using FactionWars.Combat.Models;
 
 namespace FactionWars.Telemetry.Models
 {

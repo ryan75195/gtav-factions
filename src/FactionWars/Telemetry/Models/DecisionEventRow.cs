@@ -1,4 +1,5 @@
 using System;
+using FactionWars.AI.Models;
 
 namespace FactionWars.Telemetry.Models
 {
@@ -7,14 +8,14 @@ namespace FactionWars.Telemetry.Models
         public DateTime Timestamp { get; }
         public long PlayTimeSeconds { get; }
         public string FactionId { get; }
-        public AIDecisionTypeMeta Type { get; }
+        public AIDecisionType Type { get; }
         public string? TargetZoneId { get; }
         public int Troops { get; }
         public double Priority { get; }
         public bool Executed { get; }
 
         public DecisionEventRow(DateTime timestamp, long playTimeSeconds, string factionId,
-            AIDecisionTypeMeta type, string? targetZoneId, int troops, double priority, bool executed)
+            AIDecisionType type, string? targetZoneId, int troops, double priority, bool executed)
         {
             Timestamp = timestamp;
             PlayTimeSeconds = playTimeSeconds;
