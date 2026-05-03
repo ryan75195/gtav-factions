@@ -212,6 +212,35 @@ namespace FactionWars.Combat.Models
         public void AddAttackerTroops(DefenderTier tier, int count) => Attackers[0].AddTroops(tier, count);
         public void AddDefenderTroops(DefenderTier tier, int count) => Defender.AddTroops(tier, count);
 
+        /// <summary>
+        /// Adds a new participant to this battle. Used by the manager's
+        /// <c>JoinAsAttacker</c> entry point. The model itself does not enforce
+        /// caps — that's the manager's responsibility (see Q2.A in spec).
+        /// </summary>
+        public void AddParticipant(BattleParticipant participant)
+        {
+            if (participant == null) throw new ArgumentNullException(nameof(participant));
+            _participants.Add(participant);
+        }
+
+        /// <summary>
+        /// Removes the participant with the given faction id. Returns true if a
+        /// participant was removed, false if no such participant existed.
+        /// </summary>
+        public bool RemoveParticipant(string factionId)
+        {
+            if (factionId == null) throw new ArgumentNullException(nameof(factionId));
+            for (int i = 0; i < _participants.Count; i++)
+            {
+                if (_participants[i].FactionId == factionId)
+                {
+                    _participants.RemoveAt(i);
+                    return true;
+                }
+            }
+            return false;
+        }
+
         public void RegisterSpawnedAttacker(int pedHandle, DefenderTier tier)
         {
             SpawnedAttackers[pedHandle] = tier;

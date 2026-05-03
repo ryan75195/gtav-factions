@@ -820,6 +820,102 @@ namespace FactionWars.Tests.Unit.Combat
 
         #endregion
 
+        #region JoinAsAttacker
+
+        [Fact]
+        public void JoinAsAttacker_ReturnsFalse_WhenNoBattleInZone()
+        {
+            var manager = CreateManager(playerFactionId: "player_faction");
+
+            bool result = manager.JoinAsAttacker(
+                zoneId: "zone_1",
+                factionId: "player_faction",
+                isPlayer: true,
+                aliveCountCallback: () => 4,
+                troops: null);
+
+            Assert.False(result);
+        }
+
+        [Fact]
+        public void JoinAsAttacker_AddsPlayerParticipant_ToExistingBattle()
+        {
+            var manager = CreateManager(playerFactionId: "player_faction");
+            manager.StartBattle("zone_1", "trevor", "michael",
+                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 3 } },
+                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 3 } });
+
+            bool result = manager.JoinAsAttacker(
+                zoneId: "zone_1",
+                factionId: "player_faction",
+                isPlayer: true,
+                aliveCountCallback: () => 4,
+                troops: null);
+
+            Assert.True(result);
+            var battle = manager.GetBattleForZone("zone_1");
+            Assert.NotNull(battle);
+            Assert.Equal(2, battle!.Attackers.Count);
+            Assert.True(battle.Attackers.Any(p => p.IsPlayer && p.FactionId == "player_faction"));
+        }
+
+        [Fact]
+        public void JoinAsAttacker_RejectsThirdAttacker()
+        {
+            var manager = CreateManager(playerFactionId: "player_faction");
+            manager.StartBattle("zone_1", "trevor", "michael",
+                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 3 } },
+                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 3 } });
+            manager.JoinAsAttacker("zone_1", "player_faction", true, () => 4, null);
+
+            bool result = manager.JoinAsAttacker(
+                zoneId: "zone_1",
+                factionId: "franklin",
+                isPlayer: false,
+                aliveCountCallback: null,
+                troops: new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 2 } });
+
+            Assert.False(result);
+        }
+
+        [Fact]
+        public void JoinAsAttacker_RejectsNonPlayerThirdParty_InV1()
+        {
+            var manager = CreateManager(playerFactionId: "player_faction");
+            manager.StartBattle("zone_1", "trevor", "michael",
+                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 3 } },
+                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 3 } });
+
+            bool result = manager.JoinAsAttacker(
+                zoneId: "zone_1",
+                factionId: "franklin",
+                isPlayer: false,
+                aliveCountCallback: null,
+                troops: new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 2 } });
+
+            Assert.False(result);
+        }
+
+        [Fact]
+        public void JoinAsAttacker_RejectsDuplicateFaction()
+        {
+            var manager = CreateManager(playerFactionId: "player_faction");
+            manager.StartBattle("zone_1", "trevor", "michael",
+                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 3 } },
+                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 3 } });
+
+            bool result = manager.JoinAsAttacker(
+                zoneId: "zone_1",
+                factionId: "trevor",
+                isPlayer: false,
+                aliveCountCallback: null,
+                troops: new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 1 } });
+
+            Assert.False(result);
+        }
+
+        #endregion
+
         #region IsPlayerInBattle / GetPlayerCurrentBattle
 
         [Fact]

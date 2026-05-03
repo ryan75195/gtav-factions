@@ -104,6 +104,26 @@ namespace FactionWars.Combat.Interfaces
         IReadOnlyList<ZoneBattle> GetAllActiveBattles();
 
         /// <summary>
+        /// Adds an Attacker-role participant to an existing battle in the given zone.
+        /// </summary>
+        /// <param name="zoneId">The zone whose battle to modify.</param>
+        /// <param name="factionId">The faction joining as attacker.</param>
+        /// <param name="isPlayer">True if this is the player. v1 rejects non-player third parties.</param>
+        /// <param name="aliveCountCallback">Required when isPlayer==true; ignored otherwise.</param>
+        /// <param name="troops">Required when isPlayer==false; ignored otherwise.</param>
+        /// <returns>
+        /// True if the participant was added. False if no battle exists in the zone, the
+        /// attacker cap (2) is reached, the faction is already a participant, or
+        /// isPlayer==false (rejected in v1, Q2.A).
+        /// </returns>
+        bool JoinAsAttacker(
+            string zoneId,
+            string factionId,
+            bool isPlayer,
+            Func<int>? aliveCountCallback,
+            Dictionary<DefenderTier, int>? troops);
+
+        /// <summary>
         /// Returns true if the player is currently a participant in any battle.
         /// </summary>
         bool IsPlayerInBattle();

@@ -61,6 +61,64 @@ namespace FactionWars.Combat.Services
         }
 
         /// <inheritdoc />
+        public bool JoinAsAttacker(
+            string zoneId,
+            string factionId,
+            bool isPlayer,
+            Func<int>? aliveCountCallback,
+            Dictionary<DefenderTier, int>? troops)
+        {
+            if (string.IsNullOrEmpty(zoneId)) throw new ArgumentNullException(nameof(zoneId));
+            if (string.IsNullOrEmpty(factionId)) throw new ArgumentNullException(nameof(factionId));
+
+            // v1: only the player can be a third party (Q2.A).
+            if (!isPlayer)
+            {
+                FileLogger.Combat($"JoinAsAttacker: rejected non-player faction '{factionId}' (v1 only allows player third parties).");
+                return false;
+            }
+
+            if (!_battlesByZone.TryGetValue(zoneId, out var battle))
+            {
+                FileLogger.Combat($"JoinAsAttacker: rejected — no battle in zone '{zoneId}'.");
+                return false;
+            }
+
+            int currentAttackers = battle.Participants.Count(p => p.Role == BattleRole.Attacker);
+            if (currentAttackers >= 2)
+            {
+                FileLogger.Combat($"JoinAsAttacker: rejected — zone '{zoneId}' already has {currentAttackers} attackers.");
+                return false;
+            }
+
+            if (battle.Participants.Any(p => p.FactionId == factionId))
+            {
+                FileLogger.Combat($"JoinAsAttacker: rejected — faction '{factionId}' already in battle '{zoneId}'.");
+                return false;
+            }
+
+            BattleParticipant newParticipant;
+            if (isPlayer)
+            {
+                if (aliveCountCallback == null)
+                    throw new ArgumentNullException(nameof(aliveCountCallback),
+                        "aliveCountCallback is required when isPlayer is true.");
+                newParticipant = BattleParticipant.ForPlayer(factionId, BattleRole.Attacker, aliveCountCallback);
+            }
+            else
+            {
+                if (troops == null)
+                    throw new ArgumentNullException(nameof(troops),
+                        "troops is required when isPlayer is false.");
+                newParticipant = BattleParticipant.ForAi(factionId, BattleRole.Attacker, troops);
+            }
+
+            battle.AddParticipant(newParticipant);
+            FileLogger.Combat($"JoinAsAttacker: added '{factionId}' (isPlayer={isPlayer}) to zone '{zoneId}'.");
+            return true;
+        }
+
+        /// <inheritdoc />
         public event Action<ZoneBattle>? BattleStarted;
 
         /// <inheritdoc />
