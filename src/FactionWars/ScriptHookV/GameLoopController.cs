@@ -1494,41 +1494,48 @@ namespace FactionWars.ScriptHookV
         /// </summary>
         private void OnZoneBattleEnded(ZoneBattle battle, BattleOutcome outcome)
         {
-            // Notify commander manager to return to walking wander
             _commanderManager?.OnBattleEnded(battle.ZoneId);
 
-            // Calculate casualties
+            // Identify the surviving participant (if any). This is the source of truth
+            // for outcome routing in 3-way battles, where battle.AttackerFactionId only
+            // returns the first attacker — which may be the wiped one.
+            var winner = battle.Participants.FirstOrDefault(p => p.AliveCount > 0);
+            bool playerWon = winner?.IsPlayer == true;
+
+            // Casualty debits only apply to AI factions — player troop count is
+            // callback-based (1 + alive followers) and not pool-managed.
             int attackerCasualties = battle.InitialAttackerTroops - battle.TotalAttackerTroops;
             int defenderCasualties = battle.InitialDefenderTroops - battle.TotalDefenderTroops;
-
-            // Apply casualties to faction troop counts
-            if (attackerCasualties > 0)
+            if (attackerCasualties > 0 && battle.AttackerFactionId != CurrentPlayerFactionId)
             {
                 _factionService.LoseTroops(battle.AttackerFactionId, attackerCasualties);
             }
-            if (defenderCasualties > 0)
+            if (defenderCasualties > 0 && battle.DefenderFactionId != CurrentPlayerFactionId)
             {
                 _factionService.LoseTroops(battle.DefenderFactionId, defenderCasualties);
             }
 
-            // Transfer zone ownership if attackers won
-            if (outcome == BattleOutcome.AttackersWon && _zoneService != null)
+            if (outcome == BattleOutcome.AttackersWon && _zoneService != null && !playerWon)
             {
-                _zoneService.TransferZoneOwnership(battle.ZoneId, battle.AttackerFactionId);
+                // AI attacker wins. Use the actual surviving participant's faction id
+                // (in 3-way battles Attackers[0] may be the wiped AI, not the winner).
+                string winnerFactionId = winner?.FactionId ?? battle.AttackerFactionId;
+                _zoneService.TransferZoneOwnership(battle.ZoneId, winnerFactionId);
 
-                // Allocate surviving attackers as defenders
-                int survivors = battle.TotalAttackerTroops;
+                int survivors = winner?.AliveCount ?? battle.TotalAttackerTroops;
                 int toAllocate = survivors > 0 ? Math.Max(1, Math.Min((survivors + 1) / 2, 5)) : 0;
                 if (toAllocate > 0)
                 {
-                    _allocationService?.SetAllocation(battle.AttackerFactionId, battle.ZoneId, DefenderTier.Basic, toAllocate);
+                    _allocationService?.SetAllocation(winnerFactionId, battle.ZoneId, DefenderTier.Basic, toAllocate);
                 }
 
-                // Check if defender faction has been eliminated (lost all territory)
                 CheckFactionEliminated(battle.DefenderFactionId);
             }
+            // Player wins: ZoneBattleManager.ApplyBattleOutcome already neutralized
+            // the zone via TransferZoneOwnership(zoneId, null). Re-transferring here
+            // would defeat Q5.A. Two-step capture is preserved by the player having
+            // to re-enter the now-neutral zone to claim it.
 
-            // Show notification
             var attackerFaction = _factionService.GetFaction(battle.AttackerFactionId);
             var defenderFaction = _factionService.GetFaction(battle.DefenderFactionId);
             string attackerName = attackerFaction?.Name ?? battle.AttackerFactionId;
@@ -1536,10 +1543,17 @@ namespace FactionWars.ScriptHookV
             var zone = _zoneService?.GetZone(battle.ZoneId);
             string zoneName = zone?.Name ?? battle.ZoneId;
 
-            if (outcome == BattleOutcome.AttackersWon)
+            if (playerWon)
             {
-                _gameBridge.ShowNotification($"~g~[{attackerName}]~w~ captured ~b~{zoneName}~w~ from ~r~[{defenderName}]");
-                FileLogger.Combat($"OnZoneBattleEnded: {attackerName} captured {zoneName} from {defenderName}");
+                _gameBridge.ShowNotification($"~g~[{attackerName}]~w~ liberated ~b~{zoneName}~w~ — now neutral");
+                FileLogger.Combat($"OnZoneBattleEnded: player liberated {zoneName} (now neutral)");
+            }
+            else if (outcome == BattleOutcome.AttackersWon)
+            {
+                string winnerName = _factionService.GetFaction(winner?.FactionId ?? battle.AttackerFactionId)?.Name
+                    ?? winner?.FactionId ?? battle.AttackerFactionId;
+                _gameBridge.ShowNotification($"~g~[{winnerName}]~w~ captured ~b~{zoneName}~w~ from ~r~[{defenderName}]");
+                FileLogger.Combat($"OnZoneBattleEnded: {winnerName} captured {zoneName} from {defenderName}");
             }
             else
             {

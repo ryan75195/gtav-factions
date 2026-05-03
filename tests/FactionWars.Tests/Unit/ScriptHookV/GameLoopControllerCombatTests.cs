@@ -85,6 +85,41 @@ namespace FactionWars.Tests.Unit.ScriptHookV
         }
 
         [Fact]
+        public void OnZoneBattleEnded_PlayerWinsBattle_ZoneEndsNeutral_NotPlayerOwned()
+        {
+            // Regression: a player-win battle should leave the zone neutral. Before the
+            // fix, ZoneBattleManager neutralized the zone via TransferZoneOwnership(null),
+            // but OnZoneBattleEnded immediately re-transferred it to AttackerFactionId
+            // (= the player's faction in player-flow battles), defeating Q5.A.
+            SetupController();
+            var controller = new GameLoopController(_container);
+            controller.OnTick();
+
+            var zoneRepo = _container.Resolve<IZoneRepository>();
+            var zoneService = _container.Resolve<IZoneService>();
+            var battleManager = _container.Resolve<IZoneBattleManager>();
+
+            // Pick a zone, give it to a non-player faction, then attack it as the player.
+            const string defenderFactionId = "trevor";
+            var zone = zoneRepo.GetById("vinewood_hills");
+            Assert.NotNull(zone);
+            zoneService.TransferZoneOwnership("vinewood_hills", defenderFactionId);
+            Assert.NotEqual(controller.CurrentPlayerFactionId, defenderFactionId);
+
+            var allocSvc = _container.Resolve<IZoneDefenderAllocationService>();
+            allocSvc.SetAllocation(defenderFactionId, "vinewood_hills", DefenderTier.Basic, 1);
+
+            battleManager.StartPlayerCombat(zone!, controller.CurrentPlayerFactionId!, () => 1);
+
+            // Player wipes the lone defender.
+            battleManager.ReportTroopKilled("vinewood_hills", defenderFactionId, DefenderTier.Basic);
+
+            var resultZone = zoneService.GetZone("vinewood_hills");
+            Assert.NotNull(resultZone);
+            Assert.Null(resultZone!.OwnerFactionId);
+        }
+
+        [Fact]
         public void OnAbort_ClearsInitializationState()
         {
             // Arrange
