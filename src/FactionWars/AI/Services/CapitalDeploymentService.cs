@@ -236,7 +236,7 @@ namespace FactionWars.AI.Services
             if (string.IsNullOrEmpty(factionId))
                 return 0;
 
-            var allocation = _allocationService.GetAllocation(factionId, zoneId);
+            var allocation = _allocationService.GetAllocation(factionId!, zoneId);
             return allocation?.TotalTroops ?? 0;
         }
     }

@@ -1,5 +1,7 @@
 using FactionWars.Core.Interfaces;
+using FactionWars.Territory.Events;
 using FactionWars.Territory.Models;
+using System;
 using System.Collections.Generic;
 
 namespace FactionWars.Territory.Interfaces
@@ -10,6 +12,12 @@ namespace FactionWars.Territory.Interfaces
     /// </summary>
     public interface IZoneService
     {
+        /// <summary>
+        /// Raised when a zone's owner actually changes. Not raised when the new owner equals
+        /// the previous owner, and not raised when the zone is not found.
+        /// </summary>
+        event EventHandler<ZoneOwnershipChangedEventArgs>? ZoneOwnershipChanged;
+
         /// <summary>
         /// Gets a zone by its unique identifier.
         /// </summary>

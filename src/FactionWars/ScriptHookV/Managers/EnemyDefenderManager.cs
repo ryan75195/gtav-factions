@@ -214,6 +214,7 @@ namespace FactionWars.ScriptHookV.Managers
         public void Update(string? enemyFactionId)
         {
             if (_currentEnemyZoneId == null || string.IsNullOrEmpty(enemyFactionId)) return;
+            var defenderFactionId = enemyFactionId!;
 
             var newlyDeadPeds = new List<(string zoneId, int pedHandle, DefenderTier tier)>();
             var streamedOutPeds = new List<(string zoneId, int pedHandle)>();
@@ -260,7 +261,7 @@ namespace FactionWars.ScriptHookV.Managers
             // Process each newly dead defender (track as corpse, decrement allocation, spawn replacement)
             foreach (var (zoneId, pedHandle, tier) in newlyDeadPeds)
             {
-                HandleDefenderDeath(zoneId, pedHandle, tier, enemyFactionId);
+                HandleDefenderDeath(zoneId, pedHandle, tier, defenderFactionId);
             }
 
             // Clean up corpses that have exceeded the delay

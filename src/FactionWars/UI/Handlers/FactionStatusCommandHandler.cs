@@ -75,8 +75,9 @@ namespace FactionWars.UI.Handlers
                 }
                 return;
             }
+            var factionId = playerFactionId!;
 
-            var faction = _factionService.GetFaction(playerFactionId);
+            var faction = _factionService.GetFaction(factionId);
             if (faction == null)
             {
                 if (CanHandle(command.Id))
@@ -86,7 +87,7 @@ namespace FactionWars.UI.Handlers
                 return;
             }
 
-            var state = _factionService.GetFactionState(playerFactionId);
+            var state = _factionService.GetFactionState(factionId);
 
             switch (command.Id)
             {
@@ -97,7 +98,7 @@ namespace FactionWars.UI.Handlers
                     HandleFactionResources(state);
                     break;
                 case "faction_territory":
-                    HandleFactionTerritory(playerFactionId);
+                    HandleFactionTerritory(factionId);
                     break;
             }
         }

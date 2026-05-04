@@ -294,6 +294,20 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Persistence
             Assert.Equal(0, _sut.TotalPlayTimeSeconds);
         }
 
+        [Fact]
+        public void NewGame_RaisesOnGameLoadedEvent()
+        {
+            SetupEmptyRepositories();
+            GameStateLoadedEventArgs? eventArgs = null;
+            _sut.OnGameLoaded += (_, args) => eventArgs = args;
+
+            _sut.NewGame();
+
+            Assert.NotNull(eventArgs);
+            Assert.True(eventArgs!.Success);
+            Assert.Equal("Unnamed Save", eventArgs.SaveName);
+        }
+
         #endregion
 
         #region UpdatePlayTime Tests

@@ -24,6 +24,8 @@ using FactionWars.Territory.Services;
 using FactionWars.ScriptHookV.Managers;
 using FactionWars.ScriptHookV.Persistence;
 using FactionWars.ScriptHookV.UI;
+using FactionWars.Telemetry.Interfaces;
+using FactionWars.Telemetry.Sinks;
 using FactionWars.UI.Interfaces;
 using FactionWars.UI.Services;
 using FactionWars.Combat.Models;
@@ -84,6 +86,9 @@ namespace FactionWars.ScriptHookV
 
             // Register AI services
             RegisterAIServices(container);
+
+            // Register telemetry services
+            RegisterTelemetryServices(container);
 
             return container;
         }
@@ -442,6 +447,15 @@ namespace FactionWars.ScriptHookV
                 container.Resolve<IDictionary<string, IAIStrategy>>(),
                 container.Resolve<IZoneBattleManager>(),
                 container.Resolve<IAIRecruitmentService>()));
+        }
+
+        private static void RegisterTelemetryServices(ServiceContainer container)
+        {
+            var config = container.Resolve<GameConfig>();
+            var documentsPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+            var telemetryRoot = Path.Combine(documentsPath, config.Persistence.SaveDirectoryName, "Telemetry");
+
+            container.RegisterSingleton<ITelemetrySink>(() => new CsvTelemetrySink(telemetryRoot));
         }
     }
 }

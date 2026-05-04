@@ -2215,17 +2215,17 @@ Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>"
 
 ---
 
-## Task 13: ServiceContainerFactory + FactionWarsScript wiring
+## Task 13: ServiceContainerFactory + GameLoopController wiring
 
 Register `ITelemetrySink` (default: `CsvTelemetrySink`) and `TelemetryService` in the DI container, and instantiate/dispose `TelemetryService` from `FactionWarsScript` alongside other services.
 
 **Files:**
 - Modify: `src/FactionWars/ScriptHookV/ServiceContainerFactory.cs`
-- Modify: `src/FactionWars/ScriptHookV/FactionWarsScript.cs`
+- Modify: `src/FactionWars/ScriptHookV/GameLoopController.cs`
 
 This task has no new unit tests — it's pure wiring. The integration test in Task 14 will exercise it end-to-end.
 
-- [ ] **Step 1: Register the sink in ServiceContainerFactory**
+- [x] **Step 1: Register the sink in ServiceContainerFactory**
 
 In `ServiceContainerFactory.cs`, find `RegisterPersistenceServices` (or the most appropriate `Register...Services` method) and add at the end:
 
@@ -2248,7 +2248,7 @@ RegisterTelemetryServices(container);
 
 Add usings at top: `using FactionWars.Telemetry.Interfaces; using FactionWars.Telemetry.Sinks;`.
 
-- [ ] **Step 2: Instantiate and dispose TelemetryService in FactionWarsScript**
+- [x] **Step 2: Instantiate and dispose TelemetryService in GameLoopController**
 
 In `FactionWarsScript.cs`:
 
@@ -2282,12 +2282,12 @@ _telemetryService = new TelemetryService(
 
 Adapt parameter names exactly to the resolved field names in `FactionWarsScript`. If `IGameBridge.GetPlayerPedHandle()` does not yet exist, use the existing equivalent (e.g., `Game.Player.Character.Handle`) or extend the bridge interface.
 
-- [ ] **Step 3: Build**
+- [x] **Step 3: Build**
 
 Run: `dotnet build FactionWars.sln`
 Expected: Build succeeded, 0 errors.
 
-- [ ] **Step 4: Run full test suite to confirm no regressions**
+- [x] **Step 4: Run full test suite to confirm no regressions**
 
 Run: `dotnet test FactionWars.sln`
 Expected: All tests pass.
@@ -2314,7 +2314,7 @@ Wire real `TelemetryService` + real `CsvTelemetrySink` (writing to a temp dir) +
 **Files:**
 - Create: `tests/FactionWars.Tests/Integration/Telemetry/TelemetryEndToEndTests.cs`
 
-- [ ] **Step 1: Write the integration test**
+- [x] **Step 1: Write the integration test**
 
 ```csharp
 using System;
@@ -2412,12 +2412,12 @@ namespace FactionWars.Tests.Integration.Telemetry
 }
 ```
 
-- [ ] **Step 2: Run the integration test**
+- [x] **Step 2: Run the integration test**
 
 Run: `dotnet test FactionWars.sln --filter "FullyQualifiedName~TelemetryEndToEndTests"`
 Expected: 1/1 pass.
 
-- [ ] **Step 3: Run full test suite to confirm no regressions**
+- [x] **Step 3: Run full test suite to confirm no regressions**
 
 Run: `dotnet test FactionWars.sln`
 Expected: All tests pass.

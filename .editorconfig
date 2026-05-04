@@ -1,0 +1,31 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = crlf
+insert_final_newline = true
+indent_style = space
+trim_trailing_whitespace = true
+
+[*.cs]
+indent_size = 4
+
+# Clean guardrails are errors. Noisy rules stay as warnings until their
+# existing violations are paid down.
+dotnet_diagnostic.CI0006.severity = error
+dotnet_diagnostic.CI0008.severity = error
+dotnet_diagnostic.CI0010.severity = error
+dotnet_diagnostic.CI0016.severity = error
+dotnet_diagnostic.xUnit1031.severity = error
+dotnet_diagnostic.xUnit2000.severity = error
+dotnet_diagnostic.xUnit2012.severity = error
+dotnet_diagnostic.xUnit2013.severity = error
+
+[*.{csproj,sln,props,targets,xml,json,md,sh}]
+indent_size = 2
+
+[*.sln]
+indent_style = tab
+
+[*.md]
+trim_trailing_whitespace = false

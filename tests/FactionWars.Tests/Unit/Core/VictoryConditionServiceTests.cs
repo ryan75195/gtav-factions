@@ -31,7 +31,7 @@ namespace FactionWars.Tests.Unit.Core
             Assert.Equal(typeof(VictoryCheckResult), method!.ReturnType);
 
             var parameters = method.GetParameters();
-            Assert.Equal(1, parameters.Length);
+            Assert.Single(parameters);
             Assert.Equal("factionId", parameters[0].Name);
             Assert.Equal(typeof(string), parameters[0].ParameterType);
         }
@@ -50,7 +50,7 @@ namespace FactionWars.Tests.Unit.Core
             Assert.Equal(typeof(float), method!.ReturnType);
 
             var parameters = method.GetParameters();
-            Assert.Equal(1, parameters.Length);
+            Assert.Single(parameters);
             Assert.Equal("factionId", parameters[0].Name);
             Assert.Equal(typeof(string), parameters[0].ParameterType);
         }
@@ -69,7 +69,7 @@ namespace FactionWars.Tests.Unit.Core
             Assert.Equal(typeof(int), method!.ReturnType);
 
             var parameters = method.GetParameters();
-            Assert.Equal(1, parameters.Length);
+            Assert.Single(parameters);
             Assert.Equal("factionId", parameters[0].Name);
             Assert.Equal(typeof(string), parameters[0].ParameterType);
         }
@@ -86,7 +86,7 @@ namespace FactionWars.Tests.Unit.Core
             Assert.Equal(typeof(int), method!.ReturnType);
 
             var parameters = method.GetParameters();
-            Assert.Equal(0, parameters.Length);
+            Assert.Empty(parameters);
         }
 
         [Fact]
@@ -101,7 +101,7 @@ namespace FactionWars.Tests.Unit.Core
             Assert.Equal(typeof(bool), method!.ReturnType);
 
             var parameters = method.GetParameters();
-            Assert.Equal(0, parameters.Length);
+            Assert.Empty(parameters);
         }
 
         [Fact]
@@ -117,7 +117,7 @@ namespace FactionWars.Tests.Unit.Core
                 $"Expected return type string (nullable), got {method.ReturnType.Name}");
 
             var parameters = method.GetParameters();
-            Assert.Equal(0, parameters.Length);
+            Assert.Empty(parameters);
         }
 
         #endregion
@@ -658,6 +658,8 @@ namespace FactionWars.Tests.Unit.Core
             }
             return Enumerable.Empty<FactionWars.Territory.Models.Zone>();
         }
+
+        public event EventHandler<FactionWars.Territory.Events.ZoneOwnershipChangedEventArgs>? ZoneOwnershipChanged { add { } remove { } }
 
         public IEnumerable<FactionWars.Territory.Models.Zone> GetContestedZones() => Enumerable.Empty<FactionWars.Territory.Models.Zone>();
         public IEnumerable<FactionWars.Territory.Models.Zone> GetZonesByTrait(FactionWars.Territory.Models.ZoneTrait trait) => Enumerable.Empty<FactionWars.Territory.Models.Zone>();

@@ -136,6 +136,7 @@ namespace FactionWars.ScriptHookV.Persistence
             _totalPlayTimeSeconds = 0;
             _playTimeAccumulator = 0f;
             _currentDifficulty = Difficulty.Normal;
+            OnGameLoaded?.Invoke(this, new GameStateLoadedEventArgs(0, "Unnamed Save", true));
         }
 
         /// <inheritdoc />

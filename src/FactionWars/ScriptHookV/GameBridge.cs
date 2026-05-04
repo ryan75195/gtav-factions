@@ -227,6 +227,32 @@ namespace FactionWars.ScriptHookV
         }
 
         /// <inheritdoc />
+        public int GetPedKiller(int pedHandle)
+        {
+            try
+            {
+                var ped = Entity.FromHandle(pedHandle) as Ped;
+                if (ped == null || !ped.Exists())
+                    return 0;
+
+                var killer = ped.Killer;
+                if (killer == null || !killer.Exists())
+                {
+                    FileLogger.AI($"GetPedKiller: ped {pedHandle} has no resolvable killer (environmental death or unknown)");
+                    return 0;
+                }
+
+                FileLogger.AI($"GetPedKiller: ped {pedHandle} was killed by ped {killer.Handle}");
+                return killer.Handle;
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error($"GetPedKiller exception for ped {pedHandle}", ex);
+                return 0;
+            }
+        }
+
+        /// <inheritdoc />
         public void SetPedRelationshipGroup(int pedHandle, string groupName)
         {
             try
@@ -497,6 +523,20 @@ namespace FactionWars.ScriptHookV
                     return false;
 
                 return player.IsDead;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <inheritdoc />
+        public bool CanControlCharacter()
+        {
+            try
+            {
+                var player = Game.Player;
+                return player != null && player.CanControlCharacter;
             }
             catch
             {

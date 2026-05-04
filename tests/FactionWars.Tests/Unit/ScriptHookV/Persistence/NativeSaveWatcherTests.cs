@@ -6,6 +6,12 @@ using Xunit;
 
 namespace FactionWars.Tests.Unit.ScriptHookV.Persistence
 {
+    [CollectionDefinition("NativeSaveWatcher", DisableParallelization = true)]
+    public sealed class NativeSaveWatcherCollection
+    {
+    }
+
+    [Collection("NativeSaveWatcher")]
     public class NativeSaveWatcherTests : IDisposable
     {
         private const int DebounceMs = 250;

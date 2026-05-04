@@ -29,3 +29,6 @@ Thumbs.db
 
 # External libraries (downloaded separately)
 lib/
+
+# Local agent dependencies
+.claude/hooks/node_modules/

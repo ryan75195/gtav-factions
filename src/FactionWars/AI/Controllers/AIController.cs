@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using FactionWars.AI.Events;
 using FactionWars.AI.Interfaces;
 using FactionWars.AI.Models;
 using FactionWars.Core.Interfaces;
@@ -58,6 +59,13 @@ namespace FactionWars.AI.Controllers
 
         /// <inheritdoc />
         public event EventHandler<AIBattleResultEventArgs>? OnBattleResolved;
+
+        /// <summary>
+        /// Raised after a successful recruitment cycle for a single AI faction.
+        /// Args expose cash before/after and troops recruited so telemetry can record
+        /// a complete recruitment row. Not raised when zero troops were recruited.
+        /// </summary>
+        public event EventHandler<TroopsRecruitedEventArgs>? OnTroopsRecruited;
 
         /// <summary>
         /// Creates a new AIController.
@@ -161,34 +169,47 @@ namespace FactionWars.AI.Controllers
                 if (faction.Id == _playerFactionId)
                     continue;
 
-                // Use recruitment service if available (scaled recruitment)
-                // Otherwise fall back to hardcoded internal logic
+                var stateBefore = _factionService.GetFactionState(faction.Id);
+                int cashBefore = stateBefore?.Cash ?? 0;
+
+                int recruited;
                 if (_recruitmentService != null)
                 {
-                    _recruitmentService.TryAutoRecruit(faction.Id, MaxRecruitPerCycle);
+                    recruited = _recruitmentService.TryAutoRecruit(faction.Id, MaxRecruitPerCycle);
                 }
                 else
                 {
-                    TryRecruitTroops(faction.Id);
+                    recruited = TryRecruitTroops(faction.Id);
+                }
+
+                if (recruited > 0)
+                {
+                    var stateAfter = _factionService.GetFactionState(faction.Id);
+                    int cashAfter = stateAfter?.Cash ?? 0;
+                    int cost = cashBefore - cashAfter;
+
+                    OnTroopsRecruited?.Invoke(this, new TroopsRecruitedEventArgs(
+                        faction.Id, recruited, cost, cashBefore, cashAfter));
                 }
             }
         }
 
-        private void TryRecruitTroops(string factionId)
+        private int TryRecruitTroops(string factionId)
         {
             var state = _factionService.GetFactionState(factionId);
             if (state == null)
-                return;
+                return 0;
 
             int affordableTroops = state.Cash / RecruitCostPerTroop;
             int troopsToRecruit = Math.Min(affordableTroops, MaxRecruitPerCycle);
 
             if (troopsToRecruit <= 0)
-                return;
+                return 0;
 
             int cost = troopsToRecruit * RecruitCostPerTroop;
             _factionService.RecruitTroops(factionId, troopsToRecruit);
             _factionService.SpendCash(factionId, cost);
+            return troopsToRecruit;
         }
 
         private void MakeDecisionsForAllAIFactions()

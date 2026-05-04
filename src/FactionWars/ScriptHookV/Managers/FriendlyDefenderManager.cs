@@ -14,36 +14,6 @@ using FactionWars.UI.Interfaces;
 namespace FactionWars.ScriptHookV.Managers
 {
     /// <summary>
-    /// Event args for when a defender dies.
-    /// </summary>
-    public class DefenderDiedEventArgs : EventArgs
-    {
-        public string ZoneId { get; }
-        public int PedHandle { get; }
-        public DefenderTier Tier { get; }
-
-        public DefenderDiedEventArgs(string zoneId, int pedHandle, DefenderTier tier)
-        {
-            ZoneId = zoneId;
-            PedHandle = pedHandle;
-            Tier = tier;
-        }
-    }
-
-    /// <summary>
-    /// Event args for when a territory is lost (all defenders died).
-    /// </summary>
-    public class TerritoryLostEventArgs : EventArgs
-    {
-        public string ZoneId { get; }
-
-        public TerritoryLostEventArgs(string zoneId)
-        {
-            ZoneId = zoneId;
-        }
-    }
-
-    /// <summary>
     /// Manages friendly defenders that spawn when the player enters their own territory.
     /// Defenders patrol the zone independently (NOT as followers) and despawn when player exits.
     /// Supports death detection, replacement spawning from reserve, and territory loss.

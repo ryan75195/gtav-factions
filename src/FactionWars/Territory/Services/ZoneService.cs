@@ -1,6 +1,7 @@
 using FactionWars.Core.Interfaces;
 using FactionWars.Factions.Interfaces;
 using FactionWars.ScriptHookV.Logging;
+using FactionWars.Territory.Events;
 using FactionWars.Territory.Interfaces;
 using FactionWars.Territory.Models;
 using System;
@@ -16,6 +17,9 @@ namespace FactionWars.Territory.Services
     {
         private readonly IZoneRepository _repository;
         private readonly IFactionRepository? _factionRepository;
+
+        /// <inheritdoc />
+        public event EventHandler<ZoneOwnershipChangedEventArgs>? ZoneOwnershipChanged;
 
         /// <summary>
         /// Creates a new ZoneService instance.
@@ -135,6 +139,12 @@ namespace FactionWars.Territory.Services
 
             // Sync FactionState zone lists if faction repository is available
             SyncFactionStateZones(zoneId, previousOwner, newOwnerFactionId);
+
+            if (!string.Equals(previousOwner, newOwnerFactionId, StringComparison.Ordinal))
+            {
+                ZoneOwnershipChanged?.Invoke(this,
+                    new ZoneOwnershipChangedEventArgs(zoneId, previousOwner, newOwnerFactionId));
+            }
 
             return true;
         }

@@ -1,4 +1,5 @@
 using FactionWars.AI.Controllers;
+using FactionWars.AI.Events;
 using FactionWars.AI.Interfaces;
 using FactionWars.Combat.Interfaces;
 using FactionWars.Core.Interfaces;
@@ -754,6 +755,107 @@ namespace FactionWars.Tests.Unit.AI
                 It.IsAny<Dictionary<FactionWars.Core.Models.DefenderTier, int>>(),
                 It.IsAny<Dictionary<FactionWars.Core.Models.DefenderTier, int>>()), Times.Once,
                 "Attack should execute with $0 cash - deployment is free");
+        }
+
+        #endregion
+
+        #region OnTroopsRecruited Event Tests
+
+        [Fact]
+        public void RunRecruitment_WhenTroopsRecruited_RaisesEvent()
+        {
+            // Arrange
+            var faction = new Faction("trevor", "Trevor", color: new FactionColor(255, 150, 0));
+            var factionState = new FactionState("trevor", 1000, 5);
+
+            _factionServiceMock.Setup(f => f.GetActiveFactions())
+                .Returns(new[] { faction });
+            _factionServiceMock.Setup(f => f.GetFactionState("trevor"))
+                .Returns(factionState);
+
+            // Wire SpendCash to actually mutate the state so cashAfter differs from cashBefore
+            _factionServiceMock.Setup(f => f.SpendCash("trevor", It.IsAny<int>()))
+                .Callback<string, int>((_, amount) => factionState.SpendCash(amount))
+                .Returns(true);
+
+            var controller = CreateController();
+            controller.SetPlayerFactionId("michael");
+            controller.Start();
+
+            TroopsRecruitedEventArgs? captured = null;
+            controller.OnTroopsRecruited += (_, args) => captured = args;
+
+            // Act
+            controller.Update(60f);
+
+            // Assert
+            Assert.NotNull(captured);
+            Assert.Equal("trevor", captured!.FactionId);
+            Assert.True(captured.TroopsRecruited > 0);
+            Assert.True(captured.Cost > 0);
+            Assert.Equal(captured.CashBefore - captured.Cost, captured.CashAfter);
+        }
+
+        [Fact]
+        public void RunRecruitment_WhenNoTroopsRecruited_DoesNotRaiseEvent()
+        {
+            // Arrange: faction with $0 cash -> no recruitment possible
+            var faction = new Faction("trevor", "Trevor", color: new FactionColor(255, 150, 0));
+            var factionState = new FactionState("trevor", 0, 5); // $0 cash
+
+            _factionServiceMock.Setup(f => f.GetActiveFactions())
+                .Returns(new[] { faction });
+            _factionServiceMock.Setup(f => f.GetFactionState("trevor"))
+                .Returns(factionState);
+
+            var controller = CreateController();
+            controller.SetPlayerFactionId("michael");
+            controller.Start();
+
+            bool raised = false;
+            controller.OnTroopsRecruited += (_, _) => raised = true;
+
+            // Act
+            controller.Update(60f);
+
+            // Assert
+            Assert.False(raised);
+        }
+
+        [Fact]
+        public void RunRecruitment_WithRecruitmentService_RaisesEventWithServiceResults()
+        {
+            // Arrange: faction with cash, mock recruitment service returns 4 troops at cost 800.
+            var faction = new Faction("trevor", "Trevor", color: new FactionColor(255, 150, 0));
+            var factionState = new FactionState("trevor", 1000, 5);
+
+            _factionServiceMock.Setup(f => f.GetActiveFactions())
+                .Returns(new[] { faction });
+            _factionServiceMock.Setup(f => f.GetFactionState("trevor"))
+                .Returns(factionState);
+
+            var recruitmentServiceMock = new Mock<IAIRecruitmentService>();
+            recruitmentServiceMock.Setup(r => r.TryAutoRecruit("trevor", It.IsAny<int>()))
+                .Callback<string, int>((_, _) => factionState.SpendCash(800))
+                .Returns(4);
+
+            var controller = CreateControllerWithRecruitmentService(recruitmentServiceMock.Object);
+            controller.SetPlayerFactionId("michael");
+            controller.Start();
+
+            TroopsRecruitedEventArgs? captured = null;
+            controller.OnTroopsRecruited += (_, args) => captured = args;
+
+            // Act: trigger one recruitment cycle
+            controller.Update(60f);
+
+            // Assert
+            Assert.NotNull(captured);
+            Assert.Equal("trevor", captured!.FactionId);
+            Assert.Equal(4, captured.TroopsRecruited);
+            Assert.Equal(800, captured.Cost);
+            Assert.Equal(1000, captured.CashBefore);
+            Assert.Equal(200, captured.CashAfter);
         }
 
         #endregion

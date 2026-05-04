@@ -12,6 +12,7 @@ namespace FactionWars.Core.Utils
     public class MockGameBridge : IGameBridge
     {
         private readonly Dictionary<int, PedState> _peds = new Dictionary<int, PedState>();
+        private readonly Dictionary<int, int> _pedKillers = new Dictionary<int, int>();
         private readonly Dictionary<int, BlipState> _blips = new Dictionary<int, BlipState>();
         private readonly List<string> _notifications = new List<string>();
         private readonly List<int> _blipsCreated = new List<int>();
@@ -51,6 +52,11 @@ namespace FactionWars.Core.Utils
         /// Gets or sets whether the player is dead.
         /// </summary>
         public bool IsPlayerDeadValue { get; set; } = false;
+
+        /// <summary>
+        /// Gets or sets whether the player can currently be controlled.
+        /// </summary>
+        public bool CanControlCharacterValue { get; set; } = true;
 
         /// <summary>
         /// Gets or sets the player's money amount.
@@ -156,6 +162,11 @@ namespace FactionWars.Core.Utils
             return _peds.ContainsKey(pedHandle);
         }
 
+        public int GetPedKiller(int pedHandle)
+        {
+            return _pedKillers.TryGetValue(pedHandle, out var killer) ? killer : 0;
+        }
+
         public void SetPedRelationshipGroup(int pedHandle, string groupName)
         {
             if (_peds.TryGetValue(pedHandle, out var ped))
@@ -254,6 +265,11 @@ namespace FactionWars.Core.Utils
 
         public void SetPedPosition(int pedHandle, Vector3 position)
         {
+            if (pedHandle == PlayerPedHandle)
+            {
+                PlayerPosition = position;
+            }
+
             if (_peds.TryGetValue(pedHandle, out var ped))
             {
                 ped.Position = position;
@@ -275,6 +291,8 @@ namespace FactionWars.Core.Utils
         public float GetPlayerHeading() => PlayerHeading;
 
         public bool IsPlayerDead() => IsPlayerDeadValue;
+
+        public bool CanControlCharacter() => CanControlCharacterValue;
 
         public int GetWantedLevel() => WantedLevel;
 
@@ -808,6 +826,14 @@ namespace FactionWars.Core.Utils
         /// Sets a ped as dead. Alias for KillPed.
         /// </summary>
         public void SetPedDead(int pedHandle) => KillPed(pedHandle);
+
+        /// <summary>
+        /// Sets the killer ped handle for a dead ped (for testing).
+        /// </summary>
+        public void SetPedKiller(int deadPedHandle, int killerPedHandle)
+        {
+            _pedKillers[deadPedHandle] = killerPedHandle;
+        }
 
         /// <summary>
         /// Gets all currently spawned ped handles.

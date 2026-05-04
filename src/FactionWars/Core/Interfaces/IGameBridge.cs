@@ -46,6 +46,15 @@ namespace FactionWars.Core.Interfaces
         bool DoesPedExist(int pedHandle);
 
         /// <summary>
+        /// Gets the handle of the ped that killed the specified ped.
+        /// Returns 0 (or a non-positive value) if the ped is not dead, was not killed
+        /// by another ped, or the killer information is unavailable.
+        /// </summary>
+        /// <param name="pedHandle">The handle of the (dead) ped whose killer to look up.</param>
+        /// <returns>The killer's ped handle, or 0/negative when no killer is known.</returns>
+        int GetPedKiller(int pedHandle);
+
+        /// <summary>
         /// Sets the relationship group for a ped, affecting combat behavior.
         /// </summary>
         /// <param name="pedHandle">Handle of the ped.</param>
@@ -154,6 +163,14 @@ namespace FactionWars.Core.Interfaces
         /// </summary>
         /// <returns>True if the player is dead, false if alive.</returns>
         bool IsPlayerDead();
+
+        /// <summary>
+        /// Checks whether the game has returned control of the player character.
+        /// This stays false during switch animations, cutscenes, and some loading
+        /// transitions, so it is a practical gate for safe teleporting.
+        /// </summary>
+        /// <returns>True when the player can be controlled normally.</returns>
+        bool CanControlCharacter();
 
         /// <summary>
         /// Gets the player's current wanted level (0 = no stars, 5 = max).

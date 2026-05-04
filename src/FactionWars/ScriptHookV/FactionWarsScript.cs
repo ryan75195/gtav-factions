@@ -115,7 +115,7 @@ namespace FactionWars.ScriptHookV
             }
         }
 
-        private void HandleNativeSaveWritten(object? sender, NativeSaveWatcher.SaveEvent e)
+        private void HandleNativeSaveWritten(object? sender, SaveEvent e)
         {
             try
             {
