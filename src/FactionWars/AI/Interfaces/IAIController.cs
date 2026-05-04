@@ -1,4 +1,5 @@
 using System;
+using FactionWars.AI.Events;
 
 namespace FactionWars.AI.Interfaces
 {
@@ -109,5 +110,12 @@ namespace FactionWars.AI.Interfaces
         /// Raised when an AI vs AI battle is resolved.
         /// </summary>
         event EventHandler<AIBattleResultEventArgs>? OnBattleResolved;
+
+        /// <summary>
+        /// Raised after a successful recruitment cycle for a single AI faction.
+        /// Args expose cash before/after and troops recruited so telemetry can record
+        /// a complete recruitment row. Not raised when zero troops were recruited.
+        /// </summary>
+        event EventHandler<TroopsRecruitedEventArgs>? OnTroopsRecruited;
     }
 }

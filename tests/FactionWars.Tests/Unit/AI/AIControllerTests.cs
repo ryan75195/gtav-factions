@@ -822,6 +822,42 @@ namespace FactionWars.Tests.Unit.AI
             Assert.False(raised);
         }
 
+        [Fact]
+        public void RunRecruitment_WithRecruitmentService_RaisesEventWithServiceResults()
+        {
+            // Arrange: faction with cash, mock recruitment service returns 4 troops at cost 800.
+            var faction = new Faction("trevor", "Trevor", color: new FactionColor(255, 150, 0));
+            var factionState = new FactionState("trevor", 1000, 5);
+
+            _factionServiceMock.Setup(f => f.GetActiveFactions())
+                .Returns(new[] { faction });
+            _factionServiceMock.Setup(f => f.GetFactionState("trevor"))
+                .Returns(factionState);
+
+            var recruitmentServiceMock = new Mock<IAIRecruitmentService>();
+            recruitmentServiceMock.Setup(r => r.TryAutoRecruit("trevor", It.IsAny<int>()))
+                .Callback<string, int>((_, _) => factionState.SpendCash(800))
+                .Returns(4);
+
+            var controller = CreateControllerWithRecruitmentService(recruitmentServiceMock.Object);
+            controller.SetPlayerFactionId("michael");
+            controller.Start();
+
+            TroopsRecruitedEventArgs? captured = null;
+            controller.OnTroopsRecruited += (_, args) => captured = args;
+
+            // Act: trigger one recruitment cycle
+            controller.Update(60f);
+
+            // Assert
+            Assert.NotNull(captured);
+            Assert.Equal("trevor", captured!.FactionId);
+            Assert.Equal(4, captured.TroopsRecruited);
+            Assert.Equal(800, captured.Cost);
+            Assert.Equal(1000, captured.CashBefore);
+            Assert.Equal(200, captured.CashAfter);
+        }
+
         #endregion
     }
 }
