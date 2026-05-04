@@ -96,13 +96,13 @@ namespace FactionWars.Performance.Services
         /// </summary>
         private class TimingContext : IDisposable
         {
-            private readonly PerformanceMonitor _monitor;
+            private readonly IPerformanceMonitor _monitor;
             private readonly string _operationName;
             private readonly ITimeProvider _timeProvider;
             private readonly DateTime _startTime;
             private bool _disposed;
 
-            public TimingContext(PerformanceMonitor monitor, string operationName, ITimeProvider timeProvider)
+            public TimingContext(IPerformanceMonitor monitor, string operationName, ITimeProvider timeProvider)
             {
                 _monitor = monitor;
                 _operationName = operationName;

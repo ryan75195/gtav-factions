@@ -7,7 +7,7 @@ namespace FactionWars.ScriptHookV
     /// Simple dependency injection container for service registration and resolution.
     /// Supports instance registration, factory registration, and singleton patterns.
     /// </summary>
-    public class ServiceContainer
+    public class ServiceContainer : IServiceContainer
     {
         private readonly Dictionary<Type, object> _instances = new Dictionary<Type, object>();
         private readonly Dictionary<Type, Func<object>> _factories = new Dictionary<Type, Func<object>>();

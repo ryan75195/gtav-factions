@@ -35,7 +35,7 @@ namespace FactionWars.ScriptHookV
     /// </summary>
     public class GameLoopController
     {
-        private readonly ServiceContainer _container;
+        private readonly IServiceContainer _container;
         private readonly CharacterSwitchDetector _characterSwitchDetector;
         private readonly IGameBridge _gameBridge;
         private readonly IZoneRepository _zoneRepository;
@@ -134,7 +134,7 @@ namespace FactionWars.ScriptHookV
         /// <summary>
         /// Gets the service container used by this controller.
         /// </summary>
-        public ServiceContainer ServiceContainer => _container;
+        public IServiceContainer ServiceContainer => _container;
 
         /// <summary>
         /// Gets the current player's faction ID based on their character model.
@@ -213,7 +213,7 @@ namespace FactionWars.ScriptHookV
         /// </summary>
         /// <param name="container">The service container with all wired services.</param>
         /// <exception cref="ArgumentNullException">Thrown if container is null.</exception>
-        public GameLoopController(ServiceContainer container)
+        public GameLoopController(IServiceContainer container)
         {
             _container = container ?? throw new ArgumentNullException(nameof(container));
 

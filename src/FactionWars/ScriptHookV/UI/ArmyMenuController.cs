@@ -112,7 +112,7 @@ namespace FactionWars.ScriptHookV.UI
         private readonly IFollowerService _followerService;
         private readonly IDefenderTierService _tierService;
         private readonly IPlayerContext _playerContext;
-        private readonly FollowerManager? _followerManager;
+        private readonly IFollowerManager? _followerManager;
         private readonly IGameBridge? _gameBridge;
 
         private Guid? _selectedFollowerId;
@@ -142,7 +142,7 @@ namespace FactionWars.ScriptHookV.UI
             IFollowerService followerService,
             IDefenderTierService tierService,
             IPlayerContext playerContext,
-            FollowerManager? followerManager = null,
+            IFollowerManager? followerManager = null,
             IGameBridge? gameBridge = null)
         {
             _menuProvider = menuProvider ?? throw new ArgumentNullException(nameof(menuProvider));

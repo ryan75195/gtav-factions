@@ -12,7 +12,7 @@ namespace FactionWars.ScriptHookV.Managers
     /// Coordinates between the domain-layer FollowerService and ScriptHookV game interactions.
     /// Handles spawning, despawning, and tracking follower peds.
     /// </summary>
-    public class FollowerManager
+    public class FollowerManager : IFollowerManager
     {
         private readonly IGameBridge _gameBridge;
         private readonly IFollowerService _followerService;
