@@ -112,7 +112,7 @@ namespace FactionWars.ScriptHookV.UI
                 : new List<Zone>();
 
             // Calculate total income per resource type
-            var (totalCash, totalRecruitment, totalWeapons, zoneIncomes) = CalculateTotalIncome(factionId, zones);
+            var income = CalculateTotalIncome(factionId, zones);
 
             var menu = new MenuDefinition(ResourcesMenuId, "Resources", factionName);
 
@@ -130,21 +130,21 @@ namespace FactionWars.ScriptHookV.UI
             // Add total income items
             var cashItem = new MenuItem(
                 TotalCashItemId,
-                $"Cash: ${totalCash:N0}/tick",
+                $"Cash: ${income.TotalCash:N0}/tick",
                 "Total cash income from all zones");
             cashItem.IsEnabled = false;
             menu.AddItem(cashItem);
 
             var recruitmentItem = new MenuItem(
                 TotalRecruitmentItemId,
-                $"Recruitment: {totalRecruitment}/tick",
+                $"Recruitment: {income.TotalRecruitment}/tick",
                 "Total recruitment points from all zones");
             recruitmentItem.IsEnabled = false;
             menu.AddItem(recruitmentItem);
 
             var weaponsItem = new MenuItem(
                 TotalWeaponsItemId,
-                $"Weapons: {totalWeapons}/tick",
+                $"Weapons: {income.TotalWeapons}/tick",
                 "Total weapons production from all zones");
             weaponsItem.IsEnabled = false;
             menu.AddItem(weaponsItem);
@@ -158,7 +158,7 @@ namespace FactionWars.ScriptHookV.UI
             menu.AddItem(headerItem);
 
             // Add zone income items
-            foreach (var zoneIncome in zoneIncomes)
+            foreach (var zoneIncome in income.ZoneIncomes)
             {
                 var efficiencyNote = zoneIncome.Efficiency < 1.0f
                     ? $" ({(int)(zoneIncome.Efficiency * 100)}% efficiency)"
@@ -185,8 +185,7 @@ namespace FactionWars.ScriptHookV.UI
         /// <summary>
         /// Calculates total income for all zones owned by the faction.
         /// </summary>
-        private (int totalCash, int totalRecruitment, int totalWeapons, List<ZoneIncomeInfo> zoneIncomes)
-            CalculateTotalIncome(string? factionId, List<Zone> zones)
+        private IncomeSummary CalculateTotalIncome(string? factionId, List<Zone> zones)
         {
             int totalCash = 0;
             int totalRecruitment = 0;
@@ -195,7 +194,7 @@ namespace FactionWars.ScriptHookV.UI
 
             if (factionId == null || zones.Count == 0)
             {
-                return (totalCash, totalRecruitment, totalWeapons, zoneIncomes);
+                return new IncomeSummary(totalCash, totalRecruitment, totalWeapons, zoneIncomes);
             }
 
             var cashInfo = ResourceTypeInfo.GetInfo(ResourceType.Cash);
@@ -236,7 +235,7 @@ namespace FactionWars.ScriptHookV.UI
                 });
             }
 
-            return (totalCash, totalRecruitment, totalWeapons, zoneIncomes);
+            return new IncomeSummary(totalCash, totalRecruitment, totalWeapons, zoneIncomes);
         }
 
         /// <summary>
@@ -265,6 +264,22 @@ namespace FactionWars.ScriptHookV.UI
             public int Recruitment { get; set; }
             public int Weapons { get; set; }
             public float Efficiency { get; set; }
+        }
+
+        private sealed class IncomeSummary
+        {
+            public IncomeSummary(int totalCash, int totalRecruitment, int totalWeapons, List<ZoneIncomeInfo> zoneIncomes)
+            {
+                TotalCash = totalCash;
+                TotalRecruitment = totalRecruitment;
+                TotalWeapons = totalWeapons;
+                ZoneIncomes = zoneIncomes;
+            }
+
+            public int TotalCash { get; }
+            public int TotalRecruitment { get; }
+            public int TotalWeapons { get; }
+            public List<ZoneIncomeInfo> ZoneIncomes { get; }
         }
     }
 }

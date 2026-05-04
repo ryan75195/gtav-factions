@@ -82,7 +82,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             Assert.True(bridge.IsPedGoingToCoord(defenderHandle));
         }
 
-        private static (FriendlyDefenderManager manager, MockGameBridge bridge, int defenderHandle) SpawnSingleDefender()
+        private static SpawnedFriendlyDefender SpawnSingleDefender()
         {
             var bridge = new MockGameBridge();
             var allocationServiceMock = new Mock<IZoneDefenderAllocationService>();
@@ -127,7 +127,28 @@ namespace FactionWars.Tests.Unit.ScriptHookV
 
             manager.OnZoneEntered(zone);
             int handle = bridge.GetSpawnedPeds()[0];
-            return (manager, bridge, handle);
+            return new SpawnedFriendlyDefender(manager, bridge, handle);
+        }
+
+        private sealed class SpawnedFriendlyDefender
+        {
+            public SpawnedFriendlyDefender(FriendlyDefenderManager manager, MockGameBridge bridge, int defenderHandle)
+            {
+                Manager = manager;
+                Bridge = bridge;
+                DefenderHandle = defenderHandle;
+            }
+
+            public FriendlyDefenderManager Manager { get; }
+            public MockGameBridge Bridge { get; }
+            public int DefenderHandle { get; }
+
+            public void Deconstruct(out FriendlyDefenderManager manager, out MockGameBridge bridge, out int defenderHandle)
+            {
+                manager = Manager;
+                bridge = Bridge;
+                defenderHandle = DefenderHandle;
+            }
         }
     }
 }
