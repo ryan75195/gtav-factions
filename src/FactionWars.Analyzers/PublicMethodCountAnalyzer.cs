@@ -62,11 +62,18 @@ public class PublicMethodCountAnalyzer : DiagnosticAnalyzer
             return;
         }
 
+        if (type.Name.StartsWith("Mock", System.StringComparison.Ordinal)
+            || ns.Contains(".Models"))
+        {
+            return;
+        }
+
         var publicMethodCount = type.GetMembers()
             .OfType<IMethodSymbol>()
             .Count(m => m.DeclaredAccessibility == Accessibility.Public
                 && m.MethodKind == MethodKind.Ordinary
                 && !m.IsOverride
+                && !ImplementsInterfaceMember(type, m)
                 && !AnalyzerConstants.ExcludedMethodNames.Contains(m.Name));
 
         if (publicMethodCount > MaxPublicMethods)
@@ -75,6 +82,21 @@ public class PublicMethodCountAnalyzer : DiagnosticAnalyzer
                 Diagnostic.Create(Rule, type.Locations[0],
                     type.Name, publicMethodCount, MaxPublicMethods));
         }
+    }
+
+    private static bool ImplementsInterfaceMember(INamedTypeSymbol type, IMethodSymbol method)
+    {
+        foreach (var interfaceType in type.AllInterfaces)
+        {
+            foreach (var interfaceMethod in interfaceType.GetMembers().OfType<IMethodSymbol>())
+            {
+                var implementation = type.FindImplementationForInterfaceMember(interfaceMethod);
+                if (SymbolEqualityComparer.Default.Equals(implementation, method))
+                    return true;
+            }
+        }
+
+        return false;
     }
 }
 
