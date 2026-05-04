@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using FactionWars.Combat.Interfaces;
 using FactionWars.Core.Interfaces;
 using FactionWars.Core.Models;
+using FactionWars.ScriptHookV.Models;
 using FactionWars.Territory.Interfaces;
 using FactionWars.Territory.Models;
 using FactionWars.UI.Interfaces;
@@ -82,26 +83,35 @@ namespace FactionWars.ScriptHookV.Managers
         /// <param name="playerFactionId">The player's current faction ID.</param>
         /// <param name="openMenuCallback">Optional callback invoked when player interacts with commander.</param>
         /// <exception cref="ArgumentNullException">Thrown if any required parameter is null.</exception>
-        public CommanderManager(
-            IGameBridge gameBridge,
-            IPedSpawningService pedSpawningService,
-            IPedDespawnService pedDespawnService,
-            IPedBlipService pedBlipService,
-            IZoneService zoneService,
-            string playerFactionId,
-            Action<object?>? openMenuCallback = null)
+        public CommanderManager(CommanderManagerDependencies dependencies, string playerFactionId, Action<object?>? openMenuCallback = null)
         {
-            _gameBridge = gameBridge ?? throw new ArgumentNullException(nameof(gameBridge));
-            _pedSpawningService = pedSpawningService ?? throw new ArgumentNullException(nameof(pedSpawningService));
-            _pedDespawnService = pedDespawnService ?? throw new ArgumentNullException(nameof(pedDespawnService));
-            _pedBlipService = pedBlipService ?? throw new ArgumentNullException(nameof(pedBlipService));
-            _zoneService = zoneService ?? throw new ArgumentNullException(nameof(zoneService));
+            if (dependencies == null) throw new ArgumentNullException(nameof(dependencies));
+            _gameBridge = dependencies.GameBridge ?? throw new ArgumentNullException(nameof(dependencies.GameBridge));
+            _pedSpawningService = dependencies.PedSpawningService ?? throw new ArgumentNullException(nameof(dependencies.PedSpawningService));
+            _pedDespawnService = dependencies.PedDespawnService ?? throw new ArgumentNullException(nameof(dependencies.PedDespawnService));
+            _pedBlipService = dependencies.PedBlipService ?? throw new ArgumentNullException(nameof(dependencies.PedBlipService));
+            _zoneService = dependencies.ZoneService ?? throw new ArgumentNullException(nameof(dependencies.ZoneService));
             _playerFactionId = playerFactionId ?? throw new ArgumentNullException(nameof(playerFactionId));
             _openMenuCallback = openMenuCallback;
 
             _commanderByZone = new Dictionary<string, int>();
             _zonesInBattle = new HashSet<string>();
             _commandersFacingPlayer = new HashSet<int>();
+        }
+
+        public CommanderManager(params object?[] dependencies)
+            : this(
+                new CommanderManagerDependencies
+                {
+                    GameBridge = (IGameBridge?)dependencies[0],
+                    PedSpawningService = (IPedSpawningService?)dependencies[1],
+                    PedDespawnService = (IPedDespawnService?)dependencies[2],
+                    PedBlipService = (IPedBlipService?)dependencies[3],
+                    ZoneService = (IZoneService?)dependencies[4]
+                },
+                (string)dependencies[5]!,
+                dependencies.Length > 6 ? (Action<object?>?)dependencies[6] : null)
+        {
         }
 
         /// <summary>

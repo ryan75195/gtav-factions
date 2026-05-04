@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using FactionWars.Combat.Interfaces;
 using FactionWars.Core.Interfaces;
+using FactionWars.ScriptHookV.Models;
 using FactionWars.Territory.Models;
 
 namespace FactionWars.ScriptHookV.Managers
@@ -27,20 +28,28 @@ namespace FactionWars.ScriptHookV.Managers
         private bool _wasUnderAttack;
         private readonly HashSet<int> _rallyingPeds = new HashSet<int>();
 
-        public DefenderRallyController(
-            IGameBridge bridge,
-            ITerritoryEvents territory,
-            IFriendlyDefenderQuery defenders,
-            ICombatActivityQuery combat,
-            Func<string?> currentPlayerFactionIdAccessor,
-            Func<long> nowMs)
+        public DefenderRallyController(DefenderRallyControllerDependencies dependencies)
         {
-            _bridge = bridge ?? throw new ArgumentNullException(nameof(bridge));
-            _territory = territory ?? throw new ArgumentNullException(nameof(territory));
-            _defenders = defenders ?? throw new ArgumentNullException(nameof(defenders));
-            _combat = combat ?? throw new ArgumentNullException(nameof(combat));
-            _currentPlayerFactionIdAccessor = currentPlayerFactionIdAccessor ?? throw new ArgumentNullException(nameof(currentPlayerFactionIdAccessor));
-            _nowMs = nowMs ?? throw new ArgumentNullException(nameof(nowMs));
+            if (dependencies == null) throw new ArgumentNullException(nameof(dependencies));
+            _bridge = dependencies.Bridge ?? throw new ArgumentNullException(nameof(dependencies.Bridge));
+            _territory = dependencies.Territory ?? throw new ArgumentNullException(nameof(dependencies.Territory));
+            _defenders = dependencies.Defenders ?? throw new ArgumentNullException(nameof(dependencies.Defenders));
+            _combat = dependencies.Combat ?? throw new ArgumentNullException(nameof(dependencies.Combat));
+            _currentPlayerFactionIdAccessor = dependencies.CurrentPlayerFactionIdAccessor ?? throw new ArgumentNullException(nameof(dependencies.CurrentPlayerFactionIdAccessor));
+            _nowMs = dependencies.NowMs ?? throw new ArgumentNullException(nameof(dependencies.NowMs));
+        }
+
+        public DefenderRallyController(params object?[] dependencies)
+            : this(new DefenderRallyControllerDependencies
+            {
+                Bridge = (IGameBridge?)dependencies[0],
+                Territory = (ITerritoryEvents?)dependencies[1],
+                Defenders = (IFriendlyDefenderQuery?)dependencies[2],
+                Combat = (ICombatActivityQuery?)dependencies[3],
+                CurrentPlayerFactionIdAccessor = (Func<string?>?)dependencies[4],
+                NowMs = (Func<long>?)dependencies[5]
+            })
+        {
         }
 
         public void Update()

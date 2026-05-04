@@ -3,6 +3,7 @@ using FactionWars.AI.Models;
 using FactionWars.Core.Interfaces;
 using FactionWars.Core.Models;
 using FactionWars.Factions.Interfaces;
+using FactionWars.ScriptHookV.Models;
 using FactionWars.Territory.Interfaces;
 using FactionWars.UI.Interfaces;
 
@@ -42,20 +43,28 @@ namespace FactionWars.ScriptHookV.Managers
         /// <param name="eventAlertService">The service for raising event alerts.</param>
         /// <param name="eventFeedService">The service for the event feed.</param>
         /// <exception cref="ArgumentNullException">Thrown if any parameter is null.</exception>
-        public BackgroundBattleSimulator(
-            IBattleSimulationService battleSimulationService,
-            IFactionService factionService,
-            IZoneService zoneService,
-            IZoneDefenderAllocationService allocationService,
-            IEventAlertService eventAlertService,
-            IEventFeedService eventFeedService)
+        public BackgroundBattleSimulator(BackgroundBattleSimulatorDependencies dependencies)
         {
-            _battleSimulationService = battleSimulationService ?? throw new ArgumentNullException(nameof(battleSimulationService));
-            _factionService = factionService ?? throw new ArgumentNullException(nameof(factionService));
-            _zoneService = zoneService ?? throw new ArgumentNullException(nameof(zoneService));
-            _allocationService = allocationService ?? throw new ArgumentNullException(nameof(allocationService));
-            _eventAlertService = eventAlertService ?? throw new ArgumentNullException(nameof(eventAlertService));
-            _eventFeedService = eventFeedService ?? throw new ArgumentNullException(nameof(eventFeedService));
+            if (dependencies == null) throw new ArgumentNullException(nameof(dependencies));
+            _battleSimulationService = dependencies.BattleSimulationService ?? throw new ArgumentNullException(nameof(dependencies.BattleSimulationService));
+            _factionService = dependencies.FactionService ?? throw new ArgumentNullException(nameof(dependencies.FactionService));
+            _zoneService = dependencies.ZoneService ?? throw new ArgumentNullException(nameof(dependencies.ZoneService));
+            _allocationService = dependencies.AllocationService ?? throw new ArgumentNullException(nameof(dependencies.AllocationService));
+            _eventAlertService = dependencies.EventAlertService ?? throw new ArgumentNullException(nameof(dependencies.EventAlertService));
+            _eventFeedService = dependencies.EventFeedService ?? throw new ArgumentNullException(nameof(dependencies.EventFeedService));
+        }
+
+        public BackgroundBattleSimulator(params object?[] dependencies)
+            : this(new BackgroundBattleSimulatorDependencies
+            {
+                BattleSimulationService = (IBattleSimulationService?)dependencies[0],
+                FactionService = (IFactionService?)dependencies[1],
+                ZoneService = (IZoneService?)dependencies[2],
+                AllocationService = (IZoneDefenderAllocationService?)dependencies[3],
+                EventAlertService = (IEventAlertService?)dependencies[4],
+                EventFeedService = (IEventFeedService?)dependencies[5]
+            })
+        {
         }
 
         /// <summary>

@@ -3,6 +3,7 @@ using FactionWars.Core.Models;
 using FactionWars.Economy.Interfaces;
 using FactionWars.Factions.Interfaces;
 using FactionWars.ScriptHookV.Managers;
+using FactionWars.ScriptHookV.Models;
 using FactionWars.UI.Interfaces;
 using FactionWars.UI.Models;
 using System;
@@ -108,22 +109,28 @@ namespace FactionWars.ScriptHookV.UI
         /// <summary>
         /// Creates a new SquadMenuController with the specified dependencies.
         /// </summary>
-        public SquadMenuController(
-            IMenuProvider menuProvider,
-            ITroopPurchaseService purchaseService,
-            IFollowerService followerService,
-            IPlayerContext playerContext,
-            IFollowerManager? followerManager = null,
-            IGameBridge? gameBridge = null)
+        public SquadMenuController(SquadMenuControllerDependencies dependencies, IFollowerManager? followerManager = null, IGameBridge? gameBridge = null)
         {
-            _menuProvider = menuProvider ?? throw new ArgumentNullException(nameof(menuProvider));
-            _purchaseService = purchaseService ?? throw new ArgumentNullException(nameof(purchaseService));
-            _followerService = followerService ?? throw new ArgumentNullException(nameof(followerService));
-            _playerContext = playerContext ?? throw new ArgumentNullException(nameof(playerContext));
+            if (dependencies == null) throw new ArgumentNullException(nameof(dependencies));
+            _menuProvider = dependencies.MenuProvider ?? throw new ArgumentNullException(nameof(dependencies.MenuProvider));
+            _purchaseService = dependencies.PurchaseService ?? throw new ArgumentNullException(nameof(dependencies.PurchaseService));
+            _followerService = dependencies.FollowerService ?? throw new ArgumentNullException(nameof(dependencies.FollowerService));
+            _playerContext = dependencies.PlayerContext ?? throw new ArgumentNullException(nameof(dependencies.PlayerContext));
             _followerManager = followerManager;
             _gameBridge = gameBridge;
 
             _menuProvider.ItemSelected += OnItemSelected;
+        }
+
+        public SquadMenuController(params object?[] dependencies)
+            : this(new SquadMenuControllerDependencies
+            {
+                MenuProvider = (IMenuProvider?)dependencies[0],
+                PurchaseService = (ITroopPurchaseService?)dependencies[1],
+                FollowerService = (IFollowerService?)dependencies[2],
+                PlayerContext = (IPlayerContext?)dependencies[3]
+            })
+        {
         }
 
         /// <summary>
