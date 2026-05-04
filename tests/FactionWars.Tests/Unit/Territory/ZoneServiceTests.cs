@@ -1,4 +1,5 @@
 using FactionWars.Core.Interfaces;
+using FactionWars.Territory.Events;
 using FactionWars.Territory.Interfaces;
 using FactionWars.Territory.Models;
 using FactionWars.Territory.Repositories;
@@ -415,6 +416,51 @@ namespace FactionWars.Tests.Unit.Territory
         public void TransferZoneOwnership_ShouldThrowOnNullZoneId()
         {
             Assert.Throws<ArgumentNullException>(() => _service.TransferZoneOwnership(null!, "michael"));
+        }
+
+        [Fact]
+        public void TransferZoneOwnership_ChangesOwner_RaisesZoneOwnershipChanged()
+        {
+            var zone = CreateTestZone("morningwood", "Morningwood");
+            zone.OwnerFactionId = "trevor";
+            _repository.Add(zone);
+
+            ZoneOwnershipChangedEventArgs? captured = null;
+            _service.ZoneOwnershipChanged += (_, args) => captured = args;
+
+            var result = _service.TransferZoneOwnership("morningwood", "michael");
+
+            Assert.True(result);
+            Assert.NotNull(captured);
+            Assert.Equal("morningwood", captured!.ZoneId);
+            Assert.Equal("trevor", captured.PreviousOwner);
+            Assert.Equal("michael", captured.NewOwner);
+        }
+
+        [Fact]
+        public void TransferZoneOwnership_SameOwner_DoesNotRaiseEvent()
+        {
+            var zone = CreateTestZone("morningwood", "Morningwood");
+            zone.OwnerFactionId = "trevor";
+            _repository.Add(zone);
+
+            bool raised = false;
+            _service.ZoneOwnershipChanged += (_, _) => raised = true;
+
+            _service.TransferZoneOwnership("morningwood", "trevor");
+
+            Assert.False(raised);
+        }
+
+        [Fact]
+        public void TransferZoneOwnership_ZoneNotFound_DoesNotRaiseEvent()
+        {
+            bool raised = false;
+            _service.ZoneOwnershipChanged += (_, _) => raised = true;
+
+            _service.TransferZoneOwnership("nope", "michael");
+
+            Assert.False(raised);
         }
 
         #endregion

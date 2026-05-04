@@ -659,6 +659,8 @@ namespace FactionWars.Tests.Unit.Core
             return Enumerable.Empty<FactionWars.Territory.Models.Zone>();
         }
 
+        public event EventHandler<FactionWars.Territory.Events.ZoneOwnershipChangedEventArgs>? ZoneOwnershipChanged { add { } remove { } }
+
         public IEnumerable<FactionWars.Territory.Models.Zone> GetContestedZones() => Enumerable.Empty<FactionWars.Territory.Models.Zone>();
         public IEnumerable<FactionWars.Territory.Models.Zone> GetZonesByTrait(FactionWars.Territory.Models.ZoneTrait trait) => Enumerable.Empty<FactionWars.Territory.Models.Zone>();
         public IEnumerable<FactionWars.Territory.Models.Zone> GetHighValueZones(int count) => Enumerable.Empty<FactionWars.Territory.Models.Zone>();
