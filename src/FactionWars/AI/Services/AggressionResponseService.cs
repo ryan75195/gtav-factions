@@ -138,22 +138,7 @@ namespace FactionWars.AI.Services
 
             foreach (var aggressorId in aggressorKeys)
             {
-                var records = _aggressionByAggressor[aggressorId];
-                var newRecords = new List<AggressionRecord>();
-
-                foreach (var record in records)
-                {
-                    int reducedDamage = (int)(record.DamageDealt * (1f - decayRate));
-                    if (reducedDamage > 0)
-                    {
-                        newRecords.Add(new AggressionRecord(
-                            record.AggressorId,
-                            record.TargetZoneId,
-                            reducedDamage,
-                            record.Timestamp));
-                    }
-                }
-
+                var newRecords = DecayRecords(_aggressionByAggressor[aggressorId], decayRate);
                 if (newRecords.Count > 0)
                 {
                     _aggressionByAggressor[aggressorId] = newRecords;
@@ -168,6 +153,28 @@ namespace FactionWars.AI.Services
             {
                 _aggressionByAggressor.Remove(aggressor);
             }
+        }
+
+        private static List<AggressionRecord> DecayRecords(
+            IEnumerable<AggressionRecord> records,
+            float decayRate)
+        {
+            var newRecords = new List<AggressionRecord>();
+
+            foreach (var record in records)
+            {
+                int reducedDamage = (int)(record.DamageDealt * (1f - decayRate));
+                if (reducedDamage <= 0)
+                    continue;
+
+                newRecords.Add(new AggressionRecord(
+                    record.AggressorId,
+                    record.TargetZoneId,
+                    reducedDamage,
+                    record.Timestamp));
+            }
+
+            return newRecords;
         }
 
         /// <inheritdoc/>

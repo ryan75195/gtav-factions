@@ -20,6 +20,7 @@ dotnet_diagnostic.CI0016.severity = error
 dotnet_diagnostic.CI0002.severity = error
 dotnet_diagnostic.CI0003.severity = error
 dotnet_diagnostic.CI0005.severity = error
+dotnet_diagnostic.CI0007.severity = error
 dotnet_diagnostic.CI0001.severity = error
 dotnet_diagnostic.CI0014.severity = error
 dotnet_diagnostic.CI0015.severity = error

@@ -39,10 +39,26 @@ namespace FactionWars.Combat.Services
 
             // Calculate proportional ped counts for each tier
             var plan = new DefenderSpawnPlan();
-            int remainingPeds = maxPeds;
             var tiers = new[] { DefenderTier.Heavy, DefenderTier.Medium, DefenderTier.Basic };
+            var rawCounts = CalculateRawCounts(troopsByTier, tiers, totalTroops, maxPeds);
+            var wholeNumbers = AssignWholeNumbers(troopsByTier, tiers, rawCounts, out var remainders, out int totalAssigned);
+            DistributeRemainingPeds(troopsByTier, tiers, wholeNumbers, remainders, maxPeds - totalAssigned);
+            EnsureRepresentedTiers(troopsByTier, tiers, wholeNumbers, totalAssigned, maxPeds);
 
-            // First pass: calculate raw proportional counts
+            foreach (var tier in tiers)
+            {
+                plan.SetPedCount(tier, wholeNumbers.TryGetValue(tier, out var c) ? c : 0);
+            }
+
+            return plan;
+        }
+
+        private static Dictionary<DefenderTier, double> CalculateRawCounts(
+            Dictionary<DefenderTier, int> troopsByTier,
+            DefenderTier[] tiers,
+            int totalTroops,
+            int maxPeds)
+        {
             var rawCounts = new Dictionary<DefenderTier, double>();
             foreach (var tier in tiers)
             {
@@ -51,10 +67,19 @@ namespace FactionWars.Combat.Services
                 rawCounts[tier] = proportion * maxPeds;
             }
 
-            // Second pass: assign whole numbers, tracking remainders for rounding
+            return rawCounts;
+        }
+
+        private static Dictionary<DefenderTier, int> AssignWholeNumbers(
+            Dictionary<DefenderTier, int> troopsByTier,
+            DefenderTier[] tiers,
+            Dictionary<DefenderTier, double> rawCounts,
+            out Dictionary<DefenderTier, double> remainders,
+            out int totalAssigned)
+        {
             var wholeNumbers = new Dictionary<DefenderTier, int>();
-            var remainders = new Dictionary<DefenderTier, double>();
-            int totalAssigned = 0;
+            remainders = new Dictionary<DefenderTier, double>();
+            totalAssigned = 0;
 
             foreach (var tier in tiers)
             {
@@ -72,8 +97,16 @@ namespace FactionWars.Combat.Services
                 totalAssigned += whole;
             }
 
-            // Third pass: distribute remaining peds based on largest remainders
-            int pedsToDistribute = maxPeds - totalAssigned;
+            return wholeNumbers;
+        }
+
+        private static void DistributeRemainingPeds(
+            Dictionary<DefenderTier, int> troopsByTier,
+            DefenderTier[] tiers,
+            Dictionary<DefenderTier, int> wholeNumbers,
+            Dictionary<DefenderTier, double> remainders,
+            int pedsToDistribute)
+        {
             var orderedByRemainder = tiers
                 .Where(t => troopsByTier.TryGetValue(t, out var c) && c > 0)
                 .OrderByDescending(t => remainders[t])
@@ -87,8 +120,15 @@ namespace FactionWars.Combat.Services
                 pedsToDistribute--;
                 idx++;
             }
+        }
 
-            // Ensure at least 1 ped for each tier that has troops (if total allows)
+        private static void EnsureRepresentedTiers(
+            Dictionary<DefenderTier, int> troopsByTier,
+            DefenderTier[] tiers,
+            Dictionary<DefenderTier, int> wholeNumbers,
+            int totalAssigned,
+            int maxPeds)
+        {
             foreach (var tier in tiers)
             {
                 int troops = troopsByTier.TryGetValue(tier, out var t) ? t : 0;
@@ -107,14 +147,6 @@ namespace FactionWars.Combat.Services
                     }
                 }
             }
-
-            // Set the final counts
-            foreach (var tier in tiers)
-            {
-                plan.SetPedCount(tier, wholeNumbers.TryGetValue(tier, out var c) ? c : 0);
-            }
-
-            return plan;
         }
 
         /// <inheritdoc />

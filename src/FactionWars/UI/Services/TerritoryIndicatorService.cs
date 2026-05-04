@@ -60,55 +60,72 @@ namespace FactionWars.UI.Services
             if (string.IsNullOrWhiteSpace(playerFactionId))
                 throw new ArgumentException("Player faction ID cannot be empty or whitespace.", nameof(playerFactionId));
 
-            // Get owner faction details
-            string? ownerFactionName = null;
-            FactionColor? ownerFactionColor = null;
-            bool isPlayerOwned = false;
-
-            if (currentZone.OwnerFactionId != null)
-            {
-                var ownerFaction = _factionRepository.GetById(currentZone.OwnerFactionId);
-                if (ownerFaction != null)
-                {
-                    ownerFactionName = ownerFaction.Name;
-                    ownerFactionColor = ownerFaction.Color;
-                }
-                else
-                {
-                    ownerFactionName = "Unknown";
-                    ownerFactionColor = null;
-                }
-
-                isPlayerOwned = currentZone.OwnerFactionId == playerFactionId;
-            }
-
-            // Determine third-party in 3-way battles (an AI attacker when the player is also attacking)
-            int thirdPartyCount = 0;
-            FactionColor? thirdPartyColor = null;
-            var battle = _battleManager.GetBattleForZone(currentZone.Id);
-            if (battle != null)
-            {
-                var aiAttacker = battle.Attackers.FirstOrDefault(p => !p.IsPlayer);
-                bool playerIsAttacking = battle.Attackers.Any(p => p.IsPlayer);
-                if (aiAttacker != null && playerIsAttacking)
-                {
-                    thirdPartyCount = aiAttacker.AliveCount;
-                    var thirdPartyFaction = _factionRepository.GetById(aiAttacker.FactionId);
-                    thirdPartyColor = thirdPartyFaction?.Color;
-                }
-            }
+            var owner = GetOwnerIndicatorInfo(currentZone, playerFactionId);
+            var thirdParty = GetThirdPartyIndicatorInfo(currentZone);
 
             var indicatorData = new TerritoryIndicatorData(
                 zoneName: currentZone.Name,
-                ownerFactionName: ownerFactionName,
-                ownerFactionColor: ownerFactionColor,
+                ownerFactionName: owner.Name,
+                ownerFactionColor: owner.Color,
                 controlPercentage: currentZone.ControlPercentage,
                 isContested: currentZone.IsContested,
-                isPlayerOwned: isPlayerOwned,
-                thirdPartyCount: thirdPartyCount,
-                thirdPartyFactionColor: thirdPartyColor);
+                isPlayerOwned: owner.IsPlayerOwned,
+                thirdPartyCount: thirdParty.Count,
+                thirdPartyFactionColor: thirdParty.Color);
 
             _renderer.Render(indicatorData);
+        }
+
+        private OwnerIndicatorInfo GetOwnerIndicatorInfo(Zone currentZone, string playerFactionId)
+        {
+            if (currentZone.OwnerFactionId == null)
+                return new OwnerIndicatorInfo(null, null, false);
+
+            var ownerFaction = _factionRepository.GetById(currentZone.OwnerFactionId);
+            return ownerFaction != null
+                ? new OwnerIndicatorInfo(ownerFaction.Name, ownerFaction.Color, currentZone.OwnerFactionId == playerFactionId)
+                : new OwnerIndicatorInfo("Unknown", null, currentZone.OwnerFactionId == playerFactionId);
+        }
+
+        private ThirdPartyIndicatorInfo GetThirdPartyIndicatorInfo(Zone currentZone)
+        {
+            var battle = _battleManager.GetBattleForZone(currentZone.Id);
+            if (battle == null)
+                return new ThirdPartyIndicatorInfo(0, null);
+
+            var aiAttacker = battle.Attackers.FirstOrDefault(p => !p.IsPlayer);
+            bool playerIsAttacking = battle.Attackers.Any(p => p.IsPlayer);
+            if (aiAttacker == null || !playerIsAttacking)
+                return new ThirdPartyIndicatorInfo(0, null);
+
+            var thirdPartyFaction = _factionRepository.GetById(aiAttacker.FactionId);
+            return new ThirdPartyIndicatorInfo(aiAttacker.AliveCount, thirdPartyFaction?.Color);
+        }
+
+        private readonly struct OwnerIndicatorInfo
+        {
+            public OwnerIndicatorInfo(string? name, FactionColor? color, bool isPlayerOwned)
+            {
+                Name = name;
+                Color = color;
+                IsPlayerOwned = isPlayerOwned;
+            }
+
+            public string? Name { get; }
+            public FactionColor? Color { get; }
+            public bool IsPlayerOwned { get; }
+        }
+
+        private readonly struct ThirdPartyIndicatorInfo
+        {
+            public ThirdPartyIndicatorInfo(int count, FactionColor? color)
+            {
+                Count = count;
+                Color = color;
+            }
+
+            public int Count { get; }
+            public FactionColor? Color { get; }
         }
 
         /// <summary>

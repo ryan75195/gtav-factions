@@ -273,61 +273,13 @@ namespace FactionWars.ScriptHookV
             var deltaTime = (float)(now - _lastTickTime).TotalSeconds;
             _lastTickTime = now;
 
-            // Update economy manager
-            _economyManager?.Update(deltaTime);
-
-            // Update play time tracker
-            _gameStateManager?.UpdatePlayTime(deltaTime);
-
-            // Update telemetry snapshot timer after play time has advanced for this frame.
-            _telemetryService?.Update(deltaTime);
-
+            UpdateCoreSystems(deltaTime);
             UpdatePlayerRespawnPlacement();
-
-            // Poll controller input
             PollControllerInput();
-
-            // Update menu system with key state for hold-to-repeat
             _menuProvider?.SetSelectKeyHeld(_enterKeyHeld);
             _mainMenuController?.Update();
+            UpdateWorldSystems(deltaTime);
 
-            // Update map blip colors to reflect current zone ownership
-            _mapBlipManager?.UpdateBlipColors();
-
-            // Update territory detection (checks player position against zones)
-            _territoryManager?.Update();
-
-            // Update AI controller (handles decisions, recruitment, battles)
-            _aiController?.Update(deltaTime);
-
-            // Update zone battle manager (unified battle lifecycle)
-            _zoneBattleManager?.Tick(deltaTime);
-
-            // Update victory manager (checks for 100% control)
-            _victoryManager?.Update(deltaTime);
-
-            // Update follower manager (updates follower positions and behavior)
-            _followerManager?.Update(CurrentPlayerFactionId ?? "");
-
-            // Update friendly defender manager (death detection, replacement spawning)
-            _friendlyDefenderManager?.Update();
-            _defenderRallyController?.Update();
-
-            // Update commander manager (death detection, interaction prompt)
-            _commanderManager?.Update();
-
-            // Update enemy defender manager (death detection, replacement spawning)
-            var currentZone = _territoryManager?.CurrentZone;
-            var enemyFactionId = currentZone?.OwnerFactionId;
-            if (enemyFactionId != null && enemyFactionId != CurrentPlayerFactionId)
-            {
-                _enemyDefenderManager?.Update(enemyFactionId);
-            }
-
-            // Update battle attacker manager (death detection for attackers in player's defending zone)
-            _battleAttackerManager?.Update();
-
-            // Update and draw HUD elements
             try
             {
                 UpdateAndDrawHud();
@@ -340,6 +292,34 @@ namespace FactionWars.ScriptHookV
             ProcessPendingOwnedTerritoryPlacement();
         }
 
+        private void UpdateCoreSystems(float deltaTime)
+        {
+            _economyManager?.Update(deltaTime);
+            _gameStateManager?.UpdatePlayTime(deltaTime);
+            _telemetryService?.Update(deltaTime);
+        }
+
+        private void UpdateWorldSystems(float deltaTime)
+        {
+            _mapBlipManager?.UpdateBlipColors();
+            _territoryManager?.Update();
+            _aiController?.Update(deltaTime);
+            _zoneBattleManager?.Tick(deltaTime);
+            _victoryManager?.Update(deltaTime);
+            _followerManager?.Update(CurrentPlayerFactionId ?? "");
+            _friendlyDefenderManager?.Update();
+            _defenderRallyController?.Update();
+            _commanderManager?.Update();
+            var currentZone = _territoryManager?.CurrentZone;
+            var enemyFactionId = currentZone?.OwnerFactionId;
+            if (enemyFactionId != null && enemyFactionId != CurrentPlayerFactionId)
+            {
+                _enemyDefenderManager?.Update(enemyFactionId);
+            }
+
+            _battleAttackerManager?.Update();
+        }
+
         /// <summary>
         /// Updates HUD data and draws HUD elements to the screen.
         /// </summary>
@@ -347,108 +327,7 @@ namespace FactionWars.ScriptHookV
         {
             var playerFactionId = CurrentPlayerFactionId;
 
-            // Update territory indicator based on current zone
-            if (_territoryIndicatorRenderer != null && _territoryManager != null)
-            {
-                var currentZone = _territoryManager.CurrentZone;
-                if (currentZone != null)
-                {
-                    // Get faction info for the zone owner
-                    string? ownerFactionName = null;
-                    Factions.Models.FactionColor? ownerColor = null;
-
-                    if (currentZone.OwnerFactionId != null)
-                    {
-                        var ownerFaction = _factionService.GetFaction(currentZone.OwnerFactionId);
-                        ownerFactionName = ownerFaction?.Name;
-                        ownerColor = ownerFaction?.Color;
-                    }
-
-                    bool isPlayerOwned = currentZone.OwnerFactionId == playerFactionId;
-
-                    // Check if there's an active battle in this zone
-                    var activeBattle = _zoneBattleManager?.GetBattleForZone(currentZone.Id);
-                    bool isDefendingBattle = activeBattle != null &&
-                                             activeBattle.DefenderFactionId == playerFactionId;
-
-                    // Check if the player is attacking this zone
-                    var playerBattle = _zoneBattleManager?.GetPlayerCurrentBattle();
-                    bool isPlayerAttackingHere = playerBattle != null && playerBattle.ZoneId == currentZone.Id &&
-                                                 playerBattle.IsPlayerAttacking;
-
-                    bool isContested = isDefendingBattle || isPlayerAttackingHere;
-
-                    // Get deployed and reserve counts for player-owned zones
-                    int deployedCount = 0;
-                    int reserveCount = 0;
-                    int playerTroopCount = 0;
-                    int enemyDefenderCount = 0;
-                    int enemyReserveCount = 0;
-
-                    if (isDefendingBattle && activeBattle != null)
-                    {
-                        // Player is defending their zone - use battle troop counts
-                        // Show spawned defenders from FriendlyDefenderManager as "deployed"
-                        deployedCount = _friendlyDefenderManager?.GetSpawnedDefenderCount(currentZone.Id) ?? 0;
-
-                        // Reserve = battle's defender troops minus spawned (what can still spawn)
-                        reserveCount = Math.Max(0, activeBattle.TotalDefenderTroops - deployedCount);
-
-                        // Also populate enemy attacker counts for the Territory HUD
-                        enemyDefenderCount = _battleAttackerManager?.GetSpawnedAttackerCount(currentZone.Id) ?? 0;
-                        enemyReserveCount = Math.Max(0, activeBattle.TotalAttackerTroops - enemyDefenderCount);
-                    }
-                    else if (isPlayerOwned && _friendlyDefenderManager != null)
-                    {
-                        deployedCount = _friendlyDefenderManager.GetSpawnedDefenderCount(currentZone.Id);
-
-                        // Get total allocation as reserve
-                        if (_allocationService != null && playerFactionId != null)
-                        {
-                            var allocation = _allocationService.GetAllocation(playerFactionId, currentZone.Id);
-                            if (allocation != null)
-                            {
-                                reserveCount = Math.Max(0, allocation.TotalTroops - deployedCount);
-                            }
-                        }
-                    }
-                    else if (isPlayerAttackingHere && playerBattle != null)
-                    {
-                        // Player is attacking this enemy zone - use ZoneBattleManager data
-                        var playerParticipant = playerBattle.Attackers.FirstOrDefault(p => p.IsPlayer);
-                        playerTroopCount = playerParticipant?.AliveCount ?? 0;
-                        enemyDefenderCount = playerBattle.Defender.AliveCount;
-
-                        // Get enemy reserves from enemy defender manager
-                        if (_enemyDefenderManager != null)
-                        {
-                            enemyReserveCount = _enemyDefenderManager.GetRemainingReserves(
-                                playerBattle.ZoneId, playerBattle.Defender.FactionId);
-                        }
-                    }
-
-                    var territoryData = new TerritoryIndicatorData(
-                        currentZone.Name,
-                        ownerFactionName,
-                        ownerColor,
-                        currentZone.ControlPercentage,
-                        isContested,
-                        isPlayerOwned,
-                        deployedDefenderCount: deployedCount,
-                        reserveDefenderCount: reserveCount,
-                        playerTroopCount: playerTroopCount,
-                        enemyDefenderCount: enemyDefenderCount,
-                        enemyReserveCount: enemyReserveCount);
-
-                    _territoryIndicatorRenderer.Render(territoryData);
-                }
-                else
-                {
-                    _territoryIndicatorRenderer.Hide();
-                }
-
-                _territoryIndicatorRenderer.Draw();
-            }
+            UpdateTerritoryIndicator(playerFactionId);
 
             // Draw battle HUD showing active AI battles
             UpdateAndDrawBattleHud();
@@ -477,6 +356,119 @@ namespace FactionWars.ScriptHookV
             //     _eventFeedRenderer.Render(_eventFeedService.Entries);
             //     _eventFeedRenderer.Draw();
             // }
+        }
+
+        private void UpdateTerritoryIndicator(string? playerFactionId)
+        {
+            if (_territoryIndicatorRenderer == null || _territoryManager == null)
+                return;
+
+            var currentZone = _territoryManager.CurrentZone;
+            if (currentZone == null)
+            {
+                _territoryIndicatorRenderer.Hide();
+                _territoryIndicatorRenderer.Draw();
+                return;
+            }
+
+            var territoryData = BuildTerritoryIndicatorData(currentZone, playerFactionId);
+            _territoryIndicatorRenderer.Render(territoryData);
+            _territoryIndicatorRenderer.Draw();
+        }
+
+        private TerritoryIndicatorData BuildTerritoryIndicatorData(Zone currentZone, string? playerFactionId)
+        {
+            var ownerFaction = currentZone.OwnerFactionId != null
+                ? _factionService.GetFaction(currentZone.OwnerFactionId)
+                : null;
+            bool isPlayerOwned = currentZone.OwnerFactionId == playerFactionId;
+            var activeBattle = _zoneBattleManager?.GetBattleForZone(currentZone.Id);
+            var playerBattle = _zoneBattleManager?.GetPlayerCurrentBattle();
+            bool isDefendingBattle = activeBattle != null && activeBattle.DefenderFactionId == playerFactionId;
+            bool isPlayerAttackingHere = playerBattle != null && playerBattle.ZoneId == currentZone.Id && playerBattle.IsPlayerAttacking;
+            var counts = GetTerritoryHudCounts(currentZone, playerFactionId, isPlayerOwned, activeBattle, playerBattle, isDefendingBattle, isPlayerAttackingHere);
+
+            return new TerritoryIndicatorData(
+                currentZone.Name,
+                ownerFaction?.Name,
+                ownerFaction?.Color,
+                currentZone.ControlPercentage,
+                isDefendingBattle || isPlayerAttackingHere,
+                isPlayerOwned,
+                deployedDefenderCount: counts.Deployed,
+                reserveDefenderCount: counts.Reserve,
+                playerTroopCount: counts.PlayerTroops,
+                enemyDefenderCount: counts.EnemyDefenders,
+                enemyReserveCount: counts.EnemyReserve);
+        }
+
+        private TerritoryHudCounts GetTerritoryHudCounts(
+            Zone currentZone,
+            string? playerFactionId,
+            bool isPlayerOwned,
+            ZoneBattle? activeBattle,
+            ZoneBattle? playerBattle,
+            bool isDefendingBattle,
+            bool isPlayerAttackingHere)
+        {
+            if (isDefendingBattle && activeBattle != null)
+                return GetDefendingBattleHudCounts(currentZone, activeBattle);
+
+            if (isPlayerOwned && _friendlyDefenderManager != null)
+                return GetOwnedZoneHudCounts(currentZone, playerFactionId);
+
+            if (isPlayerAttackingHere && playerBattle != null)
+                return GetAttackingBattleHudCounts(playerBattle);
+
+            return new TerritoryHudCounts();
+        }
+
+        private TerritoryHudCounts GetDefendingBattleHudCounts(Zone currentZone, ZoneBattle activeBattle)
+        {
+            int deployed = _friendlyDefenderManager?.GetSpawnedDefenderCount(currentZone.Id) ?? 0;
+            int enemyDefenders = _battleAttackerManager?.GetSpawnedAttackerCount(currentZone.Id) ?? 0;
+            return new TerritoryHudCounts
+            {
+                Deployed = deployed,
+                Reserve = Math.Max(0, activeBattle.TotalDefenderTroops - deployed),
+                EnemyDefenders = enemyDefenders,
+                EnemyReserve = Math.Max(0, activeBattle.TotalAttackerTroops - enemyDefenders)
+            };
+        }
+
+        private TerritoryHudCounts GetOwnedZoneHudCounts(Zone currentZone, string? playerFactionId)
+        {
+            int deployed = _friendlyDefenderManager!.GetSpawnedDefenderCount(currentZone.Id);
+            int reserve = 0;
+            if (_allocationService != null && playerFactionId != null)
+            {
+                var allocation = _allocationService.GetAllocation(playerFactionId, currentZone.Id);
+                reserve = allocation != null ? Math.Max(0, allocation.TotalTroops - deployed) : 0;
+            }
+
+            return new TerritoryHudCounts { Deployed = deployed, Reserve = reserve };
+        }
+
+        private TerritoryHudCounts GetAttackingBattleHudCounts(ZoneBattle playerBattle)
+        {
+            var playerParticipant = playerBattle.Attackers.FirstOrDefault(p => p.IsPlayer);
+            return new TerritoryHudCounts
+            {
+                PlayerTroops = playerParticipant?.AliveCount ?? 0,
+                EnemyDefenders = playerBattle.Defender.AliveCount,
+                EnemyReserve = _enemyDefenderManager?.GetRemainingReserves(
+                    playerBattle.ZoneId,
+                    playerBattle.Defender.FactionId) ?? 0
+            };
+        }
+
+        private struct TerritoryHudCounts
+        {
+            public int Deployed;
+            public int Reserve;
+            public int PlayerTroops;
+            public int EnemyDefenders;
+            public int EnemyReserve;
         }
 
         /// <summary>
@@ -525,105 +517,14 @@ namespace FactionWars.ScriptHookV
         /// </summary>
         private void InitializeGameData()
         {
-            FileLogger.Separator("INITIALIZATION START");
-            FileLogger.Info("InitializeGameData() called");
+            LogInitializationStart();
 
-            // Load zones from file if exists, otherwise use defaults
-            var scriptsDir = _gameBridge.GetScriptsDirectory();
-            var zonesFilePath = Path.Combine(scriptsDir, "FactionWars", "zones.json");
-            FileLogger.Info($"Looking for zones at: {zonesFilePath}");
-            _zoneDataLoader.LoadZonesWithFallback(zonesFilePath);
-            FileLogger.Info($"Loaded {_zoneRepository.Count} zones");
-
-            // Then initialize factions with their starting conditions
-            FileLogger.Info("Initializing factions...");
-            _factionInitializer.Initialize();
-
-            // Log zone ownership
-            FileLogger.Separator("ZONE OWNERSHIP");
-            foreach (var zone in _zoneRepository.GetAll())
-            {
-                FileLogger.Zone($"Zone '{zone.Name}' (ID: {zone.Id}) -> Owner: {zone.OwnerFactionId ?? "NONE"}");
-            }
-
-            // Initialize map blips to show zone ownership on the map
-            _mapBlipManager = new MapBlipManager(_gameBridge, _zoneRepository, _factionService);
-            _mapBlipManager.Initialize();
-
-            // Initialize economy manager for resource ticks
-            _economyManager = new EconomyManager(_resourceTickService, _gameBridge);
-            _economyManager.Start();
-            _economyManager.SetPlayerFactionId(CurrentPlayerFactionId);
+            InitializeWorldDataAndEconomy();
 
             // Initialize follower manager for bodyguard management
-            var followerService = _container.Resolve<IFollowerService>();
-            _followerService = followerService;
-            var pedSpawningService = _container.Resolve<IPedSpawningService>();
-            var pedDespawnService = _container.Resolve<IPedDespawnService>();
-            var defenderTierService = _container.Resolve<IDefenderTierService>();
-            var pedBlipService = _container.Resolve<IPedBlipService>();
-            var seatPriorityService = new VehicleSeatPriorityService(_gameBridge);
-            _followerManager = new FollowerManager(new FollowerManagerDependencies
-            {
-                GameBridge = _gameBridge,
-                FollowerService = followerService,
-                PedSpawningService = pedSpawningService,
-                DefenderTierService = defenderTierService,
-                PedBlipService = pedBlipService,
-                SeatPriorityService = seatPriorityService
-            });
+            var spawnServices = ResolveSpawnServices(); InitializeFollowerManager(spawnServices);
 
-            // Initialize territory manager for zone detection
-            _zoneService = _container.Resolve<IZoneService>();
-            _territoryManager = new TerritoryManager(_gameBridge, _zoneService);
-
-            // Initialize zone battle manager and subscribe to its events for domain operations
-            _zoneBattleManager = _container.Resolve<IZoneBattleManager>();
-            _zoneBattleManager.SetPlayerFaction(CurrentPlayerFactionId);
-            _zoneBattleManager.BattleEnded += OnZoneBattleEnded;
-            _zoneBattleManager.TroopKilled += OnZoneBattleTroopKilled;
-            _zoneBattleManager.BattleStarted += OnZoneBattleStarted;
-
-            // Initialize friendly defender manager for spawning defenders in player-owned zones
-            var allocationService = _container.Resolve<IZoneDefenderAllocationService>();
-            _allocationService = allocationService;
-            _friendlyDefenderManager = new FriendlyDefenderManager(
-                new FriendlyDefenderManagerDependencies
-                {
-                    GameBridge = _gameBridge,
-                    AllocationService = allocationService,
-                    PedSpawningService = pedSpawningService,
-                    PedDespawnService = pedDespawnService,
-                    DefenderTierService = defenderTierService,
-                    PedBlipService = pedBlipService,
-                    ZoneService = _zoneService
-                },
-                CurrentPlayerFactionId ?? "");
-
-            // Create CommanderManager
-            var playerFactionId = CurrentPlayerFactionId ?? "";
-            _commanderManager = new CommanderManager(
-                new CommanderManagerDependencies
-                {
-                    GameBridge = _gameBridge,
-                    PedSpawningService = pedSpawningService,
-                    PedDespawnService = pedDespawnService,
-                    PedBlipService = pedBlipService,
-                    ZoneService = _zoneService
-                },
-                playerFactionId,
-                _ => _mainMenuController?.ShowMainMenu());
-
-            // Subscribe to zone events for friendly defender spawning
-            _territoryManager.ZoneEntered += (sender, zone) => _friendlyDefenderManager.OnZoneEntered(zone);
-            _territoryManager.ZoneExited += (sender, zone) => _friendlyDefenderManager.OnZoneExited(zone);
-
-            // Subscribe to zone events for commander spawning
-            _territoryManager.ZoneEntered += (sender, zone) => _commanderManager?.OnZoneEntered(zone);
-            _territoryManager.ZoneExited += (sender, zone) => _commanderManager?.OnZoneExited(zone);
-
-            // Show a translucent radius blip around the zone the player is currently in
-            _zoneBoundaryBlipManager = new ZoneBoundaryBlipManager(_gameBridge, _territoryManager);
+            var allocationService = InitializeTerritoryAndFriendlyManagers(spawnServices);
 
             // Subscribe to defender death events to sync with ZoneBattleManager
             _friendlyDefenderManager.DefenderDied += (sender, e) =>
@@ -677,29 +578,130 @@ namespace FactionWars.ScriptHookV
             // Initialize battle HUD renderer
             _battleHudRenderer = new BattleHudRenderer();
 
-            // Initialize enemy defender manager for spawning defenders in enemy zones
+            InitializeEnemyAndRallyManagers(spawnServices, allocationService);
+
+            InitializeAiAndVictorySystems();
+
+            InitializeHudAndEventRenderers();
+            InitializeMenuControllers(allocationService);
+
+            InitializeStateTelemetryAndSession();
+
+            LogInitializationComplete();
+        }
+
+        private void LogInitializationComplete()
+        {
+            FileLogger.Separator("INITIALIZATION COMPLETE");
+            FileLogger.Info($"Player faction: {CurrentPlayerFactionId ?? "UNKNOWN"}");
+            FileLogger.Info($"Log file: {FileLogger.LogPath}");
+        }
+
+        private static void LogInitializationStart()
+        {
+            FileLogger.Separator("INITIALIZATION START");
+            FileLogger.Info("InitializeGameData() called");
+        }
+
+        private void InitializeStateTelemetryAndSession()
+        {
+            _gameStateManager = _container.Resolve<IGameStateManager>();
+            _gameStateManager.OnGameLoaded += OnGameLoaded;
+            InitializeTelemetryService();
+            _gameStateManager.NewGame();
+            _gameStateManager.SetCurrentDifficulty(_difficultyService.Current.Level);
+            ConfigureSessionSettings();
+        }
+
+        private void InitializeFollowerManager(SpawnServices spawnServices)
+        {
+            _followerService = _container.Resolve<IFollowerService>();
+            var seatPriorityService = new VehicleSeatPriorityService(_gameBridge);
+            _followerManager = new FollowerManager(new FollowerManagerDependencies
+            {
+                GameBridge = _gameBridge,
+                FollowerService = _followerService,
+                PedSpawningService = spawnServices.PedSpawning,
+                DefenderTierService = spawnServices.DefenderTier,
+                PedBlipService = spawnServices.PedBlip,
+                SeatPriorityService = seatPriorityService
+            });
+        }
+
+        private IZoneDefenderAllocationService InitializeTerritoryAndFriendlyManagers(SpawnServices spawnServices)
+        {
+            _zoneService = _container.Resolve<IZoneService>();
+            _territoryManager = new TerritoryManager(_gameBridge, _zoneService);
+            _zoneBattleManager = _container.Resolve<IZoneBattleManager>();
+            _zoneBattleManager.SetPlayerFaction(CurrentPlayerFactionId);
+            _zoneBattleManager.BattleEnded += OnZoneBattleEnded;
+            _zoneBattleManager.TroopKilled += OnZoneBattleTroopKilled;
+            _zoneBattleManager.BattleStarted += OnZoneBattleStarted;
+
+            var allocationService = _container.Resolve<IZoneDefenderAllocationService>();
+            _allocationService = allocationService;
+            _friendlyDefenderManager = new FriendlyDefenderManager(
+                new FriendlyDefenderManagerDependencies
+                {
+                    GameBridge = _gameBridge,
+                    AllocationService = allocationService,
+                    PedSpawningService = spawnServices.PedSpawning,
+                    PedDespawnService = spawnServices.PedDespawn,
+                    DefenderTierService = spawnServices.DefenderTier,
+                    PedBlipService = spawnServices.PedBlip,
+                    ZoneService = _zoneService
+                },
+                CurrentPlayerFactionId ?? "");
+
+            InitializeCommanderManager(spawnServices);
+            _territoryManager.ZoneEntered += (sender, zone) => _friendlyDefenderManager.OnZoneEntered(zone);
+            _territoryManager.ZoneExited += (sender, zone) => _friendlyDefenderManager.OnZoneExited(zone);
+            _territoryManager.ZoneEntered += (sender, zone) => _commanderManager?.OnZoneEntered(zone);
+            _territoryManager.ZoneExited += (sender, zone) => _commanderManager?.OnZoneExited(zone);
+            _zoneBoundaryBlipManager = new ZoneBoundaryBlipManager(_gameBridge, _territoryManager);
+            return allocationService;
+        }
+
+        private void InitializeCommanderManager(SpawnServices spawnServices)
+        {
+            _commanderManager = new CommanderManager(
+                new CommanderManagerDependencies
+                {
+                    GameBridge = _gameBridge,
+                    PedSpawningService = spawnServices.PedSpawning,
+                    PedDespawnService = spawnServices.PedDespawn,
+                    PedBlipService = spawnServices.PedBlip,
+                    ZoneService = _zoneService
+                },
+                CurrentPlayerFactionId ?? "",
+                _ => _mainMenuController?.ShowMainMenu());
+        }
+
+        private void InitializeEnemyAndRallyManagers(
+            SpawnServices spawnServices,
+            IZoneDefenderAllocationService allocationService)
+        {
             _enemyDefenderManager = new EnemyDefenderManager(new EnemyDefenderManagerDependencies
             {
                 GameBridge = _gameBridge,
                 AllocationService = allocationService,
-                PedSpawningService = pedSpawningService,
-                PedDespawnService = pedDespawnService,
-                DefenderTierService = defenderTierService,
-                PedBlipService = pedBlipService,
+                PedSpawningService = spawnServices.PedSpawning,
+                PedDespawnService = spawnServices.PedDespawn,
+                DefenderTierService = spawnServices.DefenderTier,
+                PedBlipService = spawnServices.PedBlip,
                 ZoneService = _zoneService,
                 ZoneBattleManager = _zoneBattleManager
             });
 
-            // Initialize battle attacker manager for spawning attackers when player defends their zone
             _battleAttackerManager = new BattleAttackerManager(
                 new BattleAttackerManagerDependencies
                 {
                     GameBridge = _gameBridge,
                     ZoneBattleManager = _zoneBattleManager,
-                    PedSpawningService = pedSpawningService,
-                    PedDespawnService = pedDespawnService,
-                    DefenderTierService = defenderTierService,
-                    PedBlipService = pedBlipService,
+                    PedSpawningService = spawnServices.PedSpawning,
+                    PedDespawnService = spawnServices.PedDespawn,
+                    DefenderTierService = spawnServices.DefenderTier,
+                    PedBlipService = spawnServices.PedBlip,
                     ZoneService = _zoneService,
                     FactionService = _factionService
                 },
@@ -714,111 +716,98 @@ namespace FactionWars.ScriptHookV
                 CurrentPlayerFactionIdAccessor = () => CurrentPlayerFactionId,
                 NowMs = () => System.Environment.TickCount
             });
+        }
 
-            // Initialize AI manager for AI faction decisions
+        private void InitializeAiAndVictorySystems()
+        {
             var strategies = _container.Resolve<IDictionary<string, IAIStrategy>>();
             _aiManager = new AIManager(_factionService, _zoneService, strategies);
             _aiManager.Start();
             _aiManager.SetPlayerFactionId(CurrentPlayerFactionId);
             _aiManager.OnAIDecision += HandleAIDecision;
 
-            // Wire background battle simulator for AI vs AI combat
             _backgroundBattleSimulator = _container.Resolve<BackgroundBattleSimulator>();
             _aiManager.OnAIDecision += _backgroundBattleSimulator.HandleAIDecision;
-
-            // Initialize AI decision executor
             _aiDecisionExecutor = _container.Resolve<AIDecisionExecutor>();
 
-            // Initialize consolidated AI controller
             _aiController = _container.Resolve<IAIController>();
             _aiController.SetPlayerFactionId(CurrentPlayerFactionId);
             _aiController.Start();
 
-            // Initialize vehicle threat services for anti-vehicle response
             _vehicleThreatService = _container.Resolve<IVehicleThreatService>();
             _antiVehicleResponseService = _container.Resolve<IAntiVehicleResponseService>();
 
-            // Initialize victory manager for victory condition checking
             var victoryConditionService = _container.Resolve<IVictoryConditionService>();
             var notificationService = _container.Resolve<INotificationService>();
             _victoryManager = new VictoryManager(victoryConditionService, _factionService, notificationService);
             _victoryManager.Start();
+        }
 
-            // Initialize HUD renderers for combat and territory display
+        private void InitializeHudAndEventRenderers()
+        {
             _combatHudRenderer = new CombatHudRenderer();
             _territoryIndicatorRenderer = new TerritoryIndicatorRenderer();
 
-            // Initialize play time HUD renderer (only in real game, not tests)
-            // Tests use MockGameBridge, real game uses GameBridge
             if (_gameBridge.GetType().FullName == "FactionWars.ScriptHookV.GameBridge")
-            {
                 _playTimeHudRenderer = new PlayTimeHudRenderer();
-            }
 
-            // Event feed renderer for displaying world events
             _eventFeedRenderer = new EventFeedRenderer(_container.Resolve<IFactionRepository>());
             _eventFeedService = _container.Resolve<IEventFeedService>();
-
-            // Wire territory events to combat manager
             _territoryManager.ZoneEntered += OnZoneEntered;
             _territoryManager.ZoneExited += OnZoneExited;
-
-            // Wire neutral zone claim events
             _territoryManager.NeutralZoneEntered += OnNeutralZoneEntered;
             _territoryManager.ZoneExited += OnZoneExitedForClaim;
+        }
 
-            // Initialize main menu controller for UI
+        private void InitializeMenuControllers(IZoneDefenderAllocationService allocationService)
+        {
             _menuProvider = _container.Resolve<IMenuProvider>();
             _mainMenuController = new MainMenuController(_menuProvider);
-
-            // Initialize submenu controllers
             var playerContext = _container.Resolve<IPlayerContext>();
             var purchaseService = _container.Resolve<ITroopPurchaseService>();
-            // allocationService already resolved above for FriendlyDefenderManager
 
+            InitializeOverviewMenus(allocationService, playerContext);
+            InitializeRecruitmentMenus(playerContext, purchaseService);
+            InitializeResourcesAndSettingsMenus(playerContext);
+            _menuProvider.ItemSelected += OnMainMenuItemSelected;
+        }
+
+        private void InitializeOverviewMenus(
+            IZoneDefenderAllocationService allocationService,
+            IPlayerContext playerContext)
+        {
             _overviewMenuController = new OverviewMenuController(
-                _menuProvider,
-                _factionService,
-                _zoneService,
-                playerContext);
+                _menuProvider, _factionService, _zoneService, playerContext);
             _overviewMenuController.BackRequested += (s, e) => _mainMenuController.OnKeyDown(MainMenuController.MenuToggleKeyCode);
 
             _zoneManagementMenuController = new ZoneManagementMenuController(
-                _menuProvider,
-                _factionService,
-                _zoneService,
-                playerContext,
-                allocationService);
+                _menuProvider, _factionService, _zoneService, playerContext, allocationService);
             _zoneManagementMenuController.BackRequested += (s, e) => _mainMenuController.OnKeyDown(MainMenuController.MenuToggleKeyCode);
+        }
 
-            // Initialize recruitment menu hierarchy
+        private void InitializeRecruitmentMenus(IPlayerContext playerContext, ITroopPurchaseService purchaseService)
+        {
             _recruitmentMenuController = new RecruitmentMenuController(_menuProvider, _gameBridge);
             _recruitmentMenuController.BackRequested += (s, e) => _mainMenuController.OnKeyDown(MainMenuController.MenuToggleKeyCode);
-
-            _defendersMenuController = new DefendersMenuController(
-                _menuProvider,
-                _factionService,
-                purchaseService,
-                playerContext);
+            _defendersMenuController = new DefendersMenuController(_menuProvider, _factionService, purchaseService, playerContext);
             _defendersMenuController.BackRequested += (s, e) => _recruitmentMenuController.Show();
-
             _squadMenuController = new SquadMenuController(
                 new SquadMenuControllerDependencies
                 {
                     MenuProvider = _menuProvider,
                     PurchaseService = purchaseService,
-                    FollowerService = followerService,
+                    FollowerService = _followerService!,
                     PlayerContext = playerContext
                 },
                 _followerManager,
                 _gameBridge);
             _squadMenuController.BackRequested += (s, e) => _recruitmentMenuController.Show();
-
-            // Wire up recruitment submenu navigation
             _recruitmentMenuController.DefendersRequested += (s, e) => _defendersMenuController.Show();
             _recruitmentMenuController.SquadRequested += (s, e) => _squadMenuController.Show();
+        }
 
-            // Initialize resources menu controller
+        private void InitializeResourcesAndSettingsMenus(IPlayerContext playerContext)
+        {
             var resourceModifier = _container.Resolve<IZoneTraitResourceModifier>();
             var supplyLineService = _container.Resolve<ISupplyLineService>();
             _resourcesMenuController = new ResourcesMenuController(new ResourcesMenuControllerDependencies
@@ -833,46 +822,56 @@ namespace FactionWars.ScriptHookV
             });
             _resourcesMenuController.BackRequested += (s, e) => _mainMenuController.OnKeyDown(MainMenuController.MenuToggleKeyCode);
 
-            // Initialize settings menu controller
             _difficultyService = _container.Resolve<IDifficultyService>();
-
-            // Apply initial difficulty settings to resource tick service
             _resourceTickService.SetAiIncomeMultiplier(_difficultyService.Current.AiIncomeMultiplier);
             _resourceTickService.SetTickInterval(_difficultyService.Current.TickIntervalSeconds);
             _resourceTickService.SetPlayerFactionId(CurrentPlayerFactionId);
-
-            // Subscribe to difficulty changes to update resource tick service
             _difficultyService.DifficultyChanged += OnDifficultyChanged;
-
-            _settingsMenuController = new SettingsMenuController(
-                _menuProvider,
-                _difficultyService,
-                _gameBridge);
+            _settingsMenuController = new SettingsMenuController(_menuProvider, _difficultyService, _gameBridge);
             _settingsMenuController.BackRequested += (s, e) => _mainMenuController.OnKeyDown(MainMenuController.MenuToggleKeyCode);
-
-            // Initialize shop menu controller
             _shopMenuController = new ShopMenuController(_menuProvider, _gameBridge);
             _shopMenuController.BackRequested += (s, e) => _mainMenuController.OnKeyDown(MainMenuController.MenuToggleKeyCode);
+        }
 
-            // Wire up main menu item selection to show submenus
-            _menuProvider.ItemSelected += OnMainMenuItemSelected;
+        private void InitializeWorldDataAndEconomy()
+        {
+            var scriptsDir = _gameBridge.GetScriptsDirectory();
+            var zonesFilePath = Path.Combine(scriptsDir, "FactionWars", "zones.json");
+            FileLogger.Info($"Looking for zones at: {zonesFilePath}");
+            _zoneDataLoader.LoadZonesWithFallback(zonesFilePath);
+            FileLogger.Info($"Loaded {_zoneRepository.Count} zones");
 
-            // Wire game-state listeners before the initial load event so both the
-            // controller and telemetry see the startup save name immediately.
-            _gameStateManager = _container.Resolve<IGameStateManager>();
-            _gameStateManager.OnGameLoaded += OnGameLoaded;
-            InitializeTelemetryService();
+            FileLogger.Info("Initializing factions...");
+            _factionInitializer.Initialize();
 
-            // Mark the game as loaded so the state manager begins tracking play time.
-            _gameStateManager.NewGame();
-            _gameStateManager.SetCurrentDifficulty(_difficultyService.Current.Level);
+            FileLogger.Separator("ZONE OWNERSHIP");
+            foreach (var zone in _zoneRepository.GetAll())
+                FileLogger.Zone($"Zone '{zone.Name}' (ID: {zone.Id}) -> Owner: {zone.OwnerFactionId ?? "NONE"}");
 
-            // Per-session GTA flags (e.g. don't drop weapons on death)
-            ConfigureSessionSettings();
+            _mapBlipManager = new MapBlipManager(_gameBridge, _zoneRepository, _factionService);
+            _mapBlipManager.Initialize();
+            _economyManager = new EconomyManager(_resourceTickService, _gameBridge);
+            _economyManager.Start();
+            _economyManager.SetPlayerFactionId(CurrentPlayerFactionId);
+        }
 
-            FileLogger.Separator("INITIALIZATION COMPLETE");
-            FileLogger.Info($"Player faction: {CurrentPlayerFactionId ?? "UNKNOWN"}");
-            FileLogger.Info($"Log file: {FileLogger.LogPath}");
+        private SpawnServices ResolveSpawnServices()
+        {
+            return new SpawnServices
+            {
+                PedSpawning = _container.Resolve<IPedSpawningService>(),
+                PedDespawn = _container.Resolve<IPedDespawnService>(),
+                DefenderTier = _container.Resolve<IDefenderTierService>(),
+                PedBlip = _container.Resolve<IPedBlipService>()
+            };
+        }
+
+        private sealed class SpawnServices
+        {
+            public IPedSpawningService PedSpawning { get; set; } = null!;
+            public IPedDespawnService PedDespawn { get; set; } = null!;
+            public IDefenderTierService DefenderTier { get; set; } = null!;
+            public IPedBlipService PedBlip { get; set; } = null!;
         }
 
         private void InitializeTelemetryService()
@@ -1119,22 +1118,29 @@ namespace FactionWars.ScriptHookV
 
             // Unsubscribe from events
             _characterSwitchDetector.OnCharacterSwitched -= HandleCharacterSwitched;
+            DisposeTelemetry();
+            DisposeMapAndTerritory();
+            StopAiSystems();
+            CleanupCombatManagers();
+            CleanupStateServices();
+        }
 
+        private void DisposeTelemetry()
+        {
             _telemetryService?.Dispose();
             _telemetryService = null;
             if (_container.TryResolve<ITelemetrySink>(out var telemetrySink) && telemetrySink != null)
             {
                 telemetrySink.Dispose();
             }
+        }
 
-            // Stop economy manager
+        private void DisposeMapAndTerritory()
+        {
             _economyManager?.Stop();
             _economyManager = null;
-
-            // Clean up map blips
             _mapBlipManager?.Dispose();
             _mapBlipManager = null;
-
             _zoneBoundaryBlipManager?.Dispose();
             _zoneBoundaryBlipManager = null;
 
@@ -1149,8 +1155,10 @@ namespace FactionWars.ScriptHookV
             }
 
             _defenderRallyController = null;
+        }
 
-            // Unsubscribe from AI events and stop AI manager
+        private void StopAiSystems()
+        {
             if (_aiManager != null && _backgroundBattleSimulator != null)
             {
                 _aiManager.OnAIDecision -= _backgroundBattleSimulator.HandleAIDecision;
@@ -1172,8 +1180,10 @@ namespace FactionWars.ScriptHookV
             // Stop victory manager
             _victoryManager?.Stop();
             _victoryManager = null;
+        }
 
-            // Cleanup zone battle manager
+        private void CleanupCombatManagers()
+        {
             if (_zoneBattleManager != null)
             {
                 _zoneBattleManager.BattleEnded -= OnZoneBattleEnded;
@@ -1199,8 +1209,10 @@ namespace FactionWars.ScriptHookV
             // Clean up battle attacker manager
             _battleAttackerManager?.DespawnAllAttackers();
             _battleAttackerManager = null;
+        }
 
-            // Clean up event feed renderer and service
+        private void CleanupStateServices()
+        {
             _eventFeedRenderer = null;
             _eventFeedService = null;
 
@@ -1386,6 +1398,31 @@ namespace FactionWars.ScriptHookV
         private Vector3 GetOwnedTerritoryLandingPosition(Zone targetZone)
         {
             var center = targetZone.Center;
+            var candidates = GetLandingCandidates(targetZone);
+
+            foreach (var candidate in candidates)
+            {
+                if (!targetZone.Boundary.Contains(candidate))
+                    continue;
+
+                var groundCandidate = new Vector3(
+                    candidate.X,
+                    candidate.Y,
+                    _gameBridge.GetGroundZ(candidate.X, candidate.Y, candidate.Z));
+                if (targetZone.Boundary.Contains(groundCandidate))
+                    return groundCandidate;
+
+                var safeCandidate = _gameBridge.GetSafeCoordForPed(candidate);
+                if (targetZone.Boundary.Contains(safeCandidate))
+                    return safeCandidate;
+            }
+
+            return new Vector3(center.X, center.Y, _gameBridge.GetGroundZ(center.X, center.Y, center.Z));
+        }
+
+        private static List<Vector3> GetLandingCandidates(Zone targetZone)
+        {
+            var center = targetZone.Center;
             var candidates = new List<Vector3>
             {
                 center
@@ -1417,31 +1454,7 @@ namespace FactionWars.ScriptHookV
                 }
             }
 
-            foreach (var candidate in candidates)
-            {
-                if (!targetZone.Boundary.Contains(candidate))
-                {
-                    continue;
-                }
-
-                var groundCandidate = new Vector3(
-                    candidate.X,
-                    candidate.Y,
-                    _gameBridge.GetGroundZ(candidate.X, candidate.Y, candidate.Z));
-                if (targetZone.Boundary.Contains(groundCandidate))
-                {
-                    return groundCandidate;
-                }
-
-                var safeCandidate = _gameBridge.GetSafeCoordForPed(candidate);
-                if (targetZone.Boundary.Contains(safeCandidate))
-                {
-                    return safeCandidate;
-                }
-            }
-
-            var fallbackGround = new Vector3(center.X, center.Y, _gameBridge.GetGroundZ(center.X, center.Y, center.Z));
-            return fallbackGround;
+            return candidates;
         }
 
         private void UpdatePlayerRespawnPlacement()
@@ -1513,20 +1526,10 @@ namespace FactionWars.ScriptHookV
             _backgroundBattleSimulator?.SetPlayerZone(zone.Id);
             _aiController?.SetPlayerZone(zone.Id);
 
-            FileLogger.Zone($"Zone: {zone.Name} (ID: {zone.Id})");
-            FileLogger.Zone($"Zone Owner: {zone.OwnerFactionId ?? "NULL/NONE"}");
-            FileLogger.Zone($"Zone Center: ({zone.Center.X:F1}, {zone.Center.Y:F1}, {zone.Center.Z:F1}), Radius: {zone.Radius}");
+            LogZoneEntry(zone);
 
-            var playerFactionId = CurrentPlayerFactionId;
-            FileLogger.Zone($"Player Faction: {playerFactionId ?? "NULL"}");
-
-            if (string.IsNullOrEmpty(playerFactionId))
-            {
-                FileLogger.Error("No player faction detected!");
-                _gameBridge.ShowNotification("~r~DEBUG: No player faction detected!");
+            if (!TryGetPlayerFactionKey(out var playerFactionKey))
                 return;
-            }
-            var playerFactionKey = playerFactionId!;
 
             // Debug: Show zone info
             _gameBridge.ShowNotification($"~b~Entered:~w~ {zone.Name} (Owner: {zone.OwnerFactionId ?? "NONE"})");
@@ -1540,18 +1543,7 @@ namespace FactionWars.ScriptHookV
             {
                 FileLogger.Combat($"Starting combat in {zone.Name}");
 
-                // Add combat started event to event feed
-                if (_eventFeedService != null)
-                {
-                    var attackerFaction = _factionService.GetFaction(playerFactionKey);
-                    var defenderFaction = _factionService.GetFaction(ownerFactionId!);
-                    var attackerName = attackerFaction?.Name ?? "Player";
-                    var defenderName = defenderFaction?.Name ?? "Defender";
-                    _eventFeedService.AddCombatStarted(
-                        zone.Name,
-                        attackerName,
-                        defenderName);
-                }
+                AddCombatStartedEvent(zone, playerFactionKey, ownerFactionId!);
 
                 // Start combat in enemy zone via ZoneBattleManager.
                 Func<int> aliveCountCallback = () => GetPlayerCombatAliveCount(playerFactionKey);
@@ -1561,17 +1553,7 @@ namespace FactionWars.ScriptHookV
                     FileLogger.Combat($"OnZoneEntered: StartPlayerCombat returned null for zone {zone.Id} — caller skipping.");
                     return;
                 }
-                FileLogger.Combat($"Combat battle created: ID={battle.Id}");
-                FileLogger.Combat($"Defending Faction: {battle.Defender.FactionId}");
-                _gameBridge.ShowNotification($"~r~COMBAT STARTED in:~w~ {zone.Name}");
-
-                // Check for vehicle threat and allocate Elite anti-vehicle units BEFORE spawning
-                // This ensures Elite units are included in the allocation when spawning begins
-                CheckAndRespondToVehicleThreat(zone, ownerFactionId!);
-
-                // Spawn enemy defenders using EnemyDefenderManager (wander + engage behavior)
-                // This includes any Elite units allocated by the vehicle threat response
-                _enemyDefenderManager?.OnEnemyZoneEntered(zone, ownerFactionId!);
+                ActivateEnemyZoneCombat(zone, ownerFactionId!, battle);
             }
             else if (zone.OwnerFactionId == null)
             {
@@ -1588,6 +1570,38 @@ namespace FactionWars.ScriptHookV
             _zoneBattleManager?.OnPlayerEnteredZone(zone);
         }
 
+        private bool TryGetPlayerFactionKey(out string playerFactionKey)
+        {
+            var playerFactionId = CurrentPlayerFactionId;
+            FileLogger.Zone($"Player Faction: {playerFactionId ?? "NULL"}");
+            if (!string.IsNullOrEmpty(playerFactionId))
+            {
+                playerFactionKey = playerFactionId!;
+                return true;
+            }
+
+            FileLogger.Error("No player faction detected!");
+            _gameBridge.ShowNotification("~r~DEBUG: No player faction detected!");
+            playerFactionKey = string.Empty;
+            return false;
+        }
+
+        private static void LogZoneEntry(Zone zone)
+        {
+            FileLogger.Zone($"Zone: {zone.Name} (ID: {zone.Id})");
+            FileLogger.Zone($"Zone Owner: {zone.OwnerFactionId ?? "NULL/NONE"}");
+            FileLogger.Zone($"Zone Center: ({zone.Center.X:F1}, {zone.Center.Y:F1}, {zone.Center.Z:F1}), Radius: {zone.Radius}");
+        }
+
+        private void ActivateEnemyZoneCombat(Zone zone, string ownerFactionId, ZoneBattle battle)
+        {
+            FileLogger.Combat($"Combat battle created: ID={battle.Id}");
+            FileLogger.Combat($"Defending Faction: {battle.Defender.FactionId}");
+            _gameBridge.ShowNotification($"~r~COMBAT STARTED in:~w~ {zone.Name}");
+            CheckAndRespondToVehicleThreat(zone, ownerFactionId);
+            _enemyDefenderManager?.OnEnemyZoneEntered(zone, ownerFactionId);
+        }
+
         /// <summary>
         /// Checks if the player is in a vehicle and responds to vehicle threats by deploying Elite units.
         /// </summary>
@@ -1602,28 +1616,8 @@ namespace FactionWars.ScriptHookV
                 return;
             }
 
-            // Check if player is in a vehicle
-            if (!_gameBridge.IsPlayerInVehicle())
-            {
-                FileLogger.AI("CheckAndRespondToVehicleThreat: Player is not in a vehicle, no threat response needed");
+            if (!TryGetPlayerVehicleModel(out var vehicleModel))
                 return;
-            }
-
-            // Get the player's vehicle
-            int vehicleHandle = _gameBridge.GetPlayerVehicle();
-            if (vehicleHandle <= 0)
-            {
-                FileLogger.AI($"CheckAndRespondToVehicleThreat: Invalid vehicle handle ({vehicleHandle})");
-                return;
-            }
-
-            // Get vehicle model name
-            string vehicleModel = _gameBridge.GetVehicleModelName(vehicleHandle);
-            if (string.IsNullOrEmpty(vehicleModel))
-            {
-                FileLogger.AI("CheckAndRespondToVehicleThreat: Could not get vehicle model name");
-                return;
-            }
 
             FileLogger.AI($"CheckAndRespondToVehicleThreat: Player vehicle detected - model={vehicleModel}");
 
@@ -1652,6 +1646,45 @@ namespace FactionWars.ScriptHookV
             {
                 FileLogger.AI($"CheckAndRespondToVehicleThreat: Failed to allocate Elite units (insufficient funds or reserves)");
             }
+        }
+
+        private void AddCombatStartedEvent(Zone zone, string playerFactionKey, string ownerFactionId)
+        {
+            if (_eventFeedService == null)
+                return;
+
+            var attackerFaction = _factionService.GetFaction(playerFactionKey);
+            var defenderFaction = _factionService.GetFaction(ownerFactionId);
+            var attackerName = attackerFaction?.Name ?? "Player";
+            var defenderName = defenderFaction?.Name ?? "Defender";
+            _eventFeedService.AddCombatStarted(
+                zone.Name,
+                attackerName,
+                defenderName);
+        }
+
+        private bool TryGetPlayerVehicleModel(out string vehicleModel)
+        {
+            vehicleModel = string.Empty;
+            if (!_gameBridge.IsPlayerInVehicle())
+            {
+                FileLogger.AI("CheckAndRespondToVehicleThreat: Player is not in a vehicle, no threat response needed");
+                return false;
+            }
+
+            int vehicleHandle = _gameBridge.GetPlayerVehicle();
+            if (vehicleHandle <= 0)
+            {
+                FileLogger.AI($"CheckAndRespondToVehicleThreat: Invalid vehicle handle ({vehicleHandle})");
+                return false;
+            }
+
+            vehicleModel = _gameBridge.GetVehicleModelName(vehicleHandle);
+            if (!string.IsNullOrEmpty(vehicleModel))
+                return true;
+
+            FileLogger.AI("CheckAndRespondToVehicleThreat: Could not get vehicle model name");
+            return false;
         }
 
         /// <summary>
@@ -1822,24 +1855,21 @@ namespace FactionWars.ScriptHookV
         /// </summary>
         private void OnZoneBattleEnded(ZoneBattle battle, BattleOutcome outcome)
         {
-            _commanderManager?.OnBattleEnded(battle.ZoneId);
+            MarkZoneBattleResolved(battle.ZoneId);
 
             // Mirror of OnZoneBattleStarted's IsContested=true. The
             // TransferZoneOwnership path also clears this, but only fires on
             // capture/neutralize — so a defended outcome (no ownership change)
             // would otherwise leave the blip flashing forever.
-            _zoneService?.SetZoneContested(battle.ZoneId, false);
 
             // Identify the surviving participant (if any). Source of truth for
             // outcome routing in 3-way battles — Attackers[0] may be the wiped one.
-            var winner = battle.Participants.FirstOrDefault(p => p.AliveCount > 0);
-            bool playerWon = winner?.IsPlayer == true;
+            var winner = battle.Participants.FirstOrDefault(p => p.AliveCount > 0); bool playerWon = winner?.IsPlayer == true;
 
             // Resolve names from the participant list rather than the legacy
             // AttackerFactionId getter, which throws when Attackers is empty
             // (e.g. the player retreated as the only attacker).
-            string? someAttackerFactionId =
-                battle.Participants.FirstOrDefault(p => p.Role == BattleRole.Attacker)?.FactionId;
+            string? someAttackerFactionId = battle.Participants.FirstOrDefault(p => p.Role == BattleRole.Attacker)?.FactionId;
             string defenderFactionId = battle.DefenderFactionId;
 
             // Casualty debits only apply to AI factions — player troop count is
@@ -1847,18 +1877,7 @@ namespace FactionWars.ScriptHookV
             // only debit attacker losses if there's still an attacker we know
             // about; if all attackers retreated, their losses are unaccounted
             // (matches prior behaviour for the retreat path).
-            int attackerCasualties = battle.InitialAttackerTroops - battle.TotalAttackerTroops;
-            int defenderCasualties = battle.InitialDefenderTroops - battle.TotalDefenderTroops;
-            if (attackerCasualties > 0
-                && someAttackerFactionId != null
-                && someAttackerFactionId != CurrentPlayerFactionId)
-            {
-                _factionService.LoseTroops(someAttackerFactionId, attackerCasualties);
-            }
-            if (defenderCasualties > 0 && defenderFactionId != CurrentPlayerFactionId)
-            {
-                _factionService.LoseTroops(defenderFactionId, defenderCasualties);
-            }
+            ApplyZoneBattleCasualties(battle, someAttackerFactionId, defenderFactionId);
 
             if (outcome == BattleOutcome.AttackersWon && _zoneService != null && !playerWon)
             {
@@ -1883,13 +1902,7 @@ namespace FactionWars.ScriptHookV
             // the zone via TransferZoneOwnership(zoneId, null). Re-transferring here
             // would defeat Q5.A.
 
-            string attackerName = someAttackerFactionId != null
-                ? (_factionService.GetFaction(someAttackerFactionId)?.Name ?? someAttackerFactionId)
-                : "Attacker";
-            var defenderFaction = _factionService.GetFaction(defenderFactionId);
-            string defenderName = defenderFaction?.Name ?? defenderFactionId;
-            var zone = _zoneService?.GetZone(battle.ZoneId);
-            string zoneName = zone?.Name ?? battle.ZoneId;
+            GetBattleDisplayNames(battle, someAttackerFactionId, defenderFactionId, out var attackerName, out var defenderName, out var zoneName);
 
             if (playerWon)
             {
@@ -1910,6 +1923,40 @@ namespace FactionWars.ScriptHookV
                 _gameBridge.ShowNotification($"~g~[{defenderName}]~w~ defended ~b~{zoneName}~w~ against ~r~[{attackerName}]");
                 FileLogger.Combat($"OnZoneBattleEnded: {defenderName} defended {zoneName} against {attackerName}");
             }
+        }
+
+        private void MarkZoneBattleResolved(string zoneId)
+        {
+            _commanderManager?.OnBattleEnded(zoneId);
+            _zoneService?.SetZoneContested(zoneId, false);
+        }
+
+        private void GetBattleDisplayNames(
+            ZoneBattle battle,
+            string? someAttackerFactionId,
+            string defenderFactionId,
+            out string attackerName,
+            out string defenderName,
+            out string zoneName)
+        {
+            attackerName = someAttackerFactionId != null
+                ? (_factionService.GetFaction(someAttackerFactionId)?.Name ?? someAttackerFactionId)
+                : "Attacker";
+            var defenderFaction = _factionService.GetFaction(defenderFactionId);
+            defenderName = defenderFaction?.Name ?? defenderFactionId;
+            var zone = _zoneService?.GetZone(battle.ZoneId);
+            zoneName = zone?.Name ?? battle.ZoneId;
+        }
+
+        private void ApplyZoneBattleCasualties(ZoneBattle battle, string? someAttackerFactionId, string defenderFactionId)
+        {
+            int attackerCasualties = battle.InitialAttackerTroops - battle.TotalAttackerTroops;
+            int defenderCasualties = battle.InitialDefenderTroops - battle.TotalDefenderTroops;
+            if (attackerCasualties > 0 && someAttackerFactionId != null && someAttackerFactionId != CurrentPlayerFactionId)
+                _factionService.LoseTroops(someAttackerFactionId, attackerCasualties);
+
+            if (defenderCasualties > 0 && defenderFactionId != CurrentPlayerFactionId)
+                _factionService.LoseTroops(defenderFactionId, defenderCasualties);
         }
 
         /// <summary>

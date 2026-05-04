@@ -3,6 +3,7 @@ using FactionWars.AI.Models;
 using FactionWars.Core.Interfaces;
 using FactionWars.Core.Models;
 using FactionWars.Factions.Interfaces;
+using FactionWars.Factions.Models;
 
 namespace FactionWars.AI.Services
 {
@@ -64,26 +65,29 @@ namespace FactionWars.AI.Services
             // Check available Elite units in reserve
             int availableElite = factionState.GetReserveTroops(DefenderTier.Elite);
             int eliteCost = _tierService.GetCost(DefenderTier.Elite);
+            int eliteToDeploy = GetEliteToDeploy(factionId, factionState, requiredRpgCount, availableElite, eliteCost);
 
-            // Calculate how many we need to purchase
+            return AllocateEliteDefenders(factionId, zoneId, eliteToDeploy);
+        }
+
+        private int GetEliteToDeploy(
+            string factionId,
+            FactionState factionState,
+            int requiredRpgCount,
+            int availableElite,
+            int eliteCost)
+        {
             int eliteNeeded = requiredRpgCount;
             int eliteToDeploy = 0;
-
-            // First, use what's available in reserve
             int fromReserve = System.Math.Min(availableElite, eliteNeeded);
             eliteToDeploy += fromReserve;
             eliteNeeded -= fromReserve;
 
-            // If we still need more, try emergency purchase
             while (eliteNeeded > 0)
             {
-                // Check if faction can afford one Elite
                 if (!factionState.CanAfford(eliteCost))
-                {
                     break;
-                }
 
-                // Emergency purchase
                 if (_factionService.SpendCash(factionId, eliteCost) &&
                     _factionService.AddReserveTroops(factionId, DefenderTier.Elite, 1))
                 {
@@ -96,27 +100,21 @@ namespace FactionWars.AI.Services
                 }
             }
 
-            // If we have any Elite to deploy, allocate them
-            if (eliteToDeploy > 0)
-            {
-                // Re-fetch faction state in case it was modified by purchases
-                factionState = _factionService.GetFactionState(factionId);
-                if (factionState == null)
-                {
-                    return 0;
-                }
+            return eliteToDeploy;
+        }
 
-                if (_allocationService.AllocateTroops(factionState, zoneId, DefenderTier.Elite, eliteToDeploy))
-                {
-                    return eliteToDeploy;
-                }
-                else
-                {
-                    return 0;
-                }
-            }
+        private int AllocateEliteDefenders(string factionId, string zoneId, int eliteToDeploy)
+        {
+            if (eliteToDeploy <= 0)
+                return 0;
 
-            return 0;
+            var factionState = _factionService.GetFactionState(factionId);
+            if (factionState == null)
+                return 0;
+
+            return _allocationService.AllocateTroops(factionState, zoneId, DefenderTier.Elite, eliteToDeploy)
+                ? eliteToDeploy
+                : 0;
         }
     }
 }

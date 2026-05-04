@@ -362,8 +362,12 @@ namespace FactionWars.ScriptHookV
         private static void RegisterAIServices(ServiceContainer container)
         {
             var config = container.Resolve<GameConfig>();
+            RegisterAiSupportServices(container, config);
+            RegisterAiExecutionServices(container);
+        }
 
-            // Vehicle threat service - classifies vehicles by threat level
+        private static void RegisterAiSupportServices(ServiceContainer container, GameConfig config)
+        {
             container.RegisterSingleton<IVehicleThreatService>(() =>
                 new VehicleThreatService());
 
@@ -407,26 +411,7 @@ namespace FactionWars.ScriptHookV
 
             // AI strategies dictionary - maps faction IDs to their strategies
             // Each strategy gets CapitalDeploymentService injected for intelligent decision-making
-            container.RegisterSingleton<IDictionary<string, IAIStrategy>>(() =>
-            {
-                var capitalDeploymentService = container.Resolve<ICapitalDeploymentService>();
-
-                var michaelStrategy = new MichaelAIStrategy(config.AI.MichaelAggressiveness, config.AI.MichaelRiskTolerance);
-                michaelStrategy.SetCapitalDeploymentService(capitalDeploymentService);
-
-                var trevorStrategy = new TrevorAIStrategy(config.AI.TrevorAggressiveness, config.AI.TrevorRiskTolerance);
-                trevorStrategy.SetCapitalDeploymentService(capitalDeploymentService);
-
-                var franklinStrategy = new FranklinAIStrategy(config.AI.FranklinAggressiveness, config.AI.FranklinRiskTolerance);
-                franklinStrategy.SetCapitalDeploymentService(capitalDeploymentService);
-
-                return new Dictionary<string, IAIStrategy>
-                {
-                    { "michael", michaelStrategy },
-                    { "trevor", trevorStrategy },
-                    { "franklin", franklinStrategy }
-                };
-            });
+            container.RegisterSingleton<IDictionary<string, IAIStrategy>>(() => CreateStrategies(container, config));
 
             // Register AI recruitment service with capital deployment service for scaled recruitment
             container.RegisterSingleton<IAIRecruitmentService>(() => new AIRecruitmentService(
@@ -434,7 +419,10 @@ namespace FactionWars.ScriptHookV
                 container.Resolve<IAIBudgetService>(),
                 container.Resolve<IDefenderTierService>(),
                 container.Resolve<ICapitalDeploymentService>()));
+        }
 
+        private static void RegisterAiExecutionServices(ServiceContainer container)
+        {
             // Register AI decision executor
             container.RegisterSingleton<AIDecisionExecutor>(() => new AIDecisionExecutor(
                 container.Resolve<IFactionService>(),
@@ -454,6 +442,27 @@ namespace FactionWars.ScriptHookV
                     ZoneBattleManager = container.Resolve<IZoneBattleManager>()
                 },
                 container.Resolve<IAIRecruitmentService>()));
+        }
+
+        private static IDictionary<string, IAIStrategy> CreateStrategies(ServiceContainer container, GameConfig config)
+        {
+            var capitalDeploymentService = container.Resolve<ICapitalDeploymentService>();
+
+            var michaelStrategy = new MichaelAIStrategy(config.AI.MichaelAggressiveness, config.AI.MichaelRiskTolerance);
+            michaelStrategy.SetCapitalDeploymentService(capitalDeploymentService);
+
+            var trevorStrategy = new TrevorAIStrategy(config.AI.TrevorAggressiveness, config.AI.TrevorRiskTolerance);
+            trevorStrategy.SetCapitalDeploymentService(capitalDeploymentService);
+
+            var franklinStrategy = new FranklinAIStrategy(config.AI.FranklinAggressiveness, config.AI.FranklinRiskTolerance);
+            franklinStrategy.SetCapitalDeploymentService(capitalDeploymentService);
+
+            return new Dictionary<string, IAIStrategy>
+            {
+                { "michael", michaelStrategy },
+                { "trevor", trevorStrategy },
+                { "franklin", franklinStrategy }
+            };
         }
 
         private static void RegisterTelemetryServices(ServiceContainer container)

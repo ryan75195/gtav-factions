@@ -113,8 +113,24 @@ namespace FactionWars.ScriptHookV.UI
             var heavyReserve = factionState?.GetReserveTroops(DefenderTier.Heavy) ?? 0;
 
             var menu = new MenuDefinition(OverviewMenuId, "Overview", factionName);
+            AddOverviewItems(menu, zonesOwned, totalZones, victoryPercent, cash, totalReserveTroops,
+                basicReserve, mediumReserve, heavyReserve, militaryStrength);
+            AddBackItem(menu);
+            _menuProvider.ShowMenu(menu);
+        }
 
-            // Add info items (display-only, disabled)
+        private static void AddOverviewItems(
+            MenuDefinition menu,
+            int zonesOwned,
+            int totalZones,
+            int victoryPercent,
+            int cash,
+            int totalReserveTroops,
+            int basicReserve,
+            int mediumReserve,
+            int heavyReserve,
+            int militaryStrength)
+        {
             var zonesItem = new MenuItem(
                 ZonesOwnedItemId,
                 $"Zones: {zonesOwned} / {totalZones}",
@@ -156,15 +172,15 @@ namespace FactionWars.ScriptHookV.UI
                 "Combined power of troops and weapons");
             strengthItem.IsEnabled = false;
             menu.AddItem(strengthItem);
+        }
 
-            // Add navigation item
+        private void AddBackItem(MenuDefinition menu)
+        {
             var backItem = new MenuItem(
                 BackItemId,
                 "Back",
                 "Return to main menu");
             menu.AddItem(backItem);
-
-            _menuProvider.ShowMenu(menu);
         }
 
         /// <summary>

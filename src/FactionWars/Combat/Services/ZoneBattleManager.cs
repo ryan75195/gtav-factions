@@ -99,25 +99,31 @@ namespace FactionWars.Combat.Services
                 return false;
             }
 
-            BattleParticipant newParticipant;
+            var newParticipant = CreateAttackerParticipant(factionId, isPlayer, aliveCountCallback, troops);
+
+            battle.AddParticipant(newParticipant);
+            FileLogger.Combat($"JoinAsAttacker: added '{factionId}' (isPlayer={isPlayer}) to zone '{zoneId}'.");
+            return true;
+        }
+
+        private static BattleParticipant CreateAttackerParticipant(
+            string factionId,
+            bool isPlayer,
+            Func<int>? aliveCountCallback,
+            Dictionary<DefenderTier, int>? troops)
+        {
             if (isPlayer)
             {
                 if (aliveCountCallback == null)
                     throw new ArgumentNullException(nameof(aliveCountCallback),
                         "aliveCountCallback is required when isPlayer is true.");
-                newParticipant = BattleParticipant.ForPlayer(factionId, BattleRole.Attacker, aliveCountCallback);
-            }
-            else
-            {
-                if (troops == null)
-                    throw new ArgumentNullException(nameof(troops),
-                        "troops is required when isPlayer is false.");
-                newParticipant = BattleParticipant.ForAi(factionId, BattleRole.Attacker, troops);
+                return BattleParticipant.ForPlayer(factionId, BattleRole.Attacker, aliveCountCallback);
             }
 
-            battle.AddParticipant(newParticipant);
-            FileLogger.Combat($"JoinAsAttacker: added '{factionId}' (isPlayer={isPlayer}) to zone '{zoneId}'.");
-            return true;
+            if (troops == null)
+                throw new ArgumentNullException(nameof(troops),
+                    "troops is required when isPlayer is false.");
+            return BattleParticipant.ForAi(factionId, BattleRole.Attacker, troops);
         }
 
         /// <inheritdoc />

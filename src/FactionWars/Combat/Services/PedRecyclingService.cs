@@ -69,39 +69,9 @@ namespace FactionWars.Combat.Services
         /// <inheritdoc />
         public PedHandle? RecyclePed(PedHandle pedHandle, string newFactionId, Vector3 newPosition, string? newZoneId)
         {
-            if (pedHandle == null)
-            {
-                throw new ArgumentNullException(nameof(pedHandle));
-            }
-
-            if (newFactionId == null)
-            {
-                throw new ArgumentNullException(nameof(newFactionId));
-            }
-
-            if (string.IsNullOrEmpty(newFactionId))
-            {
-                throw new ArgumentException("Faction ID cannot be empty.", nameof(newFactionId));
-            }
-
-            // Validate the ped handle
-            if (!pedHandle.IsValid)
-            {
-                return null;
-            }
-
-            // Check if the ped is in the pool
-            var poolPed = _pedPool.GetByHandle(pedHandle.Handle);
+            var poolPed = GetRecyclablePoolPed(pedHandle, newFactionId);
             if (poolPed == null)
-            {
                 return null;
-            }
-
-            // Check if the ped is recyclable (dead or marked for deletion)
-            if (!IsRecyclable(poolPed))
-            {
-                return null;
-            }
 
             // Revive the ped if dead
             if (!_gameBridge.IsPedAlive(pedHandle.Handle))
@@ -129,6 +99,32 @@ namespace FactionWars.Combat.Services
             _pedPool.Add(newPedHandle);
 
             return newPedHandle;
+        }
+
+        private PedHandle? GetRecyclablePoolPed(PedHandle pedHandle, string newFactionId)
+        {
+            if (pedHandle == null)
+            {
+                throw new ArgumentNullException(nameof(pedHandle));
+            }
+
+            if (newFactionId == null)
+            {
+                throw new ArgumentNullException(nameof(newFactionId));
+            }
+
+            if (string.IsNullOrEmpty(newFactionId))
+            {
+                throw new ArgumentException("Faction ID cannot be empty.", nameof(newFactionId));
+            }
+
+            if (!pedHandle.IsValid)
+            {
+                return null;
+            }
+
+            var poolPed = _pedPool.GetByHandle(pedHandle.Handle);
+            return poolPed != null && IsRecyclable(poolPed) ? poolPed : null;
         }
 
         /// <inheritdoc />

@@ -149,38 +149,47 @@ namespace FactionWars.ScriptHookV.Managers
             foreach (DefenderTier tier in new[] { DefenderTier.Elite, DefenderTier.Heavy, DefenderTier.Medium, DefenderTier.Basic })
             {
                 if (!battle.AttackerTroops.TryGetValue(tier, out var count) || count <= 0) continue;
-
-                var model = _modelsByTier.TryGetValue(tier, out var m) ? m : "g_m_y_famca_01";
-                var tierConfig = _defenderTierService.GetTierConfig(tier);
-
                 FileLogger.Combat($"BattleAttackerManager: Attempting to spawn {count} {tier} attackers (totalSpawned={totalSpawned}, max={MaxSpawnedAttackers})");
-                for (int i = 0; i < count && totalSpawned < MaxSpawnedAttackers; i++)
-                {
-                    if (!_pedSpawningService.CanSpawn())
-                    {
-                        FileLogger.Combat($"BattleAttackerManager: CanSpawn() returned false, breaking");
-                        break;
-                    }
-
-                    var spawnPos = CalculateRandomSpawnPosition(zone.Center, zone.Radius, random);
-                    var pedHandle = _pedSpawningService.SpawnPed(model, spawnPos, battle.AttackerFactionId, zone.Id);
-                    if (!pedHandle.IsValid)
-                    {
-                        FileLogger.Combat($"BattleAttackerManager: SpawnPed returned invalid handle");
-                        continue;
-                    }
-
-                    // Configure as hostile attacker
-                    ConfigureAttacker(pedHandle.Handle, tierConfig, zone.Center, zone.Radius);
-                    _pedBlipService.CreateBlipForPed(pedHandle.Handle, FactionBlipColor.ForFactionId(battle.AttackerFactionId));
-
-                    // Track ped with its tier
-                    _spawnedPedTierByZone[zone.Id][pedHandle.Handle] = tier;
-                    totalSpawned++;
-                }
+                totalSpawned = SpawnAttackersForTier(zone, battle, tier, count, totalSpawned, random);
             }
 
             FileLogger.Combat($"BattleAttackerManager: Spawned {totalSpawned} enemy attackers in {zone.Id}");
+        }
+
+        private int SpawnAttackersForTier(
+            Zone zone,
+            ZoneBattle battle,
+            DefenderTier tier,
+            int count,
+            int totalSpawned,
+            Random random)
+        {
+            var model = _modelsByTier.TryGetValue(tier, out var m) ? m : "g_m_y_famca_01";
+            var tierConfig = _defenderTierService.GetTierConfig(tier);
+
+            for (int i = 0; i < count && totalSpawned < MaxSpawnedAttackers; i++)
+            {
+                if (!_pedSpawningService.CanSpawn())
+                {
+                    FileLogger.Combat($"BattleAttackerManager: CanSpawn() returned false, breaking");
+                    break;
+                }
+
+                var spawnPos = CalculateRandomSpawnPosition(zone.Center, zone.Radius, random);
+                var pedHandle = _pedSpawningService.SpawnPed(model, spawnPos, battle.AttackerFactionId, zone.Id);
+                if (!pedHandle.IsValid)
+                {
+                    FileLogger.Combat($"BattleAttackerManager: SpawnPed returned invalid handle");
+                    continue;
+                }
+
+                ConfigureAttacker(pedHandle.Handle, tierConfig, zone.Center, zone.Radius);
+                _pedBlipService.CreateBlipForPed(pedHandle.Handle, FactionBlipColor.ForFactionId(battle.AttackerFactionId));
+                _spawnedPedTierByZone[zone.Id][pedHandle.Handle] = tier;
+                totalSpawned++;
+            }
+
+            return totalSpawned;
         }
 
         /// <summary>

@@ -124,8 +124,14 @@ namespace FactionWars.ScriptHookV.UI
             var income = CalculateTotalIncome(factionId, zones);
 
             var menu = new MenuDefinition(ResourcesMenuId, "Resources", factionName);
+            AddResourceSummaryItems(menu, income);
+            AddZoneIncomeItems(menu, income.ZoneIncomes);
+            AddBackItem(menu);
+            _menuProvider.ShowMenu(menu);
+        }
 
-            // Add next tick timer
+        private void AddResourceSummaryItems(MenuDefinition menu, IncomeSummary income)
+        {
             var timeUntilTick = _resourceTickService.TimeUntilNextTick;
             var minutes = (int)(timeUntilTick / 60);
             var seconds = (int)(timeUntilTick % 60);
@@ -165,9 +171,11 @@ namespace FactionWars.ScriptHookV.UI
                 "Income breakdown by territory");
             headerItem.IsEnabled = false;
             menu.AddItem(headerItem);
+        }
 
-            // Add zone income items
-            foreach (var zoneIncome in income.ZoneIncomes)
+        private static void AddZoneIncomeItems(MenuDefinition menu, IEnumerable<ZoneIncomeInfo> zoneIncomes)
+        {
+            foreach (var zoneIncome in zoneIncomes)
             {
                 var efficiencyNote = zoneIncome.Efficiency < 1.0f
                     ? $" ({(int)(zoneIncome.Efficiency * 100)}% efficiency)"
@@ -180,15 +188,15 @@ namespace FactionWars.ScriptHookV.UI
                 zoneItem.IsEnabled = false;
                 menu.AddItem(zoneItem);
             }
+        }
 
-            // Add navigation item
+        private void AddBackItem(MenuDefinition menu)
+        {
             var backItem = new MenuItem(
                 BackItemId,
                 "Back",
                 "Return to main menu");
             menu.AddItem(backItem);
-
-            _menuProvider.ShowMenu(menu);
         }
 
         /// <summary>
