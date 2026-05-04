@@ -13,13 +13,6 @@ namespace FactionWars.ScriptHookV.Persistence
     /// </summary>
     public sealed class NativeSaveWatcher : IDisposable
     {
-        public sealed class SaveEvent : EventArgs
-        {
-            public string Path { get; }
-            public DateTime ModifiedAtUtc { get; }
-            public SaveEvent(string path, DateTime modifiedAtUtc) { Path = path; ModifiedAtUtc = modifiedAtUtc; }
-        }
-
         public event EventHandler<SaveEvent>? OnNativeSaveWritten;
 
         private readonly string _directory;

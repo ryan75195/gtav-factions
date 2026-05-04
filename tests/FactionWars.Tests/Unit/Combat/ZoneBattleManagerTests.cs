@@ -858,7 +858,7 @@ namespace FactionWars.Tests.Unit.Combat
 
             Assert.NotNull(endedBattle);
             Assert.Equal(BattleOutcome.AttackersWon, endedOutcome);
-            Assert.True(endedBattle!.Attackers.Any(p => p.IsPlayer));
+            Assert.Contains(endedBattle!.Attackers, p => p.IsPlayer);
         }
 
         [Fact]
@@ -909,7 +909,7 @@ namespace FactionWars.Tests.Unit.Combat
             var battle = manager.GetBattleForZone("zone_1");
             Assert.NotNull(battle);
             Assert.Equal(2, battle!.Participants.Count);
-            Assert.False(battle.Participants.Any(p => p.IsPlayer));
+            Assert.DoesNotContain(battle.Participants, p => p.IsPlayer);
             Assert.Equal(0, endCount);
         }
 
@@ -974,8 +974,8 @@ namespace FactionWars.Tests.Unit.Combat
 
             Assert.NotNull(battle);
             Assert.Equal(2, battle!.Attackers.Count);
-            Assert.True(battle.Attackers.Any(p => p.IsPlayer));
-            Assert.True(battle.Attackers.Any(p => p.FactionId == "trevor" && !p.IsPlayer));
+            Assert.Contains(battle.Attackers, p => p.IsPlayer);
+            Assert.Contains(battle.Attackers, p => p.FactionId == "trevor" && !p.IsPlayer);
         }
 
         [Fact]
@@ -1030,7 +1030,7 @@ namespace FactionWars.Tests.Unit.Combat
             var battle = manager.GetBattleForZone("zone_1");
             Assert.NotNull(battle);
             Assert.Equal(2, battle!.Attackers.Count);
-            Assert.True(battle.Attackers.Any(p => p.IsPlayer && p.FactionId == "player_faction"));
+            Assert.Contains(battle.Attackers, p => p.IsPlayer && p.FactionId == "player_faction");
         }
 
         [Fact]
