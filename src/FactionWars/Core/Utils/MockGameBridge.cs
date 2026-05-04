@@ -54,6 +54,11 @@ namespace FactionWars.Core.Utils
         public bool IsPlayerDeadValue { get; set; } = false;
 
         /// <summary>
+        /// Gets or sets whether the player can currently be controlled.
+        /// </summary>
+        public bool CanControlCharacterValue { get; set; } = true;
+
+        /// <summary>
         /// Gets or sets the player's money amount.
         /// </summary>
         public int PlayerMoney { get; set; } = 0;
@@ -260,6 +265,11 @@ namespace FactionWars.Core.Utils
 
         public void SetPedPosition(int pedHandle, Vector3 position)
         {
+            if (pedHandle == PlayerPedHandle)
+            {
+                PlayerPosition = position;
+            }
+
             if (_peds.TryGetValue(pedHandle, out var ped))
             {
                 ped.Position = position;
@@ -281,6 +291,8 @@ namespace FactionWars.Core.Utils
         public float GetPlayerHeading() => PlayerHeading;
 
         public bool IsPlayerDead() => IsPlayerDeadValue;
+
+        public bool CanControlCharacter() => CanControlCharacterValue;
 
         public int GetWantedLevel() => WantedLevel;
 

@@ -90,14 +90,19 @@ namespace FactionWars.ScriptHookV
         private bool _isInitialized;
         private bool _characterSwitchInitialized;
         private bool _gameDataInitialized;
+        private bool _hasReadPlayerDeathState;
+        private bool _wasPlayerDead;
+        private string? _pendingOwnedTerritoryFactionId;
+        private string? _pendingOwnedTerritoryReason;
+        private int _pendingOwnedTerritoryAttempts;
+        private bool _pendingOwnedTerritoryLoggedSuccess;
+        private bool _pendingOwnedTerritoryWaitingForControlLogged;
+        private const int OwnedTerritoryPlacementRetryTicks = 300;
 
-        // Threat decay tracking
-        private float _threatDecayTimer = 0f;
         private const float ThreatDecayInterval = 60f;  // Decay every 60 seconds
         private const float ThreatDecayRate = 0.1f;     // 10% decay per interval
 
         // AI recruitment tracking
-        private float _aiRecruitmentTimer = 0f;
         private const float AIRecruitmentInterval = 60f;  // Recruit every 60 seconds (sync with resource ticks)
 
         // Neutral zone claim state
@@ -256,6 +261,7 @@ namespace FactionWars.ScriptHookV
             {
                 InitializeGameData();
                 _gameDataInitialized = true;
+                RequestOwnedTerritoryPlacement(CurrentPlayerFactionId, "initial-load");
             }
 
             // Check for character switches
@@ -274,6 +280,8 @@ namespace FactionWars.ScriptHookV
 
             // Update telemetry snapshot timer after play time has advanced for this frame.
             _telemetryService?.Update(deltaTime);
+
+            UpdatePlayerRespawnPlacement();
 
             // Poll controller input
             PollControllerInput();
@@ -319,7 +327,16 @@ namespace FactionWars.ScriptHookV
             _battleAttackerManager?.Update();
 
             // Update and draw HUD elements
-            UpdateAndDrawHud();
+            try
+            {
+                UpdateAndDrawHud();
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error("UpdateAndDrawHud failed", ex);
+            }
+
+            ProcessPendingOwnedTerritoryPlacement();
         }
 
         /// <summary>
@@ -810,15 +827,15 @@ namespace FactionWars.ScriptHookV
             // Wire up main menu item selection to show submenus
             _menuProvider.ItemSelected += OnMainMenuItemSelected;
 
-            // Mark the game as loaded so the state manager begins tracking play time.
+            // Wire game-state listeners before the initial load event so both the
+            // controller and telemetry see the startup save name immediately.
             _gameStateManager = _container.Resolve<IGameStateManager>();
+            _gameStateManager.OnGameLoaded += OnGameLoaded;
+            InitializeTelemetryService();
+
+            // Mark the game as loaded so the state manager begins tracking play time.
             _gameStateManager.NewGame();
             _gameStateManager.SetCurrentDifficulty(_difficultyService.Current.Level);
-
-            // Subscribe to game state events for difficulty persistence
-            _gameStateManager.OnGameLoaded += OnGameLoaded;
-
-            InitializeTelemetryService();
 
             // Per-session GTA flags (e.g. don't drop weapons on death)
             ConfigureSessionSettings();
@@ -884,21 +901,22 @@ namespace FactionWars.ScriptHookV
         {
             if (string.IsNullOrEmpty(factionId))
                 return;
+            var factionKey = factionId!;
 
             // Clear weapons for fresh start
             _gameBridge.RemoveAllPlayerWeapons();
 
             // Get faction state and sync player's GTA money to faction's cash
-            var factionState = _factionRepository.GetState(factionId);
+            var factionState = _factionRepository.GetState(factionKey);
             if (factionState != null)
             {
                 var factionCash = factionState.Cash;
                 _gameBridge.SetPlayerMoney(factionCash);
-                FileLogger.Info($"SyncPlayerToFactionState: {factionId} - Set cash to faction's ${factionCash:N0}");
+                FileLogger.Info($"SyncPlayerToFactionState: {factionKey} - Set cash to faction's ${factionCash:N0}");
             }
             else
             {
-                FileLogger.Warn($"SyncPlayerToFactionState: No state found for faction {factionId}");
+                FileLogger.Warn($"SyncPlayerToFactionState: No state found for faction {factionKey}");
             }
 
             // Configure weapon persistence
@@ -1180,7 +1198,7 @@ namespace FactionWars.ScriptHookV
             // Dismiss all followers for the old faction when switching characters
             if (!string.IsNullOrEmpty(oldFactionId) && _followerManager != null)
             {
-                _followerManager.DismissAllFollowers(oldFactionId);
+                _followerManager.DismissAllFollowers(oldFactionId!);
             }
 
             // Despawn all friendly defenders and update faction for the new character
@@ -1189,7 +1207,7 @@ namespace FactionWars.ScriptHookV
                 _friendlyDefenderManager.DespawnAllDefenders();
                 if (!string.IsNullOrEmpty(newFactionId))
                 {
-                    _friendlyDefenderManager.SetPlayerFaction(newFactionId);
+                    _friendlyDefenderManager.SetPlayerFaction(newFactionId!);
                 }
             }
 
@@ -1205,7 +1223,8 @@ namespace FactionWars.ScriptHookV
             // Update battle attacker manager faction
             if (!string.IsNullOrEmpty(newFactionId))
             {
-                _battleAttackerManager?.SetPlayerFaction(newFactionId);
+                var factionId = newFactionId!;
+                _battleAttackerManager?.SetPlayerFaction(factionId);
             }
 
             // Update managers with new faction
@@ -1217,6 +1236,7 @@ namespace FactionWars.ScriptHookV
 
             // Sync player state to new faction (clear weapons, set cash to faction capital)
             SyncPlayerToFactionState(newFactionId);
+            RequestOwnedTerritoryPlacement(newFactionId, "character-switch");
 
             // Show notification to player
             var newCharacterName = GetCharacterDisplayName(newFactionId);
@@ -1225,6 +1245,209 @@ namespace FactionWars.ScriptHookV
             // Raise the public event for other systems to respond
             OnCharacterSwitched?.Invoke(oldFactionId, newFactionId);
             FileLogger.Info("HandleCharacterSwitched: Complete");
+        }
+
+        private void RequestOwnedTerritoryPlacement(string? factionId, string reason)
+        {
+            if (string.IsNullOrEmpty(factionId))
+            {
+                return;
+            }
+
+            _pendingOwnedTerritoryFactionId = factionId;
+            _pendingOwnedTerritoryReason = reason;
+            _pendingOwnedTerritoryAttempts = OwnedTerritoryPlacementRetryTicks;
+            _pendingOwnedTerritoryLoggedSuccess = false;
+            _pendingOwnedTerritoryWaitingForControlLogged = false;
+            FileLogger.Info($"RequestOwnedTerritoryPlacement: faction={factionId} reason={reason}");
+        }
+
+        private void ProcessPendingOwnedTerritoryPlacement()
+        {
+            if (_pendingOwnedTerritoryAttempts <= 0 || string.IsNullOrEmpty(_pendingOwnedTerritoryFactionId))
+            {
+                return;
+            }
+
+            if (!_gameBridge.CanControlCharacter())
+            {
+                if (!_pendingOwnedTerritoryWaitingForControlLogged)
+                {
+                    FileLogger.Info($"ProcessPendingOwnedTerritoryPlacement: waiting for player control faction={_pendingOwnedTerritoryFactionId} reason={_pendingOwnedTerritoryReason}");
+                    _pendingOwnedTerritoryWaitingForControlLogged = true;
+                }
+
+                return;
+            }
+
+            _pendingOwnedTerritoryWaitingForControlLogged = false;
+
+            var result = MovePlayerToOwnedTerritory(
+                _pendingOwnedTerritoryFactionId,
+                _pendingOwnedTerritoryReason ?? "unknown",
+                logAlreadyOwned: !_pendingOwnedTerritoryLoggedSuccess);
+
+            if (result == OwnedTerritoryPlacementResult.AlreadyOwned || result == OwnedTerritoryPlacementResult.Moved)
+            {
+                _pendingOwnedTerritoryLoggedSuccess = true;
+            }
+
+            if (result == OwnedTerritoryPlacementResult.NoTarget || result == OwnedTerritoryPlacementResult.NoPlayerPed)
+            {
+                _pendingOwnedTerritoryAttempts = 0;
+                _pendingOwnedTerritoryFactionId = null;
+                _pendingOwnedTerritoryReason = null;
+                return;
+            }
+
+            _pendingOwnedTerritoryAttempts--;
+            if (_pendingOwnedTerritoryAttempts <= 0)
+            {
+                FileLogger.Info($"ProcessPendingOwnedTerritoryPlacement: completed retry window for faction={_pendingOwnedTerritoryFactionId} reason={_pendingOwnedTerritoryReason}");
+                _pendingOwnedTerritoryFactionId = null;
+                _pendingOwnedTerritoryReason = null;
+            }
+        }
+
+        private OwnedTerritoryPlacementResult MovePlayerToOwnedTerritory(string? factionId, string reason, bool logAlreadyOwned)
+        {
+            if (string.IsNullOrEmpty(factionId) || _zoneService == null)
+            {
+                return OwnedTerritoryPlacementResult.NoTarget;
+            }
+
+            var playerPosition = _gameBridge.GetPlayerPosition();
+            var currentZone = _zoneService.GetZoneAtPosition(playerPosition);
+            if (currentZone != null && currentZone.OwnerFactionId == factionId)
+            {
+                if (logAlreadyOwned)
+                {
+                    FileLogger.Info($"MovePlayerToOwnedTerritory: already in owned zone {currentZone.Id} reason={reason}");
+                }
+
+                return OwnedTerritoryPlacementResult.AlreadyOwned;
+            }
+
+            var ownedZones = _zoneService.GetZonesByOwner(factionId)
+                .OrderBy(z => z.IsContested)
+                .ThenBy(z => z.Center.DistanceTo2D(playerPosition))
+                .ToList();
+
+            var targetZone = ownedZones.FirstOrDefault();
+            if (targetZone == null)
+            {
+                FileLogger.Warn($"MovePlayerToOwnedTerritory: no owned zones found for faction {factionId}");
+                return OwnedTerritoryPlacementResult.NoTarget;
+            }
+
+            var landingPosition = GetOwnedTerritoryLandingPosition(targetZone);
+            var playerPed = _gameBridge.GetPlayerPedHandle();
+            if (playerPed <= 0)
+            {
+                FileLogger.Warn("MovePlayerToOwnedTerritory: no valid player ped handle");
+                return OwnedTerritoryPlacementResult.NoPlayerPed;
+            }
+
+            _gameBridge.SetPedPosition(playerPed, landingPosition);
+            FileLogger.Info($"MovePlayerToOwnedTerritory: moved {factionId} player to {targetZone.Name} ({targetZone.Id}) at ({landingPosition.X:F1},{landingPosition.Y:F1},{landingPosition.Z:F1}) reason={reason}");
+            return OwnedTerritoryPlacementResult.Moved;
+        }
+
+        private Vector3 GetOwnedTerritoryLandingPosition(Zone targetZone)
+        {
+            var center = targetZone.Center;
+            var candidates = new List<Vector3>
+            {
+                center
+            };
+
+            float inwardDistance = Math.Max(10f, Math.Min(targetZone.Radius * 0.2f, 40f));
+            float[] distanceFractions = { 0.1f, 0.15f, 0.2f, 0.25f };
+            double[] angles =
+            {
+                0.0,
+                Math.PI / 4.0,
+                Math.PI / 2.0,
+                3.0 * Math.PI / 4.0,
+                Math.PI,
+                5.0 * Math.PI / 4.0,
+                3.0 * Math.PI / 2.0,
+                7.0 * Math.PI / 4.0
+            };
+
+            foreach (float fraction in distanceFractions)
+            {
+                float radius = Math.Min(inwardDistance, targetZone.Radius * fraction);
+                foreach (double angle in angles)
+                {
+                    candidates.Add(new Vector3(
+                        center.X + (float)(Math.Cos(angle) * radius),
+                        center.Y + (float)(Math.Sin(angle) * radius),
+                        center.Z));
+                }
+            }
+
+            foreach (var candidate in candidates)
+            {
+                if (!targetZone.Boundary.Contains(candidate))
+                {
+                    continue;
+                }
+
+                var groundCandidate = new Vector3(
+                    candidate.X,
+                    candidate.Y,
+                    _gameBridge.GetGroundZ(candidate.X, candidate.Y, candidate.Z));
+                if (targetZone.Boundary.Contains(groundCandidate))
+                {
+                    return groundCandidate;
+                }
+
+                var safeCandidate = _gameBridge.GetSafeCoordForPed(candidate);
+                if (targetZone.Boundary.Contains(safeCandidate))
+                {
+                    return safeCandidate;
+                }
+            }
+
+            var fallbackGround = new Vector3(center.X, center.Y, _gameBridge.GetGroundZ(center.X, center.Y, center.Z));
+            return fallbackGround;
+        }
+
+        private void UpdatePlayerRespawnPlacement()
+        {
+            bool isDead;
+            try
+            {
+                isDead = _gameBridge.IsPlayerDead();
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error("UpdatePlayerRespawnPlacement: failed to read player death state", ex);
+                return;
+            }
+
+            if (!_hasReadPlayerDeathState)
+            {
+                _wasPlayerDead = isDead;
+                _hasReadPlayerDeathState = true;
+                return;
+            }
+
+            if (_wasPlayerDead && !isDead)
+            {
+                RequestOwnedTerritoryPlacement(CurrentPlayerFactionId, "respawn");
+            }
+
+            _wasPlayerDead = isDead;
+        }
+
+        private enum OwnedTerritoryPlacementResult
+        {
+            AlreadyOwned,
+            Moved,
+            NoTarget,
+            NoPlayerPed
         }
 
         /// <summary>
@@ -1273,12 +1496,14 @@ namespace FactionWars.ScriptHookV
                 _gameBridge.ShowNotification("~r~DEBUG: No player faction detected!");
                 return;
             }
+            var playerFactionKey = playerFactionId!;
 
             // Debug: Show zone info
             _gameBridge.ShowNotification($"~b~Entered:~w~ {zone.Name} (Owner: {zone.OwnerFactionId ?? "NONE"})");
 
             // Check if this is enemy territory
-            bool isEnemyTerritory = zone.OwnerFactionId != null && zone.OwnerFactionId != playerFactionId;
+            var ownerFactionId = zone.OwnerFactionId;
+            bool isEnemyTerritory = ownerFactionId != null && ownerFactionId != playerFactionKey;
             FileLogger.Zone($"Is Enemy Territory: {isEnemyTerritory}");
 
             if (isEnemyTerritory)
@@ -1288,8 +1513,8 @@ namespace FactionWars.ScriptHookV
                 // Add combat started event to event feed
                 if (_eventFeedService != null)
                 {
-                    var attackerFaction = _factionService.GetFaction(playerFactionId);
-                    var defenderFaction = _factionService.GetFaction(zone.OwnerFactionId!);
+                    var attackerFaction = _factionService.GetFaction(playerFactionKey);
+                    var defenderFaction = _factionService.GetFaction(ownerFactionId!);
                     _eventFeedService.AddCombatStarted(
                         zone.Name,
                         attackerFaction?.Name ?? "Player",
@@ -1297,8 +1522,8 @@ namespace FactionWars.ScriptHookV
                 }
 
                 // Start combat in enemy zone via ZoneBattleManager.
-                Func<int> aliveCountCallback = () => GetPlayerCombatAliveCount(playerFactionId);
-                var battle = _zoneBattleManager.StartPlayerCombat(zone, playerFactionId, aliveCountCallback);
+                Func<int> aliveCountCallback = () => GetPlayerCombatAliveCount(playerFactionKey);
+                var battle = _zoneBattleManager.StartPlayerCombat(zone, playerFactionKey, aliveCountCallback);
                 if (battle == null)
                 {
                     FileLogger.Combat($"OnZoneEntered: StartPlayerCombat returned null for zone {zone.Id} — caller skipping.");
@@ -1310,11 +1535,11 @@ namespace FactionWars.ScriptHookV
 
                 // Check for vehicle threat and allocate Elite anti-vehicle units BEFORE spawning
                 // This ensures Elite units are included in the allocation when spawning begins
-                CheckAndRespondToVehicleThreat(zone, zone.OwnerFactionId!);
+                CheckAndRespondToVehicleThreat(zone, ownerFactionId!);
 
                 // Spawn enemy defenders using EnemyDefenderManager (wander + engage behavior)
                 // This includes any Elite units allocated by the vehicle threat response
-                _enemyDefenderManager?.OnEnemyZoneEntered(zone, zone.OwnerFactionId!);
+                _enemyDefenderManager?.OnEnemyZoneEntered(zone, ownerFactionId!);
             }
             else if (zone.OwnerFactionId == null)
             {

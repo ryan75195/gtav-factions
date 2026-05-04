@@ -1,5 +1,52 @@
 # Project Configuration
 
+## Development Lifecycle
+
+This repo uses local git hooks for basic quality gates. Run this once in each clone:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+Commits are blocked on `main` and `master`. Normal work should happen on feature branches.
+
+Before every commit, `.githooks/pre-commit` runs:
+- `dotnet build FactionWars.sln --no-incremental`
+- `dotnet test tests/FactionWars.Tests/FactionWars.Tests.csproj --filter "FullyQualifiedName~FactionWars.Tests.Unit"`
+
+Run those commands yourself before risky edits. Do not bypass the hook unless the user explicitly asks for it and understands what is being skipped.
+
+## Architecture Guardrails
+
+The mod has one production assembly, but the code is still layered by namespace:
+- `Core`, `Factions`, `Territory`, `Economy`, `Combat`, `AI`, `Telemetry`, `Persistence`, `Performance`, and `UI` contain portable domain logic.
+- `ScriptHookV` is the composition root and native integration layer.
+
+Architecture tests live in `tests/FactionWars.Tests/Unit/Architecture`.
+Custom analyzers live in `src/FactionWars.Analyzers` and run as warnings, not errors.
+
+Rules currently enforced:
+- GTA/NativeUI references stay in `ScriptHookV`.
+- `Core` does not reference `ScriptHookV`.
+- Production code does not reference test-only dependencies.
+
+Analyzer warnings currently report:
+- tuple return types
+- public methods without coverage from matching test fixtures
+- constructors creating disposable dependencies
+- classes with too many public methods
+- constructors with too many parameters
+- nested public types
+- overlong methods
+- `#pragma warning disable` for `CA*` or `CI*` diagnostics
+- skipped/ignored tests
+- chained `?.` plus `??` inside method arguments
+- concrete production types in constructors where an interface would keep coupling lower
+- service-like classes without first-party interfaces
+- multiple public top-level types in one file
+
+When adding native behavior, put it behind `IGameBridge` or a renderer/menu interface first, then test the domain behavior against mocks.
+
 ## Deployment
 
 GTA V installation path: `E:\SteamLibrary\steamapps\common\Grand Theft Auto V\`

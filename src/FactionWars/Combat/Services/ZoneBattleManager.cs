@@ -131,10 +131,12 @@ namespace FactionWars.Combat.Services
             if (aliveCountCallback == null) throw new ArgumentNullException(nameof(aliveCountCallback));
             if (string.IsNullOrEmpty(zone.OwnerFactionId))
                 throw new ArgumentException("Zone must have an owner to start player combat.", nameof(zone));
+            var defenderFactionId = zone.OwnerFactionId!;
+
             if (zone.OwnerFactionId == playerFactionId)
                 throw new ArgumentException("Player cannot attack their own zone.", nameof(zone));
 
-            FileLogger.Combat($"StartPlayerCombat: zone={zone.Id}, player={playerFactionId}, defender={zone.OwnerFactionId}");
+            FileLogger.Combat($"StartPlayerCombat: zone={zone.Id}, player={playerFactionId}, defender={defenderFactionId}");
 
             // Case 2: existing battle — join it.
             if (_battlesByZone.ContainsKey(zone.Id))
@@ -145,12 +147,12 @@ namespace FactionWars.Combat.Services
             }
 
             // Case 1: new battle. Defender troops come from the deployed allocation.
-            var allocation = _allocationService.GetAllocation(zone.OwnerFactionId, zone.Id);
+            var allocation = _allocationService.GetAllocation(defenderFactionId, zone.Id);
             var defenderTroops = allocation != null
                 ? allocation.GetTroopsCopy()
                 : new Dictionary<DefenderTier, int>();
 
-            var defender = BattleParticipant.ForAi(zone.OwnerFactionId, BattleRole.Defender, defenderTroops);
+            var defender = BattleParticipant.ForAi(defenderFactionId, BattleRole.Defender, defenderTroops);
             var attacker = BattleParticipant.ForPlayer(playerFactionId, BattleRole.Attacker, aliveCountCallback);
             var battle = new ZoneBattle(zone.Id,
                 new List<BattleParticipant> { defender, attacker },

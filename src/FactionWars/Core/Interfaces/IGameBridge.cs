@@ -165,6 +165,14 @@ namespace FactionWars.Core.Interfaces
         bool IsPlayerDead();
 
         /// <summary>
+        /// Checks whether the game has returned control of the player character.
+        /// This stays false during switch animations, cutscenes, and some loading
+        /// transitions, so it is a practical gate for safe teleporting.
+        /// </summary>
+        /// <returns>True when the player can be controlled normally.</returns>
+        bool CanControlCharacter();
+
+        /// <summary>
         /// Gets the player's current wanted level (0 = no stars, 5 = max).
         /// Used as a cheap composite signal that police are actively engaging the player.
         /// </summary>

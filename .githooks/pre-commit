@@ -1,0 +1,19 @@
+#!/usr/bin/env sh
+set -eu
+
+ROOT_DIR="$(git rev-parse --show-toplevel)"
+cd "$ROOT_DIR"
+
+BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+if [ "$BRANCH" = "main" ] || [ "$BRANCH" = "master" ]; then
+  echo "Direct commits to $BRANCH are blocked. Create a feature branch first."
+  exit 1
+fi
+
+echo "Building solution before commit..."
+dotnet build FactionWars.sln --no-incremental --nologo --verbosity minimal
+
+echo "Running unit tests before commit..."
+dotnet test tests/FactionWars.Tests/FactionWars.Tests.csproj --no-build --filter "FullyQualifiedName~FactionWars.Tests.Unit" --nologo --verbosity minimal
+
+echo "Unit tests passed."

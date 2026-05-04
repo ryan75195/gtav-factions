@@ -531,6 +531,20 @@ namespace FactionWars.ScriptHookV
         }
 
         /// <inheritdoc />
+        public bool CanControlCharacter()
+        {
+            try
+            {
+                var player = Game.Player;
+                return player != null && player.CanControlCharacter;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <inheritdoc />
         public int GetWantedLevel()
         {
             try

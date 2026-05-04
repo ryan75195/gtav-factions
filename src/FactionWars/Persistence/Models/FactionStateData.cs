@@ -53,7 +53,7 @@ namespace FactionWars.Persistence.Models
             {
                 state.AddZone(zoneId);
             }
-            if (hasReservePool)
+            if (ReservePool != null && ReservePool.Count > 0)
             {
                 foreach (var kvp in ReservePool)
                 {

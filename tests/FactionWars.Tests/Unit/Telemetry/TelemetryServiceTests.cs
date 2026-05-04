@@ -325,6 +325,34 @@ namespace FactionWars.Tests.Unit.Telemetry
         }
 
         [Fact]
+        public void BattleEnded_WhenAttackerParticipantWasRemoved_StillWritesRow()
+        {
+            var battleManager = new Mock<IZoneBattleManager>();
+            using var svc = new TelemetryService(_sink.Object, _factionService.Object,
+                _zoneService.Object, _gameStateManager.Object,
+                new TelemetryServiceOptions
+                {
+                    GetPlayerPedHandle = () => 0,
+                    ZoneBattleManager = battleManager.Object,
+                });
+
+            var attackerTroops = new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 5 } };
+            var defenderTroops = new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 3 } };
+            var battle = new ZoneBattle("trevor", "michael", "zone1", attackerTroops, defenderTroops);
+            battle.RemoveParticipant("trevor");
+
+            battleManager.Raise(m => m.BattleEnded += null, battle, BattleOutcome.DefendersWon);
+
+            _sink.Verify(s => s.WriteBattle(It.Is<BattleEventRow>(r =>
+                r.Type == BattleEventType.Ended
+                && r.ZoneId == "zone1"
+                && r.AttackerFactionId == string.Empty
+                && r.DefenderFactionId == "michael"
+                && r.AttackerTroops == 0
+                && r.DefenderTroops == 3)), Times.Once);
+        }
+
+        [Fact]
         public void OnAIDecision_WritesDecisionRow()
         {
             var aiManager = new AIManager(_factionService.Object, _zoneService.Object,

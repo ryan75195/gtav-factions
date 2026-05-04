@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using FactionWars.AI.Interfaces;
 using FactionWars.Combat.Events;
 using FactionWars.Combat.Interfaces;
@@ -312,11 +313,14 @@ namespace FactionWars.Telemetry.Services
             FileLogger.Debug($"TelemetryService.OnBattleStarted: zone={b.ZoneId} attacker={b.AttackerFactionId} defender={b.DefenderFactionId}");
             try
             {
+                var attackerFactionId = GetBattleFactionId(b, BattleRole.Attacker);
+                var defenderFactionId = GetBattleFactionId(b, BattleRole.Defender);
                 _sink.WriteBattle(new BattleEventRow(
                     DateTime.Now, _gameStateManager.TotalPlayTimeSeconds,
                     BattleEventType.Started, b.ZoneId,
-                    b.AttackerFactionId, b.DefenderFactionId,
-                    b.TotalAttackerTroops, b.TotalDefenderTroops,
+                    attackerFactionId, defenderFactionId,
+                    GetBattleAliveCount(b, BattleRole.Attacker),
+                    GetBattleAliveCount(b, BattleRole.Defender),
                     outcome: null, attackerCasualties: 0, defenderCasualties: 0));
             }
             catch (Exception ex)
@@ -331,14 +335,20 @@ namespace FactionWars.Telemetry.Services
             FileLogger.Debug($"TelemetryService.OnBattleEnded: zone={b.ZoneId} outcome={outcome}");
             try
             {
+                var attackerFactionId = GetBattleFactionId(b, BattleRole.Attacker);
+                var defenderFactionId = GetBattleFactionId(b, BattleRole.Defender);
+                var attackerTroops = GetBattleAliveCount(b, BattleRole.Attacker);
+                var defenderTroops = GetBattleAliveCount(b, BattleRole.Defender);
+                var attackerCasualties = Math.Max(0, b.InitialAttackerTroops - attackerTroops);
+                var defenderCasualties = Math.Max(0, b.InitialDefenderTroops - defenderTroops);
                 _sink.WriteBattle(new BattleEventRow(
                     DateTime.Now, _gameStateManager.TotalPlayTimeSeconds,
                     BattleEventType.Ended, b.ZoneId,
-                    b.AttackerFactionId, b.DefenderFactionId,
-                    b.TotalAttackerTroops, b.TotalDefenderTroops,
+                    attackerFactionId, defenderFactionId,
+                    attackerTroops, defenderTroops,
                     outcome: outcome,
-                    attackerCasualties: b.InitialAttackerTroops - b.TotalAttackerTroops,
-                    defenderCasualties: b.InitialDefenderTroops - b.TotalDefenderTroops));
+                    attackerCasualties: attackerCasualties,
+                    defenderCasualties: defenderCasualties));
             }
             catch (Exception ex)
             {
@@ -545,6 +555,16 @@ namespace FactionWars.Telemetry.Services
                 catch (Exception ex) { FileLogger.Error("TelemetryService: unsubscribe failed", ex); }
             }
             _unsubscribers.Clear();
+        }
+
+        private static string GetBattleFactionId(ZoneBattle battle, BattleRole role)
+        {
+            return battle.Participants.FirstOrDefault(p => p.Role == role)?.FactionId ?? string.Empty;
+        }
+
+        private static int GetBattleAliveCount(ZoneBattle battle, BattleRole role)
+        {
+            return battle.Participants.FirstOrDefault(p => p.Role == role)?.AliveCount ?? 0;
         }
     }
 }
