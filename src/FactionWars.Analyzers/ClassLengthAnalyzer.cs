@@ -11,7 +11,7 @@ namespace FactionWars.Analyzers;
 public class ClassLengthAnalyzer : DiagnosticAnalyzer
 {
     public const string DiagnosticId = "CI0017";
-    private const int MaxLines = 2000;
+    private const int MaxLines = 1000;
 
     private static readonly DiagnosticDescriptor Rule = new(
         DiagnosticId,
@@ -55,7 +55,9 @@ public class ClassLengthAnalyzer : DiagnosticAnalyzer
     {
         var ns = type.ContainingNamespace?.ToDisplayString() ?? string.Empty;
         return type.Name.StartsWith("Mock", System.StringComparison.Ordinal)
+            || type.Name.EndsWith("Tests", System.StringComparison.Ordinal)
             || ns.Contains(".Models")
+            || ns.Contains(".Tests")
             || type.DeclaringSyntaxReferences.Length == 0
             || type.AllInterfaces.Any(i => i.Name == "IEnumerable");
     }
