@@ -551,6 +551,109 @@ namespace FactionWars.Tests.Unit.Telemetry
 
             _sink.Verify(s => s.WriteZoneEvent(It.IsAny<ZoneEventRow>()), Times.Never);
         }
+
+        // ---- Lifecycle match-meta emission tests (Task 12) ----
+
+        [Fact]
+        public void Constructor_EmitsModSessionStart()
+        {
+            using var svc = new TelemetryService(_sink.Object, _factionService.Object,
+                _zoneService.Object, _gameStateManager.Object);
+
+            _sink.Verify(s => s.WriteMatchMeta(It.Is<MatchMetaEventRow>(r =>
+                r.Type == MatchMetaEventType.ModSessionStart)), Times.Once);
+        }
+
+        [Fact]
+        public void Dispose_EmitsModSessionEnd()
+        {
+            var svc = new TelemetryService(_sink.Object, _factionService.Object,
+                _zoneService.Object, _gameStateManager.Object);
+
+            svc.Dispose();
+
+            _sink.Verify(s => s.WriteMatchMeta(It.Is<MatchMetaEventRow>(r =>
+                r.Type == MatchMetaEventType.ModSessionEnd)), Times.Once);
+        }
+
+        [Fact]
+        public void Dispose_Idempotent_ModSessionEndOnlyOnce()
+        {
+            var svc = new TelemetryService(_sink.Object, _factionService.Object,
+                _zoneService.Object, _gameStateManager.Object);
+
+            svc.Dispose();
+            svc.Dispose();
+
+            _sink.Verify(s => s.WriteMatchMeta(It.Is<MatchMetaEventRow>(r =>
+                r.Type == MatchMetaEventType.ModSessionEnd)), Times.Once);
+        }
+
+        [Fact]
+        public void OnGameLoaded_WhenFirstTimeSeen_EmitsMatchStart()
+        {
+            using var svc = new TelemetryService(_sink.Object, _factionService.Object,
+                _zoneService.Object, _gameStateManager.Object,
+                new TelemetryServiceOptions
+                {
+                    IsFirstTimeSeenSave = _ => true,
+                });
+
+            _gameStateManager.Raise(g => g.OnGameLoaded += null,
+                this, new GameStateLoadedEventArgs(slotNumber: 9, saveName: "SGTA0009", success: true));
+
+            _sink.Verify(s => s.WriteMatchMeta(It.Is<MatchMetaEventRow>(r =>
+                r.Type == MatchMetaEventType.MatchStart
+                && r.Details.Contains("SGTA0009"))), Times.Once);
+        }
+
+        [Fact]
+        public void OnGameLoaded_WhenSaveAlreadySeen_DoesNotEmitMatchStart()
+        {
+            using var svc = new TelemetryService(_sink.Object, _factionService.Object,
+                _zoneService.Object, _gameStateManager.Object,
+                new TelemetryServiceOptions
+                {
+                    IsFirstTimeSeenSave = _ => false,
+                });
+
+            _gameStateManager.Raise(g => g.OnGameLoaded += null,
+                this, new GameStateLoadedEventArgs(slotNumber: 9, saveName: "SGTA0009", success: true));
+
+            _sink.Verify(s => s.SetSaveFile("SGTA0009"), Times.Once);
+            _sink.Verify(s => s.WriteMatchMeta(It.Is<MatchMetaEventRow>(r =>
+                r.Type == MatchMetaEventType.MatchStart)), Times.Never);
+        }
+
+        [Fact]
+        public void OnGameLoaded_WhenLoadFailed_DoesNotEmitMatchStart()
+        {
+            using var svc = new TelemetryService(_sink.Object, _factionService.Object,
+                _zoneService.Object, _gameStateManager.Object,
+                new TelemetryServiceOptions
+                {
+                    IsFirstTimeSeenSave = _ => true,
+                });
+
+            _gameStateManager.Raise(g => g.OnGameLoaded += null,
+                this, new GameStateLoadedEventArgs(slotNumber: 9, saveName: "SGTA0009", success: false));
+
+            _sink.Verify(s => s.WriteMatchMeta(It.Is<MatchMetaEventRow>(r =>
+                r.Type == MatchMetaEventType.MatchStart)), Times.Never);
+        }
+
+        [Fact]
+        public void Constructor_WhenSinkThrowsOnWriteMatchMeta_DoesNotPropagate()
+        {
+            _sink.Setup(s => s.WriteMatchMeta(It.IsAny<MatchMetaEventRow>()))
+                .Throws(new InvalidOperationException("boom"));
+
+            // Construction must not propagate the exception thrown from the
+            // ModSessionStart write.
+            var svc = new TelemetryService(_sink.Object, _factionService.Object,
+                _zoneService.Object, _gameStateManager.Object);
+            svc.Dispose();
+        }
     }
 
     /// <summary>

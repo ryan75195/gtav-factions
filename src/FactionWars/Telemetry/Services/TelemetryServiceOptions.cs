@@ -24,6 +24,15 @@ namespace FactionWars.Telemetry.Services
         /// </summary>
         public Func<int>? GetPlayerPedHandle { get; init; }
 
+        /// <summary>
+        /// Predicate returning true when the given save filename has never been seen by the
+        /// telemetry system before (i.e. its per-save folder does not yet exist on disk).
+        /// When supplied, the first OnGameLoaded for a never-seen save emits MatchStart.
+        /// Tests pass a stub; the production wiring (Task 13) supplies a directory-existence check.
+        /// Default null: MatchStart is never emitted.
+        /// </summary>
+        public Func<string, bool>? IsFirstTimeSeenSave { get; init; }
+
         public IZoneBattleManager? ZoneBattleManager { get; init; }
         public AIManager? AIManager { get; init; }
         public IAIController? AIController { get; init; }

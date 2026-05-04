@@ -33,6 +33,7 @@ namespace FactionWars.Telemetry.Services
         private readonly IGameStateManager _gameStateManager;
         private readonly FactionSnapshotBuilder _snapshotBuilder;
         private readonly Func<int> _getPlayerPedHandle;
+        private readonly Func<string, bool> _isFirstTimeSeenSave;
         private readonly List<Action> _unsubscribers = new List<Action>();
         private float _secondsSinceLastSnapshot;
         private bool _disposed;
@@ -64,6 +65,10 @@ namespace FactionWars.Telemetry.Services
             // benign value when no manager is wired up. The validation above guarantees
             // we don't hit that path if BattleAttackerManager is set.
             _getPlayerPedHandle = opts.GetPlayerPedHandle ?? (() => 0);
+
+            // Default to "never first-time" so MatchStart is never emitted unless the host
+            // explicitly supplies a predicate (Task 13 wires a directory-existence check).
+            _isFirstTimeSeenSave = opts.IsFirstTimeSeenSave ?? (_ => false);
 
             // 1. Zone ownership (always subscribed - zoneService is required).
             EventHandler<ZoneOwnershipChangedEventArgs> zoneHandler = OnZoneOwnershipChanged;
@@ -151,6 +156,20 @@ namespace FactionWars.Telemetry.Services
                 opts.DifficultyService.DifficultyChanged += handler;
                 _unsubscribers.Add(() => opts.DifficultyService.DifficultyChanged -= handler);
                 FileLogger.Info("TelemetryService: subscribed to DifficultyChanged");
+            }
+
+            // Emit ModSessionStart AFTER all subscriptions are wired so the row reflects
+            // a fully-initialised service. Wrapped in try/catch so a sink failure here
+            // can't take the constructor (and therefore mod startup) down.
+            try
+            {
+                _sink.WriteMatchMeta(new MatchMetaEventRow(
+                    DateTime.Now, _gameStateManager.TotalPlayTimeSeconds,
+                    MatchMetaEventType.ModSessionStart, string.Empty));
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error("TelemetryService: ModSessionStart write failed", ex);
             }
         }
 
@@ -353,6 +372,22 @@ namespace FactionWars.Telemetry.Services
                 if (e.Success && !string.IsNullOrEmpty(e.SaveName))
                 {
                     _sink.SetSaveFile(e.SaveName);
+
+                    // First time we ever see this save? Emit MatchStart. The predicate
+                    // call sits inside the same try/catch so a misbehaving stub or disk
+                    // I/O failure cannot escape into the game thread.
+                    if (_isFirstTimeSeenSave(e.SaveName))
+                    {
+                        // Mirror OnVictory's JSON encoding so downstream CSV consumers can
+                        // parse details consistently across MatchMeta event types.
+                        var details = Newtonsoft.Json.JsonConvert.SerializeObject(new
+                        {
+                            save = e.SaveName,
+                        });
+                        _sink.WriteMatchMeta(new MatchMetaEventRow(
+                            DateTime.Now, _gameStateManager.TotalPlayTimeSeconds,
+                            MatchMetaEventType.MatchStart, details));
+                    }
                 }
             }
             catch (Exception ex)
@@ -422,6 +457,21 @@ namespace FactionWars.Telemetry.Services
         public void Dispose()
         {
             if (_disposed) return;
+
+            // Emit ModSessionEnd BEFORE setting _disposed=true so the write is not
+            // suppressed by the disposed-guards on other handlers, and BEFORE the
+            // unsubscribe loop so a faulty unsubscriber can't skip the lifecycle row.
+            try
+            {
+                _sink.WriteMatchMeta(new MatchMetaEventRow(
+                    DateTime.Now, _gameStateManager.TotalPlayTimeSeconds,
+                    MatchMetaEventType.ModSessionEnd, string.Empty));
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error("TelemetryService: ModSessionEnd write failed", ex);
+            }
+
             _disposed = true;
             foreach (var u in _unsubscribers)
             {
