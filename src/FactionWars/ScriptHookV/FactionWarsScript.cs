@@ -106,12 +106,12 @@ namespace FactionWars.ScriptHookV
                 _nativeSaveWatcher.OnNativeSaveWritten += HandleNativeSaveWritten;
                 _nativeSaveWatcher.Start();
 
-                GTA.UI.Notification.Show("~b~FactionWars~w~ loaded successfully!");
+                GTA.UI.Notification.PostTicker("~b~FactionWars~w~ loaded successfully!", false, false);
             }
             catch (Exception ex)
             {
                 FileLogger.Error("FactionWarsScript: initialization failed", ex);
-                GTA.UI.Notification.Show($"~r~FactionWars failed to load:~w~ {ex.Message}");
+                GTA.UI.Notification.PostTicker($"~r~FactionWars failed to load:~w~ {ex.Message}", false, false);
             }
         }
 

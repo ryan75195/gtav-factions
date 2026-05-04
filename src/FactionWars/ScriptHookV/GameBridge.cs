@@ -36,7 +36,7 @@ namespace FactionWars.ScriptHookV
                 if (!model.IsValid)
                 {
                     FileLogger.Error($"Model '{modelName}' is not valid!");
-                    GTA.UI.Notification.Show($"~r~Invalid model: {modelName}");
+                    ShowNotification($"~r~Invalid model: {modelName}");
                     return -1;
                 }
 
@@ -57,7 +57,7 @@ namespace FactionWars.ScriptHookV
                 if (!model.IsLoaded)
                 {
                     FileLogger.Error($"Model '{modelName}' failed to load after {waitCounter * 10}ms");
-                    GTA.UI.Notification.Show($"~r~Model failed to load: {modelName}");
+                    ShowNotification($"~r~Model failed to load: {modelName}");
                     return -1;
                 }
 
@@ -141,14 +141,14 @@ namespace FactionWars.ScriptHookV
                 if (ped == null)
                 {
                     FileLogger.Error("World.CreatePed returned null!");
-                    GTA.UI.Notification.Show("~r~Ped creation failed (null)!");
+                    ShowNotification("~r~Ped creation failed (null)!");
                     return -1;
                 }
 
                 if (!ped.Exists())
                 {
                     FileLogger.Error("Ped created but doesn't exist!");
-                    GTA.UI.Notification.Show("~r~Ped creation failed (not exists)!");
+                    ShowNotification("~r~Ped creation failed (not exists)!");
                     return -1;
                 }
 
@@ -166,7 +166,7 @@ namespace FactionWars.ScriptHookV
             catch (Exception ex)
             {
                 FileLogger.Error("Exception in CreatePed", ex);
-                GTA.UI.Notification.Show($"~r~CreatePed error: {ex.Message}");
+                ShowNotification($"~r~CreatePed error: {ex.Message}");
                 return -1;
             }
         }
@@ -384,7 +384,7 @@ namespace FactionWars.ScriptHookV
         {
             try
             {
-                GTA.UI.Notification.Show(message);
+                GTA.UI.Notification.PostTicker(message, false, false);
             }
             catch
             {
@@ -549,7 +549,7 @@ namespace FactionWars.ScriptHookV
         {
             try
             {
-                var level = Game.Player.WantedLevel;
+                var level = Game.Player.Wanted.WantedLevel;
                 if (level > 0)
                     FileLogger.Combat($"GetWantedLevel: player has wanted level {level}");
                 return level;
@@ -752,7 +752,7 @@ namespace FactionWars.ScriptHookV
                 }
 
                 // Get weapon hash from name
-                var weaponHash = (WeaponHash)Game.GenerateHash(weaponName.ToUpperInvariant());
+                var weaponHash = GetWeaponHash(weaponName);
 
                 // Give the weapon with specified ammo and equip it
                 var weapon = player.Weapons.Give(weaponHash, ammo, true, true);
@@ -1096,7 +1096,7 @@ namespace FactionWars.ScriptHookV
                 if (ped == null || !ped.Exists()) return;
 
                 // Get weapon hash from name
-                var weaponHash = (WeaponHash)Game.GenerateHash(weaponName.ToUpperInvariant());
+                var weaponHash = GetWeaponHash(weaponName);
 
                 // Give the weapon with max ammo and equip it
                 var weapon = ped.Weapons.Give(weaponHash, 9999, true, true);
@@ -2185,6 +2185,11 @@ namespace FactionWars.ScriptHookV
         public bool IsControlJustPressed(int control)
         {
             return Game.IsControlJustPressed((GTA.Control)control);
+        }
+
+        private static WeaponHash GetWeaponHash(string weaponName)
+        {
+            return (WeaponHash)StringHash.AtStringHash(weaponName.ToUpperInvariant(), 0);
         }
 
         /// <summary>
