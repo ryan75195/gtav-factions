@@ -2,6 +2,7 @@ using FactionWars.Core.Interfaces;
 using FactionWars.Core.Models;
 using FactionWars.Economy.Interfaces;
 using FactionWars.Factions.Interfaces;
+using FactionWars.Factions.Models;
 using FactionWars.ScriptHookV.Managers;
 using FactionWars.ScriptHookV.Models;
 using FactionWars.UI.Interfaces;
@@ -184,8 +185,18 @@ namespace FactionWars.ScriptHookV.UI
             var factionState = factionId != null ? _factionService.GetFactionState(factionId) : null;
 
             var menu = new MenuDefinition(ArmyMenuId, "Recruitment", "Troops & Followers");
+            AddMoneyItem(menu);
+            AddReserveSummaryItem(menu, factionState);
+            AddPurchaseItems(menu, factionId);
+            AddRecruitmentItems(menu, factionId);
+            AddArmyNavigationItems(menu);
 
-            // Money display
+            _menuProvider.ShowMenu(menu, _lastSelectedItemId);
+            _menuProvider.HoldToRepeatEnabled = true; // Enable hold-to-repeat for troop purchases
+        }
+
+        private void AddMoneyItem(MenuDefinition menu)
+        {
             var playerMoney = _purchaseService.GetPlayerMoney();
             var moneyItem = new MenuItem(
                 MoneyDisplayItemId,
@@ -193,8 +204,10 @@ namespace FactionWars.ScriptHookV.UI
                 "Your available funds");
             moneyItem.IsEnabled = false;
             menu.AddItem(moneyItem);
+        }
 
-            // Reserve pool summary
+        private static void AddReserveSummaryItem(MenuDefinition menu, FactionState? factionState)
+        {
             var basicReserve = factionState?.GetReserveTroops(DefenderTier.Basic) ?? 0;
             var mediumReserve = factionState?.GetReserveTroops(DefenderTier.Medium) ?? 0;
             var heavyReserve = factionState?.GetReserveTroops(DefenderTier.Heavy) ?? 0;
@@ -205,8 +218,10 @@ namespace FactionWars.ScriptHookV.UI
                 "Troops available for deployment");
             reserveItem.IsEnabled = false;
             menu.AddItem(reserveItem);
+        }
 
-            // Purchase section
+        private void AddPurchaseItems(MenuDefinition menu, string? factionId)
+        {
             var basicCost = _purchaseService.GetTroopCost(DefenderTier.Basic);
             var mediumCost = _purchaseService.GetTroopCost(DefenderTier.Medium);
             var heavyCost = _purchaseService.GetTroopCost(DefenderTier.Heavy);
@@ -235,8 +250,13 @@ namespace FactionWars.ScriptHookV.UI
                 "Carbine, full armor");
             purchaseHeavyItem.IsEnabled = canPurchaseHeavy;
             menu.AddItem(purchaseHeavyItem);
+        }
 
-            // Follower section
+        private void AddRecruitmentItems(MenuDefinition menu, string? factionId)
+        {
+            var basicCost = _purchaseService.GetTroopCost(DefenderTier.Basic);
+            var mediumCost = _purchaseService.GetTroopCost(DefenderTier.Medium);
+            var heavyCost = _purchaseService.GetTroopCost(DefenderTier.Heavy);
             var followerCount = factionId != null ? _followerService.GetFollowerCount(factionId) : 0;
             var maxFollowers = _followerService.GetMaxFollowers();
 
@@ -269,22 +289,21 @@ namespace FactionWars.ScriptHookV.UI
                 "Spawns a heavy bodyguard");
             recruitHeavyItem.IsEnabled = canRecruit && _purchaseService.CanAfford(DefenderTier.Heavy, 1);
             menu.AddItem(recruitHeavyItem);
+        }
 
+        private static void AddArmyNavigationItems(MenuDefinition menu)
+        {
             var manageFollowersItem = new MenuItem(
                 ManageFollowersItemId,
                 "Manage Followers",
                 "View and dismiss followers");
             menu.AddItem(manageFollowersItem);
 
-            // Back navigation
             var backItem = new MenuItem(
                 BackItemId,
                 "Back",
                 "Return to main menu");
             menu.AddItem(backItem);
-
-            _menuProvider.ShowMenu(menu, _lastSelectedItemId);
-            _menuProvider.HoldToRepeatEnabled = true; // Enable hold-to-repeat for troop purchases
         }
 
         /// <summary>
@@ -416,48 +435,27 @@ namespace FactionWars.ScriptHookV.UI
                     break;
 
                 case PurchaseBasicItemId:
-                    if (factionId != null)
-                    {
-                        _purchaseService.PurchaseTroops(factionId, DefenderTier.Basic, 1);
-                        ShowArmyMenu();
-                    }
+                    PurchaseTroop(factionId, DefenderTier.Basic);
                     break;
 
                 case PurchaseMediumItemId:
-                    if (factionId != null)
-                    {
-                        _purchaseService.PurchaseTroops(factionId, DefenderTier.Medium, 1);
-                        ShowArmyMenu();
-                    }
+                    PurchaseTroop(factionId, DefenderTier.Medium);
                     break;
 
                 case PurchaseHeavyItemId:
-                    if (factionId != null)
-                    {
-                        _purchaseService.PurchaseTroops(factionId, DefenderTier.Heavy, 1);
-                        ShowArmyMenu();
-                    }
+                    PurchaseTroop(factionId, DefenderTier.Heavy);
                     break;
 
                 case RecruitBasicItemId:
-                    if (factionId != null)
-                    {
-                        RecruitFollower(factionId, DefenderTier.Basic);
-                    }
+                    RecruitFollowerIfFactionSelected(factionId, DefenderTier.Basic);
                     break;
 
                 case RecruitMediumItemId:
-                    if (factionId != null)
-                    {
-                        RecruitFollower(factionId, DefenderTier.Medium);
-                    }
+                    RecruitFollowerIfFactionSelected(factionId, DefenderTier.Medium);
                     break;
 
                 case RecruitHeavyItemId:
-                    if (factionId != null)
-                    {
-                        RecruitFollower(factionId, DefenderTier.Heavy);
-                    }
+                    RecruitFollowerIfFactionSelected(factionId, DefenderTier.Heavy);
                     break;
 
                 case ManageFollowersItemId:
@@ -465,6 +463,21 @@ namespace FactionWars.ScriptHookV.UI
                     ShowFollowerListMenu();
                     break;
             }
+        }
+
+        private void PurchaseTroop(string? factionId, DefenderTier tier)
+        {
+            if (factionId == null)
+                return;
+
+            _purchaseService.PurchaseTroops(factionId, tier, 1);
+            ShowArmyMenu();
+        }
+
+        private void RecruitFollowerIfFactionSelected(string? factionId, DefenderTier tier)
+        {
+            if (factionId != null)
+                RecruitFollower(factionId, tier);
         }
 
         /// <summary>

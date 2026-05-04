@@ -30,95 +30,14 @@ namespace FactionWars.ScriptHookV
 
             try
             {
-                var model = new Model(modelName);
-                FileLogger.Spawn($"Model created: IsValid={model.IsValid}, Hash={model.Hash}");
-
-                if (!model.IsValid)
-                {
-                    FileLogger.Error($"Model '{modelName}' is not valid!");
-                    ShowNotification($"~r~Invalid model: {modelName}");
+                if (!TryLoadPedModel(modelName, out var model))
                     return -1;
-                }
-
-                // Request model with longer timeout
-                model.Request(5000);
-                FileLogger.Spawn($"Model requested, waiting for load...");
-
-                // Wait for model to load (blocking call)
-                int waitCounter = 0;
-                while (!model.IsLoaded && waitCounter < 100)
-                {
-                    Script.Wait(10);
-                    waitCounter++;
-                }
-
-                FileLogger.Spawn($"Model load wait complete: waitCounter={waitCounter}, IsLoaded={model.IsLoaded}");
-
-                if (!model.IsLoaded)
-                {
-                    FileLogger.Error($"Model '{modelName}' failed to load after {waitCounter * 10}ms");
-                    ShowNotification($"~r~Model failed to load: {modelName}");
-                    return -1;
-                }
 
                 // Get ground Z coordinate for proper placement
                 var gtaPosition = new GTA.Math.Vector3(position.X, position.Y, position.Z);
                 FileLogger.Spawn($"Initial position: ({gtaPosition.X:F1}, {gtaPosition.Y:F1}, {gtaPosition.Z:F1})");
 
-                // CRITICAL: Request collision at the spawn location first
-                // GET_GROUND_Z_FOR_3D_COORD fails when collisions aren't loaded
-                Function.Call(Hash.REQUEST_COLLISION_AT_COORD, position.X, position.Y, position.Z);
-
-                // Wait a bit for collision to load
-                int collisionWait = 0;
-                while (!Function.Call<bool>(Hash.HAS_COLLISION_LOADED_AROUND_ENTITY, Game.Player.Character.Handle) && collisionWait < 10)
-                {
-                    Script.Wait(10);
-                    collisionWait++;
-                }
-                FileLogger.Spawn($"Collision request complete after {collisionWait * 10}ms");
-
-                // Try to get ground Z at position using native with OutputArgument
-                float groundZ = 0f;
-                bool gotGround = false;
-                var outArg = new OutputArgument();
-                gotGround = Function.Call<bool>(Hash.GET_GROUND_Z_FOR_3D_COORD,
-                    position.X, position.Y, position.Z + 100f,
-                    outArg,
-                    false,  // ignoreWater
-                    false); // ignoreDistToWaterLevelCheck
-
-                if (gotGround)
-                {
-                    groundZ = outArg.GetResult<float>();
-                }
-                FileLogger.Spawn($"Ground height check: success={gotGround}, groundZ={groundZ:F1}");
-
-                if (gotGround && groundZ > 0)
-                {
-                    // IMPORTANT: Don't add offset - World.CreatePed may already adjust Z
-                    // Spawn at exact ground level, game will place ped properly
-                    gtaPosition.Z = groundZ;
-                    FileLogger.Spawn($"Adjusted Z to ground: {gtaPosition.Z:F1}");
-                }
-                else
-                {
-                    // Fallback: use player's Z as reference if nearby
-                    var fallbackPlayerPos = Game.Player.Character.Position;
-                    float distToPlayer = (float)Math.Sqrt(
-                        Math.Pow(position.X - fallbackPlayerPos.X, 2) +
-                        Math.Pow(position.Y - fallbackPlayerPos.Y, 2));
-
-                    if (distToPlayer < 300f)
-                    {
-                        gtaPosition.Z = fallbackPlayerPos.Z;
-                        FileLogger.Spawn($"Using player Z as fallback: {gtaPosition.Z:F1}");
-                    }
-                    else
-                    {
-                        FileLogger.Warn($"Could not get ground height, using original Z={gtaPosition.Z:F1}");
-                    }
-                }
+                bool gotGround = TryAdjustPedSpawnHeight(position, ref gtaPosition, out var groundZ);
 
                 // Create ped facing player
                 var playerPos = Game.Player.Character.Position;
@@ -138,19 +57,8 @@ namespace FactionWars.ScriptHookV
 
                 model.MarkAsNoLongerNeeded();
 
-                if (ped == null)
-                {
-                    FileLogger.Error("World.CreatePed returned null!");
-                    ShowNotification("~r~Ped creation failed (null)!");
+                if (!ValidateCreatedPed(ped))
                     return -1;
-                }
-
-                if (!ped.Exists())
-                {
-                    FileLogger.Error("Ped created but doesn't exist!");
-                    ShowNotification("~r~Ped creation failed (not exists)!");
-                    return -1;
-                }
 
                 FileLogger.Spawn($"Ped created successfully: Handle={ped.Handle}, Health={ped.Health}");
 
@@ -828,52 +736,9 @@ namespace FactionWars.ScriptHookV
                 var defenderEnemyGroup = World.AddRelationshipGroup("DEFENDER_ENEMIES");
                 playerGroup.SetRelationshipBetweenGroups(defenderEnemyGroup, Relationship.Hate, true);
 
-                // Add to player's ped group so they move together
-                var pedGroup = player.PedGroup;
-                if (pedGroup != null)
-                {
-                    pedGroup.Add(ped, false);
-                    FileLogger.Info($"Added ped {pedHandle} to player's ped group");
-                }
-                else
-                {
-                    // Create a new group if player doesn't have one
-                    pedGroup = new PedGroup();
-                    pedGroup.Add(player, true); // Player is leader
-                    pedGroup.Add(ped, false);
-                    FileLogger.Info($"Created new ped group with player as leader");
-                }
+                AddPedToPlayerGroup(player, ped, pedHandle);
 
-                // Configure ped for bodyguard behavior
-                ped.IsPersistent = true;
-                ped.KeepTaskWhenMarkedAsNoLongerNeeded = true;
-                ped.BlockPermanentEvents = false; // Allow them to react to combat
-                ped.CanSwitchWeapons = true;
-
-                // Set combat attributes for aggressive defense
-                Function.Call(Hash.SET_PED_COMBAT_ATTRIBUTES, ped.Handle, 46, true);  // BF_CanFightArmedPedsWhenNotArmed
-                Function.Call(Hash.SET_PED_COMBAT_ATTRIBUTES, ped.Handle, 5, true);   // BF_CanUseCover
-                Function.Call(Hash.SET_PED_COMBAT_ATTRIBUTES, ped.Handle, 0, false);  // BF_CanUseCoverShootOnlyWhenAimingAtTarget - false for more aggressive
-                Function.Call(Hash.SET_PED_COMBAT_ATTRIBUTES, ped.Handle, 2, true);   // BF_CanDoDrivebys
-                Function.Call(Hash.SET_PED_COMBAT_ATTRIBUTES, ped.Handle, 3, true);   // BF_CanLeaveVehicle
-                Function.Call(Hash.SET_PED_COMBAT_ATTRIBUTES, ped.Handle, 20, true);  // BF_CanTauntInVehicle
-                Function.Call(Hash.SET_PED_COMBAT_ATTRIBUTES, ped.Handle, 1, true);   // BF_CanBeTargetedWhenInjured
-                Function.Call(Hash.SET_PED_COMBAT_ATTRIBUTES, ped.Handle, 52, true);  // BF_CanBeTargetedByScriptedPeds
-
-                // Set combat ability and range
-                Function.Call(Hash.SET_PED_COMBAT_ABILITY, ped.Handle, 2); // Professional
-                Function.Call(Hash.SET_PED_COMBAT_RANGE, ped.Handle, 2);   // Far
-                Function.Call(Hash.SET_PED_COMBAT_MOVEMENT, ped.Handle, 2); // Offensive
-
-                // Set firing pattern
-                ped.FiringPattern = FiringPattern.FullAuto;
-
-                // Register as group member
-                Function.Call(Hash.SET_PED_AS_GROUP_MEMBER, ped.Handle, Function.Call<int>(Hash.GET_PLAYER_GROUP, Game.Player.Handle));
-
-                // Use TASK_COMBAT_HATED_TARGETS_AROUND_PED to fight any hostile peds nearby
-                // This makes them automatically engage enemies
-                Function.Call(Hash.TASK_COMBAT_HATED_TARGETS_AROUND_PED, ped.Handle, 100f, 0);
+                ConfigureFollowerCombat(ped);
 
                 FileLogger.Info($"Follower {pedHandle} configured: combat and follow behavior set");
             }
@@ -1620,27 +1485,7 @@ namespace FactionWars.ScriptHookV
                 friendlyDefendersGroup.SetRelationshipBetweenGroups(defenderEnemyGroup, Relationship.Hate, true);
                 FileLogger.AI($"SetPedAsFriendly: Relationship groups configured (Companion to player, Hate to enemies)");
 
-                // Configure ped for patrol + engage behavior
-                ped.IsPersistent = true;
-                ped.KeepTaskWhenMarkedAsNoLongerNeeded = true;
-                ped.BlockPermanentEvents = false; // Allow reaction to events
-
-                // CRITICAL: Prevent ped from becoming hostile when damaged by player
-                Function.Call(Hash.SET_PED_CONFIG_FLAG, ped.Handle, 42, true);  // CPED_CONFIG_FLAG_NeverLeavesGroup
-                Function.Call(Hash.SET_PED_FLEE_ATTRIBUTES, ped.Handle, 0, false); // Don't flee from anything
-
-                // Enable combat attributes
-                Function.Call(Hash.SET_PED_COMBAT_ATTRIBUTES, ped.Handle, 46, true);  // CanFightArmedPedsWhenNotArmed
-                Function.Call(Hash.SET_PED_COMBAT_ATTRIBUTES, ped.Handle, 5, true);   // CanUseCover
-                Function.Call(Hash.SET_PED_COMBAT_ATTRIBUTES, ped.Handle, 2, true);   // CanDoDrivebys
-                Function.Call(Hash.SET_PED_COMBAT_ATTRIBUTES, ped.Handle, 1, false);  // BF_CanBeTargettedByPlayer = false (won't retaliate)
-
-                // Set combat ability and range
-                Function.Call(Hash.SET_PED_COMBAT_ABILITY, ped.Handle, 2); // Professional
-                Function.Call(Hash.SET_PED_COMBAT_RANGE, ped.Handle, 2);   // Far
-
-                // Set alertness high so they notice enemies while wandering
-                Function.Call(Hash.SET_PED_ALERTNESS, ped.Handle, 3); // Full alertness
+                ConfigureFriendlyDefenderPed(ped);
 
                 FileLogger.AI($"SetPedAsFriendly: COMPLETED for ped {pedHandle} - persistent, combat configured, alertness=3");
             }
@@ -1954,43 +1799,11 @@ namespace FactionWars.ScriptHookV
 
             try
             {
-                var model = new Model(modelName);
-
-                if (!model.IsValid)
-                {
-                    FileLogger.Error($"CreateVehicle: Model '{modelName}' is not valid");
+                if (!TryLoadModel(modelName, "CreateVehicle", out var model))
                     return -1;
-                }
-
-                // Request model with timeout
-                model.Request(5000);
-
-                // Wait for model to load
-                int waitCounter = 0;
-                while (!model.IsLoaded && waitCounter < 100)
-                {
-                    Script.Wait(10);
-                    waitCounter++;
-                }
-
-                if (!model.IsLoaded)
-                {
-                    FileLogger.Error($"CreateVehicle: Model '{modelName}' failed to load");
-                    return -1;
-                }
 
                 var gtaPosition = new GTA.Math.Vector3(position.X, position.Y, position.Z);
-
-                // Get ground Z for proper placement
-                var outArg = new OutputArgument();
-                bool gotGround = Function.Call<bool>(Hash.GET_GROUND_Z_FOR_3D_COORD,
-                    position.X, position.Y, position.Z + 100f,
-                    outArg, false, false);
-
-                if (gotGround)
-                {
-                    gtaPosition.Z = outArg.GetResult<float>();
-                }
+                gtaPosition.Z = GetVehicleSpawnZ(position, gtaPosition.Z);
 
                 var vehicle = World.CreateVehicle(model, gtaPosition);
                 model.MarkAsNoLongerNeeded();
@@ -2012,6 +1825,190 @@ namespace FactionWars.ScriptHookV
                 FileLogger.Error("CreateVehicle exception", ex);
                 return -1;
             }
+        }
+
+        private static void AddPedToPlayerGroup(Ped player, Ped ped, int pedHandle)
+        {
+            var pedGroup = player.PedGroup;
+            if (pedGroup != null)
+            {
+                pedGroup.Add(ped, false);
+                FileLogger.Info($"Added ped {pedHandle} to player's ped group");
+                return;
+            }
+
+            pedGroup = new PedGroup();
+            pedGroup.Add(player, true);
+            pedGroup.Add(ped, false);
+            FileLogger.Info($"Created new ped group with player as leader");
+        }
+
+        private bool ValidateCreatedPed(Ped? ped)
+        {
+            if (ped == null)
+            {
+                FileLogger.Error("World.CreatePed returned null!");
+                ShowNotification("~r~Ped creation failed (null)!");
+                return false;
+            }
+
+            if (ped.Exists())
+                return true;
+
+            FileLogger.Error("Ped created but doesn't exist!");
+            ShowNotification("~r~Ped creation failed (not exists)!");
+            return false;
+        }
+
+        private static void ConfigureFriendlyDefenderPed(Ped ped)
+        {
+            ped.IsPersistent = true;
+            ped.KeepTaskWhenMarkedAsNoLongerNeeded = true;
+            ped.BlockPermanentEvents = false;
+            Function.Call(Hash.SET_PED_CONFIG_FLAG, ped.Handle, 42, true);
+            Function.Call(Hash.SET_PED_FLEE_ATTRIBUTES, ped.Handle, 0, false);
+            Function.Call(Hash.SET_PED_COMBAT_ATTRIBUTES, ped.Handle, 46, true);
+            Function.Call(Hash.SET_PED_COMBAT_ATTRIBUTES, ped.Handle, 5, true);
+            Function.Call(Hash.SET_PED_COMBAT_ATTRIBUTES, ped.Handle, 2, true);
+            Function.Call(Hash.SET_PED_COMBAT_ATTRIBUTES, ped.Handle, 1, false);
+            Function.Call(Hash.SET_PED_COMBAT_ABILITY, ped.Handle, 2);
+            Function.Call(Hash.SET_PED_COMBAT_RANGE, ped.Handle, 2);
+            Function.Call(Hash.SET_PED_ALERTNESS, ped.Handle, 3);
+        }
+
+        private static void ConfigureFollowerCombat(Ped ped)
+        {
+            ped.IsPersistent = true;
+            ped.KeepTaskWhenMarkedAsNoLongerNeeded = true;
+            ped.BlockPermanentEvents = false;
+            ped.CanSwitchWeapons = true;
+            Function.Call(Hash.SET_PED_COMBAT_ATTRIBUTES, ped.Handle, 46, true);
+            Function.Call(Hash.SET_PED_COMBAT_ATTRIBUTES, ped.Handle, 5, true);
+            Function.Call(Hash.SET_PED_COMBAT_ATTRIBUTES, ped.Handle, 0, false);
+            Function.Call(Hash.SET_PED_COMBAT_ATTRIBUTES, ped.Handle, 2, true);
+            Function.Call(Hash.SET_PED_COMBAT_ATTRIBUTES, ped.Handle, 3, true);
+            Function.Call(Hash.SET_PED_COMBAT_ATTRIBUTES, ped.Handle, 20, true);
+            Function.Call(Hash.SET_PED_COMBAT_ATTRIBUTES, ped.Handle, 1, true);
+            Function.Call(Hash.SET_PED_COMBAT_ATTRIBUTES, ped.Handle, 52, true);
+            Function.Call(Hash.SET_PED_COMBAT_ABILITY, ped.Handle, 2);
+            Function.Call(Hash.SET_PED_COMBAT_RANGE, ped.Handle, 2);
+            Function.Call(Hash.SET_PED_COMBAT_MOVEMENT, ped.Handle, 2);
+            ped.FiringPattern = FiringPattern.FullAuto;
+            Function.Call(Hash.SET_PED_AS_GROUP_MEMBER, ped.Handle, Function.Call<int>(Hash.GET_PLAYER_GROUP, Game.Player.Handle));
+            Function.Call(Hash.TASK_COMBAT_HATED_TARGETS_AROUND_PED, ped.Handle, 100f, 0);
+        }
+
+        private static bool TryAdjustPedSpawnHeight(
+            DomainVector3 position,
+            ref GTA.Math.Vector3 gtaPosition,
+            out float groundZ)
+        {
+            Function.Call(Hash.REQUEST_COLLISION_AT_COORD, position.X, position.Y, position.Z);
+
+            int collisionWait = 0;
+            while (!Function.Call<bool>(Hash.HAS_COLLISION_LOADED_AROUND_ENTITY, Game.Player.Character.Handle) && collisionWait < 10)
+            {
+                Script.Wait(10);
+                collisionWait++;
+            }
+            FileLogger.Spawn($"Collision request complete after {collisionWait * 10}ms");
+
+            var outArg = new OutputArgument();
+            bool gotGround = Function.Call<bool>(Hash.GET_GROUND_Z_FOR_3D_COORD,
+                position.X, position.Y, position.Z + 100f, outArg, false, false);
+            groundZ = gotGround ? outArg.GetResult<float>() : 0f;
+            FileLogger.Spawn($"Ground height check: success={gotGround}, groundZ={groundZ:F1}");
+
+            if (gotGround && groundZ > 0)
+            {
+                gtaPosition.Z = groundZ;
+                FileLogger.Spawn($"Adjusted Z to ground: {gtaPosition.Z:F1}");
+                return true;
+            }
+
+            ApplyPlayerHeightFallback(position, ref gtaPosition);
+            return false;
+        }
+
+        private static void ApplyPlayerHeightFallback(DomainVector3 position, ref GTA.Math.Vector3 gtaPosition)
+        {
+            var fallbackPlayerPos = Game.Player.Character.Position;
+            float distToPlayer = (float)Math.Sqrt(
+                Math.Pow(position.X - fallbackPlayerPos.X, 2) +
+                Math.Pow(position.Y - fallbackPlayerPos.Y, 2));
+
+            if (distToPlayer < 300f)
+            {
+                gtaPosition.Z = fallbackPlayerPos.Z;
+                FileLogger.Spawn($"Using player Z as fallback: {gtaPosition.Z:F1}");
+            }
+            else
+            {
+                FileLogger.Warn($"Could not get ground height, using original Z={gtaPosition.Z:F1}");
+            }
+        }
+
+        private bool TryLoadPedModel(string modelName, out Model model)
+        {
+            model = new Model(modelName);
+            FileLogger.Spawn($"Model created: IsValid={model.IsValid}, Hash={model.Hash}");
+
+            if (!model.IsValid)
+            {
+                FileLogger.Error($"Model '{modelName}' is not valid!");
+                ShowNotification($"~r~Invalid model: {modelName}");
+                return false;
+            }
+
+            model.Request(5000);
+            FileLogger.Spawn($"Model requested, waiting for load...");
+            int waitCounter = 0;
+            while (!model.IsLoaded && waitCounter < 100)
+            {
+                Script.Wait(10);
+                waitCounter++;
+            }
+
+            FileLogger.Spawn($"Model load wait complete: waitCounter={waitCounter}, IsLoaded={model.IsLoaded}");
+            if (model.IsLoaded)
+                return true;
+
+            FileLogger.Error($"Model '{modelName}' failed to load after {waitCounter * 10}ms");
+            ShowNotification($"~r~Model failed to load: {modelName}");
+            return false;
+        }
+
+        private static bool TryLoadModel(string modelName, string logPrefix, out Model model)
+        {
+            model = new Model(modelName);
+            if (!model.IsValid)
+            {
+                FileLogger.Error($"{logPrefix}: Model '{modelName}' is not valid");
+                return false;
+            }
+
+            model.Request(5000);
+            int waitCounter = 0;
+            while (!model.IsLoaded && waitCounter < 100)
+            {
+                Script.Wait(10);
+                waitCounter++;
+            }
+
+            if (model.IsLoaded)
+                return true;
+
+            FileLogger.Error($"{logPrefix}: Model '{modelName}' failed to load");
+            return false;
+        }
+
+        private static float GetVehicleSpawnZ(DomainVector3 position, float fallbackZ)
+        {
+            var outArg = new OutputArgument();
+            bool gotGround = Function.Call<bool>(Hash.GET_GROUND_Z_FOR_3D_COORD,
+                position.X, position.Y, position.Z + 100f,
+                outArg, false, false);
+            return gotGround ? outArg.GetResult<float>() : fallbackZ;
         }
 
         /// <inheritdoc />
@@ -2113,44 +2110,7 @@ namespace FactionWars.ScriptHookV
                     return weapons;
                 }
 
-                // Common weapons to check - GTA V has many weapons, we check the most common ones
-                var weaponHashes = new[]
-                {
-                    // Melee
-                    WeaponHash.Knife, WeaponHash.Nightstick, WeaponHash.Hammer, WeaponHash.Bat,
-                    WeaponHash.GolfClub, WeaponHash.Crowbar, WeaponHash.Bottle, WeaponHash.SwitchBlade,
-                    WeaponHash.Dagger, WeaponHash.Hatchet, WeaponHash.Machete, WeaponHash.Flashlight,
-                    WeaponHash.KnuckleDuster, WeaponHash.PoolCue, WeaponHash.Wrench, WeaponHash.BattleAxe,
-                    // Handguns
-                    WeaponHash.Pistol, WeaponHash.CombatPistol, WeaponHash.APPistol, WeaponHash.Pistol50,
-                    WeaponHash.SNSPistol, WeaponHash.HeavyPistol, WeaponHash.VintagePistol, WeaponHash.MarksmanPistol,
-                    WeaponHash.Revolver, WeaponHash.DoubleActionRevolver, WeaponHash.FlareGun, WeaponHash.StunGun,
-                    WeaponHash.CeramicPistol, WeaponHash.NavyRevolver, WeaponHash.PericoPistol,
-                    // SMG
-                    WeaponHash.MicroSMG, WeaponHash.SMG, WeaponHash.AssaultSMG, WeaponHash.CombatPDW,
-                    WeaponHash.MachinePistol, WeaponHash.MiniSMG, WeaponHash.Gusenberg,
-                    // Shotguns
-                    WeaponHash.PumpShotgun, WeaponHash.SawnOffShotgun, WeaponHash.AssaultShotgun,
-                    WeaponHash.BullpupShotgun, WeaponHash.HeavyShotgun, WeaponHash.DoubleBarrelShotgun,
-                    WeaponHash.SweeperShotgun, WeaponHash.CombatShotgun,
-                    // Assault Rifles
-                    WeaponHash.AssaultRifle, WeaponHash.CarbineRifle, WeaponHash.AdvancedRifle,
-                    WeaponHash.SpecialCarbine, WeaponHash.BullpupRifle, WeaponHash.CompactRifle,
-                    WeaponHash.MilitaryRifle, WeaponHash.HeavyRifle,
-                    // MG
-                    WeaponHash.MG, WeaponHash.CombatMG, WeaponHash.Gusenberg,
-                    // Sniper
-                    WeaponHash.SniperRifle, WeaponHash.HeavySniper, WeaponHash.MarksmanRifle,
-                    // Heavy
-                    WeaponHash.RPG, WeaponHash.GrenadeLauncher, WeaponHash.Minigun, WeaponHash.Firework,
-                    WeaponHash.Railgun, WeaponHash.HomingLauncher, WeaponHash.CompactGrenadeLauncher,
-                    // Throwables
-                    WeaponHash.Grenade, WeaponHash.SmokeGrenade, WeaponHash.BZGas, WeaponHash.Molotov,
-                    WeaponHash.StickyBomb, WeaponHash.ProximityMine, WeaponHash.Snowball, WeaponHash.PipeBomb,
-                    WeaponHash.Ball, WeaponHash.Flare
-                };
-
-                foreach (var weaponHash in weaponHashes)
+                foreach (var weaponHash in GetCommonWeaponHashes())
                 {
                     if (player.Weapons.HasWeapon(weaponHash))
                     {
@@ -2173,6 +2133,36 @@ namespace FactionWars.ScriptHookV
             }
 
             return weapons;
+        }
+
+        private static WeaponHash[] GetCommonWeaponHashes()
+        {
+            return new[]
+            {
+                WeaponHash.Knife, WeaponHash.Nightstick, WeaponHash.Hammer, WeaponHash.Bat,
+                WeaponHash.GolfClub, WeaponHash.Crowbar, WeaponHash.Bottle, WeaponHash.SwitchBlade,
+                WeaponHash.Dagger, WeaponHash.Hatchet, WeaponHash.Machete, WeaponHash.Flashlight,
+                WeaponHash.KnuckleDuster, WeaponHash.PoolCue, WeaponHash.Wrench, WeaponHash.BattleAxe,
+                WeaponHash.Pistol, WeaponHash.CombatPistol, WeaponHash.APPistol, WeaponHash.Pistol50,
+                WeaponHash.SNSPistol, WeaponHash.HeavyPistol, WeaponHash.VintagePistol, WeaponHash.MarksmanPistol,
+                WeaponHash.Revolver, WeaponHash.DoubleActionRevolver, WeaponHash.FlareGun, WeaponHash.StunGun,
+                WeaponHash.CeramicPistol, WeaponHash.NavyRevolver, WeaponHash.PericoPistol,
+                WeaponHash.MicroSMG, WeaponHash.SMG, WeaponHash.AssaultSMG, WeaponHash.CombatPDW,
+                WeaponHash.MachinePistol, WeaponHash.MiniSMG, WeaponHash.Gusenberg,
+                WeaponHash.PumpShotgun, WeaponHash.SawnOffShotgun, WeaponHash.AssaultShotgun,
+                WeaponHash.BullpupShotgun, WeaponHash.HeavyShotgun, WeaponHash.DoubleBarrelShotgun,
+                WeaponHash.SweeperShotgun, WeaponHash.CombatShotgun,
+                WeaponHash.AssaultRifle, WeaponHash.CarbineRifle, WeaponHash.AdvancedRifle,
+                WeaponHash.SpecialCarbine, WeaponHash.BullpupRifle, WeaponHash.CompactRifle,
+                WeaponHash.MilitaryRifle, WeaponHash.HeavyRifle,
+                WeaponHash.MG, WeaponHash.CombatMG, WeaponHash.Gusenberg,
+                WeaponHash.SniperRifle, WeaponHash.HeavySniper, WeaponHash.MarksmanRifle,
+                WeaponHash.RPG, WeaponHash.GrenadeLauncher, WeaponHash.Minigun, WeaponHash.Firework,
+                WeaponHash.Railgun, WeaponHash.HomingLauncher, WeaponHash.CompactGrenadeLauncher,
+                WeaponHash.Grenade, WeaponHash.SmokeGrenade, WeaponHash.BZGas, WeaponHash.Molotov,
+                WeaponHash.StickyBomb, WeaponHash.ProximityMine, WeaponHash.Snowball, WeaponHash.PipeBomb,
+                WeaponHash.Ball, WeaponHash.Flare
+            };
         }
 
         /// <inheritdoc />

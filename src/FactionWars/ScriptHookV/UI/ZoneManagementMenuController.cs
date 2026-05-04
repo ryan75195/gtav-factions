@@ -151,8 +151,14 @@ namespace FactionWars.ScriptHookV.UI
             var factionName = faction?.Name ?? "Unknown";
 
             var menu = new MenuDefinition(ZoneManagementMenuId, "Zone Management", factionName);
+            AddReserveSummary(menu, factionState);
+            AddOwnedZoneItems(menu, factionId);
+            AddZoneListBackItem(menu);
+            _menuProvider.ShowMenu(menu);
+        }
 
-            // Add reserve pool summary (display only)
+        private static void AddReserveSummary(MenuDefinition menu, FactionState? factionState)
+        {
             var basicReserve = factionState?.GetReserveTroops(DefenderTier.Basic) ?? 0;
             var mediumReserve = factionState?.GetReserveTroops(DefenderTier.Medium) ?? 0;
             var heavyReserve = factionState?.GetReserveTroops(DefenderTier.Heavy) ?? 0;
@@ -163,8 +169,10 @@ namespace FactionWars.ScriptHookV.UI
                 "Available troops to deploy from reserve pool");
             reserveItem.IsEnabled = false;
             menu.AddItem(reserveItem);
+        }
 
-            // Get owned zones
+        private void AddOwnedZoneItems(MenuDefinition menu, string? factionId)
+        {
             var ownedZones = factionId != null
                 ? _zoneService.GetZonesByOwner(factionId).ToList()
                 : new System.Collections.Generic.List<Territory.Models.Zone>();
@@ -196,15 +204,15 @@ namespace FactionWars.ScriptHookV.UI
                     menu.AddItem(zoneItem);
                 }
             }
+        }
 
-            // Add back navigation
+        private static void AddZoneListBackItem(MenuDefinition menu)
+        {
             var backItem = new MenuItem(
                 BackItemId,
                 "Back",
                 "Return to main menu");
             menu.AddItem(backItem);
-
-            _menuProvider.ShowMenu(menu);
         }
 
         /// <summary>
@@ -233,8 +241,21 @@ namespace FactionWars.ScriptHookV.UI
             var reserveBasic = factionState?.GetReserveTroops(DefenderTier.Basic) ?? 0;
             var reserveMedium = factionState?.GetReserveTroops(DefenderTier.Medium) ?? 0;
             var reserveHeavy = factionState?.GetReserveTroops(DefenderTier.Heavy) ?? 0;
+            AddCurrentAllocationItems(menu, currentBasic, currentMedium, currentHeavy);
+            AddAllocateItems(menu, reserveBasic, reserveMedium, reserveHeavy);
+            AddWithdrawItems(menu, currentBasic, currentMedium, currentHeavy);
+            AddDetailBackItem(menu);
 
-            // Current allocation display (disabled info items)
+            _menuProvider.ShowMenu(menu, selectedItemId);
+            _menuProvider.HoldToRepeatEnabled = true; // Enable hold-to-repeat for allocation/withdrawal
+        }
+
+        private static void AddCurrentAllocationItems(
+            MenuDefinition menu,
+            int currentBasic,
+            int currentMedium,
+            int currentHeavy)
+        {
             var basicItem = new MenuItem(
                 CurrentBasicItemId,
                 $"Basic: {currentBasic}",
@@ -255,8 +276,14 @@ namespace FactionWars.ScriptHookV.UI
                 "Currently allocated Heavy tier troops");
             heavyItem.IsEnabled = false;
             menu.AddItem(heavyItem);
+        }
 
-            // Allocate actions
+        private static void AddAllocateItems(
+            MenuDefinition menu,
+            int reserveBasic,
+            int reserveMedium,
+            int reserveHeavy)
+        {
             var allocateBasicItem = new MenuItem(
                 AllocateBasicItemId,
                 $"+ Allocate Basic (Reserve: {reserveBasic})",
@@ -277,8 +304,14 @@ namespace FactionWars.ScriptHookV.UI
                 "Allocate one Heavy troop from reserve");
             allocateHeavyItem.IsEnabled = reserveHeavy > 0;
             menu.AddItem(allocateHeavyItem);
+        }
 
-            // Withdraw actions
+        private static void AddWithdrawItems(
+            MenuDefinition menu,
+            int currentBasic,
+            int currentMedium,
+            int currentHeavy)
+        {
             var withdrawBasicItem = new MenuItem(
                 WithdrawBasicItemId,
                 $"- Withdraw Basic (Allocated: {currentBasic})",
@@ -299,16 +332,15 @@ namespace FactionWars.ScriptHookV.UI
                 "Withdraw one Heavy troop back to reserve");
             withdrawHeavyItem.IsEnabled = currentHeavy > 0;
             menu.AddItem(withdrawHeavyItem);
+        }
 
-            // Back navigation
+        private static void AddDetailBackItem(MenuDefinition menu)
+        {
             var backItem = new MenuItem(
                 DetailBackItemId,
                 "Back",
                 "Return to zone list");
             menu.AddItem(backItem);
-
-            _menuProvider.ShowMenu(menu, selectedItemId);
-            _menuProvider.HoldToRepeatEnabled = true; // Enable hold-to-repeat for allocation/withdrawal
         }
 
         /// <summary>

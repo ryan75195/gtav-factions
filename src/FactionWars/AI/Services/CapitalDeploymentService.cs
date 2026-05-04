@@ -111,44 +111,8 @@ namespace FactionWars.AI.Services
             if (context == null)
                 throw new ArgumentNullException(nameof(context));
 
-            // Calculate max defense priority across owned zones
-            float maxDefensePriority = 0f;
-            Zone? bestDefenseZone = null;
-
-            foreach (var zone in context.OwnedZones)
-            {
-                float priority = GetDefensePriority(zone, context);
-                if (priority > maxDefensePriority)
-                {
-                    maxDefensePriority = priority;
-                    bestDefenseZone = zone;
-                }
-            }
-
-            // Calculate max attack opportunity across adjacent attackable zones
-            float maxAttackOpportunity = 0f;
-            Zone? bestAttackTarget = null;
-
-            foreach (var zone in context.GetAdjacentAttackableZones())
-            {
-                float opportunity = GetAttackOpportunity(zone, context);
-                if (opportunity > maxAttackOpportunity)
-                {
-                    maxAttackOpportunity = opportunity;
-                    bestAttackTarget = zone;
-                }
-            }
-
-            // Decision logic:
-            // Priority 1: Only defend if zone is actively contested (threatLevel = 2.0)
-            // This triggers when maxDefensePriority >= 1.0 (contested zone with any value)
-            // Priority 2: Attack if opportunity meets threshold (lowered for expansion)
-            // Priority 3: Hold and build reserves
-
-            // Normalize defense priority: only urgent defense (contested) blocks attacks
-            // Contested zone with value 5 = 2.0 * 0.5 * 10 = 10.0 priority
-            // Adjacent threat with value 5 = 0.5 * 0.5 * 10 = 2.5 priority
-            // We only want to block attacks for CONTESTED zones (threatLevel >= 2.0)
+            float maxDefensePriority = GetBestDefensePriority(context, out var bestDefenseZone);
+            float maxAttackOpportunity = GetBestAttackOpportunity(context, out var bestAttackTarget);
             bool hasContestedZone = maxDefensePriority >= 1.0f && bestDefenseZone != null && bestDefenseZone.IsContested;
 
             if (hasContestedZone)
@@ -179,6 +143,42 @@ namespace FactionWars.AI.Services
 
             // Hold - no urgent action needed
             return null;
+        }
+
+        private float GetBestDefensePriority(AIContext context, out Zone? bestDefenseZone)
+        {
+            float maxDefensePriority = 0f;
+            bestDefenseZone = null;
+
+            foreach (var zone in context.OwnedZones)
+            {
+                float priority = GetDefensePriority(zone, context);
+                if (priority > maxDefensePriority)
+                {
+                    maxDefensePriority = priority;
+                    bestDefenseZone = zone;
+                }
+            }
+
+            return maxDefensePriority;
+        }
+
+        private float GetBestAttackOpportunity(AIContext context, out Zone? bestAttackTarget)
+        {
+            float maxAttackOpportunity = 0f;
+            bestAttackTarget = null;
+
+            foreach (var zone in context.GetAdjacentAttackableZones())
+            {
+                float opportunity = GetAttackOpportunity(zone, context);
+                if (opportunity > maxAttackOpportunity)
+                {
+                    maxAttackOpportunity = opportunity;
+                    bestAttackTarget = zone;
+                }
+            }
+
+            return maxAttackOpportunity;
         }
 
         /// <summary>

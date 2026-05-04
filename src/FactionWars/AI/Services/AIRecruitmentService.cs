@@ -135,10 +135,19 @@ namespace FactionWars.AI.Services
                 { DefenderTier.Elite, 0 }
             };
 
-            int remainingBudget = cash;
-            int remainingSlots = maxTroops;
+            int remainingBudget = BuyEliteTroops(cash, maxTroops, recruited, out int remainingSlots);
+            BuyStandardTroops(remainingBudget, remainingSlots, recruited);
+            return ApplyRecruitment(factionId, recruited);
+        }
 
-            // Step 1: Buy Elite based on wealth thresholds
+        private int BuyEliteTroops(
+            int cash,
+            int maxTroops,
+            Dictionary<DefenderTier, int> recruited,
+            out int remainingSlots)
+        {
+            int remainingBudget = cash;
+            remainingSlots = maxTroops;
             int eliteToBuy = GetEliteCountForWealth(cash);
             int eliteCost = _tierService!.GetCost(DefenderTier.Elite);
 
@@ -149,17 +158,32 @@ namespace FactionWars.AI.Services
                 remainingSlots--;
             }
 
-            // Step 2: Get tier distribution percentages based on remaining cash
+            return remainingBudget;
+        }
+
+        private void BuyStandardTroops(
+            int remainingBudget,
+            int remainingSlots,
+            Dictionary<DefenderTier, int> recruited)
+        {
             var distribution = GetTierDistributionForWealth(remainingBudget);
-
-            // Step 3: Calculate how many of each standard tier to buy
             int standardTroopsToBuy = remainingSlots;
-
             int basicCount = (int)Math.Round(standardTroopsToBuy * distribution.BasicPercent);
             int mediumCount = (int)Math.Round(standardTroopsToBuy * distribution.MediumPercent);
             int heavyCount = (int)Math.Round(standardTroopsToBuy * distribution.HeavyPercent);
+            NormalizeStandardCounts(remainingSlots, ref basicCount, ref mediumCount, ref heavyCount);
 
-            // Ensure we don't exceed remaining slots due to rounding
+            remainingBudget = BuyTier(recruited, DefenderTier.Heavy, heavyCount, remainingBudget);
+            remainingBudget = BuyTier(recruited, DefenderTier.Medium, mediumCount, remainingBudget);
+            BuyTier(recruited, DefenderTier.Basic, basicCount, remainingBudget);
+        }
+
+        private static void NormalizeStandardCounts(
+            int remainingSlots,
+            ref int basicCount,
+            ref int mediumCount,
+            ref int heavyCount)
+        {
             int totalStandard = basicCount + mediumCount + heavyCount;
             if (totalStandard > remainingSlots)
             {
@@ -186,34 +210,26 @@ namespace FactionWars.AI.Services
                 // Add remainder to basic
                 basicCount += (remainingSlots - totalStandard);
             }
+        }
 
-            // Step 4: Buy troops within budget constraints
-            int basicCost = _tierService.GetCost(DefenderTier.Basic);
-            int mediumCost = _tierService.GetCost(DefenderTier.Medium);
-            int heavyCost = _tierService.GetCost(DefenderTier.Heavy);
-
-            // Buy Heavy first (most expensive, prioritize)
-            for (int i = 0; i < heavyCount && remainingBudget >= heavyCost; i++)
+        private int BuyTier(
+            Dictionary<DefenderTier, int> recruited,
+            DefenderTier tier,
+            int count,
+            int remainingBudget)
+        {
+            int cost = _tierService!.GetCost(tier);
+            for (int i = 0; i < count && remainingBudget >= cost; i++)
             {
-                recruited[DefenderTier.Heavy]++;
-                remainingBudget -= heavyCost;
+                recruited[tier]++;
+                remainingBudget -= cost;
             }
 
-            // Buy Medium
-            for (int i = 0; i < mediumCount && remainingBudget >= mediumCost; i++)
-            {
-                recruited[DefenderTier.Medium]++;
-                remainingBudget -= mediumCost;
-            }
+            return remainingBudget;
+        }
 
-            // Buy Basic with remaining budget
-            for (int i = 0; i < basicCount && remainingBudget >= basicCost; i++)
-            {
-                recruited[DefenderTier.Basic]++;
-                remainingBudget -= basicCost;
-            }
-
-            // Step 5: Calculate total cost and apply
+        private int ApplyRecruitment(string factionId, Dictionary<DefenderTier, int> recruited)
+        {
             int totalRecruited = 0;
             int totalCost = 0;
 

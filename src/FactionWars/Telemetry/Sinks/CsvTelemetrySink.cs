@@ -275,51 +275,28 @@ namespace FactionWars.Telemetry.Sinks
 
         private void FlushBuffersLocked()
         {
-            if (_bufSnap.Count > 0)
-            {
-                AppendLocked("snapshots.csv", SnapshotHeader, _bufSnap.Select(SerializeSnapshot));
-                _bufSnap.Clear();
-            }
-            if (_bufZone.Count > 0)
-            {
-                AppendLocked("zone_events.csv", ZoneEventHeader, _bufZone.Select(SerializeZoneEvent));
-                _bufZone.Clear();
-            }
-            if (_bufBattle.Count > 0)
-            {
-                AppendLocked("battles.csv", BattleHeader, _bufBattle.Select(SerializeBattle));
-                _bufBattle.Clear();
-            }
-            if (_bufDecision.Count > 0)
-            {
-                AppendLocked("decisions.csv", DecisionHeader, _bufDecision.Select(SerializeDecision));
-                _bufDecision.Clear();
-            }
-            if (_bufRecruit.Count > 0)
-            {
-                AppendLocked("recruitments.csv", RecruitmentHeader, _bufRecruit.Select(SerializeRecruitment));
-                _bufRecruit.Clear();
-            }
-            if (_bufAlloc.Count > 0)
-            {
-                AppendLocked("allocations.csv", AllocationHeader, _bufAlloc.Select(SerializeAllocation));
-                _bufAlloc.Clear();
-            }
-            if (_bufTick.Count > 0)
-            {
-                AppendLocked("resource_ticks.csv", ResourceTickHeader, _bufTick.Select(SerializeResourceTick));
-                _bufTick.Clear();
-            }
-            if (_bufMeta.Count > 0)
-            {
-                AppendLocked("match_meta.csv", MatchMetaHeader, _bufMeta.Select(SerializeMatchMeta));
-                _bufMeta.Clear();
-            }
-            if (_bufPlayer.Count > 0)
-            {
-                AppendLocked("player_events.csv", PlayerEventHeader, _bufPlayer.Select(SerializePlayerEvent));
-                _bufPlayer.Clear();
-            }
+            FlushBufferLocked(_bufSnap, "snapshots.csv", SnapshotHeader, SerializeSnapshot);
+            FlushBufferLocked(_bufZone, "zone_events.csv", ZoneEventHeader, SerializeZoneEvent);
+            FlushBufferLocked(_bufBattle, "battles.csv", BattleHeader, SerializeBattle);
+            FlushBufferLocked(_bufDecision, "decisions.csv", DecisionHeader, SerializeDecision);
+            FlushBufferLocked(_bufRecruit, "recruitments.csv", RecruitmentHeader, SerializeRecruitment);
+            FlushBufferLocked(_bufAlloc, "allocations.csv", AllocationHeader, SerializeAllocation);
+            FlushBufferLocked(_bufTick, "resource_ticks.csv", ResourceTickHeader, SerializeResourceTick);
+            FlushBufferLocked(_bufMeta, "match_meta.csv", MatchMetaHeader, SerializeMatchMeta);
+            FlushBufferLocked(_bufPlayer, "player_events.csv", PlayerEventHeader, SerializePlayerEvent);
+        }
+
+        private void FlushBufferLocked<T>(
+            List<T> buffer,
+            string fileName,
+            string header,
+            Func<T, string> serialize)
+        {
+            if (buffer.Count == 0)
+                return;
+
+            AppendLocked(fileName, header, buffer.Select(serialize));
+            buffer.Clear();
         }
 
         private void AppendLocked(string fileName, string header, IEnumerable<string> rows)

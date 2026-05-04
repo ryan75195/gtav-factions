@@ -350,49 +350,15 @@ namespace FactionWars.AI.Controllers
 
         private void SimulateBattle(string attackerFactionId, AIDecision decision, bool playerInZone = false)
         {
-            var zone = _zoneService.GetZone(decision.TargetZoneId!);
-            if (zone == null)
-            {
-                FileLogger.AI($"      SimulateBattle: Zone not found: {decision.TargetZoneId}");
+            if (!TryGetAttackZone(attackerFactionId, decision, out var zone))
                 return;
-            }
-
-            // Can't attack own zone
-            if (zone.OwnerFactionId == attackerFactionId)
-            {
-                FileLogger.AI($"      SimulateBattle: Cannot attack own zone");
-                return;
-            }
-
-            // Skip if a battle already exists in this zone
-            if (_zoneBattleManager.GetBattleForZone(decision.TargetZoneId!) != null)
-            {
-                FileLogger.AI($"      SimulateBattle: Battle already in progress in {decision.TargetZoneId}, skipping");
-                return;
-            }
 
             var attackerFaction = _factionService.GetFaction(attackerFactionId);
             var attackerFactionName = attackerFaction?.Name ?? attackerFactionId;
 
-            // Handle neutral zone capture
             if (zone.OwnerFactionId == null)
             {
-                FileLogger.AI($"      SimulateBattle: Capturing neutral zone {zone.Name}");
-                _zoneService.TransferZoneOwnership(decision.TargetZoneId!, attackerFactionId);
-
-                // Allocate defenders to the newly captured zone
-                // Always allocate at least 1 defender to prevent "owned with 0 defenders" state
-                int defendersToAllocate = decision.TroopsToCommit > 0 ? Math.Max(1, Math.Min((decision.TroopsToCommit + 1) / 2, 5)) : 0;
-                if (defendersToAllocate > 0)
-                {
-                    _allocationService.SetAllocation(attackerFactionId, decision.TargetZoneId!, DefenderTier.Basic, defendersToAllocate);
-                    FileLogger.AI($"      SimulateBattle: Allocated {defendersToAllocate} defenders to {zone.Name}");
-                }
-
-                _gameBridge.ShowNotification($"~y~{attackerFactionName}~w~ captured ~b~{zone.Name}");
-
-                OnBattleResolved?.Invoke(this, new AIBattleResultEventArgs(
-                    attackerFactionId, "neutral", decision.TargetZoneId!, true, 0, 0));
+                CaptureNeutralZone(attackerFactionId, attackerFactionName, decision, zone);
                 return;
             }
 
@@ -429,6 +395,56 @@ namespace FactionWars.AI.Controllers
             }
 
             return; // Battle resolution handled by ZoneBattleManager
+        }
+
+        private bool TryGetAttackZone(
+            string attackerFactionId,
+            AIDecision decision,
+            out Territory.Models.Zone zone)
+        {
+            zone = _zoneService.GetZone(decision.TargetZoneId!)!;
+            if (zone == null)
+            {
+                FileLogger.AI($"      SimulateBattle: Zone not found: {decision.TargetZoneId}");
+                return false;
+            }
+
+            if (zone.OwnerFactionId == attackerFactionId)
+            {
+                FileLogger.AI($"      SimulateBattle: Cannot attack own zone");
+                return false;
+            }
+
+            if (_zoneBattleManager.GetBattleForZone(decision.TargetZoneId!) != null)
+            {
+                FileLogger.AI($"      SimulateBattle: Battle already in progress in {decision.TargetZoneId}, skipping");
+                return false;
+            }
+
+            return true;
+        }
+
+        private void CaptureNeutralZone(
+            string attackerFactionId,
+            string attackerFactionName,
+            AIDecision decision,
+            Territory.Models.Zone zone)
+        {
+            FileLogger.AI($"      SimulateBattle: Capturing neutral zone {zone.Name}");
+            _zoneService.TransferZoneOwnership(decision.TargetZoneId!, attackerFactionId);
+
+            int defendersToAllocate = decision.TroopsToCommit > 0
+                ? Math.Max(1, Math.Min((decision.TroopsToCommit + 1) / 2, 5))
+                : 0;
+            if (defendersToAllocate > 0)
+            {
+                _allocationService.SetAllocation(attackerFactionId, decision.TargetZoneId!, DefenderTier.Basic, defendersToAllocate);
+                FileLogger.AI($"      SimulateBattle: Allocated {defendersToAllocate} defenders to {zone.Name}");
+            }
+
+            _gameBridge.ShowNotification($"~y~{attackerFactionName}~w~ captured ~b~{zone.Name}");
+            OnBattleResolved?.Invoke(this, new AIBattleResultEventArgs(
+                attackerFactionId, "neutral", decision.TargetZoneId!, true, 0, 0));
         }
 
         private TroopComposition BuildDefenderTroops(string defenderFactionId, string zoneId)

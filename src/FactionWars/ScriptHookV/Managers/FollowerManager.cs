@@ -222,17 +222,22 @@ namespace FactionWars.ScriptHookV.Managers
 
             var followers = _followerService.GetFollowers(factionId);
 
-            // Check vehicle state
             var playerInVehicle = _gameBridge.IsPlayerInVehicle();
             var playerVehicle = playerInVehicle ? _gameBridge.GetPlayerVehicle() : -1;
+            var aliveFollowerHandles = GetAliveFollowerHandles(followers);
 
-            // Collect alive follower handles for coordinated assignment
+            if (playerInVehicle && playerVehicle >= 0)
+                AssignFollowersToVehicle(aliveFollowerHandles, playerVehicle);
+            else
+                ExitFollowersFromVehicles(aliveFollowerHandles);
+        }
+
+        private List<int> GetAliveFollowerHandles(IEnumerable<Follower> followers)
+        {
             var aliveFollowerHandles = new List<int>();
 
-            // Check each follower for death
             foreach (var follower in followers)
             {
-                // Skip unspawned followers
                 if (follower.PedHandle < 0)
                 {
                     continue;
@@ -254,46 +259,42 @@ namespace FactionWars.ScriptHookV.Managers
                 aliveFollowerHandles.Add(follower.PedHandle);
             }
 
-            // Handle vehicle behavior
-            if (playerInVehicle && playerVehicle >= 0)
+            return aliveFollowerHandles;
+        }
+
+        private void AssignFollowersToVehicle(List<int> aliveFollowerHandles, int playerVehicle)
+        {
+            var prioritizedSeats = _seatPriorityService.GetPrioritizedFreeSeats(playerVehicle);
+            var nearbyFollowers = _seatPriorityService.FilterFollowersByProximity(
+                aliveFollowerHandles.ToArray(), playerVehicle, 15f);
+
+            var seatIndex = 0;
+            foreach (var pedHandle in nearbyFollowers)
             {
-                // Get prioritized seats and nearby followers
-                var prioritizedSeats = _seatPriorityService.GetPrioritizedFreeSeats(playerVehicle);
-                var nearbyFollowers = _seatPriorityService.FilterFollowersByProximity(
-                    aliveFollowerHandles.ToArray(), playerVehicle, 15f);
+                if (seatIndex >= prioritizedSeats.Length)
+                    break;
 
-                // Coordinated assignment - assign all at once
-                var seatIndex = 0;
-                foreach (var pedHandle in nearbyFollowers)
+                var inVehicle = _gameBridge.IsPedInVehicle(pedHandle);
+                var tryingToEnter = _gameBridge.IsPedTryingToEnterVehicle(pedHandle);
+
+                if (!inVehicle && !tryingToEnter)
                 {
-                    if (seatIndex >= prioritizedSeats.Length)
-                        break;
-
-                    var inVehicle = _gameBridge.IsPedInVehicle(pedHandle);
-                    var tryingToEnter = _gameBridge.IsPedTryingToEnterVehicle(pedHandle);
-
-                    if (!inVehicle && !tryingToEnter)
-                    {
-                        _gameBridge.TaskPedEnterVehicle(pedHandle, playerVehicle, prioritizedSeats[seatIndex]);
-                        seatIndex++;
-                    }
-                    else if (inVehicle)
-                    {
-                        // Already in vehicle, account for this seat being taken
-                        seatIndex++;
-                    }
+                    _gameBridge.TaskPedEnterVehicle(pedHandle, playerVehicle, prioritizedSeats[seatIndex]);
+                    seatIndex++;
+                }
+                else if (inVehicle)
+                {
+                    seatIndex++;
                 }
             }
-            else
+        }
+
+        private void ExitFollowersFromVehicles(IEnumerable<int> aliveFollowerHandles)
+        {
+            foreach (var pedHandle in aliveFollowerHandles)
             {
-                // Player not in vehicle - make followers exit if they're in one
-                foreach (var pedHandle in aliveFollowerHandles)
-                {
-                    if (_gameBridge.IsPedInVehicle(pedHandle))
-                    {
-                        _gameBridge.TaskPedLeaveVehicle(pedHandle);
-                    }
-                }
+                if (_gameBridge.IsPedInVehicle(pedHandle))
+                    _gameBridge.TaskPedLeaveVehicle(pedHandle);
             }
         }
 

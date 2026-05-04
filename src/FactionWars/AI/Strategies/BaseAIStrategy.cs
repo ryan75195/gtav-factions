@@ -133,45 +133,53 @@ namespace FactionWars.AI.Strategies
             // When capital deployment service is available, use its intelligent decision-making
             if (_capitalDeploymentService != null)
             {
-                FileLogger.AI($"      [Strategy] Using CapitalDeploymentService for {context.Faction.Id}");
-                var bestDecision = _capitalDeploymentService.GetBestDecision(context);
-
-                if (bestDecision != null)
-                {
-                    FileLogger.AI($"      [Strategy] Service decision: {bestDecision.DecisionType} on {bestDecision.TargetZoneId}, troops={bestDecision.TroopsToCommit}");
-                    decisions.Add(bestDecision);
-                }
-                else
-                {
-                    FileLogger.AI($"      [Strategy] Service decision: Hold (no action)");
-                }
-
-                return decisions;
+                return MakeCapitalDeploymentDecision(context);
             }
 
-            // Fallback: Use existing logic when no capital deployment service
-            // Priority 1: Defend threatened zones
-            var threatenedZones = context.GetThreatenedZones().ToList();
-            foreach (var zone in threatenedZones)
+            AddDefenseDecisions(context, decisions);
+            AddAttackDecision(context, decisions);
+            return decisions.OrderByDescending(d => d.Priority).ToList();
+        }
+
+        private IList<AIDecision> MakeCapitalDeploymentDecision(AIContext context)
+        {
+            var decisions = new List<AIDecision>();
+            FileLogger.AI($"      [Strategy] Using CapitalDeploymentService for {context.Faction.Id}");
+            var bestDecision = _capitalDeploymentService!.GetBestDecision(context);
+
+            if (bestDecision != null)
             {
-                if (ShouldDefend(zone, context))
-                {
-                    float priority = CalculateDefendPriority(zone, context);
-                    int troops = GetTroopsForDefense(zone, context);
-                    if (troops > 0)
-                    {
-                        decisions.Add(new AIDecision(AIDecisionType.Defend, zone.Id, priority, troops));
-                    }
-                }
+                FileLogger.AI($"      [Strategy] Service decision: {bestDecision.DecisionType} on {bestDecision.TargetZoneId}, troops={bestDecision.TroopsToCommit}");
+                decisions.Add(bestDecision);
+            }
+            else
+            {
+                FileLogger.AI($"      [Strategy] Service decision: Hold (no action)");
             }
 
-            // Priority 2: Attack targets based on aggressiveness
-            // Only attack zones adjacent to owned territory (territorial expansion)
-            // Use weighted random selection to add variety (higher-value zones more likely, but not guaranteed)
+            return decisions;
+        }
+
+        private void AddDefenseDecisions(AIContext context, List<AIDecision> decisions)
+        {
+            foreach (var zone in context.GetThreatenedZones())
+            {
+                if (!ShouldDefend(zone, context))
+                    continue;
+
+                float priority = CalculateDefendPriority(zone, context);
+                int troops = GetTroopsForDefense(zone, context);
+                if (troops > 0)
+                    decisions.Add(new AIDecision(AIDecisionType.Defend, zone.Id, priority, troops));
+            }
+        }
+
+        private void AddAttackDecision(AIContext context, List<AIDecision> decisions)
+        {
             FileLogger.AI($"      [Strategy] Getting adjacent attackable zones for {context.Faction.Id}");
             var potentialTargets = context.GetAdjacentAttackableZones()
                 .Where(z => ShouldAttack(z, context))
-                .Select(z => new { Zone = z, Score = EvaluateZone(z, context) })
+                .Select(z => (Zone: z, Score: EvaluateZone(z, context)))
                 .Where(x => x.Score > 0)
                 .ToList();
 
@@ -183,31 +191,31 @@ namespace FactionWars.AI.Strategies
 
             if (potentialTargets.Count > 0)
             {
-                // Weighted random selection based on evaluation scores
-                var selectedZone = SelectTargetByWeight(potentialTargets.Select(x => (x.Zone, x.Score)).ToList());
-                if (selectedZone != null)
-                {
-                    FileLogger.AI($"      [Strategy] Selected target: {selectedZone.Id} ({selectedZone.Name})");
-                    float priority = CalculateAttackPriority(selectedZone, context);
-                    int troops = GetTroopsForAttack(selectedZone, context);
-                    FileLogger.AI($"      [Strategy] Attack priority={priority:F2}, troops={troops}, minimum={MinimumAttackTroops}");
-                    if (troops >= MinimumAttackTroops)
-                    {
-                        decisions.Add(new AIDecision(AIDecisionType.Attack, selectedZone.Id, priority, troops));
-                    }
-                    else
-                    {
-                        FileLogger.AI($"      [Strategy] Not enough troops for attack (need {MinimumAttackTroops})");
-                    }
-                }
+                AddSelectedAttackDecision(context, decisions, potentialTargets);
             }
             else
             {
                 FileLogger.AI($"      [Strategy] No valid attack targets found");
             }
+        }
 
-            // Order by priority (highest first)
-            return decisions.OrderByDescending(d => d.Priority).ToList();
+        private void AddSelectedAttackDecision(
+            AIContext context,
+            List<AIDecision> decisions,
+            IList<(Zone Zone, float Score)> potentialTargets)
+        {
+            var selectedZone = SelectTargetByWeight(potentialTargets);
+            if (selectedZone == null)
+                return;
+
+            FileLogger.AI($"      [Strategy] Selected target: {selectedZone.Id} ({selectedZone.Name})");
+            float priority = CalculateAttackPriority(selectedZone, context);
+            int troops = GetTroopsForAttack(selectedZone, context);
+            FileLogger.AI($"      [Strategy] Attack priority={priority:F2}, troops={troops}, minimum={MinimumAttackTroops}");
+            if (troops >= MinimumAttackTroops)
+                decisions.Add(new AIDecision(AIDecisionType.Attack, selectedZone.Id, priority, troops));
+            else
+                FileLogger.AI($"      [Strategy] Not enough troops for attack (need {MinimumAttackTroops})");
         }
 
         /// <summary>

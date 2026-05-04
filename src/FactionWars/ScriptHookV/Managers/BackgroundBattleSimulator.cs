@@ -123,34 +123,9 @@ namespace FactionWars.ScriptHookV.Managers
             var attackerFaction = _factionService.GetFaction(attackerFactionId);
             var attackerFactionName = attackerFaction?.Name ?? attackerFactionId;
 
-            // Handle neutral zone capture (no battle needed)
             if (zone.OwnerFactionId == null)
             {
-                // Neutral zone - automatic capture with no combat
-                _zoneService.TransferZoneOwnership(decision.TargetZoneId, attackerFactionId);
-
-                // Allocate defenders to the newly captured zone
-                // Always allocate at least 1 defender to prevent "owned with 0 defenders" state
-                int defendersToAllocate = decision.TroopsToCommit > 0 ? Math.Max(1, Math.Min((decision.TroopsToCommit + 1) / 2, 5)) : 0;
-                if (defendersToAllocate > 0)
-                {
-                    _allocationService.SetAllocation(attackerFactionId, decision.TargetZoneId, DefenderTier.Basic, defendersToAllocate);
-                }
-
-                // Notify UI of capture
-                _eventFeedService.AddZoneCaptured(zone.Name, attackerFactionName);
-                _eventAlertService.RaiseZoneCaptured(zone.Name, attackerFactionName);
-
-                // Create a "won" result for neutral capture (no casualties, no real defender)
-                var neutralResult = BattleSimulationResult.AttackerVictory(
-                    attackerFactionId,
-                    "neutral",
-                    decision.TargetZoneId,
-                    TroopComposition.Empty,
-                    TroopComposition.Empty);
-
-                OnBattleCompleted?.Invoke(this, neutralResult);
-                return neutralResult;
+                return CaptureNeutralZone(attackerFactionId, attackerFactionName, decision, zone);
             }
 
             var defenderFactionId = zone.OwnerFactionId;
@@ -188,6 +163,33 @@ namespace FactionWars.ScriptHookV.Managers
             OnBattleCompleted?.Invoke(this, result);
 
             return result;
+        }
+
+        private BattleSimulationResult CaptureNeutralZone(
+            string attackerFactionId,
+            string attackerFactionName,
+            AIDecision decision,
+            Territory.Models.Zone zone)
+        {
+            _zoneService.TransferZoneOwnership(decision.TargetZoneId!, attackerFactionId);
+
+            int defendersToAllocate = decision.TroopsToCommit > 0
+                ? Math.Max(1, Math.Min((decision.TroopsToCommit + 1) / 2, 5))
+                : 0;
+            if (defendersToAllocate > 0)
+                _allocationService.SetAllocation(attackerFactionId, decision.TargetZoneId!, DefenderTier.Basic, defendersToAllocate);
+
+            _eventFeedService.AddZoneCaptured(zone.Name, attackerFactionName);
+            _eventAlertService.RaiseZoneCaptured(zone.Name, attackerFactionName);
+
+            var neutralResult = BattleSimulationResult.AttackerVictory(
+                attackerFactionId,
+                "neutral",
+                decision.TargetZoneId!,
+                TroopComposition.Empty,
+                TroopComposition.Empty);
+            OnBattleCompleted?.Invoke(this, neutralResult);
+            return neutralResult;
         }
 
         /// <summary>

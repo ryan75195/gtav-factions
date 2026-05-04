@@ -47,8 +47,7 @@ namespace FactionWars.ScriptHookV.Persistence
         /// </summary>
         public void Tick()
         {
-            long? playTimeRead;
-            int characterIndex;
+            long? playTimeRead; int characterIndex;
             try
             {
                 playTimeRead = _bridge.GetTotalPlayTimeSeconds();
@@ -60,35 +59,22 @@ namespace FactionWars.ScriptHookV.Persistence
                 return;
             }
 
-            if (playTimeRead == null)
-            {
-                // Stat read failed; defer the tick rather than risk a spurious NewGame()
-                // that would wipe mod state for a loaded save.
-                return;
-            }
+            if (playTimeRead == null) return;
 
             long currentPlayTime = playTimeRead.Value;
 
             bool isLoadEvent;
             if (!_initialized)
-            {
-                isLoadEvent = true;
+            { isLoadEvent = true;
                 FileLogger.Info($"LoadDetector: first tick at play-time {currentPlayTime}s — attempting sidecar match.");
-            }
-            else if (characterIndex != _lastCharacterIndex)
-            {
-                isLoadEvent = false;
+            } else if (characterIndex != _lastCharacterIndex)
+            { isLoadEvent = false;
                 FileLogger.Debug($"LoadDetector: active character changed {_lastCharacterIndex} -> {characterIndex}; skipping load detection this tick.");
-            }
-            else if (currentPlayTime < _lastPlayTimeSeconds)
-            {
-                isLoadEvent = true;
+            } else if (currentPlayTime < _lastPlayTimeSeconds)
+            { isLoadEvent = true;
                 FileLogger.Info($"LoadDetector: play-time jumped backwards {_lastPlayTimeSeconds}s -> {currentPlayTime}s on character {characterIndex} — treating as load.");
             }
-            else
-            {
-                isLoadEvent = false;
-            }
+            else isLoadEvent = false;
 
             _initialized = true;
             _lastPlayTimeSeconds = currentPlayTime;
