@@ -57,7 +57,7 @@ namespace FactionWars.ScriptHookV
 
                 model.MarkAsNoLongerNeeded();
 
-                if (!ValidateCreatedPed(ped))
+                if (ped == null || !ValidateCreatedPed(ped))
                     return -1;
 
                 FileLogger.Spawn($"Ped created successfully: Handle={ped.Handle}, Health={ped.Health}");

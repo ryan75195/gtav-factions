@@ -16,6 +16,8 @@ namespace FactionWars.AI.Services
         private readonly IAIBudgetService _budgetService;
         private readonly IDefenderTierService? _tierService;
         private readonly ICapitalDeploymentService? _capitalDeploymentService;
+        private IDefenderTierService TierService =>
+            _tierService ?? throw new InvalidOperationException("Tier service is required for multi-tier recruitment.");
 
         // Wealth thresholds
         private const int LowWealthThreshold = 5000;
@@ -149,7 +151,7 @@ namespace FactionWars.AI.Services
             int remainingBudget = cash;
             remainingSlots = maxTroops;
             int eliteToBuy = GetEliteCountForWealth(cash);
-            int eliteCost = _tierService!.GetCost(DefenderTier.Elite);
+            int eliteCost = TierService.GetCost(DefenderTier.Elite);
 
             for (int i = 0; i < eliteToBuy && remainingSlots > 0 && remainingBudget >= eliteCost; i++)
             {
@@ -218,7 +220,7 @@ namespace FactionWars.AI.Services
             int count,
             int remainingBudget)
         {
-            int cost = _tierService!.GetCost(tier);
+                int cost = TierService.GetCost(tier);
             for (int i = 0; i < count && remainingBudget >= cost; i++)
             {
                 recruited[tier]++;
@@ -239,7 +241,7 @@ namespace FactionWars.AI.Services
                 {
                     _factionService.AddReserveTroops(factionId, kvp.Key, kvp.Value);
                     totalRecruited += kvp.Value;
-                    totalCost += _tierService.GetCost(kvp.Key) * kvp.Value;
+                    totalCost += TierService.GetCost(kvp.Key) * kvp.Value;
                 }
             }
 
