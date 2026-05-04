@@ -22,8 +22,10 @@ namespace FactionWars.Tests.Integration.Telemetry
         {
             _tempDir = Path.Combine(Path.GetTempPath(), "fw_tel_e2e_" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(_tempDir);
-            _sink = new CsvTelemetrySink(_tempDir);
+            _sink = CreateSink(_tempDir);
         }
+
+        private static CsvTelemetrySink CreateSink(string tempDir) => new CsvTelemetrySink(tempDir);
 
         public void Dispose()
         {
