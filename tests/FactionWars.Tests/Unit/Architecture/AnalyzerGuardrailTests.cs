@@ -70,6 +70,24 @@ public class Sample
             Assert.Contains(diagnostics, diagnostic => diagnostic.Id == "CI0013");
         }
 
+        [Fact]
+        public void ClassLengthAnalyzer_ShouldFlagTypeOverTwoThousandLines()
+        {
+            var fillerLines = string.Join(
+                Environment.NewLine,
+                Enumerable.Range(1, 2001).Select(i => "    private int _field" + i + ";"));
+
+            var diagnostics = Analyze(
+                "FactionWars.Analyzers.ClassLengthAnalyzer",
+                @"
+public class Oversized
+{
+" + fillerLines + @"
+}");
+
+            Assert.Contains(diagnostics, diagnostic => diagnostic.Id == "CI0017");
+        }
+
         private static IReadOnlyCollection<Diagnostic> Analyze(string analyzerTypeName, string source)
         {
             var syntaxTree = CSharpSyntaxTree.ParseText(source);

@@ -28,6 +28,7 @@ dotnet_diagnostic.CI0011.severity = error
 dotnet_diagnostic.CI0013.severity = suggestion
 dotnet_diagnostic.CI0014.severity = error
 dotnet_diagnostic.CI0015.severity = error
+dotnet_diagnostic.CI0017.severity = error
 dotnet_diagnostic.CS0618.severity = error
 dotnet_diagnostic.CS8602.severity = error
 dotnet_diagnostic.CS8604.severity = error
