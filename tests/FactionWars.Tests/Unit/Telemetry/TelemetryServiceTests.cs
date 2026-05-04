@@ -18,6 +18,7 @@ using FactionWars.Telemetry.Services;
 using FactionWars.Territory.Events;
 using FactionWars.Territory.Interfaces;
 using Moq;
+using Newtonsoft.Json.Linq;
 using Xunit;
 
 namespace FactionWars.Tests.Unit.Telemetry
@@ -218,8 +219,11 @@ namespace FactionWars.Tests.Unit.Telemetry
             var battleManager = new Mock<IZoneBattleManager>();
             using var svc = new TelemetryService(_sink.Object, _factionService.Object,
                 _zoneService.Object, _gameStateManager.Object,
-                getPlayerPedHandle: () => 0,
-                zoneBattleManager: battleManager.Object);
+                new TelemetryServiceOptions
+                {
+                    GetPlayerPedHandle = () => 0,
+                    ZoneBattleManager = battleManager.Object,
+                });
 
             var attackerTroops = new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 5 } };
             var defenderTroops = new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 3 } };
@@ -245,8 +249,11 @@ namespace FactionWars.Tests.Unit.Telemetry
             var battleManager = new Mock<IZoneBattleManager>();
             using var svc = new TelemetryService(_sink.Object, _factionService.Object,
                 _zoneService.Object, _gameStateManager.Object,
-                getPlayerPedHandle: () => 0,
-                zoneBattleManager: battleManager.Object);
+                new TelemetryServiceOptions
+                {
+                    GetPlayerPedHandle = () => 0,
+                    ZoneBattleManager = battleManager.Object,
+                });
 
             var attackerTroops = new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 5 } };
             var defenderTroops = new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 3 } };
@@ -276,8 +283,11 @@ namespace FactionWars.Tests.Unit.Telemetry
                 new Dictionary<string, FactionWars.AI.Interfaces.IAIStrategy>());
             using var svc = new TelemetryService(_sink.Object, _factionService.Object,
                 _zoneService.Object, _gameStateManager.Object,
-                getPlayerPedHandle: () => 0,
-                aiManager: aiManager);
+                new TelemetryServiceOptions
+                {
+                    GetPlayerPedHandle = () => 0,
+                    AIManager = aiManager,
+                });
 
             var decision = new AIDecision(AIDecisionType.Attack, "zone1", priority: 0.75f, troopsToCommit: 4);
             // AIManager declares: public event EventHandler<AIDecisionEventArgs>? OnAIDecision
@@ -304,8 +314,11 @@ namespace FactionWars.Tests.Unit.Telemetry
             var allocationService = new Mock<IZoneDefenderAllocationService>();
             using var svc = new TelemetryService(_sink.Object, _factionService.Object,
                 _zoneService.Object, _gameStateManager.Object,
-                getPlayerPedHandle: () => 0,
-                allocationService: allocationService.Object);
+                new TelemetryServiceOptions
+                {
+                    GetPlayerPedHandle = () => 0,
+                    AllocationService = allocationService.Object,
+                });
 
             allocationService.Raise(a => a.TroopsAllocated += null,
                 this, new TroopsAllocatedEventArgs("trevor", "zone1", DefenderTier.Heavy, 2));
@@ -324,8 +337,11 @@ namespace FactionWars.Tests.Unit.Telemetry
             var aiController = new Mock<IAIController>();
             using var svc = new TelemetryService(_sink.Object, _factionService.Object,
                 _zoneService.Object, _gameStateManager.Object,
-                getPlayerPedHandle: () => 0,
-                aiController: aiController.Object);
+                new TelemetryServiceOptions
+                {
+                    GetPlayerPedHandle = () => 0,
+                    AIController = aiController.Object,
+                });
 
             aiController.Raise(c => c.OnTroopsRecruited += null,
                 this, new FactionWars.AI.Events.TroopsRecruitedEventArgs(
@@ -345,8 +361,11 @@ namespace FactionWars.Tests.Unit.Telemetry
             var resourceTickService = new Mock<IResourceTickService>();
             using var svc = new TelemetryService(_sink.Object, _factionService.Object,
                 _zoneService.Object, _gameStateManager.Object,
-                getPlayerPedHandle: () => 0,
-                resourceTickService: resourceTickService.Object);
+                new TelemetryServiceOptions
+                {
+                    GetPlayerPedHandle = () => 0,
+                    ResourceTickService = resourceTickService.Object,
+                });
 
             resourceTickService.Raise(r => r.OnResourceTick += null,
                 this, new ResourceTickEventArgs("trevor", cash: 250, recruitment: 5, weapons: 2));
@@ -363,8 +382,11 @@ namespace FactionWars.Tests.Unit.Telemetry
             var attackerManager = TestHelpers.CreateBattleAttackerManager(out var raiseAttackerKilled);
             using var svc = new TelemetryService(_sink.Object, _factionService.Object,
                 _zoneService.Object, _gameStateManager.Object,
-                getPlayerPedHandle: () => 100,
-                battleAttackerManager: attackerManager);
+                new TelemetryServiceOptions
+                {
+                    GetPlayerPedHandle = () => 100,
+                    BattleAttackerManager = attackerManager,
+                });
 
             raiseAttackerKilled(new AttackerKilledEventArgs(
                 "zone1", "trevor", DefenderTier.Basic, pedHandle: 50, killerPedHandle: 100));
@@ -382,13 +404,26 @@ namespace FactionWars.Tests.Unit.Telemetry
             var attackerManager = TestHelpers.CreateBattleAttackerManager(out var raiseAttackerKilled);
             using var svc = new TelemetryService(_sink.Object, _factionService.Object,
                 _zoneService.Object, _gameStateManager.Object,
-                getPlayerPedHandle: () => 100,
-                battleAttackerManager: attackerManager);
+                new TelemetryServiceOptions
+                {
+                    GetPlayerPedHandle = () => 100,
+                    BattleAttackerManager = attackerManager,
+                });
 
             raiseAttackerKilled(new AttackerKilledEventArgs(
                 "zone1", "trevor", DefenderTier.Basic, pedHandle: 50, killerPedHandle: 999));
 
             _sink.Verify(s => s.WritePlayerEvent(It.IsAny<PlayerEventRow>()), Times.Never);
+        }
+
+        [Fact]
+        public void Ctor_BattleAttackerManagerProvidedWithoutPlayerPedHandle_Throws()
+        {
+            var attackerManager = TestHelpers.CreateBattleAttackerManager(out _);
+
+            Assert.Throws<ArgumentException>(() => new TelemetryService(
+                _sink.Object, _factionService.Object, _zoneService.Object, _gameStateManager.Object,
+                new TelemetryServiceOptions { BattleAttackerManager = attackerManager }));
         }
 
         [Fact]
@@ -427,8 +462,11 @@ namespace FactionWars.Tests.Unit.Telemetry
                 using var watcher = new NativeSaveWatcher(tempDir);
                 using var svc = new TelemetryService(_sink.Object, _factionService.Object,
                     _zoneService.Object, _gameStateManager.Object,
-                    getPlayerPedHandle: () => 0,
-                    nativeSaveWatcher: watcher);
+                    new TelemetryServiceOptions
+                    {
+                        GetPlayerPedHandle = () => 0,
+                        NativeSaveWatcher = watcher,
+                    });
 
                 // Raise the event via reflection — the event has no public raiser.
                 var field = typeof(NativeSaveWatcher).GetField("OnNativeSaveWritten",
@@ -449,13 +487,20 @@ namespace FactionWars.Tests.Unit.Telemetry
         }
 
         [Fact]
-        public void OnVictory_WritesMatchMetaVictoryRow()
+        public void OnVictory_WritesMatchMetaVictoryRowAsJson()
         {
             var victoryManager = TestHelpers.CreateVictoryManager();
+            MatchMetaEventRow? captured = null;
+            _sink.Setup(s => s.WriteMatchMeta(It.IsAny<MatchMetaEventRow>()))
+                .Callback<MatchMetaEventRow>(r => captured = r);
+
             using var svc = new TelemetryService(_sink.Object, _factionService.Object,
                 _zoneService.Object, _gameStateManager.Object,
-                getPlayerPedHandle: () => 0,
-                victoryManager: victoryManager);
+                new TelemetryServiceOptions
+                {
+                    GetPlayerPedHandle = () => 0,
+                    VictoryManager = victoryManager,
+                });
 
             // Raise via reflection — no public raise method.
             var field = typeof(VictoryManager).GetField("OnVictory",
@@ -465,10 +510,12 @@ namespace FactionWars.Tests.Unit.Telemetry
             Assert.NotNull(handler);
             handler!.Invoke(victoryManager, new VictoryEventArgs("michael", "Michael's Crew"));
 
-            _sink.Verify(s => s.WriteMatchMeta(It.Is<MatchMetaEventRow>(r =>
-                r.Type == MatchMetaEventType.Victory
-                && r.Details.Contains("michael")
-                && r.Details.Contains("Michael's Crew"))), Times.Once);
+            Assert.NotNull(captured);
+            Assert.Equal(MatchMetaEventType.Victory, captured!.Type);
+            // Details must be valid JSON containing both fields.
+            var json = JObject.Parse(captured.Details);
+            Assert.Equal("michael", (string?)json["factionId"]);
+            Assert.Equal("Michael's Crew", (string?)json["name"]);
         }
 
         [Fact]
@@ -477,8 +524,11 @@ namespace FactionWars.Tests.Unit.Telemetry
             var difficultyService = new Mock<IDifficultyService>();
             using var svc = new TelemetryService(_sink.Object, _factionService.Object,
                 _zoneService.Object, _gameStateManager.Object,
-                getPlayerPedHandle: () => 0,
-                difficultyService: difficultyService.Object);
+                new TelemetryServiceOptions
+                {
+                    GetPlayerPedHandle = () => 0,
+                    DifficultyService = difficultyService.Object,
+                });
 
             difficultyService.Raise(d => d.DifficultyChanged += null,
                 this, DifficultySettings.Hard);

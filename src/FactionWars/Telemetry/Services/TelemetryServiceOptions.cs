@@ -1,0 +1,45 @@
+using System;
+using FactionWars.AI.Interfaces;
+using FactionWars.Combat.Interfaces;
+using FactionWars.Core.Interfaces;
+using FactionWars.Economy.Interfaces;
+using FactionWars.ScriptHookV.Managers;
+using FactionWars.ScriptHookV.Persistence;
+using FactionWars.Territory.Interfaces;
+
+namespace FactionWars.Telemetry.Services
+{
+    /// <summary>
+    /// Bundles the optional dependencies for <see cref="TelemetryService"/>. Each property is
+    /// independent — supplying one does not require any other (with one exception:
+    /// <see cref="BattleAttackerManager"/> requires <see cref="GetPlayerPedHandle"/>).
+    /// Properties left null mean the service will not subscribe to that source.
+    /// </summary>
+    public sealed class TelemetryServiceOptions
+    {
+        /// <summary>
+        /// Returns the current player ped handle. Required when
+        /// <see cref="BattleAttackerManager"/> is supplied (so player kills can be detected).
+        /// The handle changes on respawn, so this is a delegate rather than a value.
+        /// </summary>
+        public Func<int>? GetPlayerPedHandle { get; init; }
+
+        public IZoneBattleManager? ZoneBattleManager { get; init; }
+        public AIManager? AIManager { get; init; }
+        public IAIController? AIController { get; init; }
+        public IZoneDefenderAllocationService? AllocationService { get; init; }
+        public IResourceTickService? ResourceTickService { get; init; }
+        public BattleAttackerManager? BattleAttackerManager { get; init; }
+        public VictoryManager? VictoryManager { get; init; }
+        public IDifficultyService? DifficultyService { get; init; }
+        public NativeSaveWatcher? NativeSaveWatcher { get; init; }
+    }
+}
+
+// `init`-only setters require the IsExternalInit type. .NET Framework 4.8 doesn't ship
+// it, but the C# compiler accepts an internal polyfill in the project's own assembly.
+// Scoped to internal so it doesn't pollute the public API.
+namespace System.Runtime.CompilerServices
+{
+    internal static class IsExternalInit { }
+}

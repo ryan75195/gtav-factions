@@ -20,9 +20,10 @@ namespace FactionWars.Telemetry.Services
 {
     /// <summary>
     /// Orchestrates telemetry: drives a periodic snapshot tick (called from the game loop)
-    /// and routes its output to the sink. Also subscribes to ten domain event sources
+    /// and routes its output to the sink. Also subscribes to optional domain event sources
     /// (zones, battles, AI decisions, allocations, recruitment, resource ticks, attacker
-    /// kills, save events, victory and difficulty) and forwards each to the sink.
+    /// kills, save events, victory and difficulty) supplied via <see cref="TelemetryServiceOptions"/>
+    /// and forwards each to the sink.
     /// </summary>
     public sealed class TelemetryService : IDisposable
     {
@@ -40,26 +41,29 @@ namespace FactionWars.Telemetry.Services
             IFactionService factionService,
             IZoneService zoneService,
             IGameStateManager gameStateManager,
-            Func<int>? getPlayerPedHandle = null,
-            IZoneBattleManager? zoneBattleManager = null,
-            AIManager? aiManager = null,
-            IAIController? aiController = null,
-            IZoneDefenderAllocationService? allocationService = null,
-            IResourceTickService? resourceTickService = null,
-            BattleAttackerManager? battleAttackerManager = null,
-            VictoryManager? victoryManager = null,
-            IDifficultyService? difficultyService = null,
-            NativeSaveWatcher? nativeSaveWatcher = null)
+            TelemetryServiceOptions? options = null)
         {
             _sink = sink ?? throw new ArgumentNullException(nameof(sink));
             _gameStateManager = gameStateManager ?? throw new ArgumentNullException(nameof(gameStateManager));
             if (factionService == null) throw new ArgumentNullException(nameof(factionService));
             if (zoneService == null) throw new ArgumentNullException(nameof(zoneService));
             _snapshotBuilder = new FactionSnapshotBuilder(factionService, zoneService);
-            // The player ped handle changes on respawn, so capture by delegate. Default to
-            // a no-op returning 0 so consumers using the legacy 4-arg form still work; they
-            // won't subscribe to AttackerKilled, so the value is never read.
-            _getPlayerPedHandle = getPlayerPedHandle ?? (() => 0);
+
+            var opts = options ?? new TelemetryServiceOptions();
+
+            // BattleAttackerManager requires a real player-ped handle source: every player
+            // kill check would silently fail otherwise (no real ped has handle 0).
+            if (opts.BattleAttackerManager != null && opts.GetPlayerPedHandle == null)
+            {
+                throw new ArgumentException(
+                    "GetPlayerPedHandle is required when BattleAttackerManager is provided",
+                    nameof(options));
+            }
+
+            // Default the delegate so the AttackerKilled handler (and only it) reads a
+            // benign value when no manager is wired up. The validation above guarantees
+            // we don't hit that path if BattleAttackerManager is set.
+            _getPlayerPedHandle = opts.GetPlayerPedHandle ?? (() => 0);
 
             // 1. Zone ownership (always subscribed - zoneService is required).
             EventHandler<ZoneOwnershipChangedEventArgs> zoneHandler = OnZoneOwnershipChanged;
@@ -67,54 +71,54 @@ namespace FactionWars.Telemetry.Services
             _unsubscribers.Add(() => zoneService.ZoneOwnershipChanged -= zoneHandler);
             FileLogger.Info("TelemetryService: subscribed to ZoneOwnershipChanged");
 
-            if (zoneBattleManager != null)
+            if (opts.ZoneBattleManager != null)
             {
                 Action<ZoneBattle> startedHandler = OnBattleStarted;
                 Action<ZoneBattle, BattleOutcome> endedHandler = OnBattleEnded;
-                zoneBattleManager.BattleStarted += startedHandler;
-                zoneBattleManager.BattleEnded += endedHandler;
-                _unsubscribers.Add(() => zoneBattleManager.BattleStarted -= startedHandler);
-                _unsubscribers.Add(() => zoneBattleManager.BattleEnded -= endedHandler);
+                opts.ZoneBattleManager.BattleStarted += startedHandler;
+                opts.ZoneBattleManager.BattleEnded += endedHandler;
+                _unsubscribers.Add(() => opts.ZoneBattleManager.BattleStarted -= startedHandler);
+                _unsubscribers.Add(() => opts.ZoneBattleManager.BattleEnded -= endedHandler);
                 FileLogger.Info("TelemetryService: subscribed to BattleStarted/BattleEnded");
             }
 
-            if (aiManager != null)
+            if (opts.AIManager != null)
             {
                 EventHandler<AIDecisionEventArgs> handler = OnAIDecision;
-                aiManager.OnAIDecision += handler;
-                _unsubscribers.Add(() => aiManager.OnAIDecision -= handler);
+                opts.AIManager.OnAIDecision += handler;
+                _unsubscribers.Add(() => opts.AIManager.OnAIDecision -= handler);
                 FileLogger.Info("TelemetryService: subscribed to OnAIDecision");
             }
 
-            if (allocationService != null)
+            if (opts.AllocationService != null)
             {
                 EventHandler<TroopsAllocatedEventArgs> handler = OnTroopsAllocated;
-                allocationService.TroopsAllocated += handler;
-                _unsubscribers.Add(() => allocationService.TroopsAllocated -= handler);
+                opts.AllocationService.TroopsAllocated += handler;
+                _unsubscribers.Add(() => opts.AllocationService.TroopsAllocated -= handler);
                 FileLogger.Info("TelemetryService: subscribed to TroopsAllocated");
             }
 
-            if (aiController != null)
+            if (opts.AIController != null)
             {
                 EventHandler<FactionWars.AI.Events.TroopsRecruitedEventArgs> handler = OnTroopsRecruited;
-                aiController.OnTroopsRecruited += handler;
-                _unsubscribers.Add(() => aiController.OnTroopsRecruited -= handler);
+                opts.AIController.OnTroopsRecruited += handler;
+                _unsubscribers.Add(() => opts.AIController.OnTroopsRecruited -= handler);
                 FileLogger.Info("TelemetryService: subscribed to OnTroopsRecruited");
             }
 
-            if (resourceTickService != null)
+            if (opts.ResourceTickService != null)
             {
                 EventHandler<ResourceTickEventArgs> handler = OnResourceTick;
-                resourceTickService.OnResourceTick += handler;
-                _unsubscribers.Add(() => resourceTickService.OnResourceTick -= handler);
+                opts.ResourceTickService.OnResourceTick += handler;
+                _unsubscribers.Add(() => opts.ResourceTickService.OnResourceTick -= handler);
                 FileLogger.Info("TelemetryService: subscribed to OnResourceTick");
             }
 
-            if (battleAttackerManager != null)
+            if (opts.BattleAttackerManager != null)
             {
                 EventHandler<AttackerKilledEventArgs> handler = OnAttackerKilled;
-                battleAttackerManager.AttackerKilled += handler;
-                _unsubscribers.Add(() => battleAttackerManager.AttackerKilled -= handler);
+                opts.BattleAttackerManager.AttackerKilled += handler;
+                _unsubscribers.Add(() => opts.BattleAttackerManager.AttackerKilled -= handler);
                 FileLogger.Info("TelemetryService: subscribed to AttackerKilled");
             }
 
@@ -125,27 +129,27 @@ namespace FactionWars.Telemetry.Services
             _unsubscribers.Add(() => gameStateManager.OnGameLoaded -= loadedHandler);
             FileLogger.Info("TelemetryService: subscribed to OnGameLoaded");
 
-            if (nativeSaveWatcher != null)
+            if (opts.NativeSaveWatcher != null)
             {
                 EventHandler<NativeSaveWatcher.SaveEvent> handler = OnNativeSaveWritten;
-                nativeSaveWatcher.OnNativeSaveWritten += handler;
-                _unsubscribers.Add(() => nativeSaveWatcher.OnNativeSaveWritten -= handler);
+                opts.NativeSaveWatcher.OnNativeSaveWritten += handler;
+                _unsubscribers.Add(() => opts.NativeSaveWatcher.OnNativeSaveWritten -= handler);
                 FileLogger.Info("TelemetryService: subscribed to OnNativeSaveWritten");
             }
 
-            if (victoryManager != null)
+            if (opts.VictoryManager != null)
             {
                 EventHandler<VictoryEventArgs> handler = OnVictory;
-                victoryManager.OnVictory += handler;
-                _unsubscribers.Add(() => victoryManager.OnVictory -= handler);
+                opts.VictoryManager.OnVictory += handler;
+                _unsubscribers.Add(() => opts.VictoryManager.OnVictory -= handler);
                 FileLogger.Info("TelemetryService: subscribed to OnVictory");
             }
 
-            if (difficultyService != null)
+            if (opts.DifficultyService != null)
             {
                 EventHandler<DifficultySettings> handler = OnDifficultyChanged;
-                difficultyService.DifficultyChanged += handler;
-                _unsubscribers.Add(() => difficultyService.DifficultyChanged -= handler);
+                opts.DifficultyService.DifficultyChanged += handler;
+                _unsubscribers.Add(() => opts.DifficultyService.DifficultyChanged -= handler);
                 FileLogger.Info("TelemetryService: subscribed to DifficultyChanged");
             }
         }
@@ -260,7 +264,6 @@ namespace FactionWars.Telemetry.Services
         private void OnAIDecision(object? sender, AIDecisionEventArgs e)
         {
             if (_disposed) return;
-            FileLogger.Debug($"TelemetryService.OnAIDecision: faction={e.FactionId} type={e.Decision.DecisionType}");
             try
             {
                 _sink.WriteDecision(new DecisionEventRow(
@@ -277,7 +280,6 @@ namespace FactionWars.Telemetry.Services
         private void OnTroopsAllocated(object? sender, TroopsAllocatedEventArgs e)
         {
             if (_disposed) return;
-            FileLogger.Debug($"TelemetryService.OnTroopsAllocated: faction={e.FactionId} zone={e.ZoneId} tier={e.Tier} count={e.Count}");
             try
             {
                 // Default Source to AI for now — player allocation isn't currently wired
@@ -311,7 +313,6 @@ namespace FactionWars.Telemetry.Services
         private void OnResourceTick(object? sender, ResourceTickEventArgs e)
         {
             if (_disposed) return;
-            FileLogger.Debug($"TelemetryService.OnResourceTick: faction={e.FactionId} cash={e.CashGenerated}");
             try
             {
                 // ZonesContributing is set to 0 because the ResourceTickEventArgs does not
@@ -331,7 +332,6 @@ namespace FactionWars.Telemetry.Services
         private void OnAttackerKilled(object? sender, AttackerKilledEventArgs e)
         {
             if (_disposed) return;
-            FileLogger.Debug($"TelemetryService.OnAttackerKilled: zone={e.ZoneId} faction={e.FactionId} ped={e.PedHandle} killer={e.KillerPedHandle}");
             try
             {
                 var row = PlayerKillResolver.Resolve(e, _getPlayerPedHandle(),
@@ -386,8 +386,13 @@ namespace FactionWars.Telemetry.Services
             try
             {
                 // MatchMetaEventRow has no FactionId field; encode the winning faction id
-                // via Details (and append the human-readable name in parentheses).
-                var details = $"{e.WinningFactionId}|{e.WinningFactionName}";
+                // and human-readable name as a JSON object so downstream CSV consumers
+                // can parse it cleanly (a pipe delimiter would collide with name punctuation).
+                var details = Newtonsoft.Json.JsonConvert.SerializeObject(new
+                {
+                    factionId = e.WinningFactionId,
+                    name = e.WinningFactionName,
+                });
                 _sink.WriteMatchMeta(new MatchMetaEventRow(
                     DateTime.Now, _gameStateManager.TotalPlayTimeSeconds,
                     MatchMetaEventType.Victory, details));
