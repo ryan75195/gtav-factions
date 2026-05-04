@@ -1,5 +1,4 @@
 using System;
-using System.Threading;
 using FactionWars.Factions.Interfaces;
 using FactionWars.ScriptHookV.Logging;
 using FactionWars.ScriptHookV.Persistence;
@@ -9,18 +8,18 @@ using FactionWars.Territory.Interfaces;
 namespace FactionWars.Telemetry.Services
 {
     /// <summary>
-    /// Orchestrates telemetry: drives a periodic snapshot timer and routes its output
-    /// to the sink. Subsequent tasks add domain-event subscriptions and match-meta
-    /// lifecycle to this class.
+    /// Orchestrates telemetry: drives a periodic snapshot tick (called from the game loop)
+    /// and routes its output to the sink. Subsequent tasks add domain-event subscriptions
+    /// and match-meta lifecycle to this class.
     /// </summary>
     public sealed class TelemetryService : IDisposable
     {
-        private const int SnapshotIntervalMs = 60_000;
+        private const float SnapshotIntervalSeconds = 60f;
 
         private readonly ITelemetrySink _sink;
         private readonly IGameStateManager _gameStateManager;
         private readonly FactionSnapshotBuilder _snapshotBuilder;
-        private readonly Timer _timer;
+        private float _secondsSinceLastSnapshot;
         private bool _disposed;
 
         public TelemetryService(ITelemetrySink sink,
@@ -33,12 +32,26 @@ namespace FactionWars.Telemetry.Services
             _snapshotBuilder = new FactionSnapshotBuilder(
                 factionService ?? throw new ArgumentNullException(nameof(factionService)),
                 zoneService ?? throw new ArgumentNullException(nameof(zoneService)));
-
-            _timer = new Timer(_ => SafeTick(), null, SnapshotIntervalMs, SnapshotIntervalMs);
         }
 
         /// <summary>
-        /// Public entry for tests — bypasses the timer.
+        /// Drive the telemetry timer. Call once per game tick from the game loop with the
+        /// elapsed game-time delta. Triggers a snapshot every <c>SnapshotIntervalSeconds</c>.
+        /// </summary>
+        public void Update(float deltaTimeSeconds)
+        {
+            if (_disposed) return;
+            _secondsSinceLastSnapshot += deltaTimeSeconds;
+            if (_secondsSinceLastSnapshot >= SnapshotIntervalSeconds)
+            {
+                _secondsSinceLastSnapshot = 0f;
+                SafeTick();
+            }
+        }
+
+        /// <summary>
+        /// Force an immediate snapshot tick. Intended for tests and explicit on-demand
+        /// snapshots; the periodic schedule is driven by <see cref="Update"/>.
         /// </summary>
         public void Tick() => SafeTick();
 
@@ -60,7 +73,6 @@ namespace FactionWars.Telemetry.Services
         {
             if (_disposed) return;
             _disposed = true;
-            try { _timer.Dispose(); } catch { }
         }
     }
 }

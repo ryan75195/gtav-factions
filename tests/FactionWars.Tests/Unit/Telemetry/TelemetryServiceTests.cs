@@ -95,5 +95,58 @@ namespace FactionWars.Tests.Unit.Telemetry
 
             _sink.Verify(s => s.WriteSnapshot(It.IsAny<IReadOnlyList<FactionSnapshot>>()), Times.Never);
         }
+
+        [Fact]
+        public void Update_AccumulatesUnderInterval_DoesNotTrigger()
+        {
+            var michael = new Faction("michael", "Michael's Crew");
+            _factionService.Setup(s => s.GetAllFactions()).Returns(new[] { michael });
+            _factionService.Setup(s => s.GetFactionState("michael"))
+                .Returns(new FactionState("michael") { Cash = 500 });
+
+            using var svc = new TelemetryService(_sink.Object, _factionService.Object,
+                _zoneService.Object, _gameStateManager.Object);
+
+            svc.Update(30f);
+            svc.Update(29f); // 59s total, still under 60
+
+            _sink.Verify(s => s.WriteSnapshot(It.IsAny<IReadOnlyList<FactionSnapshot>>()), Times.Never);
+        }
+
+        [Fact]
+        public void Update_AccumulatesAtInterval_TriggersOnce()
+        {
+            var michael = new Faction("michael", "Michael's Crew");
+            _factionService.Setup(s => s.GetAllFactions()).Returns(new[] { michael });
+            _factionService.Setup(s => s.GetFactionState("michael"))
+                .Returns(new FactionState("michael") { Cash = 500 });
+
+            using var svc = new TelemetryService(_sink.Object, _factionService.Object,
+                _zoneService.Object, _gameStateManager.Object);
+
+            svc.Update(30f);
+            svc.Update(30f); // 60s total
+
+            _sink.Verify(s => s.WriteSnapshot(It.IsAny<IReadOnlyList<FactionSnapshot>>()), Times.Once);
+        }
+
+        [Fact]
+        public void Update_AfterTrigger_ResetsAccumulator()
+        {
+            var michael = new Faction("michael", "Michael's Crew");
+            _factionService.Setup(s => s.GetAllFactions()).Returns(new[] { michael });
+            _factionService.Setup(s => s.GetFactionState("michael"))
+                .Returns(new FactionState("michael") { Cash = 500 });
+
+            using var svc = new TelemetryService(_sink.Object, _factionService.Object,
+                _zoneService.Object, _gameStateManager.Object);
+
+            svc.Update(60f); // first trigger
+            svc.Update(30f); // accumulator now 30 (post-reset), not 90
+            _sink.Verify(s => s.WriteSnapshot(It.IsAny<IReadOnlyList<FactionSnapshot>>()), Times.Once);
+
+            svc.Update(30f); // total 60 after reset → second trigger
+            _sink.Verify(s => s.WriteSnapshot(It.IsAny<IReadOnlyList<FactionSnapshot>>()), Times.Exactly(2));
+        }
     }
 }
