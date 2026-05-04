@@ -247,12 +247,8 @@ namespace FactionWars.Telemetry.Services
             if (_getPlayerPosition == null) return string.Empty;
 
             var position = _getPlayerPosition();
-            return Newtonsoft.Json.JsonConvert.SerializeObject(new
-            {
-                x = position.X,
-                y = position.Y,
-                z = position.Z,
-            });
+            return Newtonsoft.Json.JsonConvert.SerializeObject(
+                new PlayerPositionDetails(position.X, position.Y, position.Z));
         }
 
         /// <summary>
@@ -456,10 +452,8 @@ namespace FactionWars.Telemetry.Services
                     {
                         // Mirror OnVictory's JSON encoding so downstream CSV consumers can
                         // parse details consistently across MatchMeta event types.
-                        var details = Newtonsoft.Json.JsonConvert.SerializeObject(new
-                        {
-                            save = e.SaveName,
-                        });
+                        var details = Newtonsoft.Json.JsonConvert.SerializeObject(
+                            new SaveMatchStartDetails(e.SaveName));
                         _sink.WriteMatchMeta(new MatchMetaEventRow(
                             DateTime.Now, _gameStateManager.TotalPlayTimeSeconds,
                             MatchMetaEventType.MatchStart, details));
@@ -499,11 +493,8 @@ namespace FactionWars.Telemetry.Services
                 // MatchMetaEventRow has no FactionId field; encode the winning faction id
                 // and human-readable name as a JSON object so downstream CSV consumers
                 // can parse it cleanly (a pipe delimiter would collide with name punctuation).
-                var details = Newtonsoft.Json.JsonConvert.SerializeObject(new
-                {
-                    factionId = e.WinningFactionId,
-                    name = e.WinningFactionName,
-                });
+                var details = Newtonsoft.Json.JsonConvert.SerializeObject(
+                    new VictoryDetails(e.WinningFactionId, e.WinningFactionName));
                 _sink.WriteMatchMeta(new MatchMetaEventRow(
                     DateTime.Now, _gameStateManager.TotalPlayTimeSeconds,
                     MatchMetaEventType.Victory, details));
@@ -565,6 +556,51 @@ namespace FactionWars.Telemetry.Services
         private static int GetBattleAliveCount(ZoneBattle battle, BattleRole role)
         {
             return battle.Participants.FirstOrDefault(p => p.Role == role)?.AliveCount ?? 0;
+        }
+
+        private sealed class PlayerPositionDetails
+        {
+            public PlayerPositionDetails(float x, float y, float z)
+            {
+                X = x;
+                Y = y;
+                Z = z;
+            }
+
+            [Newtonsoft.Json.JsonProperty("x")]
+            public float X { get; }
+
+            [Newtonsoft.Json.JsonProperty("y")]
+            public float Y { get; }
+
+            [Newtonsoft.Json.JsonProperty("z")]
+            public float Z { get; }
+        }
+
+        private sealed class SaveMatchStartDetails
+        {
+            public SaveMatchStartDetails(string save)
+            {
+                Save = save;
+            }
+
+            [Newtonsoft.Json.JsonProperty("save")]
+            public string Save { get; }
+        }
+
+        private sealed class VictoryDetails
+        {
+            public VictoryDetails(string factionId, string name)
+            {
+                FactionId = factionId;
+                Name = name;
+            }
+
+            [Newtonsoft.Json.JsonProperty("factionId")]
+            public string FactionId { get; }
+
+            [Newtonsoft.Json.JsonProperty("name")]
+            public string Name { get; }
         }
     }
 }
