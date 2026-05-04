@@ -11,7 +11,7 @@ namespace FactionWars.Analyzers;
 public class ClassLengthAnalyzer : DiagnosticAnalyzer
 {
     public const string DiagnosticId = "CI0017";
-    private const int MaxLines = 400;
+    private const int MaxLines = 350;
 
     private static readonly DiagnosticDescriptor Rule = new(
         DiagnosticId,
