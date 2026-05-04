@@ -26,13 +26,13 @@ namespace FactionWars.Telemetry.Services
     /// kills, save events, victory and difficulty) supplied via <see cref="TelemetryServiceOptions"/>
     /// and forwards each to the sink.
     /// </summary>
-    public sealed class TelemetryService : IDisposable
+    public sealed class TelemetryService : ITelemetryService
     {
         private const float SnapshotIntervalSeconds = 60f;
 
         private readonly ITelemetrySink _sink;
         private readonly IGameStateManager _gameStateManager;
-        private readonly FactionSnapshotBuilder _snapshotBuilder;
+        private readonly IFactionSnapshotBuilder _snapshotBuilder;
         private readonly Func<int> _getPlayerPedHandle;
         private readonly Func<string, bool> _isFirstTimeSeenSave;
         private readonly Func<bool>? _isPlayerDead;
@@ -47,7 +47,7 @@ namespace FactionWars.Telemetry.Services
             IFactionService factionService,
             IZoneService zoneService,
             IGameStateManager gameStateManager,
-            TelemetryServiceOptions? options = null)
+            ITelemetryServiceOptions? options = null)
         {
             _sink = sink ?? throw new ArgumentNullException(nameof(sink));
             _gameStateManager = gameStateManager ?? throw new ArgumentNullException(nameof(gameStateManager));
