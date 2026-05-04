@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using FactionWars.Core.Models;
 using FactionWars.Factions.Interfaces;
+using FactionWars.Telemetry.Interfaces;
 using FactionWars.Telemetry.Models;
 using FactionWars.Territory.Interfaces;
 
@@ -11,7 +12,7 @@ namespace FactionWars.Telemetry.Services
     /// Builds FactionSnapshot rows from current faction and zone state.
     /// Pure: no I/O, no side effects.
     /// </summary>
-    public sealed class FactionSnapshotBuilder
+    public sealed class FactionSnapshotBuilder : IFactionSnapshotBuilder
     {
         private readonly IFactionService _factionService;
         private readonly IZoneService _zoneService;

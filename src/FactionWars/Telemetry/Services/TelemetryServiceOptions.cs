@@ -5,6 +5,7 @@ using FactionWars.Core.Interfaces;
 using FactionWars.Economy.Interfaces;
 using FactionWars.ScriptHookV.Managers;
 using FactionWars.ScriptHookV.Persistence;
+using FactionWars.Telemetry.Interfaces;
 using FactionWars.Territory.Interfaces;
 
 namespace FactionWars.Telemetry.Services
@@ -15,7 +16,7 @@ namespace FactionWars.Telemetry.Services
     /// <see cref="BattleAttackerManager"/> requires <see cref="GetPlayerPedHandle"/>).
     /// Properties left null mean the service will not subscribe to that source.
     /// </summary>
-    public sealed class TelemetryServiceOptions
+    public sealed class TelemetryServiceOptions : ITelemetryServiceOptions
     {
         /// <summary>
         /// Returns the current player ped handle. Required when

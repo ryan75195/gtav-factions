@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using FactionWars.Economy.Interfaces;
 using FactionWars.Economy.Models;
 using FactionWars.Territory.Models;
 
@@ -8,7 +9,7 @@ namespace FactionWars.Economy.Services
     /// <summary>
     /// Calculates resource generation for zones based on their traits and strategic value.
     /// </summary>
-    public class ResourceGenerationCalculator
+    public class ResourceGenerationCalculator : IResourceGenerationCalculator
     {
         // Trait bonus percentages
         private const float CommercialCashBonus = 0.50f;
