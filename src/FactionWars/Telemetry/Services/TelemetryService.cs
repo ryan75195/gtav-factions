@@ -148,7 +148,7 @@ namespace FactionWars.Telemetry.Services
 
             if (opts.NativeSaveWatcher != null)
             {
-                EventHandler<NativeSaveWatcher.SaveEvent> handler = OnNativeSaveWritten;
+                EventHandler<SaveEvent> handler = OnNativeSaveWritten;
                 opts.NativeSaveWatcher.OnNativeSaveWritten += handler;
                 _unsubscribers.Add(() => opts.NativeSaveWatcher.OnNativeSaveWritten -= handler);
                 FileLogger.Info("TelemetryService: subscribed to OnNativeSaveWritten");
@@ -472,7 +472,7 @@ namespace FactionWars.Telemetry.Services
             }
         }
 
-        private void OnNativeSaveWritten(object? sender, NativeSaveWatcher.SaveEvent e)
+        private void OnNativeSaveWritten(object? sender, SaveEvent e)
         {
             if (_disposed) return;
             FileLogger.Debug($"TelemetryService.OnNativeSaveWritten: path={e.Path}");

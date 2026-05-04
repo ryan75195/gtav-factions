@@ -116,10 +116,10 @@ namespace FactionWars.Tests.Unit.ScriptHookV
 
             // Assert - Should show character switch notification
             Assert.True(_gameBridge.NotificationCount > notificationCountBeforeSwitch);
-            Assert.True(_gameBridge.Notifications.Any(n =>
+            Assert.Contains(_gameBridge.Notifications, n =>
                 n.Contains("Trevor") ||
                 n.Contains("switch") ||
-                n.Contains("faction")));
+                n.Contains("faction"));
         }
 
         [Fact]
@@ -137,10 +137,10 @@ namespace FactionWars.Tests.Unit.ScriptHookV
 
             // Assert
             Assert.True(_gameBridge.NotificationCount > notificationCountBeforeSwitch);
-            Assert.True(_gameBridge.Notifications.Any(n =>
+            Assert.Contains(_gameBridge.Notifications, n =>
                 n.Contains("Franklin") ||
                 n.Contains("switch") ||
-                n.Contains("faction")));
+                n.Contains("faction"));
         }
 
         [Fact]

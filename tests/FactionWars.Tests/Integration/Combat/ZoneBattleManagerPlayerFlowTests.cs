@@ -97,7 +97,7 @@ namespace FactionWars.Tests.Integration.Combat
 
             // Player is an attacker participant
             Assert.Equal(2, battle.Participants.Count);
-            Assert.True(battle.Attackers.Any(p => p.IsPlayer && p.FactionId == "player_faction"));
+            Assert.Contains(battle.Attackers, p => p.IsPlayer && p.FactionId == "player_faction");
         }
 
         // -----------------------------------------------------------------------
@@ -120,7 +120,7 @@ namespace FactionWars.Tests.Integration.Combat
             Assert.Equal(3, battle!.Participants.Count);
             int attackerCount = battle.Participants.Count(p => p.Role == BattleRole.Attacker);
             Assert.Equal(2, attackerCount);
-            Assert.True(battle.Attackers.Any(p => p.IsPlayer && p.FactionId == "player_faction"));
+            Assert.Contains(battle.Attackers, p => p.IsPlayer && p.FactionId == "player_faction");
         }
 
         // -----------------------------------------------------------------------
@@ -289,7 +289,7 @@ namespace FactionWars.Tests.Integration.Combat
             Assert.Single(endedEvents);
             // Outcome is AttackersWon and the surviving attacker is the player.
             Assert.Equal(BattleOutcome.AttackersWon, endedEvents[0].Item2);
-            Assert.True(endedEvents[0].Item1.Attackers.Any(p => p.IsPlayer));
+            Assert.Contains(endedEvents[0].Item1.Attackers, p => p.IsPlayer);
             // Battle is removed from active battles.
             Assert.Null(manager.GetBattleForZone("zone_1"));
         }

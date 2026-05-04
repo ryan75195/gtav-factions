@@ -548,9 +548,9 @@ namespace FactionWars.Tests.Unit.Telemetry
                 var field = typeof(NativeSaveWatcher).GetField("OnNativeSaveWritten",
                     System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
                 Assert.NotNull(field);
-                var handler = (EventHandler<NativeSaveWatcher.SaveEvent>?)field!.GetValue(watcher);
+                var handler = (EventHandler<SaveEvent>?)field!.GetValue(watcher);
                 Assert.NotNull(handler);
-                handler!.Invoke(watcher, new NativeSaveWatcher.SaveEvent(
+                handler!.Invoke(watcher, new SaveEvent(
                     @"C:/Users/ryan7/Documents/Rockstar Games/GTA V/Profiles/AAA/SGTA0004",
                     DateTime.UtcNow));
 

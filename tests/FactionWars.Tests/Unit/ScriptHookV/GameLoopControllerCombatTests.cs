@@ -105,7 +105,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             var zone = zoneRepo.GetById("vinewood_hills");
             Assert.NotNull(zone);
             zoneService.TransferZoneOwnership("vinewood_hills", defenderFactionId);
-            Assert.NotEqual(controller.CurrentPlayerFactionId, defenderFactionId);
+            Assert.NotEqual(defenderFactionId, controller.CurrentPlayerFactionId);
 
             var allocSvc = _container.Resolve<IZoneDefenderAllocationService>();
             allocSvc.SetAllocation(defenderFactionId, "vinewood_hills", DefenderTier.Basic, 1);

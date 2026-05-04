@@ -7,33 +7,6 @@ using FactionWars.UI.Models;
 namespace FactionWars.ScriptHookV.Managers
 {
     /// <summary>
-    /// Event arguments for victory events.
-    /// </summary>
-    public class VictoryEventArgs : EventArgs
-    {
-        /// <summary>
-        /// The ID of the faction that achieved victory.
-        /// </summary>
-        public string WinningFactionId { get; }
-
-        /// <summary>
-        /// The display name of the faction that achieved victory.
-        /// </summary>
-        public string WinningFactionName { get; }
-
-        /// <summary>
-        /// Creates new victory event arguments.
-        /// </summary>
-        /// <param name="winningFactionId">The winning faction's ID.</param>
-        /// <param name="winningFactionName">The winning faction's display name.</param>
-        public VictoryEventArgs(string winningFactionId, string winningFactionName)
-        {
-            WinningFactionId = winningFactionId;
-            WinningFactionName = winningFactionName;
-        }
-    }
-
-    /// <summary>
     /// Manages victory condition detection and victory screen display.
     /// Periodically checks if any faction has achieved 100% zone control
     /// and displays a victory notification when this occurs.

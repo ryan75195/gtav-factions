@@ -290,10 +290,10 @@ namespace FactionWars.Tests.Unit.Performance
             var tasks = new List<Task>();
             for (int i = 0; i < 100; i++)
             {
-                tasks.Add(Task.Run(() =>
+                tasks.Add(Task.Run(async () =>
                 {
                     var item = pool.Get();
-                    Task.Delay(1).Wait();
+                    await Task.Delay(1);
                     pool.Return(item);
                 }));
             }
