@@ -100,7 +100,8 @@ namespace FactionWars.Tests.Integration.AI
             // Simulate the battle using the decision
             var attackerTroops = new TroopComposition(attackDecision.TroopsToCommit, 0, 0);
             var defenderState = _factionService.GetFactionState(MichaelFactionId);
-            var defenderTroops = new TroopComposition(defenderState?.TroopCount ?? 0, 0, 0);
+            var defenderTroopCount = defenderState?.TroopCount ?? 0;
+            var defenderTroops = new TroopComposition(defenderTroopCount, 0, 0);
 
             var battleResult = _battleSimulationService.SimulateBattle(
                 TrevorFactionId,
