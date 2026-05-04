@@ -78,6 +78,48 @@ namespace FactionWars.Tests.Unit.Telemetry
         }
 
         [Fact]
+        public void SetSaveFile_WhenPlaceholderIsCurrent_PromotesToRealSaveFolder()
+        {
+            using var sink = new CsvTelemetrySink(_tempDir);
+            sink.SetSaveFile("Unnamed Save");
+            sink.WriteSnapshot(new[] { Snap("early") });
+
+            sink.SetSaveFile("SGTA50015");
+            sink.WriteSnapshot(new[] { Snap("late") });
+
+            Assert.False(Directory.Exists(Path.Combine(_tempDir, "Unnamed Save")));
+            var path = Path.Combine(_tempDir, "SGTA50015", "snapshots.csv");
+            var lines = File.ReadAllLines(path);
+            Assert.Equal(3, lines.Length);
+            Assert.Contains("early", lines[1]);
+            Assert.Contains("late", lines[2]);
+        }
+
+        [Fact]
+        public void SetSaveFile_WhenPromotingToExistingFolder_MergesRowsWithoutDuplicateHeader()
+        {
+            Directory.CreateDirectory(Path.Combine(_tempDir, "SGTA50015"));
+            File.WriteAllLines(Path.Combine(_tempDir, "SGTA50015", "snapshots.csv"), new[]
+            {
+                "timestamp,play_time_seconds,faction_id,cash,total_troops,zones_owned,basic,medium,heavy,elite,reserve_troops,deployed_troops",
+                "00:00:01,1,existing,0,0,0,0,0,0,0,0,0"
+            });
+
+            using var sink = new CsvTelemetrySink(_tempDir);
+            sink.SetSaveFile("Unnamed Save");
+            sink.WriteSnapshot(new[] { Snap("early") });
+
+            sink.SetSaveFile("SGTA50015");
+
+            Assert.False(Directory.Exists(Path.Combine(_tempDir, "Unnamed Save")));
+            var lines = File.ReadAllLines(Path.Combine(_tempDir, "SGTA50015", "snapshots.csv"));
+            Assert.Equal(3, lines.Length);
+            Assert.Single(lines, line => line.StartsWith("timestamp,"));
+            Assert.Contains(lines, line => line.Contains("existing"));
+            Assert.Contains(lines, line => line.Contains("early"));
+        }
+
+        [Fact]
         public void WriteZoneEvent_WritesToZoneEventsFile()
         {
             using var sink = new CsvTelemetrySink(_tempDir);

@@ -18,6 +18,7 @@ namespace FactionWars.Telemetry.Sinks
     public sealed class CsvTelemetrySink : ITelemetrySink
     {
         private const int BufferCapPerType = 10000;
+        private const string PlaceholderSaveName = "Unnamed Save";
         private static readonly string SnapshotHeader =
             "timestamp,play_time_seconds,faction_id,cash,total_troops,zones_owned,basic,medium,heavy,elite,reserve_troops,deployed_troops";
         private static readonly string ZoneEventHeader =
@@ -71,7 +72,11 @@ namespace FactionWars.Telemetry.Sinks
             lock (_lock)
             {
                 if (_disposed) return;
-                if (_saveDir != null) return; // already set; one-shot
+                if (_saveDir != null)
+                {
+                    TryPromotePlaceholderSaveLocked(saveFilename);
+                    return;
+                }
 
                 _saveDir = Path.Combine(_baseDir, saveFilename);
                 try
@@ -86,6 +91,65 @@ namespace FactionWars.Telemetry.Sinks
                 }
 
                 FlushBuffersLocked();
+            }
+        }
+
+        private void TryPromotePlaceholderSaveLocked(string saveFilename)
+        {
+            if (_saveDir == null) return;
+            if (IsPlaceholderSaveName(saveFilename)) return;
+
+            var currentName = Path.GetFileName(_saveDir.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+            if (!IsPlaceholderSaveName(currentName)) return;
+
+            var targetDir = Path.Combine(_baseDir, saveFilename);
+            if (string.Equals(_saveDir, targetDir, StringComparison.OrdinalIgnoreCase)) return;
+
+            try
+            {
+                if (!Directory.Exists(_saveDir))
+                {
+                    Directory.CreateDirectory(targetDir);
+                    _saveDir = targetDir;
+                    return;
+                }
+
+                if (!Directory.Exists(targetDir))
+                {
+                    Directory.Move(_saveDir, targetDir);
+                    _saveDir = targetDir;
+                    return;
+                }
+
+                MergeDirectoryIntoTarget(_saveDir, targetDir);
+                Directory.Delete(_saveDir, recursive: true);
+                _saveDir = targetDir;
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error($"CsvTelemetrySink: failed to promote telemetry folder '{_saveDir}' to '{targetDir}'", ex);
+            }
+        }
+
+        private static bool IsPlaceholderSaveName(string? saveName)
+            => string.Equals(saveName, PlaceholderSaveName, StringComparison.OrdinalIgnoreCase);
+
+        private static void MergeDirectoryIntoTarget(string sourceDir, string targetDir)
+        {
+            foreach (var sourceFile in Directory.GetFiles(sourceDir))
+            {
+                var targetFile = Path.Combine(targetDir, Path.GetFileName(sourceFile));
+                if (!File.Exists(targetFile))
+                {
+                    File.Move(sourceFile, targetFile);
+                    continue;
+                }
+
+                var sourceLines = File.ReadAllLines(sourceFile);
+                if (sourceLines.Length <= 1) continue;
+
+                var linesToAppend = sourceLines.Skip(1).Where(line => !string.IsNullOrWhiteSpace(line));
+                File.AppendAllLines(targetFile, linesToAppend);
             }
         }
 
