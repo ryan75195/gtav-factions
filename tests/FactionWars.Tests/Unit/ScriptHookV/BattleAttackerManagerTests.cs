@@ -385,6 +385,16 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             Assert.Equal(99, captured.KillerPedHandle);
         }
 
+        [Fact]
+        public void DespawnAllAttackers_ShouldBeSafeWhenNoAttackersAreTracked()
+        {
+            var manager = CreateManager("player");
+
+            manager.DespawnAllAttackers();
+
+            _pedDespawnMock.Verify(p => p.DespawnPed(It.IsAny<int>()), Times.Never);
+        }
+
         private BattleAttackerManager CreateManager(string playerFactionId)
         {
             return new BattleAttackerManager(

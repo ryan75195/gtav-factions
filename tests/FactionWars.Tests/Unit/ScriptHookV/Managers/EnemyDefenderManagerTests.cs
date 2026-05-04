@@ -283,6 +283,36 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
                 "Replacement should spawn immediately when defender dies");
         }
 
+        [Fact]
+        public void OnEnemyZoneExited_ShouldDespawnDefendersForZone()
+        {
+            SetupManager();
+            var zone = CreateEnemyZone();
+            var allocation = CreateAllocationWithDefenders(basic: 1);
+            _allocationServiceMock.Setup(a => a.GetAllocation(EnemyFactionId, TestZoneId)).Returns(allocation);
+            _zoneServiceMock.Setup(z => z.GetZone(TestZoneId)).Returns(zone);
+            _manager.OnEnemyZoneEntered(zone, EnemyFactionId);
+
+            _manager.OnEnemyZoneExited(zone);
+
+            _pedDespawnServiceMock.Verify(p => p.DespawnPed(It.IsAny<int>()), Times.AtLeastOnce);
+        }
+
+        [Fact]
+        public void DespawnAllDefenders_ShouldDespawnTrackedDefenders()
+        {
+            SetupManager();
+            var zone = CreateEnemyZone();
+            var allocation = CreateAllocationWithDefenders(basic: 1);
+            _allocationServiceMock.Setup(a => a.GetAllocation(EnemyFactionId, TestZoneId)).Returns(allocation);
+            _zoneServiceMock.Setup(z => z.GetZone(TestZoneId)).Returns(zone);
+            _manager.OnEnemyZoneEntered(zone, EnemyFactionId);
+
+            _manager.DespawnAllDefenders();
+
+            _pedDespawnServiceMock.Verify(p => p.DespawnPed(It.IsAny<int>()), Times.AtLeastOnce);
+        }
+
         #endregion
     }
 }

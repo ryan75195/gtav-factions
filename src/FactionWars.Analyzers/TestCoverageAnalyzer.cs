@@ -233,7 +233,8 @@ public class TestCoverageAnalyzer : DiagnosticAnalyzer
             return false;
         }
 
-        if (SymbolEqualityComparer.Default.Equals(containingType, sourceType))
+        if (SymbolEqualityComparer.Default.Equals(containingType, sourceType)
+            || SymbolEqualityComparer.Default.Equals(containingType.OriginalDefinition, sourceType.OriginalDefinition))
         {
             return true;
         }
