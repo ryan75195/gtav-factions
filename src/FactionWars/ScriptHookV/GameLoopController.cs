@@ -16,6 +16,7 @@ using FactionWars.Factions.Interfaces;
 using FactionWars.ScriptHookV.Data;
 using FactionWars.ScriptHookV.Logging;
 using FactionWars.ScriptHookV.Managers;
+using FactionWars.ScriptHookV.Models;
 using FactionWars.ScriptHookV.Persistence;
 using FactionWars.ScriptHookV.UI;
 using FactionWars.Telemetry.Interfaces;
@@ -562,7 +563,15 @@ namespace FactionWars.ScriptHookV
             var defenderTierService = _container.Resolve<IDefenderTierService>();
             var pedBlipService = _container.Resolve<IPedBlipService>();
             var seatPriorityService = new VehicleSeatPriorityService(_gameBridge);
-            _followerManager = new FollowerManager(_gameBridge, followerService, pedSpawningService, defenderTierService, pedBlipService, seatPriorityService);
+            _followerManager = new FollowerManager(new FollowerManagerDependencies
+            {
+                GameBridge = _gameBridge,
+                FollowerService = followerService,
+                PedSpawningService = pedSpawningService,
+                DefenderTierService = defenderTierService,
+                PedBlipService = pedBlipService,
+                SeatPriorityService = seatPriorityService
+            });
 
             // Initialize territory manager for zone detection
             _zoneService = _container.Resolve<IZoneService>();
@@ -579,23 +588,29 @@ namespace FactionWars.ScriptHookV
             var allocationService = _container.Resolve<IZoneDefenderAllocationService>();
             _allocationService = allocationService;
             _friendlyDefenderManager = new FriendlyDefenderManager(
-                _gameBridge,
-                allocationService,
-                pedSpawningService,
-                pedDespawnService,
-                defenderTierService,
-                pedBlipService,
-                _zoneService,
+                new FriendlyDefenderManagerDependencies
+                {
+                    GameBridge = _gameBridge,
+                    AllocationService = allocationService,
+                    PedSpawningService = pedSpawningService,
+                    PedDespawnService = pedDespawnService,
+                    DefenderTierService = defenderTierService,
+                    PedBlipService = pedBlipService,
+                    ZoneService = _zoneService
+                },
                 CurrentPlayerFactionId ?? "");
 
             // Create CommanderManager
             var playerFactionId = CurrentPlayerFactionId ?? "";
             _commanderManager = new CommanderManager(
-                _gameBridge,
-                pedSpawningService,
-                pedDespawnService,
-                pedBlipService,
-                _zoneService,
+                new CommanderManagerDependencies
+                {
+                    GameBridge = _gameBridge,
+                    PedSpawningService = pedSpawningService,
+                    PedDespawnService = pedDespawnService,
+                    PedBlipService = pedBlipService,
+                    ZoneService = _zoneService
+                },
                 playerFactionId,
                 _ => _mainMenuController?.ShowMainMenu());
 
@@ -663,35 +678,42 @@ namespace FactionWars.ScriptHookV
             _battleHudRenderer = new BattleHudRenderer();
 
             // Initialize enemy defender manager for spawning defenders in enemy zones
-            _enemyDefenderManager = new EnemyDefenderManager(
-                _gameBridge,
-                allocationService,
-                pedSpawningService,
-                pedDespawnService,
-                defenderTierService,
-                pedBlipService,
-                _zoneService,
-                _zoneBattleManager);
+            _enemyDefenderManager = new EnemyDefenderManager(new EnemyDefenderManagerDependencies
+            {
+                GameBridge = _gameBridge,
+                AllocationService = allocationService,
+                PedSpawningService = pedSpawningService,
+                PedDespawnService = pedDespawnService,
+                DefenderTierService = defenderTierService,
+                PedBlipService = pedBlipService,
+                ZoneService = _zoneService,
+                ZoneBattleManager = _zoneBattleManager
+            });
 
             // Initialize battle attacker manager for spawning attackers when player defends their zone
             _battleAttackerManager = new BattleAttackerManager(
-                _gameBridge,
-                _zoneBattleManager,
-                pedSpawningService,
-                pedDespawnService,
-                defenderTierService,
-                pedBlipService,
-                _zoneService,
-                _factionService,
+                new BattleAttackerManagerDependencies
+                {
+                    GameBridge = _gameBridge,
+                    ZoneBattleManager = _zoneBattleManager,
+                    PedSpawningService = pedSpawningService,
+                    PedDespawnService = pedDespawnService,
+                    DefenderTierService = defenderTierService,
+                    PedBlipService = pedBlipService,
+                    ZoneService = _zoneService,
+                    FactionService = _factionService
+                },
                 CurrentPlayerFactionId ?? "");
 
-            _defenderRallyController = new DefenderRallyController(
-                _gameBridge,
-                _territoryManager,
-                _friendlyDefenderManager,
-                new ZoneBattleCombatActivityAdapter(_zoneBattleManager),
-                () => CurrentPlayerFactionId,
-                () => System.Environment.TickCount);
+            _defenderRallyController = new DefenderRallyController(new DefenderRallyControllerDependencies
+            {
+                Bridge = _gameBridge,
+                Territory = _territoryManager,
+                Defenders = _friendlyDefenderManager,
+                Combat = new ZoneBattleCombatActivityAdapter(_zoneBattleManager),
+                CurrentPlayerFactionIdAccessor = () => CurrentPlayerFactionId,
+                NowMs = () => System.Environment.TickCount
+            });
 
             // Initialize AI manager for AI faction decisions
             var strategies = _container.Resolve<IDictionary<string, IAIStrategy>>();
@@ -781,10 +803,13 @@ namespace FactionWars.ScriptHookV
             _defendersMenuController.BackRequested += (s, e) => _recruitmentMenuController.Show();
 
             _squadMenuController = new SquadMenuController(
-                _menuProvider,
-                purchaseService,
-                followerService,
-                playerContext,
+                new SquadMenuControllerDependencies
+                {
+                    MenuProvider = _menuProvider,
+                    PurchaseService = purchaseService,
+                    FollowerService = followerService,
+                    PlayerContext = playerContext
+                },
                 _followerManager,
                 _gameBridge);
             _squadMenuController.BackRequested += (s, e) => _recruitmentMenuController.Show();
@@ -796,14 +821,16 @@ namespace FactionWars.ScriptHookV
             // Initialize resources menu controller
             var resourceModifier = _container.Resolve<IZoneTraitResourceModifier>();
             var supplyLineService = _container.Resolve<ISupplyLineService>();
-            _resourcesMenuController = new ResourcesMenuController(
-                _menuProvider,
-                _factionService,
-                _zoneService,
-                playerContext,
-                _resourceTickService,
-                resourceModifier,
-                supplyLineService);
+            _resourcesMenuController = new ResourcesMenuController(new ResourcesMenuControllerDependencies
+            {
+                MenuProvider = _menuProvider,
+                FactionService = _factionService,
+                ZoneService = _zoneService,
+                PlayerContext = playerContext,
+                ResourceTickService = _resourceTickService,
+                ResourceModifier = resourceModifier,
+                SupplyLineService = supplyLineService
+            });
             _resourcesMenuController.BackRequested += (s, e) => _mainMenuController.OnKeyDown(MainMenuController.MenuToggleKeyCode);
 
             // Initialize settings menu controller

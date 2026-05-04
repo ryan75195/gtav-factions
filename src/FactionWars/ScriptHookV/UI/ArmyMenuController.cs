@@ -3,6 +3,7 @@ using FactionWars.Core.Models;
 using FactionWars.Economy.Interfaces;
 using FactionWars.Factions.Interfaces;
 using FactionWars.ScriptHookV.Managers;
+using FactionWars.ScriptHookV.Models;
 using FactionWars.UI.Interfaces;
 using FactionWars.UI.Models;
 using System;
@@ -135,27 +136,33 @@ namespace FactionWars.ScriptHookV.UI
         /// <param name="followerManager">The follower manager for spawning actual peds (optional).</param>
         /// <param name="gameBridge">The game bridge for notifications (optional).</param>
         /// <exception cref="ArgumentNullException">Thrown if any required parameter is null.</exception>
-        public ArmyMenuController(
-            IMenuProvider menuProvider,
-            IFactionService factionService,
-            ITroopPurchaseService purchaseService,
-            IFollowerService followerService,
-            IDefenderTierService tierService,
-            IPlayerContext playerContext,
-            IFollowerManager? followerManager = null,
-            IGameBridge? gameBridge = null)
+        public ArmyMenuController(ArmyMenuControllerDependencies dependencies, IFollowerManager? followerManager = null, IGameBridge? gameBridge = null)
         {
-            _menuProvider = menuProvider ?? throw new ArgumentNullException(nameof(menuProvider));
-            _factionService = factionService ?? throw new ArgumentNullException(nameof(factionService));
-            _purchaseService = purchaseService ?? throw new ArgumentNullException(nameof(purchaseService));
-            _followerService = followerService ?? throw new ArgumentNullException(nameof(followerService));
-            _tierService = tierService ?? throw new ArgumentNullException(nameof(tierService));
-            _playerContext = playerContext ?? throw new ArgumentNullException(nameof(playerContext));
+            if (dependencies == null) throw new ArgumentNullException(nameof(dependencies));
+            _menuProvider = dependencies.MenuProvider ?? throw new ArgumentNullException(nameof(dependencies.MenuProvider));
+            _factionService = dependencies.FactionService ?? throw new ArgumentNullException(nameof(dependencies.FactionService));
+            _purchaseService = dependencies.PurchaseService ?? throw new ArgumentNullException(nameof(dependencies.PurchaseService));
+            _followerService = dependencies.FollowerService ?? throw new ArgumentNullException(nameof(dependencies.FollowerService));
+            _tierService = dependencies.TierService ?? throw new ArgumentNullException(nameof(dependencies.TierService));
+            _playerContext = dependencies.PlayerContext ?? throw new ArgumentNullException(nameof(dependencies.PlayerContext));
             _followerManager = followerManager;
             _gameBridge = gameBridge;
 
             // Subscribe to menu item selection events
             _menuProvider.ItemSelected += OnItemSelected;
+        }
+
+        public ArmyMenuController(params object?[] dependencies)
+            : this(new ArmyMenuControllerDependencies
+            {
+                MenuProvider = (IMenuProvider?)dependencies[0],
+                FactionService = (IFactionService?)dependencies[1],
+                PurchaseService = (ITroopPurchaseService?)dependencies[2],
+                FollowerService = (IFollowerService?)dependencies[3],
+                TierService = (IDefenderTierService?)dependencies[4],
+                PlayerContext = (IPlayerContext?)dependencies[5]
+            })
+        {
         }
 
         /// <summary>

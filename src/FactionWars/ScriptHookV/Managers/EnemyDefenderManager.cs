@@ -9,6 +9,7 @@ using FactionWars.Territory.Interfaces;
 using FactionWars.Territory.Models;
 using FactionWars.UI.Interfaces;
 using FactionWars.ScriptHookV.Logging;
+using FactionWars.ScriptHookV.Models;
 using FactionWars.ScriptHookV.Services;
 using FactionWars.ScriptHookV.Utils;
 
@@ -47,27 +48,35 @@ namespace FactionWars.ScriptHookV.Managers
         /// <summary>
         /// Creates a new EnemyDefenderManager instance.
         /// </summary>
-        public EnemyDefenderManager(
-            IGameBridge gameBridge,
-            IZoneDefenderAllocationService allocationService,
-            IPedSpawningService pedSpawningService,
-            IPedDespawnService pedDespawnService,
-            IDefenderTierService defenderTierService,
-            IPedBlipService pedBlipService,
-            IZoneService zoneService,
-            IZoneBattleManager? zoneBattleManager = null)
+        public EnemyDefenderManager(EnemyDefenderManagerDependencies dependencies)
         {
-            _gameBridge = gameBridge ?? throw new ArgumentNullException(nameof(gameBridge));
-            _allocationService = allocationService ?? throw new ArgumentNullException(nameof(allocationService));
-            _pedSpawningService = pedSpawningService ?? throw new ArgumentNullException(nameof(pedSpawningService));
-            _pedDespawnService = pedDespawnService ?? throw new ArgumentNullException(nameof(pedDespawnService));
-            _defenderTierService = defenderTierService ?? throw new ArgumentNullException(nameof(defenderTierService));
-            _pedBlipService = pedBlipService ?? throw new ArgumentNullException(nameof(pedBlipService));
-            _zoneService = zoneService ?? throw new ArgumentNullException(nameof(zoneService));
-            _zoneBattleManager = zoneBattleManager;
+            if (dependencies == null) throw new ArgumentNullException(nameof(dependencies));
+            _gameBridge = dependencies.GameBridge ?? throw new ArgumentNullException(nameof(dependencies.GameBridge));
+            _allocationService = dependencies.AllocationService ?? throw new ArgumentNullException(nameof(dependencies.AllocationService));
+            _pedSpawningService = dependencies.PedSpawningService ?? throw new ArgumentNullException(nameof(dependencies.PedSpawningService));
+            _pedDespawnService = dependencies.PedDespawnService ?? throw new ArgumentNullException(nameof(dependencies.PedDespawnService));
+            _defenderTierService = dependencies.DefenderTierService ?? throw new ArgumentNullException(nameof(dependencies.DefenderTierService));
+            _pedBlipService = dependencies.PedBlipService ?? throw new ArgumentNullException(nameof(dependencies.PedBlipService));
+            _zoneService = dependencies.ZoneService ?? throw new ArgumentNullException(nameof(dependencies.ZoneService));
+            _zoneBattleManager = dependencies.ZoneBattleManager;
 
             _spawnedPedTierByZone = new Dictionary<string, Dictionary<int, DefenderTier>>();
             _corpseDeathTimes = new Dictionary<int, int>();
+        }
+
+        public EnemyDefenderManager(params object?[] dependencies)
+            : this(new EnemyDefenderManagerDependencies
+            {
+                GameBridge = (IGameBridge?)dependencies[0],
+                AllocationService = (IZoneDefenderAllocationService?)dependencies[1],
+                PedSpawningService = (IPedSpawningService?)dependencies[2],
+                PedDespawnService = (IPedDespawnService?)dependencies[3],
+                DefenderTierService = (IDefenderTierService?)dependencies[4],
+                PedBlipService = (IPedBlipService?)dependencies[5],
+                ZoneService = (IZoneService?)dependencies[6],
+                ZoneBattleManager = dependencies.Length > 7 ? (IZoneBattleManager?)dependencies[7] : null
+            })
+        {
         }
 
         /// <summary>

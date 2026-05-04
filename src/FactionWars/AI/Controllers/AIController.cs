@@ -70,43 +70,37 @@ namespace FactionWars.AI.Controllers
         /// <summary>
         /// Creates a new AIController.
         /// </summary>
-        public AIController(
-            IFactionService factionService,
-            IZoneService zoneService,
-            IBattleSimulationService battleSimulationService,
-            IZoneDefenderAllocationService allocationService,
-            IGameBridge gameBridge,
-            IDictionary<string, IAIStrategy> strategies,
-            IZoneBattleManager zoneBattleManager)
-            : this(factionService, zoneService, battleSimulationService, allocationService, gameBridge, strategies, zoneBattleManager, null)
+        public AIController(AIControllerDependencies dependencies, IAIRecruitmentService? recruitmentService = null)
         {
-        }
-
-        /// <summary>
-        /// Creates a new AIController with recruitment service for scaled recruitment.
-        /// </summary>
-        public AIController(
-            IFactionService factionService,
-            IZoneService zoneService,
-            IBattleSimulationService battleSimulationService,
-            IZoneDefenderAllocationService allocationService,
-            IGameBridge gameBridge,
-            IDictionary<string, IAIStrategy> strategies,
-            IZoneBattleManager zoneBattleManager,
-            IAIRecruitmentService? recruitmentService)
-        {
-            _factionService = factionService ?? throw new ArgumentNullException(nameof(factionService));
-            _zoneService = zoneService ?? throw new ArgumentNullException(nameof(zoneService));
-            _battleSimulationService = battleSimulationService ?? throw new ArgumentNullException(nameof(battleSimulationService));
-            _allocationService = allocationService ?? throw new ArgumentNullException(nameof(allocationService));
-            _gameBridge = gameBridge ?? throw new ArgumentNullException(nameof(gameBridge));
-            _strategies = strategies ?? throw new ArgumentNullException(nameof(strategies));
-            _zoneBattleManager = zoneBattleManager ?? throw new ArgumentNullException(nameof(zoneBattleManager));
+            if (dependencies == null) throw new ArgumentNullException(nameof(dependencies));
+            _factionService = dependencies.FactionService ?? throw new ArgumentNullException(nameof(dependencies.FactionService));
+            _zoneService = dependencies.ZoneService ?? throw new ArgumentNullException(nameof(dependencies.ZoneService));
+            _battleSimulationService = dependencies.BattleSimulationService ?? throw new ArgumentNullException(nameof(dependencies.BattleSimulationService));
+            _allocationService = dependencies.AllocationService ?? throw new ArgumentNullException(nameof(dependencies.AllocationService));
+            _gameBridge = dependencies.GameBridge ?? throw new ArgumentNullException(nameof(dependencies.GameBridge));
+            _strategies = dependencies.Strategies ?? throw new ArgumentNullException(nameof(dependencies.Strategies));
+            _zoneBattleManager = dependencies.ZoneBattleManager ?? throw new ArgumentNullException(nameof(dependencies.ZoneBattleManager));
             _recruitmentService = recruitmentService;
 
             _isRunning = false;
             _decisionTimer = 0f;
             _recruitmentTimer = 0f;
+        }
+
+        public AIController(params object?[] dependencies)
+            : this(
+                new AIControllerDependencies
+                {
+                    FactionService = (IFactionService?)dependencies[0],
+                    ZoneService = (IZoneService?)dependencies[1],
+                    BattleSimulationService = (IBattleSimulationService?)dependencies[2],
+                    AllocationService = (IZoneDefenderAllocationService?)dependencies[3],
+                    GameBridge = (IGameBridge?)dependencies[4],
+                    Strategies = (IDictionary<string, IAIStrategy>?)dependencies[5],
+                    ZoneBattleManager = (IZoneBattleManager?)dependencies[6]
+                },
+                dependencies.Length > 7 ? (IAIRecruitmentService?)dependencies[7] : null)
+        {
         }
 
         /// <inheritdoc />

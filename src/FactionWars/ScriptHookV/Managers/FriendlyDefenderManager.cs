@@ -6,6 +6,7 @@ using FactionWars.Combat.Models;
 using FactionWars.Core.Interfaces;
 using FactionWars.Core.Models;
 using FactionWars.ScriptHookV.Logging;
+using FactionWars.ScriptHookV.Models;
 using FactionWars.ScriptHookV.Services;
 using FactionWars.Territory.Interfaces;
 using FactionWars.Territory.Models;
@@ -74,28 +75,37 @@ namespace FactionWars.ScriptHookV.Managers
         /// <param name="zoneService">Service for zone operations.</param>
         /// <param name="playerFactionId">The player's current faction ID.</param>
         /// <exception cref="ArgumentNullException">Thrown if any required parameter is null.</exception>
-        public FriendlyDefenderManager(
-            IGameBridge gameBridge,
-            IZoneDefenderAllocationService allocationService,
-            IPedSpawningService pedSpawningService,
-            IPedDespawnService pedDespawnService,
-            IDefenderTierService defenderTierService,
-            IPedBlipService pedBlipService,
-            IZoneService zoneService,
-            string playerFactionId)
+        public FriendlyDefenderManager(FriendlyDefenderManagerDependencies dependencies, string playerFactionId)
         {
-            _gameBridge = gameBridge ?? throw new ArgumentNullException(nameof(gameBridge));
-            _allocationService = allocationService ?? throw new ArgumentNullException(nameof(allocationService));
-            _pedSpawningService = pedSpawningService ?? throw new ArgumentNullException(nameof(pedSpawningService));
-            _pedDespawnService = pedDespawnService ?? throw new ArgumentNullException(nameof(pedDespawnService));
-            _defenderTierService = defenderTierService ?? throw new ArgumentNullException(nameof(defenderTierService));
-            _pedBlipService = pedBlipService ?? throw new ArgumentNullException(nameof(pedBlipService));
-            _zoneService = zoneService ?? throw new ArgumentNullException(nameof(zoneService));
+            if (dependencies == null) throw new ArgumentNullException(nameof(dependencies));
+            _gameBridge = dependencies.GameBridge ?? throw new ArgumentNullException(nameof(dependencies.GameBridge));
+            _allocationService = dependencies.AllocationService ?? throw new ArgumentNullException(nameof(dependencies.AllocationService));
+            _pedSpawningService = dependencies.PedSpawningService ?? throw new ArgumentNullException(nameof(dependencies.PedSpawningService));
+            _pedDespawnService = dependencies.PedDespawnService ?? throw new ArgumentNullException(nameof(dependencies.PedDespawnService));
+            _defenderTierService = dependencies.DefenderTierService ?? throw new ArgumentNullException(nameof(dependencies.DefenderTierService));
+            _pedBlipService = dependencies.PedBlipService ?? throw new ArgumentNullException(nameof(dependencies.PedBlipService));
+            _zoneService = dependencies.ZoneService ?? throw new ArgumentNullException(nameof(dependencies.ZoneService));
             _playerFactionId = playerFactionId ?? throw new ArgumentNullException(nameof(playerFactionId));
 
             _spawnedPedTierByZone = new Dictionary<string, Dictionary<int, DefenderTier>>();
             _corpseDeathTimes = new Dictionary<int, int>();
             _zonesInBattle = new HashSet<string>();
+        }
+
+        public FriendlyDefenderManager(params object?[] dependencies)
+            : this(
+                new FriendlyDefenderManagerDependencies
+                {
+                    GameBridge = (IGameBridge?)dependencies[0],
+                    AllocationService = (IZoneDefenderAllocationService?)dependencies[1],
+                    PedSpawningService = (IPedSpawningService?)dependencies[2],
+                    PedDespawnService = (IPedDespawnService?)dependencies[3],
+                    DefenderTierService = (IDefenderTierService?)dependencies[4],
+                    PedBlipService = (IPedBlipService?)dependencies[5],
+                    ZoneService = (IZoneService?)dependencies[6]
+                },
+                (string)dependencies[7]!)
+        {
         }
 
         /// <summary>

@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using FactionWars.AI.Controllers;
 using FactionWars.AI.Interfaces;
+using FactionWars.AI.Models;
 using FactionWars.AI.Services;
 using FactionWars.AI.Strategies;
 using FactionWars.Combat.Interfaces;
@@ -22,6 +23,7 @@ using FactionWars.Territory.Interfaces;
 using FactionWars.Territory.Repositories;
 using FactionWars.Territory.Services;
 using FactionWars.ScriptHookV.Managers;
+using FactionWars.ScriptHookV.Models;
 using FactionWars.ScriptHookV.Persistence;
 using FactionWars.ScriptHookV.UI;
 using FactionWars.Telemetry.Interfaces;
@@ -383,13 +385,15 @@ namespace FactionWars.ScriptHookV
 
             // Background battle simulator for AI vs AI combat
             container.RegisterSingleton<BackgroundBattleSimulator>(() =>
-                new BackgroundBattleSimulator(
-                    container.Resolve<IBattleSimulationService>(),
-                    container.Resolve<IFactionService>(),
-                    container.Resolve<IZoneService>(),
-                    container.Resolve<IZoneDefenderAllocationService>(),
-                    container.Resolve<IEventAlertService>(),
-                    container.Resolve<IEventFeedService>()));
+                new BackgroundBattleSimulator(new BackgroundBattleSimulatorDependencies
+                {
+                    BattleSimulationService = container.Resolve<IBattleSimulationService>(),
+                    FactionService = container.Resolve<IFactionService>(),
+                    ZoneService = container.Resolve<IZoneService>(),
+                    AllocationService = container.Resolve<IZoneDefenderAllocationService>(),
+                    EventAlertService = container.Resolve<IEventAlertService>(),
+                    EventFeedService = container.Resolve<IEventFeedService>()
+                }));
 
             // Register AI budget service - costs from config
             container.RegisterSingleton<IAIBudgetService>(() => new AIBudgetService(
@@ -439,13 +443,16 @@ namespace FactionWars.ScriptHookV
 
             // Register consolidated AI controller with recruitment service for scaled recruitment
             container.RegisterSingleton<IAIController>(() => new AIController(
-                container.Resolve<IFactionService>(),
-                container.Resolve<IZoneService>(),
-                container.Resolve<IBattleSimulationService>(),
-                container.Resolve<IZoneDefenderAllocationService>(),
-                container.Resolve<IGameBridge>(),
-                container.Resolve<IDictionary<string, IAIStrategy>>(),
-                container.Resolve<IZoneBattleManager>(),
+                new AIControllerDependencies
+                {
+                    FactionService = container.Resolve<IFactionService>(),
+                    ZoneService = container.Resolve<IZoneService>(),
+                    BattleSimulationService = container.Resolve<IBattleSimulationService>(),
+                    AllocationService = container.Resolve<IZoneDefenderAllocationService>(),
+                    GameBridge = container.Resolve<IGameBridge>(),
+                    Strategies = container.Resolve<IDictionary<string, IAIStrategy>>(),
+                    ZoneBattleManager = container.Resolve<IZoneBattleManager>()
+                },
                 container.Resolve<IAIRecruitmentService>()));
         }
 

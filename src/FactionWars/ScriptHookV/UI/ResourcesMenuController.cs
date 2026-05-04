@@ -2,6 +2,7 @@ using FactionWars.Core.Interfaces;
 using FactionWars.Economy.Interfaces;
 using FactionWars.Economy.Models;
 using FactionWars.Factions.Interfaces;
+using FactionWars.ScriptHookV.Models;
 using FactionWars.Territory.Interfaces;
 using FactionWars.Territory.Models;
 using FactionWars.UI.Interfaces;
@@ -76,25 +77,33 @@ namespace FactionWars.ScriptHookV.UI
         /// <param name="resourceModifier">The resource modifier for trait-based bonuses.</param>
         /// <param name="supplyLineService">The supply line service for efficiency calculations.</param>
         /// <exception cref="ArgumentNullException">Thrown if any parameter is null.</exception>
-        public ResourcesMenuController(
-            IMenuProvider menuProvider,
-            IFactionService factionService,
-            IZoneService zoneService,
-            IPlayerContext playerContext,
-            IResourceTickService resourceTickService,
-            IZoneTraitResourceModifier resourceModifier,
-            ISupplyLineService supplyLineService)
+        public ResourcesMenuController(ResourcesMenuControllerDependencies dependencies)
         {
-            _menuProvider = menuProvider ?? throw new ArgumentNullException(nameof(menuProvider));
-            _factionService = factionService ?? throw new ArgumentNullException(nameof(factionService));
-            _zoneService = zoneService ?? throw new ArgumentNullException(nameof(zoneService));
-            _playerContext = playerContext ?? throw new ArgumentNullException(nameof(playerContext));
-            _resourceTickService = resourceTickService ?? throw new ArgumentNullException(nameof(resourceTickService));
-            _resourceModifier = resourceModifier ?? throw new ArgumentNullException(nameof(resourceModifier));
-            _supplyLineService = supplyLineService ?? throw new ArgumentNullException(nameof(supplyLineService));
+            if (dependencies == null) throw new ArgumentNullException(nameof(dependencies));
+            _menuProvider = dependencies.MenuProvider ?? throw new ArgumentNullException(nameof(dependencies.MenuProvider));
+            _factionService = dependencies.FactionService ?? throw new ArgumentNullException(nameof(dependencies.FactionService));
+            _zoneService = dependencies.ZoneService ?? throw new ArgumentNullException(nameof(dependencies.ZoneService));
+            _playerContext = dependencies.PlayerContext ?? throw new ArgumentNullException(nameof(dependencies.PlayerContext));
+            _resourceTickService = dependencies.ResourceTickService ?? throw new ArgumentNullException(nameof(dependencies.ResourceTickService));
+            _resourceModifier = dependencies.ResourceModifier ?? throw new ArgumentNullException(nameof(dependencies.ResourceModifier));
+            _supplyLineService = dependencies.SupplyLineService ?? throw new ArgumentNullException(nameof(dependencies.SupplyLineService));
 
             // Subscribe to menu item selection events
             _menuProvider.ItemSelected += OnItemSelected;
+        }
+
+        public ResourcesMenuController(params object?[] dependencies)
+            : this(new ResourcesMenuControllerDependencies
+            {
+                MenuProvider = (IMenuProvider?)dependencies[0],
+                FactionService = (IFactionService?)dependencies[1],
+                ZoneService = (IZoneService?)dependencies[2],
+                PlayerContext = (IPlayerContext?)dependencies[3],
+                ResourceTickService = (IResourceTickService?)dependencies[4],
+                ResourceModifier = (IZoneTraitResourceModifier?)dependencies[5],
+                SupplyLineService = (ISupplyLineService?)dependencies[6]
+            })
+        {
         }
 
         /// <summary>

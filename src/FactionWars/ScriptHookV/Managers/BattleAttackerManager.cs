@@ -11,6 +11,7 @@ using FactionWars.Territory.Interfaces;
 using FactionWars.Territory.Models;
 using FactionWars.UI.Interfaces;
 using FactionWars.ScriptHookV.Logging;
+using FactionWars.ScriptHookV.Models;
 using FactionWars.ScriptHookV.Utils;
 
 namespace FactionWars.ScriptHookV.Managers
@@ -53,25 +54,17 @@ namespace FactionWars.ScriptHookV.Managers
         /// <summary>
         /// Creates a new BattleAttackerManager instance.
         /// </summary>
-        public BattleAttackerManager(
-            IGameBridge gameBridge,
-            IZoneBattleManager zoneBattleManager,
-            IPedSpawningService pedSpawningService,
-            IPedDespawnService pedDespawnService,
-            IDefenderTierService defenderTierService,
-            IPedBlipService pedBlipService,
-            IZoneService zoneService,
-            IFactionService factionService,
-            string playerFactionId)
+        public BattleAttackerManager(BattleAttackerManagerDependencies dependencies, string playerFactionId)
         {
-            _gameBridge = gameBridge ?? throw new ArgumentNullException(nameof(gameBridge));
-            _zoneBattleManager = zoneBattleManager ?? throw new ArgumentNullException(nameof(zoneBattleManager));
-            _pedSpawningService = pedSpawningService ?? throw new ArgumentNullException(nameof(pedSpawningService));
-            _pedDespawnService = pedDespawnService ?? throw new ArgumentNullException(nameof(pedDespawnService));
-            _defenderTierService = defenderTierService ?? throw new ArgumentNullException(nameof(defenderTierService));
-            _pedBlipService = pedBlipService ?? throw new ArgumentNullException(nameof(pedBlipService));
-            _zoneService = zoneService ?? throw new ArgumentNullException(nameof(zoneService));
-            _factionService = factionService ?? throw new ArgumentNullException(nameof(factionService));
+            if (dependencies == null) throw new ArgumentNullException(nameof(dependencies));
+            _gameBridge = dependencies.GameBridge ?? throw new ArgumentNullException(nameof(dependencies.GameBridge));
+            _zoneBattleManager = dependencies.ZoneBattleManager ?? throw new ArgumentNullException(nameof(dependencies.ZoneBattleManager));
+            _pedSpawningService = dependencies.PedSpawningService ?? throw new ArgumentNullException(nameof(dependencies.PedSpawningService));
+            _pedDespawnService = dependencies.PedDespawnService ?? throw new ArgumentNullException(nameof(dependencies.PedDespawnService));
+            _defenderTierService = dependencies.DefenderTierService ?? throw new ArgumentNullException(nameof(dependencies.DefenderTierService));
+            _pedBlipService = dependencies.PedBlipService ?? throw new ArgumentNullException(nameof(dependencies.PedBlipService));
+            _zoneService = dependencies.ZoneService ?? throw new ArgumentNullException(nameof(dependencies.ZoneService));
+            _factionService = dependencies.FactionService ?? throw new ArgumentNullException(nameof(dependencies.FactionService));
             _playerFactionId = playerFactionId ?? throw new ArgumentNullException(nameof(playerFactionId));
 
             // Enemy faction ped models (hostile attackers)
@@ -85,6 +78,23 @@ namespace FactionWars.ScriptHookV.Managers
 
             _spawnedPedTierByZone = new Dictionary<string, Dictionary<int, DefenderTier>>();
             _corpseDeathTimes = new Dictionary<int, int>();
+        }
+
+        public BattleAttackerManager(params object?[] dependencies)
+            : this(
+                new BattleAttackerManagerDependencies
+                {
+                    GameBridge = (IGameBridge?)dependencies[0],
+                    ZoneBattleManager = (IZoneBattleManager?)dependencies[1],
+                    PedSpawningService = (IPedSpawningService?)dependencies[2],
+                    PedDespawnService = (IPedDespawnService?)dependencies[3],
+                    DefenderTierService = (IDefenderTierService?)dependencies[4],
+                    PedBlipService = (IPedBlipService?)dependencies[5],
+                    ZoneService = (IZoneService?)dependencies[6],
+                    FactionService = (IFactionService?)dependencies[7]
+                },
+                (string)dependencies[8]!)
+        {
         }
 
         /// <summary>

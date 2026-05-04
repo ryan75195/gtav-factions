@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using FactionWars.Combat.Interfaces;
 using FactionWars.Core.Interfaces;
 using FactionWars.Core.Models;
+using FactionWars.ScriptHookV.Models;
 using FactionWars.UI.Interfaces;
 
 namespace FactionWars.ScriptHookV.Managers
@@ -37,20 +38,15 @@ namespace FactionWars.ScriptHookV.Managers
         /// <param name="pedBlipService">Service for managing ped blips on the minimap.</param>
         /// <param name="seatPriorityService">Service for coordinated vehicle seat assignment.</param>
         /// <exception cref="ArgumentNullException">Thrown if any parameter is null.</exception>
-        public FollowerManager(
-            IGameBridge gameBridge,
-            IFollowerService followerService,
-            IPedSpawningService pedSpawningService,
-            IDefenderTierService defenderTierService,
-            IPedBlipService pedBlipService,
-            IVehicleSeatPriorityService seatPriorityService)
+        public FollowerManager(FollowerManagerDependencies dependencies)
         {
-            _gameBridge = gameBridge ?? throw new ArgumentNullException(nameof(gameBridge));
-            _followerService = followerService ?? throw new ArgumentNullException(nameof(followerService));
-            _pedSpawningService = pedSpawningService ?? throw new ArgumentNullException(nameof(pedSpawningService));
-            _defenderTierService = defenderTierService ?? throw new ArgumentNullException(nameof(defenderTierService));
-            _pedBlipService = pedBlipService ?? throw new ArgumentNullException(nameof(pedBlipService));
-            _seatPriorityService = seatPriorityService ?? throw new ArgumentNullException(nameof(seatPriorityService));
+            if (dependencies == null) throw new ArgumentNullException(nameof(dependencies));
+            _gameBridge = dependencies.GameBridge ?? throw new ArgumentNullException(nameof(dependencies.GameBridge));
+            _followerService = dependencies.FollowerService ?? throw new ArgumentNullException(nameof(dependencies.FollowerService));
+            _pedSpawningService = dependencies.PedSpawningService ?? throw new ArgumentNullException(nameof(dependencies.PedSpawningService));
+            _defenderTierService = dependencies.DefenderTierService ?? throw new ArgumentNullException(nameof(dependencies.DefenderTierService));
+            _pedBlipService = dependencies.PedBlipService ?? throw new ArgumentNullException(nameof(dependencies.PedBlipService));
+            _seatPriorityService = dependencies.SeatPriorityService ?? throw new ArgumentNullException(nameof(dependencies.SeatPriorityService));
 
             _modelsByTier = new Dictionary<DefenderTier, string>
             {
@@ -58,6 +54,19 @@ namespace FactionWars.ScriptHookV.Managers
                 { DefenderTier.Medium, "g_m_y_lost_02" },
                 { DefenderTier.Heavy, "g_m_y_lost_03" }
             };
+        }
+
+        public FollowerManager(params object?[] dependencies)
+            : this(new FollowerManagerDependencies
+            {
+                GameBridge = (IGameBridge?)dependencies[0],
+                FollowerService = (IFollowerService?)dependencies[1],
+                PedSpawningService = (IPedSpawningService?)dependencies[2],
+                DefenderTierService = (IDefenderTierService?)dependencies[3],
+                PedBlipService = (IPedBlipService?)dependencies[4],
+                SeatPriorityService = (IVehicleSeatPriorityService?)dependencies[5]
+            })
+        {
         }
 
         /// <summary>
