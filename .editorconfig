@@ -15,6 +15,7 @@ indent_size = 4
 dotnet_diagnostic.CI0006.severity = error
 dotnet_diagnostic.CI0008.severity = error
 dotnet_diagnostic.CI0010.severity = error
+dotnet_diagnostic.CI0012.severity = error
 dotnet_diagnostic.CI0016.severity = error
 dotnet_diagnostic.CS0618.severity = error
 dotnet_diagnostic.xUnit1031.severity = error

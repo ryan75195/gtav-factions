@@ -60,7 +60,9 @@ namespace FactionWars.ScriptHookV.Managers
             // Check if zone changed
             if (!ZonesAreEqual(_currentZone, newZone))
             {
-                FileLogger.Zone($"Zone change detected: {_currentZone?.Name ?? "NULL"} -> {newZone?.Name ?? "NULL"}");
+                var previousZoneName = _currentZone?.Name ?? "NULL";
+                var newZoneName = newZone?.Name ?? "NULL";
+                FileLogger.Zone($"Zone change detected: {previousZoneName} -> {newZoneName}");
                 FileLogger.Zone($"Player position: ({playerPosition.X:F1}, {playerPosition.Y:F1}, {playerPosition.Z:F1})");
 
                 // Raise exit event for old zone

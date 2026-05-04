@@ -501,12 +501,15 @@ namespace FactionWars.ScriptHookV
             var zone = _zoneService?.GetZone(battle.ZoneId);
             var attackerFaction = _factionService.GetFaction(battle.AttackerFactionId);
             var defenderFaction = _factionService.GetFaction(battle.DefenderFactionId);
+            var zoneName = zone?.Name ?? battle.ZoneId;
+            var attackerName = attackerFaction?.Name ?? battle.AttackerFactionId;
+            var defenderName = defenderFaction?.Name ?? battle.DefenderFactionId;
 
             var hudData = new BattleHudData(
-                zone?.Name ?? battle.ZoneId,
-                attackerFaction?.Name ?? battle.AttackerFactionId,
+                zoneName,
+                attackerName,
                 battle.TotalAttackerTroops,
-                defenderFaction?.Name ?? battle.DefenderFactionId,
+                defenderName,
                 battle.TotalDefenderTroops,
                 _currentBattleHudIndex + 1,
                 battles.Count);
@@ -1515,10 +1518,12 @@ namespace FactionWars.ScriptHookV
                 {
                     var attackerFaction = _factionService.GetFaction(playerFactionKey);
                     var defenderFaction = _factionService.GetFaction(ownerFactionId!);
+                    var attackerName = attackerFaction?.Name ?? "Player";
+                    var defenderName = defenderFaction?.Name ?? "Defender";
                     _eventFeedService.AddCombatStarted(
                         zone.Name,
-                        attackerFaction?.Name ?? "Player",
-                        defenderFaction?.Name ?? "Defender");
+                        attackerName,
+                        defenderName);
                 }
 
                 // Start combat in enemy zone via ZoneBattleManager.
