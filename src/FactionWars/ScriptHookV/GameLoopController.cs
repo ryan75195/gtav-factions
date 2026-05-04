@@ -143,6 +143,27 @@ namespace FactionWars.ScriptHookV
         /// </summary>
         public string? CurrentPlayerFactionId => _characterSwitchDetector.CurrentFactionId;
 
+        private FriendlyDefenderManager RequiredFriendlyDefenderManager =>
+            _friendlyDefenderManager ?? throw new InvalidOperationException("Friendly defender manager has not been initialized.");
+
+        private TerritoryManager RequiredTerritoryManager =>
+            _territoryManager ?? throw new InvalidOperationException("Territory manager has not been initialized.");
+
+        private IZoneBattleManager RequiredZoneBattleManager =>
+            _zoneBattleManager ?? throw new InvalidOperationException("Zone battle manager has not been initialized.");
+
+        private IZoneService RequiredZoneService =>
+            _zoneService ?? throw new InvalidOperationException("Zone service has not been initialized.");
+
+        private IMenuProvider RequiredMenuProvider =>
+            _menuProvider ?? throw new InvalidOperationException("Menu provider has not been initialized.");
+
+        private MainMenuController RequiredMainMenuController =>
+            _mainMenuController ?? throw new InvalidOperationException("Main menu controller has not been initialized.");
+
+        private IDifficultyService RequiredDifficultyService =>
+            _difficultyService ?? throw new InvalidOperationException("Difficulty service has not been initialized.");
+
         /// <summary>
         /// How many "alive" combatants the player counts as for an active zone battle.
         /// Used as the alive-count callback the player participant carries into a battle.
@@ -525,55 +546,7 @@ namespace FactionWars.ScriptHookV
             var spawnServices = ResolveSpawnServices(); InitializeFollowerManager(spawnServices);
 
             var allocationService = InitializeTerritoryAndFriendlyManagers(spawnServices);
-
-            // Subscribe to defender death events to sync with ZoneBattleManager
-            _friendlyDefenderManager.DefenderDied += (sender, e) =>
-            {
-                // If there's an active battle in this zone where player is defender,
-                // report the kill to the battle manager to keep troop counts in sync
-                var battle = _zoneBattleManager?.GetBattleForZone(e.ZoneId);
-                if (battle != null && battle.DefenderFactionId == CurrentPlayerFactionId)
-                {
-                    _zoneBattleManager?.ReportTroopKilled(e.ZoneId, CurrentPlayerFactionId!, e.Tier);
-                }
-            };
-
-            // Subscribe to territory loss events to despawn commander when all defenders die
-            _friendlyDefenderManager.TerritoryLost += (sender, args) =>
-            {
-                _commanderManager?.OnTerritoryLost(args.ZoneId);
-            };
-
-            // Subscribe battle attacker manager to zone events
-            _territoryManager.ZoneEntered += (sender, zone) => _battleAttackerManager?.OnPlayerZoneEntered(zone);
-            _territoryManager.ZoneExited += (sender, zone) => _battleAttackerManager?.OnPlayerZoneExited(zone);
-
-            // Subscribe to troop allocation events for immediate spawning when player is in zone
-            // and for updating active battles when player allocates reinforcements
-            allocationService.TroopsAllocated += (sender, e) =>
-            {
-                var zone = _zoneService?.GetZone(e.ZoneId);
-                if (zone != null)
-                {
-                    _friendlyDefenderManager.OnTroopsAllocated(e.FactionId, e.ZoneId, e.Tier, e.Count, zone.Center, zone.Radius);
-                }
-
-                // If there's an active battle in this zone where the allocating
-                // faction is the defender, add troops to the battle so the
-                // defender participant stays in sync with the allocation. This
-                // applies to AI Defend reinforcement just as much as to player
-                // allocations — without it, AI mid-battle reinforcements grow
-                // the allocation but not the participant, and the player can
-                // win by clearing the original participant count, leaving
-                // phantom troops in the allocation.
-                {
-                    var battle = _zoneBattleManager?.GetBattleForZone(e.ZoneId);
-                    if (battle != null && battle.DefenderFactionId == e.FactionId)
-                    {
-                        battle.AddDefenderTroops(e.Tier, e.Count);
-                    }
-                }
-            };
+            SubscribeInitializedManagerEvents(allocationService);
 
             // Initialize battle HUD renderer
             _battleHudRenderer = new BattleHudRenderer();
@@ -588,6 +561,41 @@ namespace FactionWars.ScriptHookV
             InitializeStateTelemetryAndSession();
 
             LogInitializationComplete();
+        }
+
+        private void SubscribeInitializedManagerEvents(IZoneDefenderAllocationService allocationService)
+        {
+            var friendlyDefenderManager = RequiredFriendlyDefenderManager;
+            var territoryManager = RequiredTerritoryManager;
+
+            friendlyDefenderManager.DefenderDied += (sender, e) =>
+            {
+                var battle = _zoneBattleManager?.GetBattleForZone(e.ZoneId);
+                if (battle != null && battle.DefenderFactionId == CurrentPlayerFactionId)
+                    _zoneBattleManager?.ReportTroopKilled(e.ZoneId, CurrentPlayerFactionId!, e.Tier);
+            };
+
+            friendlyDefenderManager.TerritoryLost += (sender, args) =>
+                _commanderManager?.OnTerritoryLost(args.ZoneId);
+
+            territoryManager.ZoneEntered += (sender, zone) => _battleAttackerManager?.OnPlayerZoneEntered(zone);
+            territoryManager.ZoneExited += (sender, zone) => _battleAttackerManager?.OnPlayerZoneExited(zone);
+
+            allocationService.TroopsAllocated += (sender, e) =>
+                HandleTroopsAllocatedForInitializedManagers(friendlyDefenderManager, e);
+        }
+
+        private void HandleTroopsAllocatedForInitializedManagers(
+            FriendlyDefenderManager friendlyDefenderManager,
+            TroopsAllocatedEventArgs e)
+        {
+            var zone = _zoneService?.GetZone(e.ZoneId);
+            if (zone != null)
+                friendlyDefenderManager.OnTroopsAllocated(e.FactionId, e.ZoneId, e.Tier, e.Count, zone.Center, zone.Radius);
+
+            var battle = _zoneBattleManager?.GetBattleForZone(e.ZoneId);
+            if (battle != null && battle.DefenderFactionId == e.FactionId)
+                battle.AddDefenderTroops(e.Tier, e.Count);
         }
 
         private void LogInitializationComplete()
@@ -609,7 +617,7 @@ namespace FactionWars.ScriptHookV
             _gameStateManager.OnGameLoaded += OnGameLoaded;
             InitializeTelemetryService();
             _gameStateManager.NewGame();
-            _gameStateManager.SetCurrentDifficulty(_difficultyService.Current.Level);
+            _gameStateManager.SetCurrentDifficulty(RequiredDifficultyService.Current.Level);
             ConfigureSessionSettings();
         }
 
@@ -681,6 +689,11 @@ namespace FactionWars.ScriptHookV
             SpawnServices spawnServices,
             IZoneDefenderAllocationService allocationService)
         {
+            var zoneService = RequiredZoneService;
+            var zoneBattleManager = RequiredZoneBattleManager;
+            var territoryManager = RequiredTerritoryManager;
+            var friendlyDefenderManager = RequiredFriendlyDefenderManager;
+
             _enemyDefenderManager = new EnemyDefenderManager(new EnemyDefenderManagerDependencies
             {
                 GameBridge = _gameBridge,
@@ -689,20 +702,20 @@ namespace FactionWars.ScriptHookV
                 PedDespawnService = spawnServices.PedDespawn,
                 DefenderTierService = spawnServices.DefenderTier,
                 PedBlipService = spawnServices.PedBlip,
-                ZoneService = _zoneService,
-                ZoneBattleManager = _zoneBattleManager
+                ZoneService = zoneService,
+                ZoneBattleManager = zoneBattleManager
             });
 
             _battleAttackerManager = new BattleAttackerManager(
                 new BattleAttackerManagerDependencies
                 {
                     GameBridge = _gameBridge,
-                    ZoneBattleManager = _zoneBattleManager,
+                    ZoneBattleManager = zoneBattleManager,
                     PedSpawningService = spawnServices.PedSpawning,
                     PedDespawnService = spawnServices.PedDespawn,
                     DefenderTierService = spawnServices.DefenderTier,
                     PedBlipService = spawnServices.PedBlip,
-                    ZoneService = _zoneService,
+                    ZoneService = zoneService,
                     FactionService = _factionService
                 },
                 CurrentPlayerFactionId ?? "");
@@ -710,9 +723,9 @@ namespace FactionWars.ScriptHookV
             _defenderRallyController = new DefenderRallyController(new DefenderRallyControllerDependencies
             {
                 Bridge = _gameBridge,
-                Territory = _territoryManager,
-                Defenders = _friendlyDefenderManager,
-                Combat = new ZoneBattleCombatActivityAdapter(_zoneBattleManager),
+                Territory = territoryManager,
+                Defenders = friendlyDefenderManager,
+                Combat = new ZoneBattleCombatActivityAdapter(zoneBattleManager),
                 CurrentPlayerFactionIdAccessor = () => CurrentPlayerFactionId,
                 NowMs = () => System.Environment.TickCount
             });
@@ -721,7 +734,7 @@ namespace FactionWars.ScriptHookV
         private void InitializeAiAndVictorySystems()
         {
             var strategies = _container.Resolve<IDictionary<string, IAIStrategy>>();
-            _aiManager = new AIManager(_factionService, _zoneService, strategies);
+            _aiManager = new AIManager(_factionService, RequiredZoneService, strategies);
             _aiManager.Start();
             _aiManager.SetPlayerFactionId(CurrentPlayerFactionId);
             _aiManager.OnAIDecision += HandleAIDecision;
@@ -745,6 +758,7 @@ namespace FactionWars.ScriptHookV
 
         private void InitializeHudAndEventRenderers()
         {
+            var territoryManager = RequiredTerritoryManager;
             _combatHudRenderer = new CombatHudRenderer();
             _territoryIndicatorRenderer = new TerritoryIndicatorRenderer();
 
@@ -753,10 +767,10 @@ namespace FactionWars.ScriptHookV
 
             _eventFeedRenderer = new EventFeedRenderer(_container.Resolve<IFactionRepository>());
             _eventFeedService = _container.Resolve<IEventFeedService>();
-            _territoryManager.ZoneEntered += OnZoneEntered;
-            _territoryManager.ZoneExited += OnZoneExited;
-            _territoryManager.NeutralZoneEntered += OnNeutralZoneEntered;
-            _territoryManager.ZoneExited += OnZoneExitedForClaim;
+            territoryManager.ZoneEntered += OnZoneEntered;
+            territoryManager.ZoneExited += OnZoneExited;
+            territoryManager.NeutralZoneEntered += OnNeutralZoneEntered;
+            territoryManager.ZoneExited += OnZoneExitedForClaim;
         }
 
         private void InitializeMenuControllers(IZoneDefenderAllocationService allocationService)
@@ -776,25 +790,32 @@ namespace FactionWars.ScriptHookV
             IZoneDefenderAllocationService allocationService,
             IPlayerContext playerContext)
         {
+            var menuProvider = RequiredMenuProvider;
+            var mainMenuController = RequiredMainMenuController;
+            var zoneService = RequiredZoneService;
+
             _overviewMenuController = new OverviewMenuController(
-                _menuProvider, _factionService, _zoneService, playerContext);
-            _overviewMenuController.BackRequested += (s, e) => _mainMenuController.OnKeyDown(MainMenuController.MenuToggleKeyCode);
+                menuProvider, _factionService, zoneService, playerContext);
+            _overviewMenuController.BackRequested += (s, e) => mainMenuController.OnKeyDown(MainMenuController.MenuToggleKeyCode);
 
             _zoneManagementMenuController = new ZoneManagementMenuController(
-                _menuProvider, _factionService, _zoneService, playerContext, allocationService);
-            _zoneManagementMenuController.BackRequested += (s, e) => _mainMenuController.OnKeyDown(MainMenuController.MenuToggleKeyCode);
+                menuProvider, _factionService, zoneService, playerContext, allocationService);
+            _zoneManagementMenuController.BackRequested += (s, e) => mainMenuController.OnKeyDown(MainMenuController.MenuToggleKeyCode);
         }
 
         private void InitializeRecruitmentMenus(IPlayerContext playerContext, ITroopPurchaseService purchaseService)
         {
-            _recruitmentMenuController = new RecruitmentMenuController(_menuProvider, _gameBridge);
-            _recruitmentMenuController.BackRequested += (s, e) => _mainMenuController.OnKeyDown(MainMenuController.MenuToggleKeyCode);
-            _defendersMenuController = new DefendersMenuController(_menuProvider, _factionService, purchaseService, playerContext);
+            var menuProvider = RequiredMenuProvider;
+            var mainMenuController = RequiredMainMenuController;
+
+            _recruitmentMenuController = new RecruitmentMenuController(menuProvider, _gameBridge);
+            _recruitmentMenuController.BackRequested += (s, e) => mainMenuController.OnKeyDown(MainMenuController.MenuToggleKeyCode);
+            _defendersMenuController = new DefendersMenuController(menuProvider, _factionService, purchaseService, playerContext);
             _defendersMenuController.BackRequested += (s, e) => _recruitmentMenuController.Show();
             _squadMenuController = new SquadMenuController(
                 new SquadMenuControllerDependencies
                 {
-                    MenuProvider = _menuProvider,
+                    MenuProvider = menuProvider,
                     PurchaseService = purchaseService,
                     FollowerService = _followerService!,
                     PlayerContext = playerContext
@@ -808,29 +829,33 @@ namespace FactionWars.ScriptHookV
 
         private void InitializeResourcesAndSettingsMenus(IPlayerContext playerContext)
         {
+            var menuProvider = RequiredMenuProvider;
+            var mainMenuController = RequiredMainMenuController;
+            var zoneService = RequiredZoneService;
             var resourceModifier = _container.Resolve<IZoneTraitResourceModifier>();
             var supplyLineService = _container.Resolve<ISupplyLineService>();
             _resourcesMenuController = new ResourcesMenuController(new ResourcesMenuControllerDependencies
             {
-                MenuProvider = _menuProvider,
+                MenuProvider = menuProvider,
                 FactionService = _factionService,
-                ZoneService = _zoneService,
+                ZoneService = zoneService,
                 PlayerContext = playerContext,
                 ResourceTickService = _resourceTickService,
                 ResourceModifier = resourceModifier,
                 SupplyLineService = supplyLineService
             });
-            _resourcesMenuController.BackRequested += (s, e) => _mainMenuController.OnKeyDown(MainMenuController.MenuToggleKeyCode);
+            _resourcesMenuController.BackRequested += (s, e) => mainMenuController.OnKeyDown(MainMenuController.MenuToggleKeyCode);
 
             _difficultyService = _container.Resolve<IDifficultyService>();
-            _resourceTickService.SetAiIncomeMultiplier(_difficultyService.Current.AiIncomeMultiplier);
-            _resourceTickService.SetTickInterval(_difficultyService.Current.TickIntervalSeconds);
+            var difficultyService = RequiredDifficultyService;
+            _resourceTickService.SetAiIncomeMultiplier(difficultyService.Current.AiIncomeMultiplier);
+            _resourceTickService.SetTickInterval(difficultyService.Current.TickIntervalSeconds);
             _resourceTickService.SetPlayerFactionId(CurrentPlayerFactionId);
-            _difficultyService.DifficultyChanged += OnDifficultyChanged;
-            _settingsMenuController = new SettingsMenuController(_menuProvider, _difficultyService, _gameBridge);
-            _settingsMenuController.BackRequested += (s, e) => _mainMenuController.OnKeyDown(MainMenuController.MenuToggleKeyCode);
-            _shopMenuController = new ShopMenuController(_menuProvider, _gameBridge);
-            _shopMenuController.BackRequested += (s, e) => _mainMenuController.OnKeyDown(MainMenuController.MenuToggleKeyCode);
+            difficultyService.DifficultyChanged += OnDifficultyChanged;
+            _settingsMenuController = new SettingsMenuController(menuProvider, difficultyService, _gameBridge);
+            _settingsMenuController.BackRequested += (s, e) => mainMenuController.OnKeyDown(MainMenuController.MenuToggleKeyCode);
+            _shopMenuController = new ShopMenuController(menuProvider, _gameBridge);
+            _shopMenuController.BackRequested += (s, e) => mainMenuController.OnKeyDown(MainMenuController.MenuToggleKeyCode);
         }
 
         private void InitializeWorldDataAndEconomy()
