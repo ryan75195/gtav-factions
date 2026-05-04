@@ -237,8 +237,12 @@ namespace FactionWars.ScriptHookV
 
                 var killer = ped.Killer;
                 if (killer == null || !killer.Exists())
+                {
+                    FileLogger.AI($"GetPedKiller: ped {pedHandle} has no resolvable killer (environmental death or unknown)");
                     return 0;
+                }
 
+                FileLogger.AI($"GetPedKiller: ped {pedHandle} was killed by ped {killer.Handle}");
                 return killer.Handle;
             }
             catch (Exception ex)

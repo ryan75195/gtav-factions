@@ -338,6 +338,7 @@ namespace FactionWars.ScriptHookV.Managers
                 int killerHandle = _gameBridge.GetPedKiller(pedHandle);
                 AttackerKilled?.Invoke(this, new AttackerKilledEventArgs(
                     zoneId, attackerFactionId, tier, pedHandle, killerHandle));
+                FileLogger.Combat($"AttackerKilled raised: ped {pedHandle} (tier={tier}) in zone {zoneId}, killed by ped {killerHandle}");
             }
 
             // Track death time for corpse cleanup (don't despawn yet - leave corpse visible)
