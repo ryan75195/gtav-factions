@@ -179,6 +179,29 @@ namespace FactionWars.Tests.Unit.Combat
 
         #endregion
 
+        [Fact]
+        public void UntrackPed_ShouldRemoveFromPoolWithoutDeletingEntity()
+        {
+            var service = CreateService();
+            CreateAndAddPed(10);
+
+            var result = service.UntrackPed(10);
+
+            Assert.True(result);
+            Assert.False(_pedPool.Contains(10));
+        }
+
+        [Fact]
+        public void DeletePedEntity_ShouldDeleteFromGameOnly()
+        {
+            var service = CreateService();
+            var handle = _gameBridge.CreatePed("model_a", new Vector3(0, 0, 0));
+
+            service.DeletePedEntity(handle);
+
+            Assert.False(_gameBridge.PedExists(handle));
+        }
+
         #region Despawn Dead Peds
 
         [Fact]

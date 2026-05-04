@@ -172,5 +172,17 @@ namespace FactionWars.Tests.Unit.Combat
                 }
             }
         }
+
+        [Fact]
+        public void CalculateSpreadPositions_ShouldPlaceRequestedCountAroundCenter()
+        {
+            var center = new Vector3(10f, 20f, 5f);
+
+            var positions = _calculator.CalculateSpreadPositions(center, 4, 2f, 6f);
+
+            Assert.Equal(4, positions.Count);
+            Assert.All(positions, position => Assert.Equal(center.Z, position.Z));
+            Assert.All(positions, position => Assert.True(position.DistanceTo(center) >= 1.9f));
+        }
     }
 }

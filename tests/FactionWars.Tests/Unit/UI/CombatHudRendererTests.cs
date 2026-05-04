@@ -103,6 +103,16 @@ namespace FactionWars.Tests.Unit.UI
             Assert.Equal(10, renderer.CurrentData?.AttackerPedCount);
         }
 
+        [Fact]
+        public void Draw_WhenHidden_DoesNotThrow()
+        {
+            var renderer = new CombatHudRenderer();
+
+            var exception = Record.Exception(() => renderer.Draw());
+
+            Assert.Null(exception);
+        }
+
         private static CombatHudData CreateValidCombatHudData(
             string zoneId = "zone1",
             string zoneName = "Downtown",

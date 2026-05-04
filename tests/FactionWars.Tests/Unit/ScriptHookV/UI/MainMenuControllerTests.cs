@@ -104,6 +104,15 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
         }
 
         [Fact]
+        public void ShowMainMenu_ShouldOpenMainMenu()
+        {
+            _controller.ShowMainMenu();
+
+            Assert.True(_menuProvider.IsMenuVisible);
+            Assert.Equal(MainMenuController.MainMenuId, _menuProvider.CurrentMenuId);
+        }
+
+        [Fact]
         public void MainMenu_ShouldHaveCorrectTitle()
         {
             // Act

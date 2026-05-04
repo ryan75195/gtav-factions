@@ -2,6 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using FactionWars.AI.Models;
+using FactionWars.Combat.Models;
+using FactionWars.Core.Models;
 using FactionWars.Telemetry.Models;
 using FactionWars.Telemetry.Sinks;
 using Xunit;
@@ -149,6 +152,38 @@ namespace FactionWars.Tests.Unit.Telemetry
             var lines = File.ReadAllLines(path);
 
             Assert.StartsWith("01:02:03,3723,", lines[1]);
+        }
+
+        [Fact]
+        public void WriteEventRows_ShouldWriteAllTelemetryFiles()
+        {
+            using var sink = new CsvTelemetrySink(_tempDir);
+            var timestamp = new DateTime(2026, 1, 1, 12, 0, 0);
+            sink.SetSaveFile("SGTA_events");
+
+            sink.WriteBattle(new BattleEventRow(timestamp, 10, BattleEventType.Started,
+                "zone1", "michael", "trevor", 5, 6, null, 0, 0));
+            sink.WriteDecision(new DecisionEventRow(timestamp, 11, "trevor",
+                AIDecisionType.Attack, "zone1", 4, 0.8, true));
+            sink.WriteRecruitment(new RecruitmentEventRow(timestamp, 12, "trevor",
+                troopsRecruited: 3, cost: 600, cashBefore: 1000, cashAfter: 400));
+            sink.WriteAllocation(new AllocationEventRow(timestamp, 13, "michael",
+                "zone1", DefenderTier.Basic, 2, AllocationSource.Player));
+            sink.WriteResourceTick(new ResourceTickEventRow(timestamp, 14, "michael",
+                income: 250, zonesContributing: 2));
+            sink.WriteMatchMeta(new MatchMetaEventRow(timestamp, 15,
+                MatchMetaEventType.ModSessionStart, "start"));
+            sink.WritePlayerEvent(new PlayerEventRow(timestamp, 16, PlayerEventType.Death,
+                "zone1", "trevor", DefenderTier.Basic, "death"));
+
+            var saveDir = Path.Combine(_tempDir, "SGTA_events");
+            Assert.True(File.Exists(Path.Combine(saveDir, "battles.csv")));
+            Assert.True(File.Exists(Path.Combine(saveDir, "decisions.csv")));
+            Assert.True(File.Exists(Path.Combine(saveDir, "recruitments.csv")));
+            Assert.True(File.Exists(Path.Combine(saveDir, "allocations.csv")));
+            Assert.True(File.Exists(Path.Combine(saveDir, "resource_ticks.csv")));
+            Assert.True(File.Exists(Path.Combine(saveDir, "match_meta.csv")));
+            Assert.True(File.Exists(Path.Combine(saveDir, "player_events.csv")));
         }
 
         [Fact]

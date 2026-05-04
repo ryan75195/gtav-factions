@@ -699,6 +699,20 @@ namespace FactionWars.Tests.Unit.Territory
 
         #endregion
 
+        [Fact]
+        public void AreZonesAdjacent_ShouldReturnTrueForConfiguredAdjacentZones()
+        {
+            var zone1 = CreateTestZone("zone_1", "Downtown");
+            var zone2 = CreateTestZone("zone_2", "Uptown");
+            zone1.AdjacentZoneIds.Add("zone_2");
+            _repository.Add(zone1);
+            _repository.Add(zone2);
+
+            var result = _service.AreZonesAdjacent("zone_1", "zone_2");
+
+            Assert.True(result);
+        }
+
         #region Helper Methods
 
         private static Zone CreateTestZone(string id, string name)

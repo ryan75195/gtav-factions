@@ -2,6 +2,7 @@ using Xunit;
 using Moq;
 using FactionWars.UI.Models;
 using FactionWars.UI.Interfaces;
+using FactionWars.ScriptHookV.UI;
 using FactionWars.Factions.Interfaces;
 using FactionWars.Factions.Models;
 using System;
@@ -213,6 +214,23 @@ namespace FactionWars.Tests.Unit.UI
             Assert.Equal("[D]", renderer.GetCategoryIconPublic(EventFeedCategory.TroopsDeployed));
             Assert.Equal("[$]", renderer.GetCategoryIconPublic(EventFeedCategory.IncomeReceived));
             Assert.Equal("[*]", renderer.GetCategoryIconPublic(EventFeedCategory.General));
+        }
+
+        [Fact]
+        public void EventFeedRenderer_PublicMethods_ShouldUpdateVisibilityAndDrawWhenHidden()
+        {
+            var renderer = new EventFeedRenderer(_mockFactionRepository.Object);
+            var entries = new List<EventFeedEntry>
+            {
+                new EventFeedEntry("Test message", EventFeedCategory.General, null, DateTime.UtcNow)
+            };
+
+            renderer.Render(entries);
+            renderer.Hide();
+            var exception = Record.Exception(() => renderer.Draw());
+
+            Assert.False(renderer.IsVisible);
+            Assert.Null(exception);
         }
     }
 
