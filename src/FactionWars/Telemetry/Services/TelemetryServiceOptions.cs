@@ -25,6 +25,25 @@ namespace FactionWars.Telemetry.Services
         public Func<int>? GetPlayerPedHandle { get; init; }
 
         /// <summary>
+        /// Returns whether the player is currently dead. When supplied, TelemetryService
+        /// emits PlayerEventType.Death on the alive-to-dead transition and
+        /// PlayerEventType.RespawnAtHospital on the dead-to-alive transition.
+        /// </summary>
+        public Func<bool>? IsPlayerDead { get; init; }
+
+        /// <summary>
+        /// Returns the player's current zone id, if any. Used to tag player death and
+        /// respawn events with the zone context.
+        /// </summary>
+        public Func<string?>? GetCurrentZoneId { get; init; }
+
+        /// <summary>
+        /// Returns the player's current world position. Used to record death location
+        /// in the player event details JSON.
+        /// </summary>
+        public Func<Vector3>? GetPlayerPosition { get; init; }
+
+        /// <summary>
         /// Predicate returning true when the given save filename has never been seen by the
         /// telemetry system before (i.e. its per-save folder does not yet exist on disk).
         /// When supplied, the first OnGameLoaded for a never-seen save emits MatchStart.

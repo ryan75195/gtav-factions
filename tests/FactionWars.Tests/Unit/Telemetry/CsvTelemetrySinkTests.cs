@@ -95,6 +95,21 @@ namespace FactionWars.Tests.Unit.Telemetry
         }
 
         [Fact]
+        public void WriteZoneEvent_UsesPlayTimeAsHudTimestamp()
+        {
+            using var sink = new CsvTelemetrySink(_tempDir);
+            sink.SetSaveFile("SGTA_time");
+            sink.WriteZoneEvent(new ZoneEventRow(
+                new DateTime(2026, 1, 1, 12, 0, 0), 3723,
+                ZoneEventType.Captured, "morningwood", "trevor", "michael"));
+
+            var path = Path.Combine(_tempDir, "SGTA_time", "zone_events.csv");
+            var lines = File.ReadAllLines(path);
+
+            Assert.StartsWith("01:02:03,3723,", lines[1]);
+        }
+
+        [Fact]
         public void Dispose_IsIdempotent()
         {
             var sink = new CsvTelemetrySink(_tempDir);

@@ -28,13 +28,13 @@ namespace FactionWars.Configuration
         public float RecruitmentIntervalSeconds { get; set; } = 60f;
 
         // Per-faction aggressiveness (0.0 = passive, 1.0 = very aggressive)
-        public float MichaelAggressiveness { get; set; } = 0.3f;
-        public float TrevorAggressiveness { get; set; } = 0.85f;
+        public float MichaelAggressiveness { get; set; } = 0.6f;
+        public float TrevorAggressiveness { get; set; } = 0.6f;
         public float FranklinAggressiveness { get; set; } = 0.6f;
 
         // Per-faction risk tolerance (0.0 = risk-averse, 1.0 = risk-seeking)
-        public float MichaelRiskTolerance { get; set; } = 0.3f;
-        public float TrevorRiskTolerance { get; set; } = 0.8f;
+        public float MichaelRiskTolerance { get; set; } = 0.6f;
+        public float TrevorRiskTolerance { get; set; } = 0.6f;
         public float FranklinRiskTolerance { get; set; } = 0.6f;
 
         // AI costs

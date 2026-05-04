@@ -61,7 +61,7 @@ namespace FactionWars.Tests.Unit.Configuration
 
             Assert.Equal(90f, config.AI.DecisionIntervalSeconds);
             // Other AI values should be defaults
-            Assert.Equal(0.3f, config.AI.MichaelAggressiveness);
+            Assert.Equal(0.6f, config.AI.MichaelAggressiveness);
             // Combat should be defaults
             Assert.Equal(1.5f, config.Combat.DefenderAdvantage);
         }

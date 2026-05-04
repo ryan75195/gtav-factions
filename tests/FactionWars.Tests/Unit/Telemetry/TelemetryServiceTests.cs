@@ -160,6 +160,54 @@ namespace FactionWars.Tests.Unit.Telemetry
             _sink.Verify(s => s.WriteSnapshot(It.IsAny<IReadOnlyList<FactionSnapshot>>()), Times.Exactly(2));
         }
 
+        [Fact]
+        public void Update_PlayerDies_WritesDeathWithZoneAndPosition()
+        {
+            var dead = false;
+            _gameStateManager.Setup(g => g.TotalPlayTimeSeconds).Returns(3723L);
+            using var svc = new TelemetryService(_sink.Object, _factionService.Object,
+                _zoneService.Object, _gameStateManager.Object,
+                new TelemetryServiceOptions
+                {
+                    IsPlayerDead = () => dead,
+                    GetCurrentZoneId = () => "morningwood",
+                    GetPlayerPosition = () => new Vector3(1.5f, 2.5f, 3.5f),
+                });
+
+            dead = true;
+            svc.Update(0.1f);
+
+            _sink.Verify(s => s.WritePlayerEvent(It.Is<PlayerEventRow>(r =>
+                r.Type == PlayerEventType.Death
+                && r.ZoneId == "morningwood"
+                && r.PlayTimeSeconds == 3723L
+                && r.Details.Contains("\"x\":1.5")
+                && r.Details.Contains("\"y\":2.5")
+                && r.Details.Contains("\"z\":3.5"))), Times.Once);
+        }
+
+        [Fact]
+        public void Update_PlayerRespawns_WritesRespawnAtHospital()
+        {
+            var dead = true;
+            using var svc = new TelemetryService(_sink.Object, _factionService.Object,
+                _zoneService.Object, _gameStateManager.Object,
+                new TelemetryServiceOptions
+                {
+                    IsPlayerDead = () => dead,
+                    GetCurrentZoneId = () => null,
+                    GetPlayerPosition = () => new Vector3(10f, 20f, 30f),
+                });
+
+            dead = false;
+            svc.Update(0.1f);
+
+            _sink.Verify(s => s.WritePlayerEvent(It.Is<PlayerEventRow>(r =>
+                r.Type == PlayerEventType.RespawnAtHospital
+                && r.ZoneId == null
+                && r.Details.Contains("\"x\":10"))), Times.Once);
+        }
+
         // ---- Domain event subscription tests (Task 11) ----
 
         [Fact]

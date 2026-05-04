@@ -9,6 +9,8 @@ using FactionWars.Factions.Interfaces;
 using FactionWars.Factions.Models;
 using FactionWars.ScriptHookV;
 using FactionWars.ScriptHookV.Managers;
+using FactionWars.Telemetry.Interfaces;
+using FactionWars.Telemetry.Sinks;
 using FactionWars.Territory.Interfaces;
 using FactionWars.Tests.Mocks;
 using FactionWars.UI.Interfaces;
@@ -572,6 +574,29 @@ namespace FactionWars.Tests.Unit.ScriptHookV
 
             var service1 = container.Resolve<FactionWars.ScriptHookV.Persistence.IGameStateManager>();
             var service2 = container.Resolve<FactionWars.ScriptHookV.Persistence.IGameStateManager>();
+
+            Assert.Same(service1, service2);
+        }
+
+        [Fact]
+        public void Create_ShouldRegisterTelemetrySink()
+        {
+            var gameBridge = CreateMockGameBridge();
+
+            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
+
+            Assert.True(container.IsRegistered<ITelemetrySink>());
+            Assert.IsType<CsvTelemetrySink>(container.Resolve<ITelemetrySink>());
+        }
+
+        [Fact]
+        public void Create_ShouldReturnSingletonTelemetrySink()
+        {
+            var gameBridge = CreateMockGameBridge();
+            var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
+
+            var service1 = container.Resolve<ITelemetrySink>();
+            var service2 = container.Resolve<ITelemetrySink>();
 
             Assert.Same(service1, service2);
         }

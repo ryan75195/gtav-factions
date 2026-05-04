@@ -34,8 +34,12 @@ namespace FactionWars.Telemetry.Services
         private readonly FactionSnapshotBuilder _snapshotBuilder;
         private readonly Func<int> _getPlayerPedHandle;
         private readonly Func<string, bool> _isFirstTimeSeenSave;
+        private readonly Func<bool>? _isPlayerDead;
+        private readonly Func<string?> _getCurrentZoneId;
+        private readonly Func<Vector3>? _getPlayerPosition;
         private readonly List<Action> _unsubscribers = new List<Action>();
         private float _secondsSinceLastSnapshot;
+        private bool _wasPlayerDead;
         private bool _disposed;
 
         public TelemetryService(ITelemetrySink sink,
@@ -69,6 +73,13 @@ namespace FactionWars.Telemetry.Services
             // Default to "never first-time" so MatchStart is never emitted unless the host
             // explicitly supplies a predicate (Task 13 wires a directory-existence check).
             _isFirstTimeSeenSave = opts.IsFirstTimeSeenSave ?? (_ => false);
+            _isPlayerDead = opts.IsPlayerDead;
+            _getCurrentZoneId = opts.GetCurrentZoneId ?? (() => null);
+            _getPlayerPosition = opts.GetPlayerPosition;
+            if (_isPlayerDead != null)
+            {
+                _wasPlayerDead = SafeReadPlayerDead(initialRead: true);
+            }
 
             // 1. Zone ownership (always subscribed - zoneService is required).
             EventHandler<ZoneOwnershipChangedEventArgs> zoneHandler = OnZoneOwnershipChanged;
@@ -180,12 +191,67 @@ namespace FactionWars.Telemetry.Services
         public void Update(float deltaTimeSeconds)
         {
             if (_disposed) return;
+            PollPlayerDeathState();
             _secondsSinceLastSnapshot += deltaTimeSeconds;
             if (_secondsSinceLastSnapshot >= SnapshotIntervalSeconds)
             {
                 _secondsSinceLastSnapshot = 0f;
                 SafeTick();
             }
+        }
+
+        private void PollPlayerDeathState()
+        {
+            if (_isPlayerDead == null) return;
+
+            var isDead = SafeReadPlayerDead(initialRead: false);
+            if (isDead == _wasPlayerDead) return;
+
+            _wasPlayerDead = isDead;
+            try
+            {
+                var eventType = isDead ? PlayerEventType.Death : PlayerEventType.RespawnAtHospital;
+                _sink.WritePlayerEvent(new PlayerEventRow(
+                    DateTime.Now,
+                    _gameStateManager.TotalPlayTimeSeconds,
+                    eventType,
+                    _getCurrentZoneId(),
+                    targetFaction: null,
+                    targetTier: null,
+                    details: BuildPlayerPositionDetails()));
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error("TelemetryService.PollPlayerDeathState failed", ex);
+            }
+        }
+
+        private bool SafeReadPlayerDead(bool initialRead)
+        {
+            try
+            {
+                return _isPlayerDead?.Invoke() ?? false;
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error(initialRead
+                    ? "TelemetryService: initial player death state read failed"
+                    : "TelemetryService: player death state read failed", ex);
+                return _wasPlayerDead;
+            }
+        }
+
+        private string BuildPlayerPositionDetails()
+        {
+            if (_getPlayerPosition == null) return string.Empty;
+
+            var position = _getPlayerPosition();
+            return Newtonsoft.Json.JsonConvert.SerializeObject(new
+            {
+                x = position.X,
+                y = position.Y,
+                z = position.Z,
+            });
         }
 
         /// <summary>

@@ -6,6 +6,7 @@ using FactionWars.AI.Interfaces;
 using FactionWars.AI.Models;
 using FactionWars.Combat.Interfaces;
 using FactionWars.Combat.Models;
+using FactionWars.Configuration;
 using FactionWars.Core.Interfaces;
 using FactionWars.Core.Models;
 using FactionWars.Core.Services;
@@ -17,6 +18,8 @@ using FactionWars.ScriptHookV.Logging;
 using FactionWars.ScriptHookV.Managers;
 using FactionWars.ScriptHookV.Persistence;
 using FactionWars.ScriptHookV.UI;
+using FactionWars.Telemetry.Interfaces;
+using FactionWars.Telemetry.Services;
 using FactionWars.Territory.Interfaces;
 using FactionWars.Territory.Models;
 using FactionWars.UI.Interfaces;
@@ -78,6 +81,7 @@ namespace FactionWars.ScriptHookV
         private IZoneBattleManager? _zoneBattleManager;
         private IVehicleThreatService? _vehicleThreatService;
         private IAntiVehicleResponseService? _antiVehicleResponseService;
+        private TelemetryService? _telemetryService;
         private BattleHudRenderer? _battleHudRenderer;
         private PlayTimeHudRenderer? _playTimeHudRenderer;
         private int _currentBattleHudIndex = 0;
@@ -267,6 +271,9 @@ namespace FactionWars.ScriptHookV
 
             // Update play time tracker
             _gameStateManager?.UpdatePlayTime(deltaTime);
+
+            // Update telemetry snapshot timer after play time has advanced for this frame.
+            _telemetryService?.Update(deltaTime);
 
             // Poll controller input
             PollControllerInput();
@@ -811,12 +818,52 @@ namespace FactionWars.ScriptHookV
             // Subscribe to game state events for difficulty persistence
             _gameStateManager.OnGameLoaded += OnGameLoaded;
 
+            InitializeTelemetryService();
+
             // Per-session GTA flags (e.g. don't drop weapons on death)
             ConfigureSessionSettings();
 
             FileLogger.Separator("INITIALIZATION COMPLETE");
             FileLogger.Info($"Player faction: {CurrentPlayerFactionId ?? "UNKNOWN"}");
             FileLogger.Info($"Log file: {FileLogger.LogPath}");
+        }
+
+        private void InitializeTelemetryService()
+        {
+            if (_gameStateManager == null || _zoneService == null)
+            {
+                FileLogger.Warn("TelemetryService not initialized: game state or zone service missing.");
+                return;
+            }
+
+            var config = _container.Resolve<GameConfig>();
+            var telemetryRoot = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+                config.Persistence.SaveDirectoryName,
+                "Telemetry");
+
+            _telemetryService = new TelemetryService(
+                _container.Resolve<ITelemetrySink>(),
+                _factionService,
+                _zoneService,
+                _gameStateManager,
+                new TelemetryServiceOptions
+                {
+                    GetPlayerPedHandle = () => _gameBridge.GetPlayerPedHandle(),
+                    IsPlayerDead = () => _gameBridge.IsPlayerDead(),
+                    GetCurrentZoneId = () => _territoryManager?.CurrentZone?.Id,
+                    GetPlayerPosition = () => _gameBridge.GetPlayerPosition(),
+                    IsFirstTimeSeenSave = save => !Directory.Exists(Path.Combine(telemetryRoot, save)),
+                    ZoneBattleManager = _zoneBattleManager,
+                    AIManager = _aiManager,
+                    AIController = _aiController,
+                    AllocationService = _allocationService,
+                    ResourceTickService = _resourceTickService,
+                    BattleAttackerManager = _battleAttackerManager,
+                    VictoryManager = _victoryManager,
+                    DifficultyService = _difficultyService,
+                    NativeSaveWatcher = _container.Resolve<NativeSaveWatcher>()
+                });
         }
 
         /// <summary>
@@ -1024,6 +1071,13 @@ namespace FactionWars.ScriptHookV
 
             // Unsubscribe from events
             _characterSwitchDetector.OnCharacterSwitched -= HandleCharacterSwitched;
+
+            _telemetryService?.Dispose();
+            _telemetryService = null;
+            if (_container.TryResolve<ITelemetrySink>(out var telemetrySink) && telemetrySink != null)
+            {
+                telemetrySink.Dispose();
+            }
 
             // Stop economy manager
             _economyManager?.Stop();
