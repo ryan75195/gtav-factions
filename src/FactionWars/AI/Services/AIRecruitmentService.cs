@@ -250,17 +250,31 @@ namespace FactionWars.AI.Services
         /// <summary>
         /// Gets the tier distribution percentages based on wealth level.
         /// </summary>
-        private (double BasicPercent, double MediumPercent, double HeavyPercent) GetTierDistributionForWealth(int cash)
+        private TierDistribution GetTierDistributionForWealth(int cash)
         {
             if (cash >= HighWealthThreshold)
-                return (0.20, 0.30, 0.40); // 90% total, remainder goes to Basic
+                return new TierDistribution(0.20, 0.30, 0.40); // 90% total, remainder goes to Basic
             if (cash >= MidWealthThreshold)
-                return (0.40, 0.30, 0.20); // 90% total, remainder goes to Basic
+                return new TierDistribution(0.40, 0.30, 0.20); // 90% total, remainder goes to Basic
             if (cash >= LowWealthThreshold)
-                return (0.60, 0.30, 0.10);
+                return new TierDistribution(0.60, 0.30, 0.10);
 
             // Below $5k - only Basic
-            return (1.0, 0.0, 0.0);
+            return new TierDistribution(1.0, 0.0, 0.0);
+        }
+
+        private readonly struct TierDistribution
+        {
+            public TierDistribution(double basicPercent, double mediumPercent, double heavyPercent)
+            {
+                BasicPercent = basicPercent;
+                MediumPercent = mediumPercent;
+                HeavyPercent = heavyPercent;
+            }
+
+            public double BasicPercent { get; }
+            public double MediumPercent { get; }
+            public double HeavyPercent { get; }
         }
     }
 }

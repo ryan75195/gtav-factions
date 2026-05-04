@@ -69,7 +69,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             Assert.True(bridge.IsPedGoingToCoord(defenderHandle));
         }
 
-        private static (EnemyDefenderManager manager, MockGameBridge bridge, int defenderHandle) SpawnSingleEnemyDefender()
+        private static SpawnedEnemyDefender SpawnSingleEnemyDefender()
         {
             var bridge = new MockGameBridge();
             var allocationServiceMock = new Mock<IZoneDefenderAllocationService>();
@@ -113,7 +113,28 @@ namespace FactionWars.Tests.Unit.ScriptHookV
 
             manager.OnEnemyZoneEntered(zone, EnemyFactionId);
             int handle = bridge.GetSpawnedPeds()[0];
-            return (manager, bridge, handle);
+            return new SpawnedEnemyDefender(manager, bridge, handle);
+        }
+
+        private sealed class SpawnedEnemyDefender
+        {
+            public SpawnedEnemyDefender(EnemyDefenderManager manager, MockGameBridge bridge, int defenderHandle)
+            {
+                Manager = manager;
+                Bridge = bridge;
+                DefenderHandle = defenderHandle;
+            }
+
+            public EnemyDefenderManager Manager { get; }
+            public MockGameBridge Bridge { get; }
+            public int DefenderHandle { get; }
+
+            public void Deconstruct(out EnemyDefenderManager manager, out MockGameBridge bridge, out int defenderHandle)
+            {
+                manager = Manager;
+                bridge = Bridge;
+                defenderHandle = DefenderHandle;
+            }
         }
     }
 }
