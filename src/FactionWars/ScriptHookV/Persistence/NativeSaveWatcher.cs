@@ -6,6 +6,63 @@ using System.Threading;
 
 namespace FactionWars.ScriptHookV.Persistence
 {
+    internal interface INativeFileSystemWatcher : IDisposable
+    {
+        event FileSystemEventHandler Changed;
+        event FileSystemEventHandler Created;
+        event RenamedEventHandler Renamed;
+
+        bool EnableRaisingEvents { get; set; }
+    }
+
+    internal sealed class NativeFileSystemWatcher : INativeFileSystemWatcher
+    {
+        private readonly FileSystemWatcher _watcher;
+
+        private NativeFileSystemWatcher(FileSystemWatcher watcher)
+        {
+            _watcher = watcher ?? throw new ArgumentNullException(nameof(watcher));
+        }
+
+        public event FileSystemEventHandler Changed
+        {
+            add => _watcher.Changed += value;
+            remove => _watcher.Changed -= value;
+        }
+
+        public event FileSystemEventHandler Created
+        {
+            add => _watcher.Created += value;
+            remove => _watcher.Created -= value;
+        }
+
+        public event RenamedEventHandler Renamed
+        {
+            add => _watcher.Renamed += value;
+            remove => _watcher.Renamed -= value;
+        }
+
+        public bool EnableRaisingEvents
+        {
+            get => _watcher.EnableRaisingEvents;
+            set => _watcher.EnableRaisingEvents = value;
+        }
+
+        public static NativeFileSystemWatcher Create(string directory)
+        {
+            var watcher = new FileSystemWatcher(directory)
+            {
+                Filter = "SGTA*",
+                NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.Size,
+                IncludeSubdirectories = false,
+            };
+
+            return new NativeFileSystemWatcher(watcher);
+        }
+
+        public void Dispose() => _watcher.Dispose();
+    }
+
     /// <summary>
     /// Watches Rockstar's profile dir for SGTA file writes. Debounces FS event
     /// bursts (saves typically fire 2-3 events per file) and emits one
@@ -17,24 +74,23 @@ namespace FactionWars.ScriptHookV.Persistence
 
         private readonly string _directory;
         private readonly int _debounceMs;
-        private readonly FileSystemWatcher _fsw;
+        private readonly INativeFileSystemWatcher _fsw;
         private readonly ConcurrentDictionary<string, Timer> _timers = new ConcurrentDictionary<string, Timer>(StringComparer.OrdinalIgnoreCase);
         private readonly ConcurrentDictionary<string, DateTime> _pendingWriteTimes = new ConcurrentDictionary<string, DateTime>(StringComparer.OrdinalIgnoreCase);
         private Timer? _pollTimer;
         private bool _disposed;
 
         public NativeSaveWatcher(string directory, int debounceMs = 200)
+            : this(directory, NativeFileSystemWatcher.Create(directory), debounceMs)
+        {
+        }
+
+        internal NativeSaveWatcher(string directory, INativeFileSystemWatcher fileSystemWatcher, int debounceMs = 200)
         {
             if (string.IsNullOrEmpty(directory)) throw new ArgumentException("directory required", nameof(directory));
             _directory = directory;
             _debounceMs = debounceMs;
-
-            _fsw = new FileSystemWatcher(_directory)
-            {
-                Filter = "SGTA*",
-                NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.Size,
-                IncludeSubdirectories = false,
-            };
+            _fsw = fileSystemWatcher ?? throw new ArgumentNullException(nameof(fileSystemWatcher));
 
             _fsw.Changed += OnFsEvent;
             _fsw.Created += OnFsEvent;
