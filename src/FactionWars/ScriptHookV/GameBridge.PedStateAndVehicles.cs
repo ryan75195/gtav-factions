@@ -242,22 +242,5 @@ namespace FactionWars.ScriptHookV
         }
 
         /// <inheritdoc />
-        public void TaskPedLeaveVehicle(int pedHandle)
-        {
-            try
-            {
-                var ped = Entity.FromHandle(pedHandle) as Ped;
-                if (ped == null || !ped.Exists() || !ped.IsInVehicle())
-                    return;
-
-                ped.Task.LeaveVehicle();
-            }
-            catch
-            {
-                // Silently ignore
-            }
-        }
-
-        /// <inheritdoc />
     }
 }

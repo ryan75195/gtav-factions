@@ -255,14 +255,5 @@ namespace FactionWars.ScriptHookV
         /// <summary>
         /// Gets the cost of a basic troop from the defender tier service.
         /// </summary>
-        private int GetBasicTroopCost()
-        {
-            var tierService = _container.Resolve<IDefenderTierService>();
-            return tierService.GetTierConfig(DefenderTier.Basic).Cost;
-        }
-
-        /// <summary>
-        /// Attempts to claim the current neutral zone by paying for a guard troop.
-        /// </summary>
     }
 }
