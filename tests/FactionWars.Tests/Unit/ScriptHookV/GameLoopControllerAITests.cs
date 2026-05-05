@@ -7,7 +7,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
 {
     /// <summary>
     /// Tests for GameLoopController's AI system wiring.
-    /// Ensures AIManager and BackgroundBattleSimulator are properly wired.
+    /// Ensures the consolidated AIController is properly wired.
     /// </summary>
     public class GameLoopControllerAITests
     {
@@ -22,7 +22,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
         }
 
         [Fact]
-        public void AIManager_AfterInitialization_IsNotNull()
+        public void AIController_AfterInitialization_IsNotNull()
         {
             // Arrange
             SetupController();
@@ -32,19 +32,19 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             controller.OnTick();
 
             // Assert
-            Assert.NotNull(controller.AIManager);
+            Assert.NotNull(controller.AIController);
         }
 
         [Fact]
-        public void AIManager_OnTick_GetsUpdated()
+        public void AIController_OnTick_StaysRunning()
         {
             // Arrange
             SetupController();
             var controller = new GameLoopController(_container);
             controller.OnTick(); // Initialize
 
-            var aiManager = controller.AIManager;
-            Assert.NotNull(aiManager);
+            var aiController = controller.AIController;
+            Assert.NotNull(aiController);
 
             // Act - simulate multiple ticks
             for (int i = 0; i < 10; i++)
@@ -52,8 +52,9 @@ namespace FactionWars.Tests.Unit.ScriptHookV
                 controller.OnTick();
             }
 
-            // Assert - AI manager should still be valid
-            Assert.NotNull(controller.AIManager);
+            // Assert - AI controller should still be valid and running
+            Assert.NotNull(controller.AIController);
+            Assert.True(controller.AIController!.IsRunning);
         }
 
         [Fact]

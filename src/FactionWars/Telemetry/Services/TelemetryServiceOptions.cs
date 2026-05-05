@@ -54,7 +54,6 @@ namespace FactionWars.Telemetry.Services
         public Func<string, bool>? IsFirstTimeSeenSave { get; init; }
 
         public IZoneBattleManager? ZoneBattleManager { get; init; }
-        public AIManager? AIManager { get; init; }
         public IAIController? AIController { get; init; }
         public IZoneDefenderAllocationService? AllocationService { get; init; }
         public IResourceTickService? ResourceTickService { get; init; }

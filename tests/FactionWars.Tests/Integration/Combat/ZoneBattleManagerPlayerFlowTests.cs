@@ -295,6 +295,36 @@ namespace FactionWars.Tests.Integration.Combat
         }
 
         // -----------------------------------------------------------------------
+        [Fact]
+        public void ThreeWay_DefenderWipedFirst_BattleContinuesUntilOneAttackerRemains()
+        {
+            var manager = MakeManager(playerFactionId: "player_faction");
+            var zone = MakeZone("zone_1", ownerFactionId: "michael");
+
+            manager.StartBattle("zone_1", "trevor", "michael",
+                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 1 } },
+                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 1 } });
+
+            var battle = manager.StartPlayerCombat(zone, "player_faction", () => 4);
+            Assert.NotNull(battle);
+            Assert.Equal(3, battle!.Participants.Count);
+
+            var endedEvents = new List<(ZoneBattle, BattleOutcome)>();
+            manager.BattleEnded += (b, o) => endedEvents.Add((b, o));
+
+            manager.ReportTroopKilled("zone_1", "michael", DefenderTier.Basic);
+
+            Assert.Empty(endedEvents);
+            Assert.NotNull(manager.GetBattleForZone("zone_1"));
+            Assert.True(battle.IsOngoing);
+
+            manager.ReportTroopKilled("zone_1", "trevor", DefenderTier.Basic);
+
+            Assert.Single(endedEvents);
+            Assert.Equal(BattleOutcome.AttackersWon, endedEvents[0].Item2);
+            Assert.Contains(endedEvents[0].Item1.Attackers, p => p.IsPlayer && p.AliveCount > 0);
+            Assert.Null(manager.GetBattleForZone("zone_1"));
+        }
         // Player-win → zone goes neutral (Q5.A)
         // -----------------------------------------------------------------------
 

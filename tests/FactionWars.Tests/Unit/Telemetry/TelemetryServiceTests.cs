@@ -353,38 +353,6 @@ namespace FactionWars.Tests.Unit.Telemetry
         }
 
         [Fact]
-        public void OnAIDecision_WritesDecisionRow()
-        {
-            var aiManager = new AIManager(_factionService.Object, _zoneService.Object,
-                new Dictionary<string, FactionWars.AI.Interfaces.IAIStrategy>());
-            using var svc = new TelemetryService(_sink.Object, _factionService.Object,
-                _zoneService.Object, _gameStateManager.Object,
-                new TelemetryServiceOptions
-                {
-                    GetPlayerPedHandle = () => 0,
-                    AIManager = aiManager,
-                });
-
-            var decision = new AIDecision(AIDecisionType.Attack, "zone1", priority: 0.75f, troopsToCommit: 4);
-            // AIManager declares: public event EventHandler<AIDecisionEventArgs>? OnAIDecision
-            // We can't raise from outside, so use reflection to invoke the multicast delegate.
-            var field = typeof(AIManager).GetField("OnAIDecision",
-                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-            Assert.NotNull(field);
-            var handler = (EventHandler<AIDecisionEventArgs>?)field!.GetValue(aiManager);
-            Assert.NotNull(handler);
-            handler!.Invoke(aiManager, new AIDecisionEventArgs("trevor", decision));
-
-            _sink.Verify(s => s.WriteDecision(It.Is<DecisionEventRow>(r =>
-                r.FactionId == "trevor"
-                && r.Type == AIDecisionType.Attack
-                && r.TargetZoneId == "zone1"
-                && r.Troops == 4
-                && Math.Abs(r.Priority - 0.75) < 0.001
-                && r.Executed)), Times.Once);
-        }
-
-        [Fact]
         public void TroopsAllocated_WritesAllocationRowWithSourceAI()
         {
             var allocationService = new Mock<IZoneDefenderAllocationService>();

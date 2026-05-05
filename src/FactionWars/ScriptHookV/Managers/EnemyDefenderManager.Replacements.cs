@@ -52,6 +52,39 @@ namespace FactionWars.ScriptHookV.Managers
             return false;
         }
 
+        public void OnTroopsAllocated(string factionId, string zoneId, DefenderTier tier, int count)
+        {
+            if (string.IsNullOrEmpty(factionId) || string.IsNullOrEmpty(zoneId) || count <= 0)
+                return;
+            if (_currentEnemyZoneId != zoneId)
+                return;
+
+            var zone = _zoneService.GetZone(zoneId);
+            if (zone == null || zone.OwnerFactionId != factionId)
+                return;
+
+            var allocation = _allocationService.GetAllocation(factionId, zoneId);
+            if (allocation == null)
+                return;
+
+            int spawned = GetSpawnedDefenderCount(zoneId);
+            int spawnBudget = Math.Min(count, MaxSpawnedDefenders - spawned);
+            for (int i = 0; i < spawnBudget; i++)
+            {
+                int allocatedOfTier = allocation.GetTroopCount(tier);
+                int spawnedOfTier = GetSpawnedCountByTier(zoneId, tier);
+                if (allocatedOfTier <= spawnedOfTier)
+                    break;
+
+                int before = GetSpawnedDefenderCount(zoneId);
+                SpawnSingleDefender(zoneId, tier, factionId, zone);
+                if (GetSpawnedDefenderCount(zoneId) == before)
+                    break;
+
+                FileLogger.Combat($"EnemyDefenderManager: Spawned live reinforcement {tier} in {zoneId}");
+            }
+        }
+
         /// <summary>
         /// Spawns a single enemy defender.
         /// </summary>

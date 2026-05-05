@@ -53,20 +53,6 @@ namespace FactionWars.ScriptHookV
 
         private void StopAiSystems()
         {
-            if (_aiManager != null && _backgroundBattleSimulator != null)
-            {
-                _aiManager.OnAIDecision -= _backgroundBattleSimulator.HandleAIDecision;
-            }
-            _backgroundBattleSimulator = null;
-            _aiDecisionExecutor = null;
-
-            if (_aiManager != null)
-            {
-                _aiManager.OnAIDecision -= HandleAIDecision;
-                _aiManager.Stop();
-            }
-            _aiManager = null;
-
             // Stop consolidated AI controller
             _aiController?.Stop();
             _aiController = null;

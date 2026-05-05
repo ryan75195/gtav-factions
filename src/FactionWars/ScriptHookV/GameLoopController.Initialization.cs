@@ -86,7 +86,10 @@ namespace FactionWars.ScriptHookV
         {
             var zone = _zoneService?.GetZone(e.ZoneId);
             if (zone != null)
+            {
                 friendlyDefenderManager.OnTroopsAllocated(e.FactionId, e.ZoneId, e.Tier, e.Count, zone.Center, zone.Radius);
+                _enemyDefenderManager?.OnTroopsAllocated(e.FactionId, e.ZoneId, e.Tier, e.Count);
+            }
 
             var battle = _zoneBattleManager?.GetBattleForZone(e.ZoneId);
             if (battle != null && battle.DefenderFactionId == e.FactionId)
@@ -229,15 +232,6 @@ namespace FactionWars.ScriptHookV
         private void InitializeAiAndVictorySystems()
         {
             var strategies = _container.Resolve<IDictionary<string, IAIStrategy>>();
-            _aiManager = new AIManager(_factionService, RequiredZoneService, strategies);
-            _aiManager.Start();
-            _aiManager.SetPlayerFactionId(CurrentPlayerFactionId);
-            _aiManager.OnAIDecision += HandleAIDecision;
-
-            _backgroundBattleSimulator = _container.Resolve<BackgroundBattleSimulator>();
-            _aiManager.OnAIDecision += _backgroundBattleSimulator.HandleAIDecision;
-            _aiDecisionExecutor = _container.Resolve<AIDecisionExecutor>();
-
             _aiController = _container.Resolve<IAIController>();
             _aiController.SetPlayerFactionId(CurrentPlayerFactionId);
             _aiController.Start();

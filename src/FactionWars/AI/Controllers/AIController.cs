@@ -32,8 +32,8 @@ namespace FactionWars.AI.Controllers
         private readonly IAIRecruitmentService? _recruitmentService;
 
         // Configuration
-        private const float DefaultDecisionIntervalSeconds = 60f;  // Slowed from 30s for better pacing
-        private const float DefaultRecruitmentIntervalSeconds = 60f;
+        private const float DefaultDecisionIntervalSeconds = 90f;
+        private const float DefaultRecruitmentIntervalSeconds = 90f;
         private const int RecruitCostPerTroop = 200;  // Aligned with player Basic tier cost
         // NOTE: Deployment cost removed - troops are free to deploy once recruited
         private const int MaxRecruitPerCycle = 5;

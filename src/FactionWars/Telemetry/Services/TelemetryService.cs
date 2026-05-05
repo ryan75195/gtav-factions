@@ -99,14 +99,6 @@ namespace FactionWars.Telemetry.Services
                 FileLogger.Info("TelemetryService: subscribed to BattleStarted/BattleEnded");
             }
 
-            if (opts.AIManager != null)
-            {
-                EventHandler<AIDecisionEventArgs> handler = OnAIDecision;
-                opts.AIManager.OnAIDecision += handler;
-                _unsubscribers.Add(() => opts.AIManager.OnAIDecision -= handler);
-                FileLogger.Info("TelemetryService: subscribed to OnAIDecision");
-            }
-
             if (opts.AllocationService != null)
             {
                 EventHandler<TroopsAllocatedEventArgs> handler = OnTroopsAllocated;

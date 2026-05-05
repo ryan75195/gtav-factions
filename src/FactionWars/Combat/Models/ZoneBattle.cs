@@ -104,7 +104,7 @@ namespace FactionWars.Combat.Models
         public int TotalSpawnedAttackers => SpawnedAttackers.Count;
         public int TotalSpawnedDefenders => SpawnedDefenders.Count;
 
-        public bool IsOngoing => TotalAttackerTroops > 0 && TotalDefenderTroops > 0;
+        public bool IsOngoing => _participants.Count(p => p.AliveCount > 0) >= 2;
         public bool AttackersWon => TotalDefenderTroops <= 0 && TotalAttackerTroops > 0;
         public bool DefendersWon => TotalAttackerTroops <= 0 && TotalDefenderTroops > 0;
 

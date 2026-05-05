@@ -6,8 +6,8 @@ namespace FactionWars.Configuration
     public class AIConfig
     {
         // Decision intervals (seconds)
-        public float DecisionIntervalSeconds { get; set; } = 60f;
-        public float RecruitmentIntervalSeconds { get; set; } = 60f;
+        public float DecisionIntervalSeconds { get; set; } = 90f;
+        public float RecruitmentIntervalSeconds { get; set; } = 90f;
 
         // Per-faction aggressiveness (0.0 = passive, 1.0 = very aggressive)
         public float MichaelAggressiveness { get; set; } = 0.6f;

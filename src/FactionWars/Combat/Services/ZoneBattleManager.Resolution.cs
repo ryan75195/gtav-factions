@@ -105,9 +105,12 @@ namespace FactionWars.Combat.Services
 
         private BattleOutcome DetermineOutcome(ZoneBattle battle)
         {
-            if (battle.AttackersWon)
-                return BattleOutcome.AttackersWon;
-            if (battle.DefendersWon)
+            var alive = battle.Participants.Where(p => p.AliveCount > 0).ToList();
+            if (alive.Count == 1)
+                return alive[0].Role == BattleRole.Defender
+                    ? BattleOutcome.DefendersWon
+                    : BattleOutcome.AttackersWon;
+            if (alive.Count == 0)
                 return BattleOutcome.DefendersWon;
             return BattleOutcome.Draw;
         }

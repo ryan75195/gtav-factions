@@ -57,13 +57,12 @@ namespace FactionWars.ScriptHookV
         private TerritoryHudCounts GetAttackingBattleHudCounts(ZoneBattle playerBattle)
         {
             var playerParticipant = playerBattle.Attackers.FirstOrDefault(p => p.IsPlayer);
+            int spawnedEnemyDefenders = _enemyDefenderManager?.GetSpawnedDefenderCount(playerBattle.ZoneId) ?? 0;
             return new TerritoryHudCounts
             {
                 PlayerTroops = playerParticipant?.AliveCount ?? 0,
-                EnemyDefenders = playerBattle.Defender.AliveCount,
-                EnemyReserve = _enemyDefenderManager?.GetRemainingReserves(
-                    playerBattle.ZoneId,
-                    playerBattle.Defender.FactionId) ?? 0
+                EnemyDefenders = spawnedEnemyDefenders,
+                EnemyReserve = Math.Max(0, playerBattle.Defender.AliveCount - spawnedEnemyDefenders)
             };
         }
 

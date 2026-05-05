@@ -68,7 +68,6 @@ namespace FactionWars.ScriptHookV
             // Update managers with new faction
             FileLogger.Info($"HandleCharacterSwitched: Updating all managers to new faction: {newFactionId}");
             _economyManager?.SetPlayerFactionId(newFactionId);
-            _aiManager?.SetPlayerFactionId(newFactionId);
             _aiController?.SetPlayerFactionId(newFactionId);
             _zoneBattleManager?.SetPlayerFaction(newFactionId);
 

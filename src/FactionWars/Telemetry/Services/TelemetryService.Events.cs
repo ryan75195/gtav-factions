@@ -1,5 +1,4 @@
 using System;
-using FactionWars.AI.Interfaces;
 using FactionWars.Combat.Events;
 using FactionWars.Core.Interfaces;
 using FactionWars.Economy.Interfaces;
@@ -12,22 +11,6 @@ namespace FactionWars.Telemetry.Services
 {
     public sealed partial class TelemetryService
     {
-        private void OnAIDecision(object? sender, AIDecisionEventArgs e)
-        {
-            if (_disposed) return;
-            try
-            {
-                _sink.WriteDecision(new DecisionEventRow(
-                    DateTime.Now, _gameStateManager.TotalPlayTimeSeconds,
-                    e.FactionId, e.Decision.DecisionType, e.Decision.TargetZoneId,
-                    e.Decision.TroopsToCommit, e.Decision.Priority, executed: true));
-            }
-            catch (Exception ex)
-            {
-                FileLogger.Error("TelemetryService.OnAIDecision failed", ex);
-            }
-        }
-
         private void OnTroopsAllocated(object? sender, TroopsAllocatedEventArgs e)
         {
             if (_disposed) return;

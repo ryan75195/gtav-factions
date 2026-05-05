@@ -1,6 +1,7 @@
 using System;
 using FactionWars.Core.Interfaces;
 using FactionWars.Economy.Interfaces;
+using FactionWars.AI.Interfaces;
 using FactionWars.Factions.Interfaces;
 using FactionWars.ScriptHookV.Data;
 using FactionWars.ScriptHookV.Logging;
@@ -55,10 +56,10 @@ namespace FactionWars.ScriptHookV
         public TerritoryManager? TerritoryManager => _territoryManager;
 
         /// <summary>
-        /// Gets the AIManager for AI faction decisions.
+        /// Gets the active consolidated AI controller.
         /// Returns null if not yet initialized.
         /// </summary>
-        public AIManager? AIManager => _aiManager;
+        public IAIController? AIController => _aiController;
 
         /// <summary>
         /// Gets the VictoryManager for victory condition checking.

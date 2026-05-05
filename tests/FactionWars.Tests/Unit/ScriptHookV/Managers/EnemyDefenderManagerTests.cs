@@ -110,6 +110,26 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         }
 
         [Fact]
+        public void OnTroopsAllocated_WhenPlayerInEnemyZone_SpawnsLiveReinforcements()
+        {
+            SetupManager();
+            var zone = CreateEnemyZone();
+            var allocation = CreateAllocationWithDefenders(basic: 1);
+
+            _zoneServiceMock.Setup(z => z.GetZone(TestZoneId)).Returns(zone);
+            _allocationServiceMock.Setup(a => a.GetAllocation(EnemyFactionId, TestZoneId))
+                .Returns(allocation);
+            _manager.OnEnemyZoneEntered(zone, EnemyFactionId);
+            Assert.Equal(1, _manager.GetSpawnedDefenderCount(TestZoneId));
+
+            allocation.AddTroops(DefenderTier.Basic, 2);
+
+            _manager.OnTroopsAllocated(EnemyFactionId, TestZoneId, DefenderTier.Basic, 2);
+
+            Assert.Equal(3, _manager.GetSpawnedDefenderCount(TestZoneId));
+        }
+
+        [Fact]
         public void OnEnemyZoneEntered_WithNullZone_DoesNotThrow()
         {
             // Arrange

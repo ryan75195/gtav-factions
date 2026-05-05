@@ -66,16 +66,6 @@ namespace FactionWars.ScriptHookV
         }
 
         /// <summary>
-        /// Handles AI faction decisions.
-        /// Routes through the decision executor for budget enforcement.
-        /// </summary>
-        private void HandleAIDecision(object? sender, AIDecisionEventArgs e)
-        {
-            // Route through decision executor for budget enforcement
-            _aiDecisionExecutor?.ProcessDecisionCycle(e.FactionId, e.Decision);
-        }
-
-        /// <summary>
         /// Handles troop killed events from ZoneBattleManager for the kill feed.
         /// </summary>
         private void OnZoneBattleTroopKilled(ZoneBattle battle, DefenderTier tier, string side)

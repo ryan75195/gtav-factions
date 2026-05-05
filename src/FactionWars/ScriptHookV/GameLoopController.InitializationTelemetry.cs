@@ -39,7 +39,6 @@ namespace FactionWars.ScriptHookV
                     GetPlayerPosition = () => _gameBridge.GetPlayerPosition(),
                     IsFirstTimeSeenSave = save => !Directory.Exists(Path.Combine(telemetryRoot, save)),
                     ZoneBattleManager = _zoneBattleManager,
-                    AIManager = _aiManager,
                     AIController = _aiController,
                     AllocationService = _allocationService,
                     ResourceTickService = _resourceTickService,

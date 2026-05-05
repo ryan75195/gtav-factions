@@ -17,7 +17,6 @@ namespace FactionWars.Telemetry.Interfaces
         Func<Vector3>? GetPlayerPosition { get; }
         Func<string, bool>? IsFirstTimeSeenSave { get; }
         IZoneBattleManager? ZoneBattleManager { get; }
-        AIManager? AIManager { get; }
         IAIController? AIController { get; }
         IZoneDefenderAllocationService? AllocationService { get; }
         IResourceTickService? ResourceTickService { get; }

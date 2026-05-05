@@ -10,7 +10,7 @@ namespace FactionWars.Tests.Unit.Configuration
         {
             var config = GameConfig.Default;
 
-            Assert.Equal(60f, config.AI.DecisionIntervalSeconds);
+            Assert.Equal(90f, config.AI.DecisionIntervalSeconds);
             Assert.Equal(0.6f, config.AI.MichaelAggressiveness);
             Assert.Equal(0.6f, config.AI.TrevorAggressiveness);
             Assert.Equal(0.6f, config.AI.FranklinAggressiveness);

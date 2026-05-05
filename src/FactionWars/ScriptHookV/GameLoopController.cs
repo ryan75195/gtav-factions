@@ -52,9 +52,6 @@ namespace FactionWars.ScriptHookV
         private IFollowerService? _followerService;
         private TerritoryManager? _territoryManager;
         private ZoneBoundaryBlipManager? _zoneBoundaryBlipManager;
-        private AIManager? _aiManager;
-        private BackgroundBattleSimulator? _backgroundBattleSimulator;
-        private AIDecisionExecutor? _aiDecisionExecutor;
         private VictoryManager? _victoryManager;
         private FriendlyDefenderManager? _friendlyDefenderManager;
         private DefenderRallyController? _defenderRallyController;
@@ -102,9 +99,6 @@ namespace FactionWars.ScriptHookV
 
         private const float ThreatDecayInterval = 60f;  // Decay every 60 seconds
         private const float ThreatDecayRate = 0.1f;     // 10% decay per interval
-
-        // AI recruitment tracking
-        private const float AIRecruitmentInterval = 60f;  // Recruit every 60 seconds (sync with resource ticks)
 
         // Neutral zone claim state
         private Zone? _currentNeutralZone;

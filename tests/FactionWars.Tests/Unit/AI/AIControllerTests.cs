@@ -75,7 +75,7 @@ namespace FactionWars.Tests.Unit.AI
         }
 
         [Fact]
-        public void Update_After60Seconds_ShouldTriggerRecruitment()
+        public void Update_After90Seconds_ShouldTriggerRecruitment()
         {
             // Arrange
             var faction = new Faction("trevor", "Trevor", color: new FactionColor(255, 150, 0));
@@ -89,8 +89,8 @@ namespace FactionWars.Tests.Unit.AI
             var controller = CreateController();
             controller.Start();
 
-            // Act - simulate 60 seconds
-            controller.Update(60f);
+            // Act - simulate 90 seconds
+            controller.Update(90f);
 
             // Assert - should have recruited (1000 cash / 200 per troop = 5, capped at 5)
             _factionServiceMock.Verify(f => f.RecruitTroops("trevor", 5), Times.Once);
@@ -123,7 +123,7 @@ namespace FactionWars.Tests.Unit.AI
             controller.SetPlayerFactionId("michael");
             controller.Start();
 
-            controller.Update(60f);
+            controller.Update(90f);
 
             // Should recruit for trevor but not michael
             _factionServiceMock.Verify(f => f.RecruitTroops("trevor", It.IsAny<int>()), Times.Once);
@@ -206,7 +206,7 @@ namespace FactionWars.Tests.Unit.AI
             controller.Start();
 
             // Act & Assert - should NOT throw, should skip the attack gracefully
-            var exception = Record.Exception(() => controller.Update(60f));
+            var exception = Record.Exception(() => controller.Update(90f));
             Assert.Null(exception);
 
             // StartBattle should NOT be called since a battle already exists
@@ -221,7 +221,7 @@ namespace FactionWars.Tests.Unit.AI
         }
 
         [Fact]
-        public void Update_After60Seconds_ShouldUseRecruitmentService()
+        public void Update_After90Seconds_ShouldUseRecruitmentService()
         {
             // Arrange
             var recruitmentServiceMock = new Mock<IAIRecruitmentService>();
@@ -233,8 +233,8 @@ namespace FactionWars.Tests.Unit.AI
             var controller = CreateControllerWithRecruitmentService(recruitmentServiceMock.Object);
             controller.Start();
 
-            // Act - simulate 60 seconds (recruitment interval)
-            controller.Update(60f);
+            // Act - simulate 90 seconds (recruitment interval)
+            controller.Update(90f);
 
             // Assert - should call recruitment service, not internal hardcoded logic
             recruitmentServiceMock.Verify(r => r.TryAutoRecruit("trevor", It.IsAny<int>()), Times.Once);
@@ -256,7 +256,7 @@ namespace FactionWars.Tests.Unit.AI
             controller.Start();
 
             // Act
-            controller.Update(60f);
+            controller.Update(90f);
 
             // Assert - should recruit for trevor but not michael
             recruitmentServiceMock.Verify(r => r.TryAutoRecruit("trevor", It.IsAny<int>()), Times.Once);
@@ -340,8 +340,8 @@ namespace FactionWars.Tests.Unit.AI
             var controller = CreateController();
             controller.Start();
 
-            // Act - trigger decision cycle (60 seconds)
-            controller.Update(60f);
+            // Act - trigger decision cycle (90 seconds)
+            controller.Update(90f);
 
             // Assert - should allocate 80% of reserves (80 Basic troops)
             _allocationServiceMock.Verify(a => a.AllocateTroops(
@@ -403,7 +403,7 @@ namespace FactionWars.Tests.Unit.AI
             controller.Start();
 
             // Act
-            controller.Update(60f);
+            controller.Update(90f);
 
             // Assert - should allocate 50% of reserves
             _allocationServiceMock.Verify(a => a.AllocateTroops(
@@ -464,7 +464,7 @@ namespace FactionWars.Tests.Unit.AI
             controller.Start();
 
             // Act
-            controller.Update(60f);
+            controller.Update(90f);
 
             // Assert - should allocate 30% of reserves
             _allocationServiceMock.Verify(a => a.AllocateTroops(
@@ -524,7 +524,7 @@ namespace FactionWars.Tests.Unit.AI
             controller.Start();
 
             // Act
-            controller.Update(60f);
+            controller.Update(90f);
 
             // Assert - should allocate 50% of each tier
             _allocationServiceMock.Verify(a => a.AllocateTroops(
@@ -577,7 +577,7 @@ namespace FactionWars.Tests.Unit.AI
             controller.Start();
 
             // Act
-            controller.Update(60f);
+            controller.Update(90f);
 
             // Assert - should NOT allocate any troops
             _allocationServiceMock.Verify(a => a.AllocateTroops(
@@ -667,7 +667,7 @@ namespace FactionWars.Tests.Unit.AI
             controller.Start();
 
             // Act - trigger decision cycle
-            controller.Update(60f);
+            controller.Update(90f);
 
             // Assert: SpendCash should NEVER be called during attack execution
             // Attacks are free once troops are recruited
@@ -745,7 +745,7 @@ namespace FactionWars.Tests.Unit.AI
             controller.Start();
 
             // Act
-            controller.Update(60f);
+            controller.Update(90f);
 
             // Assert: Battle should start even with $0 cash
             _zoneBattleManagerMock.Verify(m => m.StartBattle(
@@ -786,7 +786,7 @@ namespace FactionWars.Tests.Unit.AI
             controller.OnTroopsRecruited += (_, args) => captured = args;
 
             // Act
-            controller.Update(60f);
+            controller.Update(90f);
 
             // Assert
             Assert.NotNull(captured);
@@ -816,7 +816,7 @@ namespace FactionWars.Tests.Unit.AI
             controller.OnTroopsRecruited += (_, _) => raised = true;
 
             // Act
-            controller.Update(60f);
+            controller.Update(90f);
 
             // Assert
             Assert.False(raised);
@@ -847,7 +847,7 @@ namespace FactionWars.Tests.Unit.AI
             controller.OnTroopsRecruited += (_, args) => captured = args;
 
             // Act: trigger one recruitment cycle
-            controller.Update(60f);
+            controller.Update(90f);
 
             // Assert
             Assert.NotNull(captured);

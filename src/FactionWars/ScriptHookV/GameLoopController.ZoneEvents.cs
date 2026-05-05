@@ -27,7 +27,6 @@ namespace FactionWars.ScriptHookV
             }
 
             // Tell battle simulator to skip battles in player's current zone
-            _backgroundBattleSimulator?.SetPlayerZone(zone.Id);
             _aiController?.SetPlayerZone(zone.Id);
 
             LogZoneEntry(zone);
@@ -199,7 +198,6 @@ namespace FactionWars.ScriptHookV
         private void OnZoneExited(object? sender, Zone zone)
         {
             // Clear player zone tracking
-            _backgroundBattleSimulator?.SetPlayerZone(null);
             _aiController?.SetPlayerZone(null);
 
             // Notify zone battle manager that player exited this zone
