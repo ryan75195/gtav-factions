@@ -62,6 +62,21 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Persistence
         }
 
         [Fact]
+        public void SingleSave_DoesNotRefireWithoutNewWrite()
+        {
+            int eventCount = 0;
+            using var watcher = new NativeSaveWatcher(_tempDir, debounceMs: DebounceMs);
+            watcher.OnNativeSaveWritten += (_, _) => Interlocked.Increment(ref eventCount);
+            watcher.Start();
+
+            WriteSgta("SGTA00003");
+            Assert.True(WaitForEventCount(() => Volatile.Read(ref eventCount), 1, SettleMs), "first event did not fire");
+            Thread.Sleep(DebounceMs * 3);
+
+            Assert.Equal(1, eventCount);
+        }
+
+        [Fact]
         public void MultipleRapidWritesSamePath_DebouncesToOneEvent()
         {
             int eventCount = 0;
