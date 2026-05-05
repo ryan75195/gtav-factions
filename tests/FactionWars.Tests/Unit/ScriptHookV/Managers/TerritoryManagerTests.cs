@@ -193,6 +193,56 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         }
 
         [Fact]
+        public void Update_WhenCurrentZoneBecomesNeutral_ShouldRaiseNeutralZoneEntered()
+        {
+            // Arrange - enter owned zone
+            var position = new Vector3(100f, 200f, 30f);
+            var zone = new Zone("zone1", "Downtown", new Vector3(100f, 200f, 30f), 100f, 10);
+            zone.OwnerFactionId = "faction2";
+            _gameBridgeMock.Setup(g => g.GetPlayerPosition()).Returns(position);
+            _zoneServiceMock.Setup(z => z.GetZoneAtPosition(position)).Returns(zone);
+            _manager.Update();
+
+            Zone? neutralZone = null;
+            int enteredCount = 0;
+            int exitedCount = 0;
+            _manager.NeutralZoneEntered += (sender, z) => neutralZone = z;
+            _manager.ZoneEntered += (sender, z) => enteredCount++;
+            _manager.ZoneExited += (sender, z) => exitedCount++;
+
+            // Act - battle resolution neutralizes the same zone object while player remains inside
+            zone.OwnerFactionId = null;
+            _manager.Update();
+
+            // Assert
+            Assert.Same(zone, neutralZone);
+            Assert.Equal(0, enteredCount);
+            Assert.Equal(0, exitedCount);
+        }
+
+        [Fact]
+        public void Update_WhenCurrentZoneChangesBetweenOwnedFactions_ShouldNotRaiseNeutralZoneEntered()
+        {
+            // Arrange - enter owned zone
+            var position = new Vector3(100f, 200f, 30f);
+            var zone = new Zone("zone1", "Downtown", new Vector3(100f, 200f, 30f), 100f, 10);
+            zone.OwnerFactionId = "faction2";
+            _gameBridgeMock.Setup(g => g.GetPlayerPosition()).Returns(position);
+            _zoneServiceMock.Setup(z => z.GetZoneAtPosition(position)).Returns(zone);
+            _manager.Update();
+
+            int neutralEnteredCount = 0;
+            _manager.NeutralZoneEntered += (sender, z) => neutralEnteredCount++;
+
+            // Act
+            zone.OwnerFactionId = "faction3";
+            _manager.Update();
+
+            // Assert
+            Assert.Equal(0, neutralEnteredCount);
+        }
+
+        [Fact]
         public void IsInEnemyTerritory_WhenNotInAnyZone_ShouldReturnFalse()
         {
             // Arrange
