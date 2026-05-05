@@ -40,7 +40,7 @@ namespace FactionWars.Tests.Unit.Telemetry
             var path = Path.Combine(_tempDir, "SGTA0001", "snapshots.csv");
             var lines = File.ReadAllLines(path);
             Assert.Equal(2, lines.Length);
-            Assert.StartsWith("timestamp,play_time_seconds,faction_id,cash,", lines[0]);
+            Assert.StartsWith("session_id,timestamp_utc,hud_time,play_time_seconds,faction_id,cash,", lines[0]);
             Assert.Contains("michael", lines[1]);
             Assert.Contains("500", lines[1]);
         }
@@ -75,9 +75,9 @@ namespace FactionWars.Tests.Unit.Telemetry
             var path = Path.Combine(_tempDir, "SGTA0003", "snapshots.csv");
             var lines = File.ReadAllLines(path);
             Assert.Equal(3, lines.Length);
-            Assert.StartsWith("timestamp,", lines[0]);
-            Assert.DoesNotContain("timestamp,", lines[1]);
-            Assert.DoesNotContain("timestamp,", lines[2]);
+            Assert.StartsWith("session_id,", lines[0]);
+            Assert.DoesNotContain("session_id,", lines[1]);
+            Assert.DoesNotContain("session_id,", lines[2]);
         }
 
         [Fact]
@@ -104,8 +104,8 @@ namespace FactionWars.Tests.Unit.Telemetry
             Directory.CreateDirectory(Path.Combine(_tempDir, "SGTA50015"));
             File.WriteAllLines(Path.Combine(_tempDir, "SGTA50015", "snapshots.csv"), new[]
             {
-                "timestamp,play_time_seconds,faction_id,cash,total_troops,zones_owned,basic,medium,heavy,elite,reserve_troops,deployed_troops",
-                "00:00:01,1,existing,0,0,0,0,0,0,0,0,0"
+                "session_id,timestamp_utc,hud_time,play_time_seconds,faction_id,cash,total_troops,zones_owned,basic,medium,heavy,elite,reserve_troops,deployed_troops",
+                "session-a,2026-01-01T00:00:01.0000000Z,00:00:01,1,existing,0,0,0,0,0,0,0,0,0"
             });
 
             using var sink = new CsvTelemetrySink(_tempDir);
@@ -117,9 +117,33 @@ namespace FactionWars.Tests.Unit.Telemetry
             Assert.False(Directory.Exists(Path.Combine(_tempDir, "Unnamed Save")));
             var lines = File.ReadAllLines(Path.Combine(_tempDir, "SGTA50015", "snapshots.csv"));
             Assert.Equal(3, lines.Length);
-            Assert.Single(lines, line => line.StartsWith("timestamp,"));
+            Assert.Single(lines, line => line.StartsWith("session_id,"));
             Assert.Contains(lines, line => line.Contains("existing"));
             Assert.Contains(lines, line => line.Contains("early"));
+        }
+
+        [Fact]
+        public void WriteSnapshot_WhenExistingFileHasOldHeader_RotatesLegacyFile()
+        {
+            var saveDir = Path.Combine(_tempDir, "SGTA_legacy");
+            Directory.CreateDirectory(saveDir);
+            File.WriteAllLines(Path.Combine(saveDir, "snapshots.csv"), new[]
+            {
+                "timestamp,play_time_seconds,faction_id,cash,total_troops,zones_owned,basic,medium,heavy,elite,reserve_troops,deployed_troops",
+                "00:00:01,1,old,0,0,0,0,0,0,0,0,0"
+            });
+
+            using var sink = new CsvTelemetrySink(_tempDir);
+            sink.SetSaveFile("SGTA_legacy");
+            sink.WriteSnapshot(new[] { Snap("new", 500) });
+
+            var currentLines = File.ReadAllLines(Path.Combine(saveDir, "snapshots.csv"));
+            var legacyFiles = Directory.GetFiles(saveDir, "snapshots.legacy-*.csv");
+
+            Assert.Single(legacyFiles);
+            Assert.StartsWith("session_id,timestamp_utc,hud_time,play_time_seconds,", currentLines[0]);
+            Assert.Contains("new", currentLines[1]);
+            Assert.Contains("old", File.ReadAllText(legacyFiles[0]));
         }
 
         [Fact]
@@ -151,7 +175,9 @@ namespace FactionWars.Tests.Unit.Telemetry
             var path = Path.Combine(_tempDir, "SGTA_time", "zone_events.csv");
             var lines = File.ReadAllLines(path);
 
-            Assert.StartsWith("01:02:03,3723,", lines[1]);
+            var fields = lines[1].Split(',');
+            Assert.Equal("01:02:03", fields[2]);
+            Assert.Equal("3723", fields[3]);
         }
 
         [Fact]
