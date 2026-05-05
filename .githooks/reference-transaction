@@ -9,45 +9,58 @@ ZERO_OID="0000000000000000000000000000000000000000"
 
 while read -r oldrev newrev refname; do
   case "$refname" in
-    refs/heads/feat/*) ;;
+    refs/heads/main|refs/heads/master) continue ;;
+    refs/heads/*) ;;
     *) continue ;;
   esac
   [ "$oldrev" = "$ZERO_OID" ] || continue
 
   branch="${refname#refs/heads/}"
+  prefix="${branch%%/*}"
+  if [ "$prefix" = "$branch" ] || [ -z "$prefix" ]; then
+    echo "ERROR: branch name must match <type>/<issue-num>-<slug>" >&2
+    echo "  got: $branch" >&2
+    echo "  e.g. feat/42-add-auth" >&2
+    echo "" >&2
+    echo "Agent instruction: raise a GitHub issue first, then create a branch using that issue number." >&2
+    echo "Create the issue with:" >&2
+    echo "  gh issue create --title \"...\"" >&2
+    exit 1
+  fi
 
-  rest="${branch#feat/}"
+  rest="${branch#*/}"
   num="${rest%%-*}"
   slug="${rest#*-}"
 
   if [ "$rest" = "$num" ] || [ -z "$num" ] || [ -z "$slug" ]; then
-    echo "ERROR: feat branch name must match feat/<issue-num>-<slug>" >&2
+    echo "ERROR: work branch name must match <type>/<issue-num>-<slug>" >&2
     echo "  got: $branch" >&2
-    echo "  e.g. feat/42-add-auth" >&2
+    echo "  e.g. $prefix/42-add-auth" >&2
     echo "" >&2
-    echo "If no issue exists, create one first:" >&2
+    echo "Agent instruction: raise a GitHub issue first, then create a branch using that issue number." >&2
+    echo "Create the issue with:" >&2
     echo "  gh issue create --title \"...\"" >&2
     exit 1
   fi
 
   case "$num" in
     *[!0-9]*)
-      echo "ERROR: feat branch issue number must be numeric: $branch" >&2
+      echo "ERROR: work branch issue number must be numeric: $branch" >&2
       exit 1
       ;;
   esac
 
   case "$slug" in
     *[!a-z0-9-]*|-*|*-|*--)
-      echo "ERROR: feat branch slug must use lowercase letters, numbers, and single dashes: $branch" >&2
+      echo "ERROR: work branch slug must use lowercase letters, numbers, and single dashes: $branch" >&2
       exit 1
       ;;
   esac
 
-  if [ "$branch" != "feat/$num-$slug" ]; then
-    echo "ERROR: feat branch name must match feat/<issue-num>-<slug>" >&2
+  if [ "$branch" != "$prefix/$num-$slug" ]; then
+    echo "ERROR: work branch name must match <type>/<issue-num>-<slug>" >&2
     echo "  got: $branch" >&2
-    echo "  e.g. feat/42-add-auth" >&2
+    echo "  e.g. $prefix/42-add-auth" >&2
     echo "" >&2
     echo "If no issue exists, create one first:" >&2
     echo "  gh issue create --title \"...\"" >&2
@@ -58,7 +71,8 @@ while read -r oldrev newrev refname; do
     echo "ERROR: issue #$num not found on GitHub." >&2
     echo "  branch: $branch" >&2
     echo "" >&2
-    echo "Create the issue first, then retry:" >&2
+    echo "Agent instruction: raise the GitHub issue first, then retry with that issue number in the branch name." >&2
+    echo "Create the issue with:" >&2
     echo "  gh issue create --title \"...\"" >&2
     exit 1
   fi
