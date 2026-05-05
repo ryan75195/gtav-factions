@@ -1,0 +1,67 @@
+#!/usr/bin/env sh
+
+[ "$1" = "prepared" ] || exit 0
+
+git remote get-url origin >/dev/null 2>&1 || exit 0
+command -v gh >/dev/null 2>&1 || exit 0
+
+ZERO_OID="0000000000000000000000000000000000000000"
+
+while read -r oldrev newrev refname; do
+  case "$refname" in
+    refs/heads/feat/*) ;;
+    *) continue ;;
+  esac
+  [ "$oldrev" = "$ZERO_OID" ] || continue
+
+  branch="${refname#refs/heads/}"
+
+  rest="${branch#feat/}"
+  num="${rest%%-*}"
+  slug="${rest#*-}"
+
+  if [ "$rest" = "$num" ] || [ -z "$num" ] || [ -z "$slug" ]; then
+    echo "ERROR: feat branch name must match feat/<issue-num>-<slug>" >&2
+    echo "  got: $branch" >&2
+    echo "  e.g. feat/42-add-auth" >&2
+    echo "" >&2
+    echo "If no issue exists, create one first:" >&2
+    echo "  gh issue create --title \"...\"" >&2
+    exit 1
+  fi
+
+  case "$num" in
+    *[!0-9]*)
+      echo "ERROR: feat branch issue number must be numeric: $branch" >&2
+      exit 1
+      ;;
+  esac
+
+  case "$slug" in
+    *[!a-z0-9-]*|-*|*-|*--)
+      echo "ERROR: feat branch slug must use lowercase letters, numbers, and single dashes: $branch" >&2
+      exit 1
+      ;;
+  esac
+
+  if [ "$branch" != "feat/$num-$slug" ]; then
+    echo "ERROR: feat branch name must match feat/<issue-num>-<slug>" >&2
+    echo "  got: $branch" >&2
+    echo "  e.g. feat/42-add-auth" >&2
+    echo "" >&2
+    echo "If no issue exists, create one first:" >&2
+    echo "  gh issue create --title \"...\"" >&2
+    exit 1
+  fi
+
+  if ! gh issue view "$num" --json state >/dev/null 2>&1; then
+    echo "ERROR: issue #$num not found on GitHub." >&2
+    echo "  branch: $branch" >&2
+    echo "" >&2
+    echo "Create the issue first, then retry:" >&2
+    echo "  gh issue create --title \"...\"" >&2
+    exit 1
+  fi
+done
+
+exit 0

@@ -4,16 +4,46 @@ set -eu
 ROOT_DIR="$(git rev-parse --show-toplevel)"
 cd "$ROOT_DIR"
 
-BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+BRANCH="$(git branch --show-current 2>/dev/null)"
 if [ "$BRANCH" = "main" ] || [ "$BRANCH" = "master" ]; then
-  echo "Direct commits to $BRANCH are blocked. Create a feature branch first."
+  echo "BLOCKED: Cannot commit directly to $BRANCH. Create a feature branch first."
   exit 1
 fi
 
-echo "Building solution before commit..."
-dotnet build FactionWars.sln --no-incremental --nologo --verbosity minimal
+case "$BRANCH" in
+  feat/*|fix/*|chore/*)
+    if command -v gh >/dev/null 2>&1; then
+      MERGED_PR="$(gh pr list --head "$BRANCH" --state merged --json number --jq '.[0].number' 2>/dev/null || true)"
+      if [ -n "$MERGED_PR" ]; then
+        echo "BLOCKED: $BRANCH was already merged (PR #$MERGED_PR)."
+        echo "Start a new branch before committing more work."
+        exit 1
+      fi
+    fi
+    ;;
+esac
 
-echo "Running unit tests before commit..."
+echo "=== Pre-Commit Checks ==="
+
+echo "--- Build + Analyse ---"
+BUILD_OUTPUT="$(dotnet build FactionWars.sln --no-incremental --nologo --verbosity minimal 2>&1)" || {
+  echo "BUILD FAILED:"
+  echo "$BUILD_OUTPUT"
+  echo ""
+  echo "Fix all errors before committing."
+  exit 1
+}
+echo "$BUILD_OUTPUT"
+
+echo "--- Format ---"
+STAGED_CS="$(git diff --cached --name-only -- '*.cs')"
+if [ -n "$STAGED_CS" ]; then
+  dotnet format FactionWars.sln --verify-no-changes --verbosity minimal --include $STAGED_CS
+else
+  echo "No staged C# files; skipping format check."
+fi
+
+echo "--- Unit Tests ---"
 dotnet test tests/FactionWars.Tests/FactionWars.Tests.csproj --no-build --filter "FullyQualifiedName~FactionWars.Tests.Unit" --nologo --verbosity minimal
 
-echo "Unit tests passed."
+echo "=== All checks passed ==="
