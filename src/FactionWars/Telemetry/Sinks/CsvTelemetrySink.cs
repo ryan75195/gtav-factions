@@ -1,9 +1,7 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Text;
 using FactionWars.ScriptHookV.Logging;
 using FactionWars.Telemetry.Interfaces;
 using FactionWars.Telemetry.Models;
@@ -20,26 +18,27 @@ namespace FactionWars.Telemetry.Sinks
         private const int BufferCapPerType = 10000;
         private const string PlaceholderSaveName = "Unnamed Save";
         private static readonly string SnapshotHeader =
-            "timestamp,play_time_seconds,faction_id,cash,total_troops,zones_owned,basic,medium,heavy,elite,reserve_troops,deployed_troops";
+            "session_id,timestamp_utc,hud_time,play_time_seconds,faction_id,cash,total_troops,zones_owned,basic,medium,heavy,elite,reserve_troops,deployed_troops";
         private static readonly string ZoneEventHeader =
-            "timestamp,play_time_seconds,event_type,zone_id,previous_owner,new_owner";
+            "session_id,timestamp_utc,hud_time,play_time_seconds,event_type,zone_id,previous_owner,new_owner";
         private static readonly string BattleHeader =
-            "timestamp,play_time_seconds,event_type,zone_id,attacker_faction,defender_faction,attacker_troops,defender_troops,outcome,attacker_casualties,defender_casualties";
+            "session_id,timestamp_utc,hud_time,play_time_seconds,event_type,zone_id,attacker_faction,defender_faction,attacker_troops,defender_troops,outcome,attacker_casualties,defender_casualties";
         private static readonly string DecisionHeader =
-            "timestamp,play_time_seconds,faction_id,decision_type,target_zone,troops,priority,executed";
+            "session_id,timestamp_utc,hud_time,play_time_seconds,faction_id,decision_type,target_zone,troops,priority,executed";
         private static readonly string RecruitmentHeader =
-            "timestamp,play_time_seconds,faction_id,troops_recruited,cost,cash_before,cash_after";
+            "session_id,timestamp_utc,hud_time,play_time_seconds,faction_id,troops_recruited,cost,cash_before,cash_after";
         private static readonly string AllocationHeader =
-            "timestamp,play_time_seconds,faction_id,zone_id,tier,count,source";
+            "session_id,timestamp_utc,hud_time,play_time_seconds,faction_id,zone_id,tier,count,source";
         private static readonly string ResourceTickHeader =
-            "timestamp,play_time_seconds,faction_id,income,zones_contributing";
+            "session_id,timestamp_utc,hud_time,play_time_seconds,faction_id,income,zones_contributing";
         private static readonly string MatchMetaHeader =
-            "timestamp,play_time_seconds,event_type,details";
+            "session_id,timestamp_utc,hud_time,play_time_seconds,event_type,details";
         private static readonly string PlayerEventHeader =
-            "timestamp,play_time_seconds,event_type,zone_id,target_faction,target_tier,details";
+            "session_id,timestamp_utc,hud_time,play_time_seconds,event_type,zone_id,target_faction,target_tier,details";
 
         private readonly object _lock = new object();
         private readonly string _baseDir;
+        private readonly string _sessionId;
         private string? _saveDir;
         private bool _disposed;
         // First-error-wins per file: prevents log spam when a path is persistently
@@ -62,9 +61,12 @@ namespace FactionWars.Telemetry.Sinks
         public CsvTelemetrySink(string baseDirectory)
         {
             _baseDir = baseDirectory ?? throw new ArgumentNullException(nameof(baseDirectory));
+            _sessionId = CreateSessionId();
         }
 
         public string BaseDirectory => _baseDir;
+
+        public string SessionId => _sessionId;
 
         public void SetSaveFile(string saveFilename)
         {
@@ -135,25 +137,6 @@ namespace FactionWars.Telemetry.Sinks
 
         private static bool IsPlaceholderSaveName(string? saveName)
             => string.Equals(saveName, PlaceholderSaveName, StringComparison.OrdinalIgnoreCase);
-
-        private static void MergeDirectoryIntoTarget(string sourceDir, string targetDir)
-        {
-            foreach (var sourceFile in Directory.GetFiles(sourceDir))
-            {
-                var targetFile = Path.Combine(targetDir, Path.GetFileName(sourceFile));
-                if (!File.Exists(targetFile))
-                {
-                    File.Move(sourceFile, targetFile);
-                    continue;
-                }
-
-                var sourceLines = File.ReadAllLines(sourceFile);
-                if (sourceLines.Length <= 1) continue;
-
-                var linesToAppend = sourceLines.Skip(1).Where(line => !string.IsNullOrWhiteSpace(line));
-                File.AppendAllLines(targetFile, linesToAppend);
-            }
-        }
 
         public void WriteSnapshot(IReadOnlyList<FactionSnapshot> rows)
         {
