@@ -12,17 +12,22 @@ namespace FactionWars.ScriptHookV
         {
             try
             {
-                var outArg = new OutputArgument();
-                bool found = Function.Call<bool>(
-                    Hash.GET_GROUND_Z_FOR_3D_COORD,
-                    x, y, z + 100f,  // Start search from above
-                    outArg,
-                    false,  // ignoreWater
-                    false); // ignoreDistToWaterLevelCheck
+                Function.Call(Hash.REQUEST_COLLISION_AT_COORD, x, y, z);
 
-                if (found)
+                foreach (float probeZ in GetGroundSearchHeights(z))
                 {
-                    return outArg.GetResult<float>();
+                    var outArg = new OutputArgument();
+                    bool found = Function.Call<bool>(
+                        Hash.GET_GROUND_Z_FOR_3D_COORD,
+                        x, y, probeZ,
+                        outArg,
+                        false,  // ignoreWater
+                        false); // ignoreDistToWaterLevelCheck
+
+                    if (found)
+                    {
+                        return outArg.GetResult<float>();
+                    }
                 }
 
                 FileLogger.Warn($"GetGroundZ: No ground found at ({x:F1}, {y:F1}, {z:F1}), returning input Z");
@@ -33,6 +38,22 @@ namespace FactionWars.ScriptHookV
                 FileLogger.Error($"GetGroundZ exception at ({x:F1}, {y:F1}, {z:F1})", ex);
                 return z;
             }
+        }
+
+        private static float[] GetGroundSearchHeights(float z)
+        {
+            return new[]
+            {
+                z + 100f,
+                z + 300f,
+                1000f,
+                700f,
+                500f,
+                300f,
+                150f,
+                75f,
+                30f
+            };
         }
 
         /// <inheritdoc />

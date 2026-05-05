@@ -215,6 +215,26 @@ namespace FactionWars.Tests.Unit.ScriptHookV
         }
 
         [Fact]
+        public void OnTick_InitialLoadOutsideOwnedTerritory_RejectsSkyHighSafeCoord()
+        {
+            // Arrange
+            SetupController("player_zero"); // Michael
+            _gameBridge.PlayerPosition = new Vector3(-1000f, 100f, 30f);
+            _gameBridge.SafeCoordResolver = position =>
+                position.X == -550f && position.Y == 100f
+                    ? new Vector3(-550f, 100f, 1000f)
+                    : position;
+            _gameBridge.GroundZResolver = (x, y, z) => x == -550f && y == 100f ? 82f : z;
+            var controller = new GameLoopController(_container);
+
+            // Act
+            controller.OnTick();
+
+            // Assert - the airborne native result is ignored and ground fallback is used.
+            Assert.Equal(new Vector3(-550f, 100f, 82f), _gameBridge.PlayerPosition);
+        }
+
+        [Fact]
         public void OnTick_InitialLoad_WaitsForPlayerControlBeforeMovingToOwnedTerritory()
         {
             // Arrange

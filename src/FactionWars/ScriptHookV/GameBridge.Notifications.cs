@@ -60,7 +60,8 @@ namespace FactionWars.ScriptHookV
                 Function.Call(Hash.REQUEST_COLLISION_AT_COORD, position.X, position.Y, position.Z);
 
                 var groundZ = GetGroundZ(position.X, position.Y, position.Z);
-                var gtaPosition = new GTA.Math.Vector3(position.X, position.Y, Math.Max(position.Z, groundZ));
+                var finalZ = groundZ < position.Z ? groundZ : position.Z;
+                var gtaPosition = new GTA.Math.Vector3(position.X, position.Y, finalZ);
                 ped.Position = gtaPosition;
             }
             catch

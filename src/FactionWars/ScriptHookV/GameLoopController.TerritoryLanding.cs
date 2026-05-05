@@ -9,6 +9,7 @@ namespace FactionWars.ScriptHookV
     public partial class GameLoopController
     {
         private const float OwnedTerritoryMaximumDropFromZoneCenter = 25f;
+        private const float OwnedTerritoryMaximumRiseFromZoneCenter = 150f;
 
         private Vector3 GetOwnedTerritoryLandingPosition(Zone targetZone)
         {
@@ -52,11 +53,23 @@ namespace FactionWars.ScriptHookV
                 return false;
             }
 
+            if (candidate.Z > targetZone.Center.Z + OwnedTerritoryMaximumRiseFromZoneCenter)
+            {
+                FileLogger.Warn($"GetOwnedTerritoryLandingPosition: rejected high candidate ({candidate.X:F1},{candidate.Y:F1},{candidate.Z:F1}) for zone {targetZone.Id}");
+                return false;
+            }
+
             var groundZ = _gameBridge.GetGroundZ(candidate.X, candidate.Y, Math.Max(candidate.Z, requestedPosition.Z));
-            var correctedZ = Math.Max(candidate.Z, groundZ);
+            var correctedZ = groundZ < candidate.Z ? groundZ : candidate.Z;
             if (correctedZ < targetZone.Center.Z - OwnedTerritoryMaximumDropFromZoneCenter)
             {
                 FileLogger.Warn($"GetOwnedTerritoryLandingPosition: rejected low corrected Z {correctedZ:F1} for zone {targetZone.Id}");
+                return false;
+            }
+
+            if (correctedZ > targetZone.Center.Z + OwnedTerritoryMaximumRiseFromZoneCenter)
+            {
+                FileLogger.Warn($"GetOwnedTerritoryLandingPosition: rejected high corrected Z {correctedZ:F1} for zone {targetZone.Id}");
                 return false;
             }
 
