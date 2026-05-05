@@ -38,26 +38,8 @@ namespace FactionWars.ScriptHookV
                 return true;
             }
 
-            ApplyPlayerHeightFallback(position, ref gtaPosition);
+            FileLogger.Warn($"Could not get ground height, keeping original Z={gtaPosition.Z:F1}");
             return false;
-        }
-
-        private static void ApplyPlayerHeightFallback(DomainVector3 position, ref GTA.Math.Vector3 gtaPosition)
-        {
-            var fallbackPlayerPos = Game.Player.Character.Position;
-            float distToPlayer = (float)Math.Sqrt(
-                Math.Pow(position.X - fallbackPlayerPos.X, 2) +
-                Math.Pow(position.Y - fallbackPlayerPos.Y, 2));
-
-            if (distToPlayer < 300f)
-            {
-                gtaPosition.Z = fallbackPlayerPos.Z;
-                FileLogger.Spawn($"Using player Z as fallback: {gtaPosition.Z:F1}");
-            }
-            else
-            {
-                FileLogger.Warn($"Could not get ground height, using original Z={gtaPosition.Z:F1}");
-            }
         }
 
         private bool TryLoadPedModel(string modelName, out Model model)

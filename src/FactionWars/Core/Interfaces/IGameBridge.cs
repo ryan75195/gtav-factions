@@ -62,6 +62,17 @@ namespace FactionWars.Core.Interfaces
         void SetPedRelationshipGroup(int pedHandle, string groupName);
 
         /// <summary>
+        /// Sets the relationship between two named relationship groups.
+        /// Relationship values follow GTA V native values: 0=Companion, 1=Respect,
+        /// 2=Like, 3=Neutral, 4=Dislike, 5=Hate.
+        /// </summary>
+        /// <param name="groupName1">First relationship group name.</param>
+        /// <param name="groupName2">Second relationship group name.</param>
+        /// <param name="relationship">Relationship value to apply.</param>
+        /// <param name="bidirectional">Whether to apply the same relationship both ways.</param>
+        void SetRelationshipBetweenGroups(string groupName1, string groupName2, int relationship, bool bidirectional = true);
+
+        /// <summary>
         /// Creates a blip on the map at the specified position.
         /// </summary>
         /// <param name="position">World position for the blip.</param>

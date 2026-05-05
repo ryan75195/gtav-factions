@@ -104,6 +104,7 @@ namespace FactionWars.ScriptHookV
             _gameBridge.ShowNotification($"~r~COMBAT STARTED in:~w~ {zone.Name}");
             CheckAndRespondToVehicleThreat(zone, ownerFactionId);
             _enemyDefenderManager?.OnEnemyZoneEntered(zone, ownerFactionId);
+            _battleAttackerManager?.OnPlayerZoneEntered(zone);
         }
 
         /// <summary>

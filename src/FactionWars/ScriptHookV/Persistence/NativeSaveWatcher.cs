@@ -100,6 +100,7 @@ namespace FactionWars.ScriptHookV.Persistence
 
         public void Start()
         {
+            BaselineExistingSaves();
             _fsw.EnableRaisingEvents = true;
             _pollTimer = new Timer(_ => PollDirectory(), null, _debounceMs, _debounceMs);
             FileLogger.Info($"NativeSaveWatcher: started on {_directory}");
@@ -162,6 +163,25 @@ namespace FactionWars.ScriptHookV.Persistence
             catch (Exception ex)
             {
                 FileLogger.Error("NativeSaveWatcher: polling failed", ex);
+            }
+        }
+
+        private void BaselineExistingSaves()
+        {
+            try
+            {
+                foreach (var path in Directory.EnumerateFiles(_directory, "SGTA*"))
+                {
+                    if (!IsSgtaFile(path)) continue;
+
+                    var info = new FileInfo(path);
+                    if (info.Exists)
+                        _lastFiredWriteTimes[path] = info.LastWriteTimeUtc;
+                }
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error("NativeSaveWatcher: failed baselining existing saves", ex);
             }
         }
 

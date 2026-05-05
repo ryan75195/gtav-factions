@@ -301,6 +301,41 @@ namespace FactionWars.Tests.Unit.Core
         }
 
         [Fact]
+        public void SetPedAsHostileWanderer_PreservesExistingFactionGroup()
+        {
+            var mockBridge = new MockGameBridge();
+            var handle = mockBridge.CreatePed("test_model", Vector3.Zero);
+            mockBridge.SetPedRelationshipGroup(handle, "FACTION_TREVOR");
+
+            mockBridge.SetPedAsHostileWanderer(handle);
+
+            Assert.Equal("FACTION_TREVOR", mockBridge.GetPedRelationshipGroup(handle));
+        }
+
+        [Fact]
+        public void SetPedToAttackPlayer_PreservesExistingFactionGroup()
+        {
+            var mockBridge = new MockGameBridge();
+            var handle = mockBridge.CreatePed("test_model", Vector3.Zero);
+            mockBridge.SetPedRelationshipGroup(handle, "FACTION_FRANKLIN");
+
+            mockBridge.SetPedToAttackPlayer(handle);
+
+            Assert.Equal("FACTION_FRANKLIN", mockBridge.GetPedRelationshipGroup(handle));
+        }
+
+        [Fact]
+        public void SetRelationshipBetweenGroups_StoresBidirectionalRelationship()
+        {
+            var mockBridge = new MockGameBridge();
+
+            mockBridge.SetRelationshipBetweenGroups("faction_michael", "faction_trevor", relationship: 5);
+
+            Assert.Equal(5, mockBridge.GetRelationshipBetweenGroups("FACTION_MICHAEL", "FACTION_TREVOR"));
+            Assert.Equal(5, mockBridge.GetRelationshipBetweenGroups("FACTION_TREVOR", "FACTION_MICHAEL"));
+        }
+
+        [Fact]
         public void TaskPedWanderInArea_TracksWanderState()
         {
             // Arrange

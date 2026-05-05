@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using FactionWars.AI.Controllers;
 using FactionWars.AI.Interfaces;
@@ -18,6 +19,8 @@ namespace FactionWars.ScriptHookV
 {
     public static partial class ServiceContainerFactory
     {
+        public const string TelemetryDirectoryEnvironmentVariable = "FACTIONWARS_TELEMETRY_DIR";
+
         private static void RegisterAiExecutionServices(ServiceContainer container)
         {
             // Register AI decision executor
@@ -65,10 +68,40 @@ namespace FactionWars.ScriptHookV
         private static void RegisterTelemetryServices(ServiceContainer container)
         {
             var config = container.Resolve<GameConfig>();
-            var documentsPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-            var telemetryRoot = Path.Combine(documentsPath, config.Persistence.SaveDirectoryName, "Telemetry");
+            var telemetryRoot = ResolveTelemetryDirectory(config);
 
             container.RegisterSingleton<ITelemetrySink>(() => new CsvTelemetrySink(telemetryRoot));
+        }
+
+        private static string ResolveTelemetryDirectory(GameConfig config)
+        {
+            var configuredTelemetryDir = Environment.GetEnvironmentVariable(TelemetryDirectoryEnvironmentVariable);
+            if (!string.IsNullOrWhiteSpace(configuredTelemetryDir))
+            {
+                return configuredTelemetryDir;
+            }
+
+            if (IsRunningUnderTest())
+            {
+                return Path.Combine(Path.GetTempPath(), "FactionWars", "TestTelemetry");
+            }
+
+            var documentsPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+            return Path.Combine(documentsPath, config.Persistence.SaveDirectoryName, "Telemetry");
+        }
+
+        private static bool IsRunningUnderTest()
+        {
+            var processName = Process.GetCurrentProcess().ProcessName;
+            var appDomainName = System.AppDomain.CurrentDomain.FriendlyName;
+            return ContainsTestHostSignal(processName) || ContainsTestHostSignal(appDomainName);
+        }
+
+        private static bool ContainsTestHostSignal(string? value)
+        {
+            return value != null
+                && (value.IndexOf("testhost", System.StringComparison.OrdinalIgnoreCase) >= 0
+                    || value.IndexOf("vstest", System.StringComparison.OrdinalIgnoreCase) >= 0);
         }
     }
 }

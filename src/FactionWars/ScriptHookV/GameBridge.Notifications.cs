@@ -2,6 +2,7 @@ using System;
 using FactionWars.Core.Interfaces;
 using FactionWars.ScriptHookV.Logging;
 using GTA;
+using GTA.Native;
 using DomainVector3 = FactionWars.Core.Interfaces.Vector3;
 
 namespace FactionWars.ScriptHookV
@@ -56,7 +57,10 @@ namespace FactionWars.ScriptHookV
                 var ped = Entity.FromHandle(pedHandle) as Ped;
                 if (ped == null || !ped.Exists()) return;
 
-                var gtaPosition = new GTA.Math.Vector3(position.X, position.Y, position.Z);
+                Function.Call(Hash.REQUEST_COLLISION_AT_COORD, position.X, position.Y, position.Z);
+
+                var groundZ = GetGroundZ(position.X, position.Y, position.Z);
+                var gtaPosition = new GTA.Math.Vector3(position.X, position.Y, Math.Max(position.Z, groundZ));
                 ped.Position = gtaPosition;
             }
             catch

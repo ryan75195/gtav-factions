@@ -26,8 +26,6 @@ namespace FactionWars.ScriptHookV
             try
             {
                 var level = Game.Player.Wanted.WantedLevel;
-                if (level > 0)
-                    FileLogger.Combat($"GetWantedLevel: player has wanted level {level}");
                 return level;
             }
             catch (Exception ex)

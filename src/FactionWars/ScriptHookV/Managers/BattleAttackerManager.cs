@@ -118,16 +118,17 @@ namespace FactionWars.ScriptHookV.Managers
 
             FileLogger.Combat($"BattleAttackerManager: Found battle - Attacker={battle.AttackerFactionId}, Defender={battle.DefenderFactionId}, AttackerTroops={battle.TotalAttackerTroops}, DefenderTroops={battle.TotalDefenderTroops}");
 
-            // Only spawn attackers if player is the defender (their zone is being attacked)
-            if (battle.DefenderFactionId != _playerFactionId)
+            var attackerToSpawn = GetHostileAttackerForPlayer(battle);
+            if (attackerToSpawn == null)
             {
-                FileLogger.Combat($"BattleAttackerManager: Player ({_playerFactionId}) is not the defender ({battle.DefenderFactionId}), skipping");
+                FileLogger.Combat($"BattleAttackerManager: No non-player attacker to spawn for player faction {_playerFactionId}, skipping");
                 return;
             }
 
-            FileLogger.Combat($"BattleAttackerManager: Player entered defended zone {zone.Id} under attack by {battle.AttackerFactionId}");
+            FileLogger.Combat($"BattleAttackerManager: Player entered zone {zone.Id} with hostile attacker {attackerToSpawn.FactionId}");
 
             _currentBattleZoneId = zone.Id;
+            ConfigureBattleRelationships(battle);
 
             // Initialize tracking for this zone
             if (!_spawnedPedTierByZone.ContainsKey(zone.Id))
@@ -139,26 +140,37 @@ namespace FactionWars.ScriptHookV.Managers
             var random = new Random();
 
             // Log per-tier values for debugging
-            battle.AttackerTroops.TryGetValue(DefenderTier.Elite, out var eliteCount);
-            battle.AttackerTroops.TryGetValue(DefenderTier.Heavy, out var heavyCount);
-            battle.AttackerTroops.TryGetValue(DefenderTier.Medium, out var mediumCount);
-            battle.AttackerTroops.TryGetValue(DefenderTier.Basic, out var basicCount);
+            var attackerTroops = attackerToSpawn.Troops;
+            attackerTroops.TryGetValue(DefenderTier.Elite, out var eliteCount);
+            attackerTroops.TryGetValue(DefenderTier.Heavy, out var heavyCount);
+            attackerTroops.TryGetValue(DefenderTier.Medium, out var mediumCount);
+            attackerTroops.TryGetValue(DefenderTier.Basic, out var basicCount);
             FileLogger.Combat($"BattleAttackerManager: Per-tier attacker counts (after restore) - Elite={eliteCount}, Heavy={heavyCount}, Medium={mediumCount}, Basic={basicCount}");
 
-            // Spawn attackers based on battle.AttackerTroops
             foreach (DefenderTier tier in new[] { DefenderTier.Elite, DefenderTier.Heavy, DefenderTier.Medium, DefenderTier.Basic })
             {
-                if (!battle.AttackerTroops.TryGetValue(tier, out var count) || count <= 0) continue;
+                if (!attackerTroops.TryGetValue(tier, out var count) || count <= 0) continue;
                 FileLogger.Combat($"BattleAttackerManager: Attempting to spawn {count} {tier} attackers (totalSpawned={totalSpawned}, max={MaxSpawnedAttackers})");
-                totalSpawned = SpawnAttackersForTier(zone, battle, tier, count, totalSpawned, random);
+                totalSpawned = SpawnAttackersForTier(zone, attackerToSpawn.FactionId, tier, count, totalSpawned, random);
             }
 
             FileLogger.Combat($"BattleAttackerManager: Spawned {totalSpawned} enemy attackers in {zone.Id}");
         }
 
+        private BattleParticipant? GetHostileAttackerForPlayer(ZoneBattle battle)
+        {
+            if (battle.DefenderFactionId == _playerFactionId)
+                return battle.Attackers.FirstOrDefault(p => !p.IsPlayer);
+
+            if (battle.Attackers.Any(p => p.IsPlayer && p.FactionId == _playerFactionId))
+                return battle.Attackers.FirstOrDefault(p => !p.IsPlayer && p.FactionId != _playerFactionId);
+
+            return null;
+        }
+
         private int SpawnAttackersForTier(
             Zone zone,
-            ZoneBattle battle,
+            string attackerFactionId,
             DefenderTier tier,
             int count,
             int totalSpawned,
@@ -176,7 +188,7 @@ namespace FactionWars.ScriptHookV.Managers
                 }
 
                 var spawnPos = CalculateRandomSpawnPosition(zone.Center, zone.Radius, random);
-                var pedHandle = _pedSpawningService.SpawnPed(model, spawnPos, battle.AttackerFactionId, zone.Id);
+                var pedHandle = _pedSpawningService.SpawnPed(model, spawnPos, attackerFactionId, zone.Id);
                 if (!pedHandle.IsValid)
                 {
                     FileLogger.Combat($"BattleAttackerManager: SpawnPed returned invalid handle");
@@ -184,7 +196,7 @@ namespace FactionWars.ScriptHookV.Managers
                 }
 
                 ConfigureAttacker(pedHandle.Handle, tierConfig, zone.Center, zone.Radius);
-                _pedBlipService.CreateBlipForPed(pedHandle.Handle, FactionBlipColor.ForFactionId(battle.AttackerFactionId));
+                _pedBlipService.CreateBlipForPed(pedHandle.Handle, FactionBlipColor.ForFactionId(attackerFactionId));
                 _spawnedPedTierByZone[zone.Id][pedHandle.Handle] = tier;
                 totalSpawned++;
             }

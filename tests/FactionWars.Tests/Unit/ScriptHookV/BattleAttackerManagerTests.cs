@@ -109,6 +109,36 @@ namespace FactionWars.Tests.Unit.ScriptHookV
         }
 
         [Fact]
+        public void OnPlayerZoneEntered_PlayerJoinedExistingAiBattle_ShouldSpawnOtherAiAttacker()
+        {
+            var zone = new Zone("downtown", "Downtown", new Vector3(0, 0, 0), 100f) { OwnerFactionId = "michael" };
+            var defender = BattleParticipant.ForAi("michael", BattleRole.Defender, new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 3 } });
+            var aiAttacker = BattleParticipant.ForAi("franklin", BattleRole.Attacker, new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 5 } });
+            var playerAttacker = BattleParticipant.ForPlayer("trevor", BattleRole.Attacker, () => 1);
+            var battle = new ZoneBattle("downtown", new List<BattleParticipant> { defender, aiAttacker, playerAttacker }, "trevor");
+
+            _battleManagerMock.Setup(b => b.GetBattleForZone("downtown")).Returns(battle);
+            _pedSpawningMock.Setup(p => p.CanSpawn()).Returns(true);
+            _pedSpawningMock.Setup(p => p.GetRelationshipGroup(It.IsAny<string>()))
+                .Returns<string>(factionId => factionId.ToUpperInvariant());
+            _pedSpawningMock.Setup(p => p.SpawnPed(It.IsAny<string>(), It.IsAny<Vector3>(), It.IsAny<string>(), It.IsAny<string>()))
+                .Returns(new PedHandle(100));
+
+            var manager = CreateManager("trevor");
+
+            manager.OnPlayerZoneEntered(zone);
+
+            _pedSpawningMock.Verify(p => p.SpawnPed(It.IsAny<string>(), It.IsAny<Vector3>(), "franklin", "downtown"),
+                Times.Exactly(5));
+            _pedSpawningMock.Verify(p => p.SpawnPed(It.IsAny<string>(), It.IsAny<Vector3>(), "trevor", "downtown"),
+                Times.Never);
+            _gameBridgeMock.Verify(g => g.SetRelationshipBetweenGroups("MICHAEL", "FRANKLIN", 5, true), Times.Once);
+            _gameBridgeMock.Verify(g => g.SetRelationshipBetweenGroups("MICHAEL", "TREVOR", 5, true), Times.Once);
+            _gameBridgeMock.Verify(g => g.SetRelationshipBetweenGroups("FRANKLIN", "TREVOR", 5, true), Times.Once);
+            _gameBridgeMock.Verify(g => g.TaskCombatHatedTargetsAroundPed(100, zone.Radius), Times.AtLeastOnce);
+        }
+
+        [Fact]
         public void Update_WhenAttackerDiesAndBattleHasReserveTroops_ShouldSpawnReplacement()
         {
             // Arrange

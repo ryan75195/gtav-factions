@@ -64,6 +64,8 @@ namespace FactionWars.Telemetry.Sinks
             _baseDir = baseDirectory ?? throw new ArgumentNullException(nameof(baseDirectory));
         }
 
+        public string BaseDirectory => _baseDir;
+
         public void SetSaveFile(string saveFilename)
         {
             if (string.IsNullOrWhiteSpace(saveFilename))

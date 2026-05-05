@@ -8,6 +8,8 @@ namespace FactionWars.ScriptHookV
 {
     public partial class GameLoopController
     {
+        private const float OwnedTerritoryMaximumDropFromZoneCenter = 25f;
+
         private Vector3 GetOwnedTerritoryLandingPosition(Zone targetZone)
         {
             var center = targetZone.Center;
@@ -18,19 +20,48 @@ namespace FactionWars.ScriptHookV
                 if (!targetZone.Boundary.Contains(candidate))
                     continue;
 
+                var safeCandidate = _gameBridge.GetSafeCoordForPed(candidate);
+                if (TryGetValidLandingPosition(targetZone, candidate, safeCandidate, out var safeLanding))
+                    return safeLanding;
+
                 var groundCandidate = new Vector3(
                     candidate.X,
                     candidate.Y,
                     _gameBridge.GetGroundZ(candidate.X, candidate.Y, candidate.Z));
-                if (targetZone.Boundary.Contains(groundCandidate))
-                    return groundCandidate;
-
-                var safeCandidate = _gameBridge.GetSafeCoordForPed(candidate);
-                if (targetZone.Boundary.Contains(safeCandidate))
-                    return safeCandidate;
+                if (TryGetValidLandingPosition(targetZone, candidate, groundCandidate, out var groundLanding))
+                    return groundLanding;
             }
 
-            return new Vector3(center.X, center.Y, _gameBridge.GetGroundZ(center.X, center.Y, center.Z));
+            var fallbackSafe = _gameBridge.GetSafeCoordForPed(center);
+            if (TryGetValidLandingPosition(targetZone, center, fallbackSafe, out var fallbackLanding))
+                return fallbackLanding;
+
+            var fallbackGround = _gameBridge.GetGroundZ(center.X, center.Y, center.Z);
+            return new Vector3(center.X, center.Y, fallbackGround);
+        }
+
+        private bool TryGetValidLandingPosition(Zone targetZone, Vector3 requestedPosition, Vector3 candidate, out Vector3 landingPosition)
+        {
+            landingPosition = default;
+            if (!targetZone.Boundary.Contains(candidate))
+                return false;
+
+            if (candidate.Z < targetZone.Center.Z - OwnedTerritoryMaximumDropFromZoneCenter)
+            {
+                FileLogger.Warn($"GetOwnedTerritoryLandingPosition: rejected low candidate ({candidate.X:F1},{candidate.Y:F1},{candidate.Z:F1}) for zone {targetZone.Id}");
+                return false;
+            }
+
+            var groundZ = _gameBridge.GetGroundZ(candidate.X, candidate.Y, Math.Max(candidate.Z, requestedPosition.Z));
+            var correctedZ = Math.Max(candidate.Z, groundZ);
+            if (correctedZ < targetZone.Center.Z - OwnedTerritoryMaximumDropFromZoneCenter)
+            {
+                FileLogger.Warn($"GetOwnedTerritoryLandingPosition: rejected low corrected Z {correctedZ:F1} for zone {targetZone.Id}");
+                return false;
+            }
+
+            landingPosition = new Vector3(candidate.X, candidate.Y, correctedZ);
+            return true;
         }
 
         private static List<Vector3> GetLandingCandidates(Zone targetZone)

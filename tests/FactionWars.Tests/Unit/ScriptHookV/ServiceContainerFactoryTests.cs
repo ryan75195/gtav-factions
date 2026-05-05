@@ -590,6 +590,49 @@ namespace FactionWars.Tests.Unit.ScriptHookV
         }
 
         [Fact]
+        public void Create_WhenRunningUnderTests_DefaultsTelemetrySinkToTempDirectory()
+        {
+            var original = Environment.GetEnvironmentVariable(ServiceContainerFactory.TelemetryDirectoryEnvironmentVariable);
+            Environment.SetEnvironmentVariable(ServiceContainerFactory.TelemetryDirectoryEnvironmentVariable, null);
+            try
+            {
+                var gameBridge = CreateMockGameBridge();
+
+                var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
+
+                var sink = Assert.IsType<CsvTelemetrySink>(container.Resolve<ITelemetrySink>());
+                Assert.Equal(
+                    Path.Combine(Path.GetTempPath(), "FactionWars", "TestTelemetry"),
+                    sink.BaseDirectory);
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable(ServiceContainerFactory.TelemetryDirectoryEnvironmentVariable, original);
+            }
+        }
+
+        [Fact]
+        public void Create_UsesTelemetryDirectoryEnvironmentOverride()
+        {
+            var original = Environment.GetEnvironmentVariable(ServiceContainerFactory.TelemetryDirectoryEnvironmentVariable);
+            var overrideDir = Path.Combine(Path.GetTempPath(), "FactionWars", "TelemetryOverride", Guid.NewGuid().ToString("N"));
+            Environment.SetEnvironmentVariable(ServiceContainerFactory.TelemetryDirectoryEnvironmentVariable, overrideDir);
+            try
+            {
+                var gameBridge = CreateMockGameBridge();
+
+                var container = ServiceContainerFactory.Create(gameBridge, new MockMenuProvider());
+
+                var sink = Assert.IsType<CsvTelemetrySink>(container.Resolve<ITelemetrySink>());
+                Assert.Equal(overrideDir, sink.BaseDirectory);
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable(ServiceContainerFactory.TelemetryDirectoryEnvironmentVariable, original);
+            }
+        }
+
+        [Fact]
         public void Create_ShouldReturnSingletonTelemetrySink()
         {
             var gameBridge = CreateMockGameBridge();
