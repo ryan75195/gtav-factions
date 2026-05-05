@@ -15,6 +15,7 @@ namespace FactionWars.ScriptHookV
             _territoryManager?.Update();
             _aiController?.Update(deltaTime);
             _zoneBattleManager?.Tick(deltaTime);
+            _policeSuppressionController?.Update();
             _victoryManager?.Update(deltaTime);
             _followerManager?.Update(CurrentPlayerFactionId ?? "");
             _friendlyDefenderManager?.Update();

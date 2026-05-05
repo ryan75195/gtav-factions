@@ -36,6 +36,37 @@ namespace FactionWars.ScriptHookV
         }
 
         /// <inheritdoc />
+        public void ClearWantedLevel()
+        {
+            try
+            {
+                Function.Call(Hash.CLEAR_PLAYER_WANTED_LEVEL, Game.Player.Handle);
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error("ClearWantedLevel exception", ex);
+            }
+        }
+
+        /// <inheritdoc />
+        public void SetPoliceSuppressionEnabled(bool enabled)
+        {
+            try
+            {
+                Function.Call(Hash.SET_POLICE_IGNORE_PLAYER, Game.Player.Handle, enabled);
+                Function.Call(Hash.SET_DISPATCH_COPS_FOR_PLAYER, Game.Player.Handle, !enabled);
+                if (enabled)
+                {
+                    ClearWantedLevel();
+                }
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error("SetPoliceSuppressionEnabled exception", ex);
+            }
+        }
+
+        /// <inheritdoc />
         public bool ConsumePlayerDamagedByPedFlag()
         {
             try

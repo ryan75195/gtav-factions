@@ -191,6 +191,17 @@ namespace FactionWars.Core.Interfaces
         int GetWantedLevel();
 
         /// <summary>
+        /// Clears the player's current wanted level.
+        /// </summary>
+        void ClearWantedLevel();
+
+        /// <summary>
+        /// Enables or disables police suppression for the player.
+        /// When enabled, police should ignore the player and stop dispatching new response.
+        /// </summary>
+        void SetPoliceSuppressionEnabled(bool enabled);
+
+        /// <summary>
         /// Reads-and-clears the engine-set "player has been damaged by any ped" flag.
         /// Returns true if the player took damage from a ped since the last call,
         /// then resets the flag. Used as an event-ish signal for the rally controller.

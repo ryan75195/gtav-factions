@@ -73,6 +73,8 @@ namespace FactionWars.ScriptHookV
             _zoneBattleManager = null;
             _battleHudRenderer = null;
             _currentBattleHudIndex = 0;
+            _policeSuppressionController?.Dispose();
+            _policeSuppressionController = null;
 
             // Clean up follower manager
             _followerManager = null;
