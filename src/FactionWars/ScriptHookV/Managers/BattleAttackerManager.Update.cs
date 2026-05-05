@@ -44,10 +44,7 @@ namespace FactionWars.ScriptHookV.Managers
             // Quietly untrack peds the engine culled.
             foreach (var (zoneId, pedHandle) in streamedOutPeds)
             {
-                if (_spawnedPedTierByZone.TryGetValue(zoneId, out var pedTiers))
-                {
-                    pedTiers.Remove(pedHandle);
-                }
+                UntrackSpawnedAttacker(zoneId, pedHandle);
                 _pedBlipService.RemoveBlipForPed(pedHandle);
                 _pedDespawnService.UntrackPed(pedHandle);
             }
@@ -65,5 +62,12 @@ namespace FactionWars.ScriptHookV.Managers
         /// <summary>
         /// Handles the death of an enemy attacker.
         /// </summary>
+        private void UntrackSpawnedAttacker(string zoneId, int pedHandle)
+        {
+            if (_spawnedPedTierByZone.TryGetValue(zoneId, out var pedTiers))
+                pedTiers.Remove(pedHandle);
+            if (_spawnedPedFactionByZone.TryGetValue(zoneId, out var pedFactions))
+                pedFactions.Remove(pedHandle);
+        }
     }
 }

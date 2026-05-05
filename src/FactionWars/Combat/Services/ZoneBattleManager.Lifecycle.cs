@@ -78,6 +78,7 @@ namespace FactionWars.Combat.Services
                 if (battle.TimeUntilNextKill <= 0)
                 {
                     ProcessKill(battle);
+                    TryCollapseDefeatedDefender(battle);
                     battle.ResetKillTimer();
 
                     // Check if battle ended
