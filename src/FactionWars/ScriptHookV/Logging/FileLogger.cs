@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.IO;
 
 namespace FactionWars.ScriptHookV.Logging
@@ -9,6 +10,8 @@ namespace FactionWars.ScriptHookV.Logging
     /// </summary>
     public static class FileLogger
     {
+        public const string LogDirectoryEnvironmentVariable = "FACTIONWARS_LOG_DIR";
+
         private static readonly object _lock = new object();
         private static string? _logPath;
         private static bool _initialized;
@@ -36,8 +39,7 @@ namespace FactionWars.ScriptHookV.Logging
             {
                 if (_initialized) return;
 
-                var documentsPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-                var logDir = Path.Combine(documentsPath, "FactionWars", "Logs");
+                var logDir = ResolveLogDirectory();
 
                 if (!Directory.Exists(logDir))
                 {
@@ -56,6 +58,37 @@ namespace FactionWars.ScriptHookV.Logging
                 WriteRaw("========================================");
                 WriteRaw("");
             }
+        }
+
+        private static string ResolveLogDirectory()
+        {
+            var configuredLogDir = Environment.GetEnvironmentVariable(LogDirectoryEnvironmentVariable);
+            if (!string.IsNullOrWhiteSpace(configuredLogDir))
+            {
+                return configuredLogDir;
+            }
+
+            if (IsRunningUnderTest())
+            {
+                return Path.Combine(Path.GetTempPath(), "FactionWars", "TestLogs");
+            }
+
+            var documentsPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+            return Path.Combine(documentsPath, "FactionWars", "Logs");
+        }
+
+        private static bool IsRunningUnderTest()
+        {
+            var processName = Process.GetCurrentProcess().ProcessName;
+            var appDomainName = AppDomain.CurrentDomain.FriendlyName;
+            return ContainsTestHostSignal(processName) || ContainsTestHostSignal(appDomainName);
+        }
+
+        private static bool ContainsTestHostSignal(string? value)
+        {
+            return value != null
+                && (value.IndexOf("testhost", StringComparison.OrdinalIgnoreCase) >= 0
+                    || value.IndexOf("vstest", StringComparison.OrdinalIgnoreCase) >= 0);
         }
 
         /// <summary>

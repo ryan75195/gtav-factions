@@ -124,11 +124,21 @@ namespace FactionWars.ScriptHookV.Managers
             // Set as hostile wanderer - will engage player and followers on sight
             _gameBridge.SetPedAsHostileWanderer(pedHandle);
 
-            // Sprinting wander to actively search for and engage enemies
-            _gameBridge.TaskPedWanderInAreaSprinting(pedHandle, zoneCenter, wanderRadius);
+            // Seek any hated targets in the battle, not only the player.
+            _gameBridge.TaskCombatHatedTargetsAroundPed(pedHandle, wanderRadius);
+        }
 
-            // CRITICAL: Task to attack player immediately so they engage right away
-            _gameBridge.SetPedToAttackPlayer(pedHandle);
+        private void ConfigureBattleRelationships(ZoneBattle battle)
+        {
+            for (int i = 0; i < battle.Participants.Count; i++)
+            {
+                for (int j = i + 1; j < battle.Participants.Count; j++)
+                {
+                    var group1 = _pedSpawningService.GetRelationshipGroup(battle.Participants[i].FactionId);
+                    var group2 = _pedSpawningService.GetRelationshipGroup(battle.Participants[j].FactionId);
+                    _gameBridge.SetRelationshipBetweenGroups(group1, group2, relationship: 5, bidirectional: true);
+                }
+            }
         }
     }
 }

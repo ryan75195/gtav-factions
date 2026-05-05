@@ -26,6 +26,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         private Mock<IDefenderTierService> _defenderTierServiceMock = null!;
         private Mock<IPedBlipService> _pedBlipServiceMock = null!;
         private Mock<IZoneService> _zoneServiceMock = null!;
+        private Mock<IZoneBattleManager> _zoneBattleManagerMock = null!;
         private EnemyDefenderManager _manager = null!;
 
         private const string EnemyFactionId = "ballas";
@@ -40,11 +41,19 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             _defenderTierServiceMock = new Mock<IDefenderTierService>();
             _pedBlipServiceMock = new Mock<IPedBlipService>();
             _zoneServiceMock = new Mock<IZoneService>();
+            _zoneBattleManagerMock = new Mock<IZoneBattleManager>();
 
             // Setup default mock behaviors
             _pedSpawningServiceMock.Setup(p => p.CanSpawn()).Returns(true);
+            _pedSpawningServiceMock.Setup(p => p.GetRelationshipGroup(It.IsAny<string>()))
+                .Returns<string>(factionId => factionId.ToUpperInvariant());
             _pedSpawningServiceMock.Setup(p => p.SpawnPed(It.IsAny<string>(), It.IsAny<Vector3>(), It.IsAny<string>(), It.IsAny<string>()))
-                .Returns(() => new PedHandle(_gameBridge.CreatePed("test", new Vector3(0, 0, 0))));
+                .Returns<string, Vector3, string, string?>((model, position, factionId, zoneId) =>
+                {
+                    var handle = _gameBridge.CreatePed(model, position);
+                    _gameBridge.SetPedRelationshipGroup(handle, factionId.ToUpperInvariant());
+                    return new PedHandle(handle, factionId, position, model, zoneId);
+                });
 
             _defenderTierServiceMock.Setup(d => d.GetTierConfig(It.IsAny<DefenderTier>()))
                 .Returns(new DefenderTierConfig(DefenderTier.Basic, 200, 100, 0, "weapon_pistol", 0.5f, 1.0f));
@@ -59,7 +68,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
                 _pedDespawnServiceMock.Object,
                 _defenderTierServiceMock.Object,
                 _pedBlipServiceMock.Object,
-                _zoneServiceMock.Object);
+                _zoneServiceMock.Object,
+                _zoneBattleManagerMock.Object);
         }
 
         private Zone CreateEnemyZone()
@@ -120,6 +130,30 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             // Act & Assert
             var exception = Record.Exception(() => _manager.OnEnemyZoneEntered(zone, string.Empty));
             Assert.Null(exception);
+        }
+
+        [Fact]
+        public void OnEnemyZoneEntered_WithThreeWayBattle_ConfiguresAllParticipantRelationships()
+        {
+            SetupManager();
+            var zone = CreateEnemyZone();
+            var allocation = CreateAllocationWithDefenders(basic: 1);
+            var defender = BattleParticipant.ForAi(EnemyFactionId, BattleRole.Defender, new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 1 } });
+            var aiAttacker = BattleParticipant.ForAi("faction_franklin", BattleRole.Attacker, new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 1 } });
+            var playerAttacker = BattleParticipant.ForPlayer("faction_trevor", BattleRole.Attacker, () => 1);
+            var battle = new ZoneBattle(TestZoneId, new List<BattleParticipant> { defender, aiAttacker, playerAttacker }, "faction_trevor");
+
+            _allocationServiceMock.Setup(a => a.GetAllocation(EnemyFactionId, TestZoneId))
+                .Returns(allocation);
+            _zoneBattleManagerMock.Setup(b => b.GetBattleForZone(TestZoneId)).Returns(battle);
+
+            _manager.OnEnemyZoneEntered(zone, EnemyFactionId);
+
+            Assert.Equal(5, _gameBridge.GetRelationshipBetweenGroups("BALLAS", "FACTION_FRANKLIN"));
+            Assert.Equal(5, _gameBridge.GetRelationshipBetweenGroups("BALLAS", "FACTION_TREVOR"));
+            Assert.Equal(5, _gameBridge.GetRelationshipBetweenGroups("FACTION_FRANKLIN", "FACTION_TREVOR"));
+            Assert.True(_gameBridge.IsPedCombatTargeting(1));
+            Assert.Equal(EnemyFactionId.ToUpperInvariant(), _gameBridge.GetPedRelationshipGroup(1));
         }
 
         #region Corpse Persistence Tests

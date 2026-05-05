@@ -19,6 +19,7 @@ namespace FactionWars.Core.Utils
         private readonly List<int> _blipsDeleted = new List<int>();
         private readonly Dictionary<int, BlipColor> _blipColors = new Dictionary<int, BlipColor>();
         private readonly Dictionary<int, int> _blipSprites = new Dictionary<int, int>();
+        private readonly Dictionary<(string Group1, string Group2), int> _relationships = new Dictionary<(string Group1, string Group2), int>();
 
         private int _nextPedHandle = 1;
         private int _nextBlipHandle = 1;
@@ -100,6 +101,9 @@ namespace FactionWars.Core.Utils
         /// </summary>
         public int InGameClockMinutes { get; set; } = 0;
 
+        public Func<Vector3, Vector3>? SafeCoordResolver { get; set; }
+        public Func<float, float, float, float>? GroundZResolver { get; set; }
+
         /// <summary>
         /// Gets the last help text displayed via DisplayHelpText.
         /// </summary>
@@ -172,6 +176,20 @@ namespace FactionWars.Core.Utils
             if (_peds.TryGetValue(pedHandle, out var ped))
             {
                 ped.RelationshipGroup = groupName;
+            }
+        }
+
+        public void SetRelationshipBetweenGroups(string groupName1, string groupName2, int relationship, bool bidirectional = true)
+        {
+            if (string.IsNullOrWhiteSpace(groupName1) || string.IsNullOrWhiteSpace(groupName2))
+                return;
+
+            var first = groupName1.ToUpperInvariant();
+            var second = groupName2.ToUpperInvariant();
+            _relationships[(first, second)] = relationship;
+            if (bidirectional)
+            {
+                _relationships[(second, first)] = relationship;
             }
         }
 
@@ -538,6 +556,10 @@ namespace FactionWars.Core.Utils
             // Mock implementation - track that ped was set to attack
             if (_peds.TryGetValue(pedHandle, out var ped))
             {
+                if (string.IsNullOrEmpty(ped.RelationshipGroup))
+                {
+                    ped.RelationshipGroup = "DEFENDER_ENEMIES";
+                }
                 ped.IsAttackingPlayer = true;
             }
         }
@@ -780,12 +802,22 @@ namespace FactionWars.Core.Utils
 
         public float GetGroundZ(float x, float y, float z)
         {
+            if (GroundZResolver != null)
+            {
+                return GroundZResolver(x, y, z);
+            }
+
             // Mock just returns input Z
             return z;
         }
 
         public Vector3 GetSafeCoordForPed(Vector3 position)
         {
+            if (SafeCoordResolver != null)
+            {
+                return SafeCoordResolver(position);
+            }
+
             // Mock just returns the position with original Z (simulating ground level)
             return position;
         }
@@ -794,7 +826,10 @@ namespace FactionWars.Core.Utils
         {
             if (_peds.TryGetValue(pedHandle, out var ped))
             {
-                ped.RelationshipGroup = "DEFENDER_ENEMIES";
+                if (string.IsNullOrEmpty(ped.RelationshipGroup))
+                {
+                    ped.RelationshipGroup = "DEFENDER_ENEMIES";
+                }
                 ped.IsAttackingPlayer = true;
             }
         }
@@ -846,6 +881,16 @@ namespace FactionWars.Core.Utils
         public string GetPedRelationshipGroup(int pedHandle)
         {
             return _peds.TryGetValue(pedHandle, out var ped) ? ped.RelationshipGroup : string.Empty;
+        }
+
+        /// <summary>
+        /// Gets a configured relationship between two relationship groups for tests.
+        /// </summary>
+        public int? GetRelationshipBetweenGroups(string groupName1, string groupName2)
+        {
+            return _relationships.TryGetValue((groupName1.ToUpperInvariant(), groupName2.ToUpperInvariant()), out var relationship)
+                ? relationship
+                : (int?)null;
         }
 
         /// <summary>
@@ -1045,6 +1090,7 @@ namespace FactionWars.Core.Utils
             _blipsCreated.Clear();
             _blipsDeleted.Clear();
             _blipColors.Clear();
+            _relationships.Clear();
             _followingPeds.Clear();
             _vehicles.Clear();
             _pedsInVehicles.Clear();
@@ -1064,6 +1110,8 @@ namespace FactionWars.Core.Utils
             _isPlayerFreeAiming = false;
             _entityPlayerIsAimingAt = 0;
             LastHelpText = null;
+            SafeCoordResolver = null;
+            GroundZResolver = null;
             _playerWeapons.Clear();
             _playerWeaponsWithAmmo.Clear();
             WereAllPlayerWeaponsRemoved = false;

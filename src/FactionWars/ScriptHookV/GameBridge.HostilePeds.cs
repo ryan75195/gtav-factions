@@ -23,12 +23,10 @@ namespace FactionWars.ScriptHookV
                 if (player == null || !player.Exists())
                     return;
 
-                // Create or get enemy relationship group
-                var enemyGroup = World.AddRelationshipGroup("DEFENDER_ENEMIES");
+                // Preserve the faction relationship group assigned by PedSpawningService
+                // so AI factions can hate each other during 3-way battles.
+                var enemyGroup = ped.RelationshipGroup;
                 var playerGroup = player.RelationshipGroup;
-
-                // Set ped to enemy group
-                ped.RelationshipGroup = enemyGroup;
 
                 // Make the groups hate each other (bidirectional)
                 enemyGroup.SetRelationshipBetweenGroups(playerGroup, Relationship.Hate, true);

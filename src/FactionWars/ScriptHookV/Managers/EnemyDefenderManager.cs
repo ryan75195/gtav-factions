@@ -100,6 +100,8 @@ namespace FactionWars.ScriptHookV.Managers
                 return;
             }
 
+            ConfigureBattleRelationships(zone.Id);
+
             // Initialize tracking for this zone
             if (!_spawnedPedTierByZone.ContainsKey(zone.Id))
             {
