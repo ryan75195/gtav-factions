@@ -7,6 +7,7 @@
 - If the current branch is `main` or `master`, create or switch to a feature branch before editing.
 - Prefer issue-linked feature branches: `feat/<issue-number>-<short-slug>`.
 - Do not rely only on git hooks for this. Hooks may block commits, but they do not reliably block every edit path in all agent environments.
+- Codex edit-time hooks are configured under `.codex/`, but they only work in Codex sessions that have hook support enabled before startup. Always do the explicit branch check above even when hooks exist.
 
 ## Commit Safety
 
