@@ -241,6 +241,21 @@ namespace FactionWars.Combat.Models
             return false;
         }
 
+        public bool PromoteAttackerToDefender(string factionId)
+        {
+            if (factionId == null) throw new ArgumentNullException(nameof(factionId));
+
+            var attacker = _participants.FirstOrDefault(p =>
+                p.FactionId == factionId && p.Role == BattleRole.Attacker);
+            if (attacker == null)
+                return false;
+
+            _participants.RemoveAll(p => p.Role == BattleRole.Defender);
+            _participants.Remove(attacker);
+            _participants.Insert(0, attacker.WithRole(BattleRole.Defender));
+            return true;
+        }
+
         public void RegisterSpawnedAttacker(int pedHandle, DefenderTier tier)
         {
             SpawnedAttackers[pedHandle] = tier;

@@ -34,6 +34,7 @@ namespace FactionWars.ScriptHookV.Managers
 
         private readonly Dictionary<DefenderTier, string> _modelsByTier;
         private readonly Dictionary<string, Dictionary<int, DefenderTier>> _spawnedPedTierByZone;
+        private readonly Dictionary<string, Dictionary<int, string>> _spawnedPedFactionByZone;
         private readonly Dictionary<int, int> _corpseDeathTimes;  // pedHandle -> game time when died
         private string? _currentBattleZoneId;
 
@@ -77,6 +78,7 @@ namespace FactionWars.ScriptHookV.Managers
             };
 
             _spawnedPedTierByZone = new Dictionary<string, Dictionary<int, DefenderTier>>();
+            _spawnedPedFactionByZone = new Dictionary<string, Dictionary<int, string>>();
             _corpseDeathTimes = new Dictionary<int, int>();
         }
 
@@ -130,11 +132,7 @@ namespace FactionWars.ScriptHookV.Managers
             _currentBattleZoneId = zone.Id;
             ConfigureBattleRelationships(battle);
 
-            // Initialize tracking for this zone
-            if (!_spawnedPedTierByZone.ContainsKey(zone.Id))
-            {
-                _spawnedPedTierByZone[zone.Id] = new Dictionary<int, DefenderTier>();
-            }
+            EnsureSpawnTracking(zone.Id);
 
             var totalSpawned = 0;
             var random = new Random();
@@ -198,10 +196,19 @@ namespace FactionWars.ScriptHookV.Managers
                 ConfigureAttacker(pedHandle.Handle, tierConfig, zone.Center, zone.Radius);
                 _pedBlipService.CreateBlipForPed(pedHandle.Handle, FactionBlipColor.ForFactionId(attackerFactionId));
                 _spawnedPedTierByZone[zone.Id][pedHandle.Handle] = tier;
+                _spawnedPedFactionByZone[zone.Id][pedHandle.Handle] = attackerFactionId;
                 totalSpawned++;
             }
 
             return totalSpawned;
+        }
+
+        private void EnsureSpawnTracking(string zoneId)
+        {
+            if (!_spawnedPedTierByZone.ContainsKey(zoneId))
+                _spawnedPedTierByZone[zoneId] = new Dictionary<int, DefenderTier>();
+            if (!_spawnedPedFactionByZone.ContainsKey(zoneId))
+                _spawnedPedFactionByZone[zoneId] = new Dictionary<int, string>();
         }
 
         /// <summary>

@@ -77,11 +77,9 @@ namespace FactionWars.ScriptHookV.Managers
             ConfigureAttacker(pedHandle.Handle, tierConfig, zone.Center, zone.Radius);
             _pedBlipService.CreateBlipForPed(pedHandle.Handle, FactionBlipColor.ForFactionId(attackerFactionId));
 
-            if (!_spawnedPedTierByZone.ContainsKey(zoneId))
-            {
-                _spawnedPedTierByZone[zoneId] = new Dictionary<int, DefenderTier>();
-            }
+            EnsureSpawnTracking(zoneId);
             _spawnedPedTierByZone[zoneId][pedHandle.Handle] = tier;
+            _spawnedPedFactionByZone[zoneId][pedHandle.Handle] = attackerFactionId;
         }
 
         /// <summary>
