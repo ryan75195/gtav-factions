@@ -143,6 +143,7 @@ namespace FactionWars.ScriptHookV
             _zoneBattleManager.BattleEnded += OnZoneBattleEnded;
             _zoneBattleManager.TroopKilled += OnZoneBattleTroopKilled;
             _zoneBattleManager.BattleStarted += OnZoneBattleStarted;
+            _policeSuppressionController = new PoliceSuppressionController(_gameBridge, _zoneBattleManager);
 
             var allocationService = _container.Resolve<IZoneDefenderAllocationService>();
             _allocationService = allocationService;

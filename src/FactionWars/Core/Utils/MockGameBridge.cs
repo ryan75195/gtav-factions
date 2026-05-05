@@ -314,6 +314,28 @@ namespace FactionWars.Core.Utils
 
         public int GetWantedLevel() => WantedLevel;
 
+        public bool PoliceSuppressionEnabled { get; private set; }
+
+        public int ClearWantedLevelCallCount { get; private set; }
+
+        public int SetPoliceSuppressionCallCount { get; private set; }
+
+        public void ClearWantedLevel()
+        {
+            WantedLevel = 0;
+            ClearWantedLevelCallCount++;
+        }
+
+        public void SetPoliceSuppressionEnabled(bool enabled)
+        {
+            PoliceSuppressionEnabled = enabled;
+            SetPoliceSuppressionCallCount++;
+            if (enabled)
+            {
+                ClearWantedLevel();
+            }
+        }
+
         public bool ConsumePlayerDamagedByPedFlag()
         {
             var was = PlayerDamagedByPed;
@@ -1112,6 +1134,9 @@ namespace FactionWars.Core.Utils
             LastHelpText = null;
             SafeCoordResolver = null;
             GroundZResolver = null;
+            PoliceSuppressionEnabled = false;
+            ClearWantedLevelCallCount = 0;
+            SetPoliceSuppressionCallCount = 0;
             _playerWeapons.Clear();
             _playerWeaponsWithAmmo.Clear();
             WereAllPlayerWeaponsRemoved = false;

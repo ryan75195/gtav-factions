@@ -57,6 +57,7 @@ namespace FactionWars.ScriptHookV
         private DefenderRallyController? _defenderRallyController;
         private EnemyDefenderManager? _enemyDefenderManager;
         private BattleAttackerManager? _battleAttackerManager;
+        private PoliceSuppressionController? _policeSuppressionController;
         private CommanderManager? _commanderManager;
         private IAIController? _aiController;
         private IGameStateManager? _gameStateManager;
