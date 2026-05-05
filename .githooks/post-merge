@@ -1,0 +1,32 @@
+#!/usr/bin/env sh
+set -eu
+
+ROOT_DIR="$(git rev-parse --show-toplevel)"
+cd "$ROOT_DIR"
+
+BRANCH="$(git branch --show-current 2>/dev/null)"
+if [ "$BRANCH" != "master" ] && [ "$BRANCH" != "main" ]; then
+  echo "Post-merge deploy skipped: current branch is $BRANCH."
+  exit 0
+fi
+
+DEST="${FACTIONWARS_GTA_SCRIPTS_DIR:-E:/SteamLibrary/steamapps/common/Grand Theft Auto V/scripts}"
+OUT_DIR="src/FactionWars/bin/Release/net48"
+
+echo "=== Post-Merge Build + Deploy ==="
+echo "Branch: $BRANCH"
+echo "Destination: $DEST"
+
+if [ ! -d "$DEST" ]; then
+  echo "ERROR: GTA scripts folder not found: $DEST" >&2
+  echo "Set FACTIONWARS_GTA_SCRIPTS_DIR to override the deploy destination." >&2
+  exit 1
+fi
+
+dotnet build FactionWars.sln --configuration Release --no-incremental --nologo --verbosity minimal
+
+cp "$OUT_DIR/FactionWars.dll" "$DEST/FactionWars.dll"
+cp "$OUT_DIR/FactionWars.pdb" "$DEST/FactionWars.pdb"
+cp "$OUT_DIR/Newtonsoft.Json.dll" "$DEST/Newtonsoft.Json.dll"
+
+echo "Post-merge deploy complete."
