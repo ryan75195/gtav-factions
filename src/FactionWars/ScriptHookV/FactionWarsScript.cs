@@ -1,11 +1,9 @@
 using FactionWars.Core.Interfaces;
 using FactionWars.Persistence;
-using FactionWars.Persistence.Models;
 using FactionWars.ScriptHookV.Logging;
 using FactionWars.ScriptHookV.Persistence;
 using GTA;
 using System;
-using System.IO;
 using System.Windows.Forms;
 
 namespace FactionWars.ScriptHookV
@@ -24,6 +22,7 @@ namespace FactionWars.ScriptHookV
         private LoadDetector? _loadDetector;
         private IGameBridge? _gameBridge;
         private IGameStateManager? _gameStateManager;
+        private NativeSaveSidecarWriter? _nativeSaveSidecarWriter;
 
         public FactionWarsScript()
         {
@@ -38,6 +37,7 @@ namespace FactionWars.ScriptHookV
             EnsureInitialized();
             _controller?.OnTick();
             TickLoadDetector();
+            ProcessPendingNativeSaves();
         }
 
         private void OnKeyDown(object sender, KeyEventArgs e)
@@ -68,12 +68,18 @@ namespace FactionWars.ScriptHookV
 
             _controller?.OnAbort();
             _controller = null;
+            _nativeSaveSidecarWriter = null;
         }
 
         private void TickLoadDetector()
         {
             if (_loadDetector == null) return;
             _loadDetector.Tick();
+        }
+
+        private void ProcessPendingNativeSaves()
+        {
+            _nativeSaveSidecarWriter?.ProcessPending();
         }
 
         private void EnsureInitialized()
@@ -95,6 +101,7 @@ namespace FactionWars.ScriptHookV
 
                 _gameStateManager = container.Resolve<IGameStateManager>();
                 var sidecarStore = container.Resolve<ISidecarStore>();
+                _nativeSaveSidecarWriter = new NativeSaveSidecarWriter(_gameBridge, _gameStateManager);
 
                 _loadDetector = new LoadDetector(
                     _gameBridge,
@@ -119,25 +126,7 @@ namespace FactionWars.ScriptHookV
         {
             try
             {
-                if (_gameBridge == null || _gameStateManager == null) return;
-
-                // Fingerprint is captured ~debounce-ms after the user pressed save.
-                // Play-time/clock drift is sub-second and absorbed by LoadDetector's
-                // match window; Money/missions are stable in normal save contexts.
-                var playTime = _gameBridge.GetTotalPlayTimeSeconds();
-                if (playTime == null)
-                {
-                    FileLogger.Warn("HandleNativeSaveWritten: play-time read failed; skipping sidecar write to avoid orphaning state at TotalPlayTimeSeconds=0.");
-                    return;
-                }
-
-                var fingerprint = SaveFingerprint.Capture(_gameBridge);
-                var pos = _gameBridge.GetPlayerPosition();
-                var heading = _gameBridge.GetPlayerHeading();
-                var position = new PlayerPosition { X = pos.X, Y = pos.Y, Z = pos.Z, Heading = heading };
-                var nativeFilename = Path.GetFileName(e.Path);
-
-                _gameStateManager.WriteCurrentSidecar(fingerprint, position, nativeFilename);
+                _nativeSaveSidecarWriter?.Enqueue(e);
             }
             catch (Exception ex)
             {

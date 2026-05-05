@@ -77,6 +77,7 @@ namespace FactionWars.ScriptHookV.Persistence
         private readonly INativeFileSystemWatcher _fsw;
         private readonly ConcurrentDictionary<string, Timer> _timers = new ConcurrentDictionary<string, Timer>(StringComparer.OrdinalIgnoreCase);
         private readonly ConcurrentDictionary<string, DateTime> _pendingWriteTimes = new ConcurrentDictionary<string, DateTime>(StringComparer.OrdinalIgnoreCase);
+        private readonly ConcurrentDictionary<string, DateTime> _lastFiredWriteTimes = new ConcurrentDictionary<string, DateTime>(StringComparer.OrdinalIgnoreCase);
         private Timer? _pollTimer;
         private bool _disposed;
 
@@ -126,6 +127,11 @@ namespace FactionWars.ScriptHookV.Persistence
             }
 
             if (_pendingWriteTimes.TryGetValue(path, out var pendingWriteTimeUtc) && currentWriteTimeUtc <= pendingWriteTimeUtc)
+            {
+                return;
+            }
+
+            if (_lastFiredWriteTimes.TryGetValue(path, out var lastFiredWriteTimeUtc) && currentWriteTimeUtc <= lastFiredWriteTimeUtc)
             {
                 return;
             }
@@ -188,6 +194,7 @@ namespace FactionWars.ScriptHookV.Persistence
                     var args = new SaveEvent(path, info.LastWriteTimeUtc);
                     FileLogger.Info($"NativeSaveWatcher: detected save {Path.GetFileName(path)} mtime={info.LastWriteTimeUtc:O}");
                     OnNativeSaveWritten?.Invoke(this, args);
+                    _lastFiredWriteTimes[path] = info.LastWriteTimeUtc;
                 }
             }
             catch (Exception ex)
@@ -211,6 +218,7 @@ namespace FactionWars.ScriptHookV.Persistence
             foreach (var kv in _timers) { try { kv.Value.Dispose(); } catch { } }
             _timers.Clear();
             _pendingWriteTimes.Clear();
+            _lastFiredWriteTimes.Clear();
         }
     }
 }
