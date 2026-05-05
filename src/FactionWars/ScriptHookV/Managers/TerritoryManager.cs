@@ -15,6 +15,7 @@ namespace FactionWars.ScriptHookV.Managers
         private readonly IGameBridge _gameBridge;
         private readonly IZoneService _zoneService;
         private Zone? _currentZone;
+        private string? _currentZoneOwnerFactionId;
 
         /// <summary>
         /// Gets the zone the player is currently in, or null if not in any zone.
@@ -74,6 +75,7 @@ namespace FactionWars.ScriptHookV.Managers
 
                 // Update current zone
                 _currentZone = newZone;
+                _currentZoneOwnerFactionId = _currentZone?.OwnerFactionId;
 
                 // Raise enter event for new zone
                 if (_currentZone != null)
@@ -93,6 +95,35 @@ namespace FactionWars.ScriptHookV.Managers
                     FileLogger.Zone("Player is not in any defined zone");
                 }
             }
+            else
+            {
+                HandleCurrentZoneOwnerChanged();
+            }
+        }
+
+        private void HandleCurrentZoneOwnerChanged()
+        {
+            if (_currentZone == null || _currentZoneOwnerFactionId == _currentZone.OwnerFactionId)
+                return;
+
+            LogCurrentZoneOwnerChanged();
+            _currentZoneOwnerFactionId = _currentZone.OwnerFactionId;
+
+            if (_currentZone.OwnerFactionId == null)
+            {
+                FileLogger.Zone($"Raising NeutralZoneEntered event for {_currentZone.Name} after in-zone owner change");
+                NeutralZoneEntered?.Invoke(this, _currentZone);
+            }
+        }
+
+        private void LogCurrentZoneOwnerChanged()
+        {
+            if (_currentZone == null)
+                return;
+
+            var previousOwner = _currentZoneOwnerFactionId ?? "NULL/NONE";
+            var newOwner = _currentZone.OwnerFactionId ?? "NULL/NONE";
+            FileLogger.Zone($"Zone owner changed while inside {_currentZone.Name}: {previousOwner} -> {newOwner}");
         }
 
         /// <summary>
