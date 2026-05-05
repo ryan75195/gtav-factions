@@ -30,6 +30,7 @@ namespace FactionWars.ScriptHookV.Managers
                 _corpseDeathTimes.Remove(pedHandle);  // Clear any corpse tracking
             }
             _spawnedPedTierByZone.Remove(zone.Id);
+            _spawnedPedFactionByZone.Remove(zone.Id);
 
             // Also delete any corpses that were from this zone
             var corpsesToRemove = new List<int>(_corpseDeathTimes.Keys);
@@ -54,6 +55,7 @@ namespace FactionWars.ScriptHookV.Managers
                 }
             }
             _spawnedPedTierByZone.Clear();
+            _spawnedPedFactionByZone.Clear();
             _currentBattleZoneId = null;
 
             // Also delete any remaining corpses

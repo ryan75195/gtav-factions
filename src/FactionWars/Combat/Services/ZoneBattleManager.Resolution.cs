@@ -60,6 +60,9 @@ namespace FactionWars.Combat.Services
         /// </summary>
         private void ResolveBattleIfDone(ZoneBattle battle)
         {
+            if (TryCollapseDefeatedDefender(battle))
+                return;
+
             var alive = battle.Participants.Where(p => p.AliveCount > 0).ToList();
             if (alive.Count >= 2) return;
 
@@ -79,6 +82,29 @@ namespace FactionWars.Combat.Services
             ApplyBattleOutcome(battle, outcome, alive);
             BattleEnded?.Invoke(battle, outcome);
             FileLogger.Combat($"ResolveBattleIfDone: battle '{battle.ZoneId}' ended, outcome={outcome}.");
+        }
+
+        private bool TryCollapseDefeatedDefender(ZoneBattle battle)
+        {
+            bool defenderAlive = battle.Participants.Any(p =>
+                p.Role == BattleRole.Defender && p.AliveCount > 0);
+            if (defenderAlive)
+                return false;
+
+            var aliveAttackers = battle.Participants
+                .Where(p => p.Role == BattleRole.Attacker && p.AliveCount > 0)
+                .ToList();
+            if (aliveAttackers.Count <= 1)
+                return false;
+
+            var newDefender = aliveAttackers[0];
+            if (!battle.PromoteAttackerToDefender(newDefender.FactionId))
+                return false;
+
+            _zoneService.TransferZoneOwnership(battle.ZoneId, newDefender.FactionId);
+            FileLogger.Combat(
+                $"TryCollapseDefeatedDefender: '{newDefender.FactionId}' claimed '{battle.ZoneId}'.");
+            return true;
         }
 
         /// <summary>

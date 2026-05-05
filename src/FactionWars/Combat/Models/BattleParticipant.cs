@@ -53,6 +53,16 @@ namespace FactionWars.Combat.Models
             return new BattleParticipant(factionId, role, isPlayer: true, new Dictionary<DefenderTier, int>(), aliveCountCallback);
         }
 
+        public BattleParticipant WithRole(BattleRole role)
+        {
+            return new BattleParticipant(
+                FactionId,
+                role,
+                IsPlayer,
+                new Dictionary<DefenderTier, int>(Troops),
+                _playerAliveCountCallback);
+        }
+
         /// <summary>
         /// Total surviving members on this side. AI: sum of <see cref="Troops"/>.
         /// Player: result of the squad callback.

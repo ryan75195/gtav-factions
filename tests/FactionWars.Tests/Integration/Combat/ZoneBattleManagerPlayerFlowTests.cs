@@ -296,9 +296,10 @@ namespace FactionWars.Tests.Integration.Combat
 
         // -----------------------------------------------------------------------
         [Fact]
-        public void ThreeWay_DefenderWipedFirst_BattleContinuesUntilOneAttackerRemains()
+        public void ThreeWay_DefenderWipedFirst_AttackerClaimsZoneAndBattleCollapses()
         {
-            var manager = MakeManager(playerFactionId: "player_faction");
+            var zoneSvc = new Mock<IZoneService>();
+            var manager = MakeManager(playerFactionId: "player_faction", zoneService: zoneSvc.Object);
             var zone = MakeZone("zone_1", ownerFactionId: "michael");
 
             manager.StartBattle("zone_1", "trevor", "michael",
@@ -315,8 +316,13 @@ namespace FactionWars.Tests.Integration.Combat
             manager.ReportTroopKilled("zone_1", "michael", DefenderTier.Basic);
 
             Assert.Empty(endedEvents);
-            Assert.NotNull(manager.GetBattleForZone("zone_1"));
+            var collapsedBattle = manager.GetBattleForZone("zone_1");
+            Assert.NotNull(collapsedBattle);
+            Assert.Equal("trevor", collapsedBattle!.DefenderFactionId);
+            Assert.Single(collapsedBattle.Attackers);
+            Assert.Contains(collapsedBattle.Attackers, p => p.IsPlayer && p.AliveCount > 0);
             Assert.True(battle.IsOngoing);
+            zoneSvc.Verify(z => z.TransferZoneOwnership("zone_1", "trevor"), Times.Once);
 
             manager.ReportTroopKilled("zone_1", "trevor", DefenderTier.Basic);
 
