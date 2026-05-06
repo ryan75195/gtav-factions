@@ -12,6 +12,7 @@ using FactionWars.ScriptHookV.Logging;
 using FactionWars.Territory.Interfaces;
 using FactionWars.Combat.Interfaces;
 using FactionWars.Combat.Models;
+using FactionWars.Configuration;
 
 namespace FactionWars.AI.Controllers
 {
@@ -30,6 +31,8 @@ namespace FactionWars.AI.Controllers
         private readonly IDictionary<string, IAIStrategy> _strategies;
         private readonly IZoneBattleManager _zoneBattleManager;
         private readonly IAIRecruitmentService? _recruitmentService;
+        private readonly AIConfig _aiConfig;
+        private readonly Dictionary<string, int> _activeBattleReinforcementCounts = new Dictionary<string, int>();
 
         // Configuration
         private const float DefaultDecisionIntervalSeconds = 90f;
@@ -81,6 +84,8 @@ namespace FactionWars.AI.Controllers
             _strategies = dependencies.Strategies ?? throw new ArgumentNullException(nameof(dependencies.Strategies));
             _zoneBattleManager = dependencies.ZoneBattleManager ?? throw new ArgumentNullException(nameof(dependencies.ZoneBattleManager));
             _recruitmentService = recruitmentService;
+            _aiConfig = dependencies.AIConfig ?? new AIConfig();
+            _zoneBattleManager.BattleEnded += OnZoneBattleEndedForReinforcementDecay;
 
             _isRunning = false;
             _decisionTimer = 0f;
@@ -97,7 +102,8 @@ namespace FactionWars.AI.Controllers
                     AllocationService = (IZoneDefenderAllocationService?)dependencies[3],
                     GameBridge = (IGameBridge?)dependencies[4],
                     Strategies = (IDictionary<string, IAIStrategy>?)dependencies[5],
-                    ZoneBattleManager = (IZoneBattleManager?)dependencies[6]
+                    ZoneBattleManager = (IZoneBattleManager?)dependencies[6],
+                    AIConfig = dependencies.Length > 8 ? (AIConfig?)dependencies[8] : null
                 },
                 dependencies.Length > 7 ? (IAIRecruitmentService?)dependencies[7] : null)
         {
