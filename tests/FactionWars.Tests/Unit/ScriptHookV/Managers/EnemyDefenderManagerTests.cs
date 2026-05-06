@@ -104,6 +104,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
 
             // Assert - Defenders should be spawned
             Assert.Equal(2, _manager.GetSpawnedDefenderCount(TestZoneId));
+            Assert.True(_gameBridge.GetPedCriticalHitsEnabled(1));
+            Assert.True(_gameBridge.GetPedCriticalHitsEnabled(2));
 
             // Note: The actual sprinting wander is verified via GameBridge calls
             // which calls TaskPedWanderInAreaSprinting

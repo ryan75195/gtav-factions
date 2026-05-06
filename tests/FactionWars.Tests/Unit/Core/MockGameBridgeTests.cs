@@ -118,6 +118,20 @@ namespace FactionWars.Tests.Unit.Core
         }
 
         [Fact]
+        public void SetPedCriticalHitsEnabled_StoresCriticalHitState()
+        {
+            // Arrange
+            var mockBridge = new MockGameBridge();
+            var handle = mockBridge.CreatePed("test_model", Vector3.Zero);
+
+            // Act
+            mockBridge.SetPedCriticalHitsEnabled(handle, true);
+
+            // Assert
+            Assert.True(mockBridge.GetPedCriticalHitsEnabled(handle));
+        }
+
+        [Fact]
         public void SetPedRelationshipGroup_StoresGroupInfo()
         {
             // Arrange

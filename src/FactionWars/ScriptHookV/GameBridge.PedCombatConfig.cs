@@ -48,6 +48,23 @@ namespace FactionWars.ScriptHookV
         }
 
         /// <inheritdoc />
+        public void SetPedCriticalHitsEnabled(int pedHandle, bool enabled)
+        {
+            try
+            {
+                var ped = Entity.FromHandle(pedHandle) as Ped;
+                if (ped == null || !ped.Exists()) return;
+
+                Function.Call(Hash.SET_PED_SUFFERS_CRITICAL_HITS, ped.Handle, enabled);
+                FileLogger.Info($"SetPedCriticalHitsEnabled: ped {pedHandle}, enabled={enabled}");
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error($"SetPedCriticalHitsEnabled exception for ped {pedHandle}", ex);
+            }
+        }
+
+        /// <inheritdoc />
         public void SetPedCombatAttributes(int pedHandle, bool canUseCover, bool willFightArmedPeds)
         {
             try

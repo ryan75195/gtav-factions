@@ -399,6 +399,13 @@ namespace FactionWars.Core.Interfaces
         void SetPedHealth(int pedHandle, int health);
 
         /// <summary>
+        /// Sets whether a ped can suffer critical hits such as headshots.
+        /// </summary>
+        /// <param name="pedHandle">Handle of the ped.</param>
+        /// <param name="enabled">True when critical hits should apply to the ped.</param>
+        void SetPedCriticalHitsEnabled(int pedHandle, bool enabled);
+
+        /// <summary>
         /// Configures a ped's combat behavior attributes.
         /// </summary>
         /// <param name="pedHandle">Handle of the ped.</param>

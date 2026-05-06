@@ -1236,6 +1236,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             // Assert
             Assert.True(result.Success);
             _gameBridgeMock.Verify(g => g.SetPedHealth(pedHandle, expectedHealth), Times.Once);
+            _gameBridgeMock.Verify(g => g.SetPedCriticalHitsEnabled(pedHandle, false), Times.Once);
         }
 
         [Theory]
