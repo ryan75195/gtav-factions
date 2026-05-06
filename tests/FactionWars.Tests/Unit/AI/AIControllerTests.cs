@@ -1,8 +1,12 @@
 using FactionWars.AI.Controllers;
 using FactionWars.AI.Events;
 using FactionWars.AI.Interfaces;
+using FactionWars.AI.Models;
 using FactionWars.Combat.Interfaces;
+using FactionWars.Combat.Models;
+using FactionWars.Configuration;
 using FactionWars.Core.Interfaces;
+using FactionWars.Core.Models;
 using FactionWars.Factions.Interfaces;
 using FactionWars.Factions.Models;
 using FactionWars.Territory.Interfaces;
@@ -265,14 +269,22 @@ namespace FactionWars.Tests.Unit.AI
 
         private AIController CreateController()
         {
-            return new AIController(
-                _factionServiceMock.Object,
-                _zoneServiceMock.Object,
-                _battleSimulationServiceMock.Object,
-                _allocationServiceMock.Object,
-                _gameBridgeMock.Object,
-                _strategies,
-                _zoneBattleManagerMock.Object);
+            return CreateController(new AIConfig());
+        }
+
+        private AIController CreateController(AIConfig config)
+        {
+            return new AIController(new AIControllerDependencies
+            {
+                FactionService = _factionServiceMock.Object,
+                ZoneService = _zoneServiceMock.Object,
+                BattleSimulationService = _battleSimulationServiceMock.Object,
+                AllocationService = _allocationServiceMock.Object,
+                GameBridge = _gameBridgeMock.Object,
+                Strategies = _strategies,
+                ZoneBattleManager = _zoneBattleManagerMock.Object,
+                AIConfig = config
+            });
         }
 
         private AIController CreateControllerWithRecruitmentService(IAIRecruitmentService recruitmentService)
@@ -586,6 +598,117 @@ namespace FactionWars.Tests.Unit.AI
                 It.IsAny<FactionWars.Core.Models.DefenderTier>(),
                 It.IsAny<int>()), Times.Never);
         }
+
+        [Fact]
+        public void ExecuteDefendDecision_ActiveBattle_RepeatedReinforcementDecaysDeploymentAmount()
+        {
+            var factionState = SetupDefendScenario(zoneCount: 2, reserveBasic: 100);
+            var battle = CreateBattleForZone("richman", "michael");
+            _zoneBattleManagerMock.Setup(b => b.GetBattleForZone("richman")).Returns(battle);
+            _allocationServiceMock.Setup(a => a.AllocateTroops(
+                    factionState, "richman", DefenderTier.Basic, It.IsAny<int>()))
+                .Returns(true);
+
+            var controller = CreateController(new AIConfig
+            {
+                ReinforcementDeploymentDecayMultiplier = 0.5f
+            });
+            controller.Start();
+
+            controller.Update(90f);
+            controller.Update(90f);
+
+            _allocationServiceMock.Verify(a => a.AllocateTroops(
+                factionState, "richman", DefenderTier.Basic, 50), Times.Once);
+            _allocationServiceMock.Verify(a => a.AllocateTroops(
+                factionState, "richman", DefenderTier.Basic, 25), Times.Once);
+        }
+
+        [Fact]
+        public void ExecuteDefendDecision_BattleEnded_ResetsReinforcementDecay()
+        {
+            var factionState = SetupDefendScenario(zoneCount: 2, reserveBasic: 100);
+            var battle = CreateBattleForZone("richman", "michael");
+            _zoneBattleManagerMock.Setup(b => b.GetBattleForZone("richman")).Returns(battle);
+            _allocationServiceMock.Setup(a => a.AllocateTroops(
+                    factionState, "richman", DefenderTier.Basic, It.IsAny<int>()))
+                .Returns(true);
+
+            var controller = CreateController(new AIConfig
+            {
+                ReinforcementDeploymentDecayMultiplier = 0.5f
+            });
+            controller.Start();
+
+            controller.Update(90f);
+            _zoneBattleManagerMock.Raise(b => b.BattleEnded += null, battle, BattleOutcome.DefendersWon);
+            controller.Update(90f);
+
+            _allocationServiceMock.Verify(a => a.AllocateTroops(
+                factionState, "richman", DefenderTier.Basic, 50), Times.Exactly(2));
+        }
+
+        [Fact]
+        public void ExecuteDefendDecision_NoActiveBattle_DoesNotApplyReinforcementDecay()
+        {
+            var factionState = SetupDefendScenario(zoneCount: 2, reserveBasic: 100);
+            _zoneBattleManagerMock.Setup(b => b.GetBattleForZone("richman")).Returns((ZoneBattle?)null);
+            _allocationServiceMock.Setup(a => a.AllocateTroops(
+                    factionState, "richman", DefenderTier.Basic, It.IsAny<int>()))
+                .Returns(true);
+
+            var controller = CreateController(new AIConfig
+            {
+                ReinforcementDeploymentDecayMultiplier = 0.5f
+            });
+            controller.Start();
+
+            controller.Update(90f);
+            controller.Update(90f);
+
+            _allocationServiceMock.Verify(a => a.AllocateTroops(
+                factionState, "richman", DefenderTier.Basic, 50), Times.Exactly(2));
+        }
+
+        private FactionState SetupDefendScenario(int zoneCount, int reserveBasic)
+        {
+            var faction = new Faction("michael", "Michael", color: new FactionColor(0, 100, 255));
+            var factionState = new FactionState("michael", 100000, 0);
+            for (int i = 0; i < zoneCount; i++)
+            {
+                factionState.AddZone("zone-" + i);
+            }
+            factionState.AddReserveTroops(DefenderTier.Basic, reserveBasic);
+
+            var richman = new Zone("richman", "Richman", new Vector3(-1600f, 200f, 30f), 250f, 6)
+            {
+                OwnerFactionId = "michael"
+            };
+
+            _factionServiceMock.Setup(f => f.GetActiveFactions()).Returns(new[] { faction });
+            _factionServiceMock.Setup(f => f.GetFaction("michael")).Returns(faction);
+            _factionServiceMock.Setup(f => f.GetFactionState("michael")).Returns(factionState);
+            _factionServiceMock.Setup(f => f.GetAllFactions()).Returns(new[] { faction });
+            _zoneServiceMock.Setup(z => z.GetAllZones()).Returns(new[] { richman });
+            _zoneServiceMock.Setup(z => z.GetZonesByOwner("michael")).Returns(new[] { richman });
+
+            var strategyMock = new Mock<IAIStrategy>();
+            strategyMock.Setup(s => s.MakeDecisions(It.IsAny<AIContext>()))
+                .Returns(new List<AIDecision>
+                {
+                    new AIDecision(AIDecisionType.Defend, "richman", 0.8f, 0)
+                });
+            _strategies["michael"] = strategyMock.Object;
+            return factionState;
+        }
+
+        private static ZoneBattle CreateBattleForZone(string zoneId, string defenderFactionId)
+            => new ZoneBattle(
+                "trevor",
+                defenderFactionId,
+                zoneId,
+                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 10 } },
+                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 10 } });
 
         #endregion
 

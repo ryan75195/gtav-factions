@@ -39,7 +39,8 @@ namespace FactionWars.ScriptHookV
                     AllocationService = container.Resolve<IZoneDefenderAllocationService>(),
                     GameBridge = container.Resolve<IGameBridge>(),
                     Strategies = container.Resolve<IDictionary<string, IAIStrategy>>(),
-                    ZoneBattleManager = container.Resolve<IZoneBattleManager>()
+                    ZoneBattleManager = container.Resolve<IZoneBattleManager>(),
+                    AIConfig = container.Resolve<GameConfig>().AI
                 },
                 container.Resolve<IAIRecruitmentService>()));
         }

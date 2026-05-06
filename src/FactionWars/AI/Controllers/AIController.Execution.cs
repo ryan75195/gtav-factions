@@ -53,6 +53,8 @@ namespace FactionWars.AI.Controllers
                 _ => 0.30f   // Conservative - deploy 30%
             };
 
+            deployPercent = ApplyReinforcementDecay(factionId, decision.TargetZoneId, deployPercent);
+
             FileLogger.AI($"      ExecuteDefend: {factionId} reinforcing {decision.TargetZoneId} ({factionState.ZoneCount} zones, {deployPercent:P0} deploy)");
 
             int totalDeployed = 0;
@@ -74,6 +76,7 @@ namespace FactionWars.AI.Controllers
             }
 
             FileLogger.AI($"      ExecuteDefend: Total {totalDeployed} troops allocated to {decision.TargetZoneId}");
+            RecordReinforcementDeployment(factionId, decision.TargetZoneId, totalDeployed);
         }
 
         private void SimulateBattle(string attackerFactionId, AIDecision decision, bool playerInZone = false)

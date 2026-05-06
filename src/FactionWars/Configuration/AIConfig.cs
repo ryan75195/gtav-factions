@@ -23,5 +23,9 @@ namespace FactionWars.Configuration
         public int RecruitCostPerTroop { get; set; } = 200;
         public int AttackCostPerTroop { get; set; } = 50;
         public int MaxRecruitPerCycle { get; set; } = 5;
+
+        // Repeated active-battle reinforcements for the same faction/zone multiply
+        // their deployment percentage by this value each time. 1.0 disables decay.
+        public float ReinforcementDeploymentDecayMultiplier { get; set; } = 0.5f;
     }
 }

@@ -17,6 +17,7 @@ namespace FactionWars.Tests.Unit.Configuration
             Assert.Equal(0.6f, config.AI.MichaelRiskTolerance);
             Assert.Equal(0.6f, config.AI.TrevorRiskTolerance);
             Assert.Equal(0.6f, config.AI.FranklinRiskTolerance);
+            Assert.Equal(0.5f, config.AI.ReinforcementDeploymentDecayMultiplier);
         }
 
         [Fact]

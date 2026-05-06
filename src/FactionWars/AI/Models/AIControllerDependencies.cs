@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using FactionWars.AI.Interfaces;
 using FactionWars.Combat.Interfaces;
+using FactionWars.Configuration;
 using FactionWars.Core.Interfaces;
 using FactionWars.Factions.Interfaces;
 using FactionWars.Territory.Interfaces;
@@ -16,5 +17,6 @@ namespace FactionWars.AI.Models
         public IGameBridge? GameBridge { get; set; }
         public IDictionary<string, IAIStrategy>? Strategies { get; set; }
         public IZoneBattleManager? ZoneBattleManager { get; set; }
+        public AIConfig? AIConfig { get; set; }
     }
 }
