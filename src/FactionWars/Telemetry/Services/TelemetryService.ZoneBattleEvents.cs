@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using FactionWars.Combat.Models;
 using FactionWars.ScriptHookV.Logging;
 using FactionWars.Telemetry.Models;
@@ -66,6 +67,11 @@ namespace FactionWars.Telemetry.Services
             FileLogger.Debug($"TelemetryService.OnBattleEnded: zone={b.ZoneId} outcome={outcome}");
             try
             {
+                if (_currentPlayerBattleZoneId == b.ZoneId && b.Participants.Any(p => p.IsPlayer))
+                {
+                    _playerBattleEndedSinceLastPoll = true;
+                }
+
                 var attackerFactionId = GetBattleFactionId(b, BattleRole.Attacker);
                 var defenderFactionId = GetBattleFactionId(b, BattleRole.Defender);
                 var attackerTroops = GetBattleAliveCount(b, BattleRole.Attacker);
