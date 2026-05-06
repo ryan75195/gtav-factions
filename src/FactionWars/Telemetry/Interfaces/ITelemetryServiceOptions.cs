@@ -12,6 +12,8 @@ namespace FactionWars.Telemetry.Interfaces
     public interface ITelemetryServiceOptions
     {
         Func<int>? GetPlayerPedHandle { get; }
+        Func<string?>? GetPlayerFactionId { get; }
+        Func<int>? GetPlayerMoney { get; }
         Func<bool>? IsPlayerDead { get; }
         Func<string?>? GetCurrentZoneId { get; }
         Func<Vector3>? GetPlayerPosition { get; }

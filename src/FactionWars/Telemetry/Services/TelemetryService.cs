@@ -53,9 +53,14 @@ namespace FactionWars.Telemetry.Services
             _gameStateManager = gameStateManager ?? throw new ArgumentNullException(nameof(gameStateManager));
             if (factionService == null) throw new ArgumentNullException(nameof(factionService));
             if (zoneService == null) throw new ArgumentNullException(nameof(zoneService));
-            _snapshotBuilder = new FactionSnapshotBuilder(factionService, zoneService);
 
             var opts = options ?? new TelemetryServiceOptions();
+            _snapshotBuilder = new FactionSnapshotBuilder(
+                factionService,
+                zoneService,
+                opts.AllocationService,
+                opts.GetPlayerFactionId,
+                opts.GetPlayerMoney);
 
             // BattleAttackerManager requires a real player-ped handle source: every player
             // kill check would silently fail otherwise (no real ped has handle 0).

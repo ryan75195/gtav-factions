@@ -34,6 +34,8 @@ namespace FactionWars.ScriptHookV
                 new TelemetryServiceOptions
                 {
                     GetPlayerPedHandle = () => _gameBridge.GetPlayerPedHandle(),
+                    GetPlayerFactionId = () => CurrentPlayerFactionId,
+                    GetPlayerMoney = () => _gameBridge.GetPlayerMoney(),
                     IsPlayerDead = () => _gameBridge.IsPlayerDead(),
                     GetCurrentZoneId = () => _territoryManager?.CurrentZone?.Id,
                     GetPlayerPosition = () => _gameBridge.GetPlayerPosition(),
