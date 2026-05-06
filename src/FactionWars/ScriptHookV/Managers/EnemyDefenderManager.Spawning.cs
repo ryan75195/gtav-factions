@@ -19,6 +19,7 @@ namespace FactionWars.ScriptHookV.Managers
             _gameBridge.SetPedArmor(pedHandle, tierConfig.Armor);
             _gameBridge.SetPedHealth(pedHandle, tierConfig.Health);
             _gameBridge.SetPedCriticalHitsEnabled(pedHandle, true);
+            _gameBridge.SetPedRagdollEnabled(pedHandle, tierConfig.RagdollEnabled);
             _gameBridge.SetPedCombatAttributes(pedHandle, canUseCover: true, willFightArmedPeds: true);
 
             // Elite tier uses RPG - prevent AI from switching to pistol (AI prefers pistol to avoid self-damage)

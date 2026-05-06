@@ -37,6 +37,7 @@ namespace FactionWars.ScriptHookV
                 // Set health and armor based on tier
                 _gameBridge.SetPedHealth(ped.Handle, config.Health);
                 _gameBridge.SetPedCriticalHitsEnabled(ped.Handle, true);
+                _gameBridge.SetPedRagdollEnabled(ped.Handle, config.RagdollEnabled);
                 _gameBridge.SetPedArmor(ped.Handle, config.Armor);
 
                 // Give weapon

@@ -399,6 +399,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             // Assert - Verify the defender tier service was called
             _defenderTierServiceMock.Verify(d => d.GetTierConfig(DefenderTier.Basic), Times.Once);
             Assert.False(_gameBridge.GetPedCriticalHitsEnabled(1));
+            Assert.True(_gameBridge.GetPedRagdollEnabled(1));
         }
 
         [Fact]

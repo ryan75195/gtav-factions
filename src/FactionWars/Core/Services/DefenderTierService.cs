@@ -30,7 +30,8 @@ namespace FactionWars.Core.Services
                         armor: 50,
                         weapon: "WEAPON_PISTOL",
                         accuracy: 0.3f,
-                        combatModifier: 1.0f)
+                        combatModifier: 1.0f,
+                        ragdollEnabled: true)
                 },
                 {
                     DefenderTier.Medium,
@@ -41,7 +42,8 @@ namespace FactionWars.Core.Services
                         armor: 100,
                         weapon: "WEAPON_SMG",
                         accuracy: 0.5f,
-                        combatModifier: 1.5f)
+                        combatModifier: 1.5f,
+                        ragdollEnabled: true)
                 },
                 {
                     DefenderTier.Heavy,
@@ -52,7 +54,8 @@ namespace FactionWars.Core.Services
                         armor: 200,
                         weapon: "WEAPON_CARBINERIFLE",
                         accuracy: 0.7f,
-                        combatModifier: 2.0f)
+                        combatModifier: 2.0f,
+                        ragdollEnabled: false)
                 },
                 {
                     DefenderTier.Elite,
@@ -63,7 +66,8 @@ namespace FactionWars.Core.Services
                         armor: 200,
                         weapon: "WEAPON_RPG",
                         accuracy: 0.8f,
-                        combatModifier: 2.5f)
+                        combatModifier: 2.5f,
+                        ragdollEnabled: false)
                 }
             };
 
