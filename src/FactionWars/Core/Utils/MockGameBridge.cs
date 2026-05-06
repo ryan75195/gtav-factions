@@ -60,6 +60,11 @@ namespace FactionWars.Core.Utils
         public bool CanControlCharacterValue { get; set; } = true;
 
         /// <summary>
+        /// Gets or sets whether the game is paused.
+        /// </summary>
+        public bool IsGamePausedValue { get; set; } = false;
+
+        /// <summary>
         /// Gets or sets the player's money amount.
         /// </summary>
         public int PlayerMoney { get; set; } = 0;
@@ -311,6 +316,8 @@ namespace FactionWars.Core.Utils
         public bool IsPlayerDead() => IsPlayerDeadValue;
 
         public bool CanControlCharacter() => CanControlCharacterValue;
+
+        public bool IsGamePaused() => IsGamePausedValue;
 
         public int GetWantedLevel() => WantedLevel;
 
@@ -1125,6 +1132,7 @@ namespace FactionWars.Core.Utils
             PlayerCharacterModel = "player_zero";
             PlayerHeading = 0f;
             IsPlayerDeadValue = false;
+            IsGamePausedValue = false;
             PlayerMoney = 0;
             IsPlayerInVehicleValue = false;
             PlayerVehicleHandle = -1;

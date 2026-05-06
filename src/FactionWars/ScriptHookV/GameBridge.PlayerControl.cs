@@ -21,6 +21,20 @@ namespace FactionWars.ScriptHookV
         }
 
         /// <inheritdoc />
+        public bool IsGamePaused()
+        {
+            try
+            {
+                return Function.Call<bool>(Hash.IS_PAUSE_MENU_ACTIVE);
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error("IsGamePaused exception", ex);
+                return false;
+            }
+        }
+
+        /// <inheritdoc />
         public int GetWantedLevel()
         {
             try

@@ -134,7 +134,9 @@ namespace FactionWars.ScriptHookV
 
             // Calculate delta time for this frame
             var now = DateTime.UtcNow;
-            var deltaTime = (float)(now - _lastTickTime).TotalSeconds;
+            var deltaTime = _gameBridge.IsGamePaused()
+                ? 0f
+                : (float)(now - _lastTickTime).TotalSeconds;
             _lastTickTime = now;
 
             UpdateCoreSystems(deltaTime);
