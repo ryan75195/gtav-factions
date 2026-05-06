@@ -26,6 +26,18 @@ namespace FactionWars.Telemetry.Services
         public Func<int>? GetPlayerPedHandle { get; init; }
 
         /// <summary>
+        /// Returns the current player faction id. Used to identify which snapshot row
+        /// should read cash from the in-game wallet instead of faction-state cash.
+        /// </summary>
+        public Func<string?>? GetPlayerFactionId { get; init; }
+
+        /// <summary>
+        /// Returns the current GTA wallet money. Used for the player faction snapshot,
+        /// because that is the balance the player sees and spends in-game.
+        /// </summary>
+        public Func<int>? GetPlayerMoney { get; init; }
+
+        /// <summary>
         /// Returns whether the player is currently dead. When supplied, TelemetryService
         /// emits PlayerEventType.Death on the alive-to-dead transition and
         /// PlayerEventType.RespawnAtHospital on the dead-to-alive transition.
