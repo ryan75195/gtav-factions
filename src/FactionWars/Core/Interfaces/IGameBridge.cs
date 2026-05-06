@@ -184,6 +184,11 @@ namespace FactionWars.Core.Interfaces
         bool CanControlCharacter();
 
         /// <summary>
+        /// Returns true when the GTA pause menu is active and mod timers should not advance.
+        /// </summary>
+        bool IsGamePaused();
+
+        /// <summary>
         /// Gets the player's current wanted level (0 = no stars, 5 = max).
         /// Used as a cheap composite signal that police are actively engaging the player.
         /// </summary>
