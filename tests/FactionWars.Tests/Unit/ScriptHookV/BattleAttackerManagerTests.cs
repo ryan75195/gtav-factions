@@ -68,6 +68,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             // Assert - should spawn up to MaxSpawnedAttackers (or total attackers, whichever is less)
             _pedSpawningMock.Verify(p => p.SpawnPed(It.IsAny<string>(), It.IsAny<Vector3>(), "enemy", "downtown"),
                 Times.Exactly(5));
+            _gameBridgeMock.Verify(g => g.SetPedCriticalHitsEnabled(It.IsAny<int>(), true), Times.Exactly(5));
+            _gameBridgeMock.Verify(g => g.SetPedRagdollEnabled(It.IsAny<int>(), true), Times.Exactly(5));
         }
 
         [Fact]

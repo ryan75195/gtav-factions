@@ -551,6 +551,22 @@ namespace FactionWars.Core.Utils
             }
         }
 
+        public void SetPedCriticalHitsEnabled(int pedHandle, bool enabled)
+        {
+            if (_peds.TryGetValue(pedHandle, out var ped))
+            {
+                ped.CriticalHitsEnabled = enabled;
+            }
+        }
+
+        public void SetPedRagdollEnabled(int pedHandle, bool enabled)
+        {
+            if (_peds.TryGetValue(pedHandle, out var ped))
+            {
+                ped.RagdollEnabled = enabled;
+            }
+        }
+
         public void SetPedCombatAttributes(int pedHandle, bool canUseCover, bool willFightArmedPeds)
         {
             if (_peds.TryGetValue(pedHandle, out var ped))
@@ -1072,6 +1088,22 @@ namespace FactionWars.Core.Utils
         }
 
         /// <summary>
+        /// Gets whether critical hits are enabled for a ped.
+        /// </summary>
+        public bool GetPedCriticalHitsEnabled(int pedHandle)
+        {
+            return _peds.TryGetValue(pedHandle, out var ped) && ped.CriticalHitsEnabled;
+        }
+
+        /// <summary>
+        /// Gets whether ragdoll is enabled for a ped.
+        /// </summary>
+        public bool GetPedRagdollEnabled(int pedHandle)
+        {
+            return _peds.TryGetValue(pedHandle, out var ped) && ped.RagdollEnabled;
+        }
+
+        /// <summary>
         /// Gets whether a ped can use cover.
         /// </summary>
         public bool GetPedCanUseCover(int pedHandle)
@@ -1354,6 +1386,8 @@ namespace FactionWars.Core.Utils
             public float Accuracy { get; set; } = 0.5f;
             public int Armor { get; set; } = 0;
             public int Health { get; set; } = 100;
+            public bool CriticalHitsEnabled { get; set; } = false;
+            public bool RagdollEnabled { get; set; } = true;
             public bool CanUseCover { get; set; } = false;
             public bool WillFightArmedPeds { get; set; } = false;
             public bool IsAttackingPlayer { get; set; } = false;

@@ -29,6 +29,7 @@ namespace FactionWars.Tests.Unit.Core
             Assert.Equal(50, config.Armor);
             Assert.Equal("WEAPON_PISTOL", config.Weapon);
             Assert.Equal(0.3f, config.Accuracy, 2);
+            Assert.True(config.RagdollEnabled);
         }
 
         [Fact]
@@ -44,6 +45,7 @@ namespace FactionWars.Tests.Unit.Core
             Assert.Equal(100, config.Armor);
             Assert.Equal("WEAPON_SMG", config.Weapon);
             Assert.Equal(0.5f, config.Accuracy, 2);
+            Assert.True(config.RagdollEnabled);
         }
 
         [Fact]
@@ -59,6 +61,7 @@ namespace FactionWars.Tests.Unit.Core
             Assert.Equal(200, config.Armor);
             Assert.Equal("WEAPON_CARBINERIFLE", config.Weapon);
             Assert.Equal(0.7f, config.Accuracy, 2);
+            Assert.False(config.RagdollEnabled);
         }
 
         [Fact]
@@ -75,6 +78,7 @@ namespace FactionWars.Tests.Unit.Core
             Assert.Equal("WEAPON_RPG", config.Weapon);
             Assert.Equal(0.8f, config.Accuracy, 2);
             Assert.Equal(2.5f, config.CombatModifier, 2);
+            Assert.False(config.RagdollEnabled);
         }
 
         [Fact]

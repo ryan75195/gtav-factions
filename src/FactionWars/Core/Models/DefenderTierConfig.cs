@@ -42,6 +42,11 @@ namespace FactionWars.Core.Models
         public float CombatModifier { get; }
 
         /// <summary>
+        /// Whether live peds of this tier can enter ragdoll from impacts.
+        /// </summary>
+        public bool RagdollEnabled { get; }
+
+        /// <summary>
         /// Creates a new defender tier configuration.
         /// </summary>
         /// <param name="tier">The tier this configuration applies to.</param>
@@ -51,6 +56,7 @@ namespace FactionWars.Core.Models
         /// <param name="weapon">The weapon type name.</param>
         /// <param name="accuracy">The accuracy value (0.0 to 1.0).</param>
         /// <param name="combatModifier">The combat strength modifier.</param>
+        /// <param name="ragdollEnabled">Whether live peds of this tier can ragdoll.</param>
         public DefenderTierConfig(
             DefenderTier tier,
             int cost,
@@ -58,7 +64,8 @@ namespace FactionWars.Core.Models
             int armor,
             string weapon,
             float accuracy,
-            float combatModifier)
+            float combatModifier,
+            bool ragdollEnabled = true)
         {
             Tier = tier;
             Cost = cost;
@@ -67,6 +74,7 @@ namespace FactionWars.Core.Models
             Weapon = weapon;
             Accuracy = accuracy;
             CombatModifier = combatModifier;
+            RagdollEnabled = ragdollEnabled;
         }
     }
 }

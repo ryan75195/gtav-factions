@@ -23,6 +23,8 @@ namespace FactionWars.ScriptHookV.Managers
 
             // Set health based on tier
             _gameBridge.SetPedHealth(pedHandle, tierConfig.Health);
+            _gameBridge.SetPedCriticalHitsEnabled(pedHandle, false);
+            _gameBridge.SetPedRagdollEnabled(pedHandle, false);
 
             // Configure combat behavior - followers should take cover and fight armed enemies
             _gameBridge.SetPedCombatAttributes(pedHandle, canUseCover: true, willFightArmedPeds: true);
