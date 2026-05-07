@@ -148,6 +148,11 @@ namespace FactionWars.Core.Interfaces
         void SetPedPosition(int pedHandle, Vector3 position);
 
         /// <summary>
+        /// Teleports the player character to a new position.
+        /// </summary>
+        void SetPlayerPosition(Vector3 position);
+
+        /// <summary>
         /// Changes the model/appearance of a ped.
         /// </summary>
         /// <param name="pedHandle">Handle of the ped to modify.</param>
@@ -168,6 +173,11 @@ namespace FactionWars.Core.Interfaces
         /// </summary>
         /// <returns>The player's heading in degrees (0-360).</returns>
         float GetPlayerHeading();
+
+        /// <summary>
+        /// Sets the player character heading in degrees.
+        /// </summary>
+        void SetPlayerHeading(float heading);
 
         /// <summary>
         /// Checks if the player character is currently dead.
@@ -313,11 +323,31 @@ namespace FactionWars.Core.Interfaces
         int GetPlayerVehicle();
 
         /// <summary>
+        /// Warps the player into the specified vehicle seat.
+        /// </summary>
+        void SetPlayerIntoVehicle(int vehicleHandle, int seatIndex);
+
+        /// <summary>
         /// Checks if a ped is currently in any vehicle.
         /// </summary>
         /// <param name="pedHandle">Handle of the ped to check.</param>
         /// <returns>True if the ped is in a vehicle, false otherwise.</returns>
         bool IsPedInVehicle(int pedHandle);
+
+        /// <summary>
+        /// Gets the vehicle occupied by a ped, or -1 if unavailable.
+        /// </summary>
+        int GetPedVehicle(int pedHandle);
+
+        /// <summary>
+        /// Gets the seat occupied by a ped in their current vehicle, or -1 if unavailable.
+        /// </summary>
+        int GetPedVehicleSeat(int pedHandle);
+
+        /// <summary>
+        /// Warps a ped into the specified vehicle seat.
+        /// </summary>
+        void SetPedIntoVehicle(int pedHandle, int vehicleHandle, int seatIndex);
 
         /// <summary>
         /// Checks if a ped is currently trying to enter a vehicle.
@@ -339,6 +369,16 @@ namespace FactionWars.Core.Interfaces
         /// <param name="vehicleHandle">Handle of the vehicle.</param>
         /// <returns>Vehicle class ID, or -1 if invalid.</returns>
         int GetVehicleClass(int vehicleHandle);
+
+        /// <summary>
+        /// Gets the heading of a vehicle.
+        /// </summary>
+        float GetVehicleHeading(int vehicleHandle);
+
+        /// <summary>
+        /// Sets the heading of a vehicle.
+        /// </summary>
+        void SetVehicleHeading(int vehicleHandle, float heading);
 
         /// <summary>
         /// Checks if a vehicle seat is a turret/gun seat.

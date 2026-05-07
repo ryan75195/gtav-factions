@@ -105,6 +105,11 @@ namespace FactionWars.ScriptHookV
             }
         }
 
+        public void SetPlayerPosition(DomainVector3 position)
+        {
+            SetPedPosition(GetPlayerPedHandle(), position);
+        }
+
         /// <inheritdoc />
         public void TaskPedTurnToFacePosition(int pedHandle, DomainVector3 position)
         {

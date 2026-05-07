@@ -4,6 +4,7 @@ using FactionWars.Combat.Interfaces;
 using FactionWars.Combat.Models;
 using FactionWars.Core.Interfaces;
 using FactionWars.Core.Models;
+using FactionWars.Persistence.Models;
 using FactionWars.ScriptHookV.Managers;
 using FactionWars.UI.Interfaces;
 using Moq;
@@ -1315,6 +1316,70 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             // Assert
             Assert.True(result.Success);
             _gameBridgeMock.Verify(g => g.SetPedHealth(pedHandle, expectedHealth), Times.Once);
+        }
+
+        #endregion
+
+        #region RestoreFollowers Tests
+
+        [Fact]
+        public void RestoreFollowers_WithSavedFollower_ShouldSpawnAndConfigureFollower()
+        {
+            // Arrange
+            var factionId = "blue";
+            var savedFollower = new SavedFollowerState
+            {
+                FactionId = factionId,
+                Tier = DefenderTier.Medium,
+                Position = new PlayerPosition { X = 10f, Y = 20f, Z = 30f },
+            };
+            var follower = new Follower(factionId, DefenderTier.Medium);
+
+            _followerServiceMock.Setup(s => s.GetFollowers(factionId)).Returns(Array.Empty<Follower>());
+            _followerServiceMock.Setup(s => s.DismissAllFollowers(factionId));
+            _followerServiceMock.Setup(s => s.Recruit(factionId, DefenderTier.Medium))
+                .Returns(FollowerRecruitResult.Succeeded(follower));
+            _pedSpawningServiceMock.Setup(s => s.SpawnPed(
+                    "g_m_y_lost_02",
+                    It.Is<Vector3>(p => p.X == 10f && p.Y == 20f && p.Z == 30f),
+                    factionId,
+                    null))
+                .Returns(new PedHandle(42, factionId, new Vector3(10f, 20f, 30f), "g_m_y_lost_02", null));
+
+            // Act
+            _manager.RestoreFollowers(factionId, new[] { savedFollower }, -1);
+
+            // Assert
+            Assert.Equal(42, follower.PedHandle);
+            _gameBridgeMock.Verify(g => g.SetPedAsFollower(42), Times.Once);
+            _pedBlipServiceMock.Verify(b => b.CreateBlipForPed(42, BlipColor.Yellow), Times.Once);
+        }
+
+        [Fact]
+        public void RestoreFollowers_WithVehicleSeat_ShouldRestoreFollowerIntoVehicle()
+        {
+            // Arrange
+            var factionId = "blue";
+            var savedFollower = new SavedFollowerState
+            {
+                FactionId = factionId,
+                Tier = DefenderTier.Basic,
+                Position = new PlayerPosition { X = 10f, Y = 20f, Z = 30f },
+                VehicleSeatIndex = 1,
+            };
+            var follower = new Follower(factionId, DefenderTier.Basic);
+
+            _followerServiceMock.Setup(s => s.GetFollowers(factionId)).Returns(Array.Empty<Follower>());
+            _followerServiceMock.Setup(s => s.Recruit(factionId, DefenderTier.Basic))
+                .Returns(FollowerRecruitResult.Succeeded(follower));
+            _pedSpawningServiceMock.Setup(s => s.SpawnPed(It.IsAny<string>(), It.IsAny<Vector3>(), factionId, null))
+                .Returns(new PedHandle(42, factionId, new Vector3(10f, 20f, 30f), "g_m_y_lost_01", null));
+
+            // Act
+            _manager.RestoreFollowers(factionId, new[] { savedFollower }, 100);
+
+            // Assert
+            _gameBridgeMock.Verify(g => g.SetPedIntoVehicle(42, 100, 1), Times.Once);
         }
 
         #endregion

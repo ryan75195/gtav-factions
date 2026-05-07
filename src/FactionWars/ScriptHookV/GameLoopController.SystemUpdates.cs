@@ -11,6 +11,8 @@ namespace FactionWars.ScriptHookV
 
         private void UpdateWorldSystems(float deltaTime)
         {
+            TryRestoreRuntimeWorldState();
+
             _mapBlipManager?.UpdateBlipColors();
             _territoryManager?.Update();
             _aiController?.Update(deltaTime);

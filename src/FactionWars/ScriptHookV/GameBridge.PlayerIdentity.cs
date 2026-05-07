@@ -55,6 +55,22 @@ namespace FactionWars.ScriptHookV
             }
         }
 
+        public void SetPlayerHeading(float heading)
+        {
+            try
+            {
+                var player = Game.Player.Character;
+                if (player == null || !player.Exists())
+                    return;
+
+                player.Heading = heading;
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error("SetPlayerHeading exception", ex);
+            }
+        }
+
         /// <inheritdoc />
         public bool IsPlayerDead()
         {
