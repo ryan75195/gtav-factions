@@ -96,6 +96,7 @@ namespace FactionWars.ScriptHookV
         private int _pendingOwnedTerritoryAttempts;
         private bool _pendingOwnedTerritoryLoggedSuccess;
         private bool _pendingOwnedTerritoryWaitingForControlLogged;
+        private RuntimeWorldState? _pendingRuntimeWorldRestore;
         private const int OwnedTerritoryPlacementRetryTicks = 300;
 
         private const float ThreatDecayInterval = 60f;  // Decay every 60 seconds

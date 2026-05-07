@@ -101,7 +101,11 @@ namespace FactionWars.ScriptHookV
 
                 _gameStateManager = container.Resolve<IGameStateManager>();
                 var sidecarStore = container.Resolve<ISidecarStore>();
-                _nativeSaveSidecarWriter = new NativeSaveSidecarWriter(_gameBridge, _gameStateManager);
+                _nativeSaveSidecarWriter = new NativeSaveSidecarWriter(
+                    _gameBridge,
+                    _gameStateManager,
+                    container.Resolve<IFollowerService>(),
+                    container.Resolve<IPlayerFactionDetector>());
 
                 _loadDetector = new LoadDetector(
                     _gameBridge,

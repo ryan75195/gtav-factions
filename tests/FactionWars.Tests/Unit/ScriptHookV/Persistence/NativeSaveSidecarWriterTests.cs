@@ -33,17 +33,24 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Persistence
             bridge.Setup(x => x.GetInGameClockMinutes()).Returns(503);
             bridge.Setup(x => x.GetPlayerPosition()).Returns(new Vector3(1, 2, 3));
             bridge.Setup(x => x.GetPlayerHeading()).Returns(45);
+            bridge.Setup(x => x.IsPlayerInVehicle()).Returns(false);
 
             SaveFingerprint? capturedFingerprint = null;
             PlayerPosition? capturedPosition = null;
+            RuntimeWorldState? capturedRuntime = null;
             string? capturedFilename = null;
             manager
-                .Setup(x => x.WriteCurrentSidecar(It.IsAny<SaveFingerprint>(), It.IsAny<PlayerPosition>(), It.IsAny<string>()))
-                .Callback<SaveFingerprint, PlayerPosition, string>((fp, pos, filename) =>
+                .Setup(x => x.WriteCurrentSidecar(
+                    It.IsAny<SaveFingerprint>(),
+                    It.IsAny<PlayerPosition>(),
+                    It.IsAny<string>(),
+                    It.IsAny<RuntimeWorldState>()))
+                .Callback<SaveFingerprint, PlayerPosition, string, RuntimeWorldState>((fp, pos, filename, runtime) =>
                 {
                     capturedFingerprint = fp;
                     capturedPosition = pos;
                     capturedFilename = filename;
+                    capturedRuntime = runtime;
                 });
 
             var writer = new NativeSaveSidecarWriter(bridge.Object, manager.Object);
@@ -61,6 +68,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Persistence
             Assert.Equal(2, capturedPosition.Y);
             Assert.Equal(3, capturedPosition.Z);
             Assert.Equal(45, capturedPosition.Heading);
+            Assert.NotNull(capturedRuntime);
+            Assert.Equal(1, capturedRuntime!.PlayerPosition.X);
             Assert.Equal("SGTA50015", capturedFilename);
         }
 
@@ -79,7 +88,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Persistence
             manager.Verify(x => x.WriteCurrentSidecar(
                 It.IsAny<SaveFingerprint>(),
                 It.IsAny<PlayerPosition>(),
-                It.IsAny<string>()), Times.Never);
+                It.IsAny<string>(),
+                It.IsAny<RuntimeWorldState>()), Times.Never);
         }
     }
 }

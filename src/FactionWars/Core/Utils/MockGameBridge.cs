@@ -299,6 +299,11 @@ namespace FactionWars.Core.Utils
             }
         }
 
+        public void SetPlayerPosition(Vector3 position)
+        {
+            PlayerPosition = position;
+        }
+
         public bool SetPedModel(int pedHandle, string modelName)
         {
             if (_peds.TryGetValue(pedHandle, out var ped))
@@ -312,6 +317,11 @@ namespace FactionWars.Core.Utils
         public string GetPlayerCharacterModel() => PlayerCharacterModel;
 
         public float GetPlayerHeading() => PlayerHeading;
+
+        public void SetPlayerHeading(float heading)
+        {
+            PlayerHeading = heading;
+        }
 
         public bool IsPlayerDead() => IsPlayerDeadValue;
 
@@ -462,9 +472,42 @@ namespace FactionWars.Core.Utils
 
         public int GetPlayerVehicle() => PlayerVehicleHandle;
 
+        public void SetPlayerIntoVehicle(int vehicleHandle, int seatIndex)
+        {
+            if (!_vehicles.ContainsKey(vehicleHandle))
+            {
+                return;
+            }
+
+            IsPlayerInVehicleValue = true;
+            PlayerVehicleHandle = vehicleHandle;
+            _vehicles[vehicleHandle].OccupySeat(seatIndex, -1);
+        }
+
         public bool IsPedInVehicle(int pedHandle)
         {
             return _pedsInVehicles.ContainsKey(pedHandle);
+        }
+
+        public int GetPedVehicle(int pedHandle)
+        {
+            return _pedsInVehicles.TryGetValue(pedHandle, out var vehicleHandle) ? vehicleHandle : -1;
+        }
+
+        public int GetPedVehicleSeat(int pedHandle)
+        {
+            var vehicleHandle = GetPedVehicle(pedHandle);
+            if (!_vehicles.TryGetValue(vehicleHandle, out var vehicle))
+            {
+                return -1;
+            }
+
+            return vehicle.GetSeatByPed(pedHandle);
+        }
+
+        public void SetPedIntoVehicle(int pedHandle, int vehicleHandle, int seatIndex)
+        {
+            PutPedInVehicle(pedHandle, vehicleHandle, seatIndex);
         }
 
         public bool IsPedTryingToEnterVehicle(int pedHandle)
@@ -1270,6 +1313,19 @@ namespace FactionWars.Core.Utils
             return -1;
         }
 
+        public float GetVehicleHeading(int vehicleHandle)
+        {
+            if (_vehicles.TryGetValue(vehicleHandle, out var state))
+                return state.Heading;
+            return 0f;
+        }
+
+        public void SetVehicleHeading(int vehicleHandle, float heading)
+        {
+            if (_vehicles.TryGetValue(vehicleHandle, out var state))
+                state.Heading = heading;
+        }
+
         /// <inheritdoc />
         public bool IsVehicleSeatTurret(int vehicleHandle, int seatIndex)
         {
@@ -1416,6 +1472,7 @@ namespace FactionWars.Core.Utils
 
             public string ModelName { get; }
             public Vector3 Position { get; set; }
+            public float Heading { get; set; }
             public int VehicleClass { get; set; } = 0; // Default to Compacts
             public HashSet<int> TurretSeats { get; } = new HashSet<int>();
 
@@ -1463,6 +1520,19 @@ namespace FactionWars.Core.Utils
                 {
                     _occupiedSeats.Remove(seatToRemove);
                 }
+            }
+
+            public int GetSeatByPed(int pedHandle)
+            {
+                foreach (var kvp in _occupiedSeats)
+                {
+                    if (kvp.Value == pedHandle)
+                    {
+                        return kvp.Key;
+                    }
+                }
+
+                return -1;
             }
         }
     }

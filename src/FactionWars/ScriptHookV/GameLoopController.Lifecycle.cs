@@ -84,6 +84,8 @@ namespace FactionWars.ScriptHookV
                 _difficultyService.SetDifficulty(gameState.Difficulty);
                 FileLogger.Info($"Restored difficulty from save: {gameState.Difficulty}");
             }
+
+            _pendingRuntimeWorldRestore = e.RuntimeWorldState;
         }
 
         /// <summary>
