@@ -245,6 +245,24 @@ namespace FactionWars.Tests.Integration.ScriptHookV
         }
 
         [Fact]
+        public void Update_OnFootFollowerLostPlayerGroup_ReattachesFollower()
+        {
+            // Arrange
+            var result = _followerManager.RecruitFollower(MichaelFactionId, DefenderTier.Basic);
+            Assert.True(result.Success);
+            var pedHandle = result.Follower!.PedHandle;
+
+            _gameBridge.RemovePedFromFollowerGroup(pedHandle);
+            Assert.DoesNotContain(pedHandle, _gameBridge.FollowingPeds);
+
+            // Act
+            _followerManager.Update(MichaelFactionId);
+
+            // Assert
+            Assert.Contains(pedHandle, _gameBridge.FollowingPeds);
+        }
+
+        [Fact]
         public void Update_MultipleFollowers_AllEnterVehicleWithPlayer()
         {
             // Arrange: Recruit multiple followers

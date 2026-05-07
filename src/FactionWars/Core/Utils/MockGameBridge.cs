@@ -445,10 +445,17 @@ namespace FactionWars.Core.Utils
 
         public void SetPedAsFollower(int pedHandle)
         {
-            if (_peds.ContainsKey(pedHandle))
+            if (_peds.ContainsKey(pedHandle) && !_followingPeds.Contains(pedHandle))
             {
                 _followingPeds.Add(pedHandle);
             }
+        }
+
+        public bool IsPedFollowingPlayer(int pedHandle) => _followingPeds.Contains(pedHandle);
+
+        public void RemovePedFromFollowerGroup(int pedHandle)
+        {
+            _followingPeds.Remove(pedHandle);
         }
 
         public bool IsPlayerInVehicle() => IsPlayerInVehicleValue;

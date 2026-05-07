@@ -294,6 +294,13 @@ namespace FactionWars.Core.Interfaces
         void SetPedAsFollower(int pedHandle);
 
         /// <summary>
+        /// Checks whether a ped is currently registered in the player's follower group.
+        /// </summary>
+        /// <param name="pedHandle">Handle of the ped to check.</param>
+        /// <returns>True if the ped is still following the player, false otherwise.</returns>
+        bool IsPedFollowingPlayer(int pedHandle);
+
+        /// <summary>
         /// Checks if the player is currently in a vehicle.
         /// </summary>
         /// <returns>True if the player is in a vehicle, false otherwise.</returns>

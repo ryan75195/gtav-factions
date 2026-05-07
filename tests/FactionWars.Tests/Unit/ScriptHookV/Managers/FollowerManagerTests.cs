@@ -40,6 +40,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
 
             // Set up default player money (plenty of cash by default)
             _gameBridgeMock.Setup(g => g.GetPlayerMoney()).Returns(10000);
+            _gameBridgeMock.Setup(g => g.IsPedFollowingPlayer(It.IsAny<int>())).Returns(true);
 
             // Default: return seats as-is, return all followers
             _seatPriorityServiceMock.Setup(s => s.GetPrioritizedFreeSeats(It.IsAny<int>()))
@@ -845,6 +846,49 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
 
             // Assert
             _gameBridgeMock.Verify(g => g.TaskPedLeaveVehicle(It.IsAny<int>()), Times.Never);
+        }
+
+        [Fact]
+        public void Update_WhenOnFootFollowerLostPlayerGroup_ShouldSetPedAsFollowerAgain()
+        {
+            // Arrange
+            var factionId = "blue";
+            var follower = CreateFollowerWithPedHandle(factionId, DefenderTier.Basic, 42);
+            var followers = new List<Follower> { follower };
+
+            _followerServiceMock.Setup(s => s.GetFollowers(factionId)).Returns(followers);
+            _gameBridgeMock.Setup(g => g.IsPedAlive(42)).Returns(true);
+            _gameBridgeMock.Setup(g => g.IsPlayerInVehicle()).Returns(false);
+            _gameBridgeMock.Setup(g => g.IsPlayerDead()).Returns(false);
+            _gameBridgeMock.Setup(g => g.IsPedInVehicle(42)).Returns(false);
+            _gameBridgeMock.Setup(g => g.IsPedFollowingPlayer(42)).Returns(false);
+
+            // Act
+            _manager.Update(factionId);
+
+            // Assert
+            _gameBridgeMock.Verify(g => g.SetPedAsFollower(42), Times.Once);
+        }
+
+        [Fact]
+        public void Update_WhenPlayerDead_ShouldNotRepairFollowerGroup()
+        {
+            // Arrange
+            var factionId = "blue";
+            var follower = CreateFollowerWithPedHandle(factionId, DefenderTier.Basic, 42);
+            var followers = new List<Follower> { follower };
+
+            _followerServiceMock.Setup(s => s.GetFollowers(factionId)).Returns(followers);
+            _gameBridgeMock.Setup(g => g.IsPedAlive(42)).Returns(true);
+            _gameBridgeMock.Setup(g => g.IsPlayerInVehicle()).Returns(false);
+            _gameBridgeMock.Setup(g => g.IsPlayerDead()).Returns(true);
+            _gameBridgeMock.Setup(g => g.IsPedFollowingPlayer(42)).Returns(false);
+
+            // Act
+            _manager.Update(factionId);
+
+            // Assert
+            _gameBridgeMock.Verify(g => g.SetPedAsFollower(It.IsAny<int>()), Times.Never);
         }
 
         [Fact]

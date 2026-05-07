@@ -229,7 +229,7 @@ namespace FactionWars.ScriptHookV.Managers
             if (playerInVehicle && playerVehicle >= 0)
                 AssignFollowersToVehicle(aliveFollowerHandles, playerVehicle);
             else
-                ExitFollowersFromVehicles(aliveFollowerHandles);
+                UpdateOnFootFollowers(aliveFollowerHandles);
         }
 
         private List<int> GetAliveFollowerHandles(IEnumerable<Follower> followers)
