@@ -427,6 +427,41 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             _pedDespawnMock.Verify(p => p.DespawnPed(It.IsAny<int>()), Times.Never);
         }
 
+        [Fact]
+        public void OnPlayerZoneEntered_RoutesSpawnThroughSpawner_WithHostileFactionNeverPlayer()
+        {
+            var zone = new Zone("downtown", "Downtown", new Vector3(0, 0, 0), 100f) { OwnerFactionId = "player" };
+            var attackerTroops = new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 2 } };
+            var defenderTroops = new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 1 } };
+            var battle = new ZoneBattle("enemy", "player", "downtown", attackerTroops, defenderTroops, "player");
+            _battleManagerMock.Setup(b => b.GetBattleForZone("downtown")).Returns(battle);
+            _pedSpawningMock.Setup(p => p.CanSpawn()).Returns(true);
+            _gameBridgeMock.Setup(g => g.GetSafeCoordForPed(It.IsAny<Vector3>())).Returns(new Vector3(0, 0, 0));
+
+            var spawnerMock = new Mock<FactionWars.ScriptHookV.Combat.Interfaces.IZoneCombatantSpawner>();
+            int handle = 100;
+            spawnerMock.Setup(s => s.Spawn(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Vector3>(), It.IsAny<string>()))
+                .Returns(() => new PedHandle(handle++));
+
+            var manager = new BattleAttackerManager(new FactionWars.ScriptHookV.Models.BattleAttackerManagerDependencies
+            {
+                GameBridge = _gameBridgeMock.Object,
+                ZoneBattleManager = _battleManagerMock.Object,
+                PedSpawningService = _pedSpawningMock.Object,
+                PedDespawnService = _pedDespawnMock.Object,
+                DefenderTierService = _tierServiceMock.Object,
+                PedBlipService = _blipServiceMock.Object,
+                ZoneService = _zoneServiceMock.Object,
+                FactionService = _factionServiceMock.Object,
+                Spawner = spawnerMock.Object
+            }, "player");
+
+            manager.OnPlayerZoneEntered(zone);
+
+            spawnerMock.Verify(s => s.Spawn("enemy", "player", It.IsAny<string>(), It.IsAny<Vector3>(), "downtown"), Times.AtLeastOnce);
+            spawnerMock.Verify(s => s.Spawn("player", It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Vector3>(), It.IsAny<string>()), Times.Never);
+        }
+
         private BattleAttackerManager CreateManager(string playerFactionId)
         {
             return new BattleAttackerManager(

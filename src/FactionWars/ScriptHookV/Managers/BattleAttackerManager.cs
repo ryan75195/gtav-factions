@@ -10,6 +10,9 @@ using FactionWars.Factions.Interfaces;
 using FactionWars.Territory.Interfaces;
 using FactionWars.Territory.Models;
 using FactionWars.UI.Interfaces;
+using FactionWars.Combat.Services;
+using FactionWars.ScriptHookV.Combat;
+using FactionWars.ScriptHookV.Combat.Interfaces;
 using FactionWars.ScriptHookV.Logging;
 using FactionWars.ScriptHookV.Models;
 using FactionWars.Core.Utils;
@@ -30,6 +33,7 @@ namespace FactionWars.ScriptHookV.Managers
         private readonly IPedBlipService _pedBlipService;
         private readonly IZoneService _zoneService;
         private readonly IFactionService _factionService;
+        private readonly IZoneCombatantSpawner _spawner;
         private string _playerFactionId;
 
         private readonly Dictionary<DefenderTier, string> _modelsByTier;
@@ -66,6 +70,8 @@ namespace FactionWars.ScriptHookV.Managers
             _pedBlipService = dependencies.PedBlipService ?? throw new ArgumentNullException(nameof(dependencies.PedBlipService));
             _zoneService = dependencies.ZoneService ?? throw new ArgumentNullException(nameof(dependencies.ZoneService));
             _factionService = dependencies.FactionService ?? throw new ArgumentNullException(nameof(dependencies.FactionService));
+            _spawner = dependencies.Spawner
+                ?? new ZoneCombatantSpawner(new AllegianceResolver(), _pedSpawningService, _pedBlipService, _gameBridge);
             _playerFactionId = playerFactionId ?? throw new ArgumentNullException(nameof(playerFactionId));
 
             // Enemy faction ped models (hostile attackers)
@@ -186,7 +192,8 @@ namespace FactionWars.ScriptHookV.Managers
                 }
 
                 var spawnPos = CalculateRandomSpawnPosition(zone.Center, zone.Radius, random);
-                var pedHandle = _pedSpawningService.SpawnPed(model, spawnPos, attackerFactionId, zone.Id);
+                // Single spawn site owns relationship group, blip colour, and hostile stance.
+                var pedHandle = _spawner.Spawn(attackerFactionId, _playerFactionId, model, spawnPos, zone.Id);
                 if (!pedHandle.IsValid)
                 {
                     FileLogger.Combat($"BattleAttackerManager: SpawnPed returned invalid handle");
@@ -194,7 +201,6 @@ namespace FactionWars.ScriptHookV.Managers
                 }
 
                 ConfigureAttacker(pedHandle.Handle, tierConfig, zone.Center, zone.Radius);
-                _pedBlipService.CreateBlipForPed(pedHandle.Handle, FactionBlipColor.ForFactionId(attackerFactionId));
                 _spawnedPedTierByZone[zone.Id][pedHandle.Handle] = tier;
                 _spawnedPedFactionByZone[zone.Id][pedHandle.Handle] = attackerFactionId;
                 totalSpawned++;
