@@ -118,7 +118,7 @@ namespace FactionWars.ScriptHookV
 
         // Controller input constants (GTA V control IDs)
         private const int ControlDpadRight = 175;   // INPUT_PHONE_RIGHT
-        private const int ControlDpadUp = 172;       // INPUT_PHONE_UP
+        private const int ControlDpadLeft = 174;     // INPUT_PHONE_LEFT
         private const int ControlDpadDown = 173;     // INPUT_PHONE_DOWN
         private const float SquadDefaultLooseRadius = 30f;
         private const int ControlLB = 37;            // INPUT_AIM (LB/L1)
