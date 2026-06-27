@@ -13,6 +13,7 @@ using FactionWars.Core.Services;
 using FactionWars.Persistence.Models;
 using FactionWars.Economy.Interfaces;
 using FactionWars.Factions.Interfaces;
+using FactionWars.ScriptHookV.Combat;
 using FactionWars.ScriptHookV.Data;
 using FactionWars.ScriptHookV.Logging;
 using FactionWars.ScriptHookV.Managers;
@@ -47,6 +48,7 @@ namespace FactionWars.ScriptHookV
             _battleHudRenderer = new BattleHudRenderer();
 
             InitializeEnemyAndRallyManagers(spawnServices, allocationService);
+            ApplyRelationshipMatrix(CurrentPlayerFactionId);
 
             InitializeAiAndVictorySystems();
 
