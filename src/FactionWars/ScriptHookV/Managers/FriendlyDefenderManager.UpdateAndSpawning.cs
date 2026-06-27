@@ -69,10 +69,6 @@ namespace FactionWars.ScriptHookV.Managers
             CleanupExpiredCorpses(currentGameTime);
 
             EnforceZoneLeash(currentGameTime);
-
-            // TEMP: instrumentation for the "defenders turn hostile after player death" bug.
-            // Remove along with FriendlyDefenderManager.Diagnostics.cs once confirmed.
-            LogRelationshipDiagnostics(currentGameTime);
         }
 
         /// <summary>

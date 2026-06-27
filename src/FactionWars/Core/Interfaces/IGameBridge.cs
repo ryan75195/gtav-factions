@@ -81,30 +81,6 @@ namespace FactionWars.Core.Interfaces
         /// <param name="bidirectional">Whether to apply the same relationship both ways.</param>
         void SetRelationshipBetweenGroups(string groupName1, string groupName2, int relationship, bool bidirectional = true);
 
-        // --- TEMP DIAGNOSTICS (issue: friendly defenders turn hostile after player death + defended win) ---
-        // Read-only probes used only by instrumentation logging. Remove once root cause is confirmed.
-
-        /// <summary>
-        /// Reads the current relationship value FROM groupName1 TOWARD groupName2.
-        /// Returns GTA native values (0=Companion..5=Hate, 255=Pedestrians) or -1 on failure.
-        /// </summary>
-        int GetGroupRelationship(string groupName1, string groupName2);
-
-        /// <summary>
-        /// Returns true if the ped is actively in combat against the player ped.
-        /// </summary>
-        bool IsPedInCombatWithPlayer(int pedHandle);
-
-        /// <summary>
-        /// Returns the relationship-group hash currently assigned to the ped (0 if unavailable).
-        /// </summary>
-        int GetPedRelationshipGroupHash(int pedHandle);
-
-        /// <summary>
-        /// Returns the relationship-group hash currently assigned to the player ped (0 if unavailable).
-        /// </summary>
-        int GetPlayerRelationshipGroupHash();
-
         /// <summary>
         /// Creates a blip on the map at the specified position.
         /// </summary>

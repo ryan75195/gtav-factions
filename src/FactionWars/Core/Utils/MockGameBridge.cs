@@ -198,32 +198,6 @@ namespace FactionWars.Core.Utils
             }
         }
 
-        // --- TEMP DIAGNOSTICS (see IGameBridge). Read-only probes for instrumentation. ---
-
-        public int GetGroupRelationship(string groupName1, string groupName2)
-        {
-            if (string.IsNullOrWhiteSpace(groupName1) || string.IsNullOrWhiteSpace(groupName2))
-                return -1;
-
-            return _relationships.TryGetValue((groupName1.ToUpperInvariant(), groupName2.ToUpperInvariant()), out var rel)
-                ? rel
-                : 255; // Pedestrians/default when no explicit relationship is set
-        }
-
-        /// <summary>Test hook: handles reported as fighting the player by the mock.</summary>
-        public HashSet<int> PedsInCombatWithPlayer { get; } = new HashSet<int>();
-
-        public bool IsPedInCombatWithPlayer(int pedHandle) => PedsInCombatWithPlayer.Contains(pedHandle);
-
-        public int GetPedRelationshipGroupHash(int pedHandle)
-        {
-            return _peds.TryGetValue(pedHandle, out var ped) && ped.RelationshipGroup != null
-                ? ped.RelationshipGroup.GetHashCode()
-                : 0;
-        }
-
-        public int GetPlayerRelationshipGroupHash() => "PLAYER".GetHashCode();
-
         public int CreateBlip(Vector3 position)
         {
             var handle = _nextBlipHandle++;
