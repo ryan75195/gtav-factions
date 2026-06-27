@@ -94,6 +94,53 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         }
 
         [Fact]
+        public void OnOwnershipChanged_ForCurrentZoneWhileInside_RecolorsBoundaryToNewOwner()
+        {
+            _bridge.Setup(b => b.CreateRadiusBlip(It.IsAny<Vector3>(), It.IsAny<float>())).Returns(99);
+            var davis = new Zone("davis", "Davis", new Vector3(0, 0, 0), 200f, 5) { OwnerFactionId = "franklin" };
+            _territory.Setup(t => t.CurrentZone).Returns(davis);
+            var sut = BuildSut();
+
+            _territory.Raise(t => t.ZoneEntered += null, this, davis);
+            // Entered as franklin's -> green boundary.
+            _bridge.Verify(b => b.SetBlipColor(99, BlipColor.FranklinGreen), Times.Once);
+
+            // Player captures davis while standing in it (no exit/re-enter fires).
+            sut.OnOwnershipChanged("davis", "michael");
+
+            _bridge.Verify(b => b.SetBlipColor(99, BlipColor.MichaelBlue), Times.Once);
+        }
+
+        [Fact]
+        public void OnOwnershipChanged_ForDifferentZone_DoesNotRecolor()
+        {
+            _bridge.Setup(b => b.CreateRadiusBlip(It.IsAny<Vector3>(), It.IsAny<float>())).Returns(99);
+            var davis = new Zone("davis", "Davis", new Vector3(0, 0, 0), 200f, 5) { OwnerFactionId = "franklin" };
+            _territory.Setup(t => t.CurrentZone).Returns(davis);
+            var sut = BuildSut();
+
+            _territory.Raise(t => t.ZoneEntered += null, this, davis);
+
+            // A different zone changing hands must not touch the active boundary blip.
+            sut.OnOwnershipChanged("strawberry", "michael");
+
+            _bridge.Verify(b => b.SetBlipColor(99, BlipColor.MichaelBlue), Times.Never);
+        }
+
+        [Fact]
+        public void OnOwnershipChanged_NoActiveBlip_DoesNothing()
+        {
+            var davis = new Zone("davis", "Davis", new Vector3(0, 0, 0), 200f, 5) { OwnerFactionId = "franklin" };
+            _territory.Setup(t => t.CurrentZone).Returns(davis);
+            var sut = BuildSut();
+
+            // No ZoneEntered raised, so there is no active boundary blip to recolour.
+            sut.OnOwnershipChanged("davis", "michael");
+
+            _bridge.Verify(b => b.SetBlipColor(It.IsAny<int>(), It.IsAny<BlipColor>()), Times.Never);
+        }
+
+        [Fact]
         public void OnZoneEntered_NeutralZone_UsesWhiteColor()
         {
             _bridge.Setup(b => b.CreateRadiusBlip(It.IsAny<Vector3>(), It.IsAny<float>())).Returns(99);

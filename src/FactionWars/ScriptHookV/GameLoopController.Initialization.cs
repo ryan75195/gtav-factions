@@ -167,10 +167,20 @@ namespace FactionWars.ScriptHookV
             _territoryManager.ZoneExited += (sender, zone) => _friendlyDefenderManager.OnZoneExited(zone);
             _territoryManager.ZoneEntered += (sender, zone) => _commanderManager?.OnZoneEntered(zone);
             _territoryManager.ZoneExited += (sender, zone) => _commanderManager?.OnZoneExited(zone);
-            // A zone can change hands while the player is still inside it (captured/neutralised
-            // mid-fight), so no zone-exit event fires and the losing side's combatants orphan:
-            // friendly defenders as stale blips in lost territory, enemy garrisons as hostile peds
-            // that linger after capture. The reconciler despawns whichever side just lost the zone.
+            _zoneBoundaryBlipManager = new ZoneBoundaryBlipManager(_gameBridge, _territoryManager);
+            WireZoneOwnershipReconciliation();
+            return allocationService;
+        }
+
+        /// <summary>
+        /// Wires reactions to ownership changes that happen while the player is still inside a zone
+        /// (no exit/re-enter fires): the reconciler despawns whichever side just lost the zone, and
+        /// the boundary blip is recoloured into the new owner's colour.
+        /// </summary>
+        private void WireZoneOwnershipReconciliation()
+        {
+            if (_zoneService == null) return;
+
             var ownershipReconciler = new ZoneOwnershipReconciler(
                 despawnFriendlyForZone: zoneId =>
                 {
@@ -180,10 +190,11 @@ namespace FactionWars.ScriptHookV
                 },
                 despawnEnemyForZone: zoneId => _enemyDefenderManager?.DespawnForZone(zoneId),
                 getPlayerFactionId: () => CurrentPlayerFactionId);
+
             _zoneService.ZoneOwnershipChanged += (sender, e) =>
                 ownershipReconciler.OnOwnershipChanged(e.ZoneId, e.PreviousOwner, e.NewOwner);
-            _zoneBoundaryBlipManager = new ZoneBoundaryBlipManager(_gameBridge, _territoryManager);
-            return allocationService;
+            _zoneService.ZoneOwnershipChanged += (sender, e) =>
+                _zoneBoundaryBlipManager?.OnOwnershipChanged(e.ZoneId, e.NewOwner);
         }
 
         private void InitializeCommanderManager(SpawnServices spawnServices)
