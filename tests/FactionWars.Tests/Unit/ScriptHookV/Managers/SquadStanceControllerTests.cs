@@ -85,6 +85,30 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         }
 
         [Fact]
+        public void Update_SearchAndDestroy_KeepsTargetWhenStillAlive_DespiteNearerEnemy()
+        {
+            _controller = Build();
+            int bg = _bridge.CreatePed("bg", new Vector3(1f, 0f, 0f));
+            var party = new List<int> { bg };
+            _controller.CycleStance(party);
+            _controller.CycleStance(party); // SearchAndDestroy
+
+            // Commit to enemy 100.
+            _controller.Update(Anchor, 50f, party, new List<EnemyTarget> { new EnemyTarget(100, new Vector3(5f, 0f, 0f)) });
+            Assert.Equal(100, _bridge.GetCombatPedTarget(bg));
+
+            // Enemy 100 is still alive; a NEARER enemy 200 appears. The bodyguard must stay
+            // committed to 100 rather than thrash onto the closer target.
+            _controller.Update(Anchor, 50f, party, new List<EnemyTarget>
+            {
+                new EnemyTarget(100, new Vector3(5f, 0f, 0f)),
+                new EnemyTarget(200, new Vector3(2f, 0f, 0f))
+            });
+
+            Assert.Equal(100, _bridge.GetCombatPedTarget(bg));
+        }
+
+        [Fact]
         public void Update_SearchAndDestroy_RetargetsWhenAssignmentChanges()
         {
             _controller = Build();

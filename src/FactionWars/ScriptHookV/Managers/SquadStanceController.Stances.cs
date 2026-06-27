@@ -82,7 +82,7 @@ namespace FactionWars.ScriptHookV.Managers
                 bodyguards.Add(new BodyguardPosition(pedHandle, _gameBridge.GetPedPosition(pedHandle)));
             }
 
-            var assignment = _assignmentResolver.Assign(bodyguards, enemies);
+            var assignment = _assignmentResolver.Assign(bodyguards, enemies, BuildPreviousAssignment());
             foreach (var pedHandle in handles)
             {
                 if (!assignment.TryGetValue(pedHandle, out var targetHandle)) continue;
@@ -91,6 +91,20 @@ namespace FactionWars.ScriptHookV.Managers
                 _gameBridge.TaskCombatPed(pedHandle, targetHandle);
                 Remember(pedHandle, SquadStance.SearchAndDestroy, BodyguardOrderKind.AttackTarget, targetHandle);
             }
+        }
+
+        private Dictionary<int, int> BuildPreviousAssignment()
+        {
+            var previous = new Dictionary<int, int>();
+            foreach (var kvp in _lastApplied)
+            {
+                if (kvp.Value.Kind == BodyguardOrderKind.AttackTarget)
+                {
+                    previous[kvp.Key] = kvp.Value.Discriminator;
+                }
+            }
+
+            return previous;
         }
 
         private void SeekFallback(float anchorRadius, IReadOnlyList<int> handles)
