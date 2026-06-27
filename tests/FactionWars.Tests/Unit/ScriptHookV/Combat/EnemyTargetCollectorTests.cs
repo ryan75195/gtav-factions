@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
 using FactionWars.Core.Interfaces;
 using FactionWars.Core.Utils;
 using FactionWars.ScriptHookV.Combat;
@@ -29,6 +28,13 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Combat
         {
             var collector = new EnemyTargetCollector(new MockGameBridge());
             Assert.Empty(collector.Collect(new List<int>(), new Vector3(0f, 0f, 0f), 50f));
+        }
+
+        [Fact]
+        public void Collect_NullInput_ReturnsEmpty()
+        {
+            var collector = new EnemyTargetCollector(new MockGameBridge());
+            Assert.Empty(collector.Collect(null!, new Vector3(0f, 0f, 0f), 50f));
         }
     }
 }
