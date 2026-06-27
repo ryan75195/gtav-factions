@@ -1,0 +1,104 @@
+using System.Collections.Generic;
+using FactionWars.Combat.Models;
+using FactionWars.Combat.Services;
+using FactionWars.Core.Interfaces;
+using FactionWars.Core.Utils;
+using FactionWars.ScriptHookV.Managers;
+using Xunit;
+
+namespace FactionWars.Tests.Unit.ScriptHookV.Managers
+{
+    public class SquadStanceControllerTests
+    {
+        private readonly MockGameBridge _bridge = new MockGameBridge();
+        private SquadStanceController _controller = null!;
+
+        private SquadStanceController Build()
+            => new SquadStanceController(_bridge, new SquadStanceResolver(), new TargetAssignmentResolver());
+
+        private static readonly Vector3 Anchor = new Vector3(0f, 0f, 0f);
+
+        [Fact]
+        public void CycleStance_AdvancesEscortToHoldAreaToSearchAndDestroyToEscort()
+        {
+            _controller = Build();
+            var party = new List<int> { _bridge.CreatePed("bg", new Vector3(1f, 0f, 0f)) };
+
+            Assert.Equal(SquadStance.Escort, _controller.CurrentStance);
+            _controller.CycleStance(party);
+            Assert.Equal(SquadStance.HoldArea, _controller.CurrentStance);
+            _controller.CycleStance(party);
+            Assert.Equal(SquadStance.SearchAndDestroy, _controller.CurrentStance);
+            _controller.CycleStance(party);
+            Assert.Equal(SquadStance.Escort, _controller.CurrentStance);
+        }
+
+        [Fact]
+        public void CycleStance_EmptyParty_DoesNotChangeStance()
+        {
+            _controller = Build();
+            _controller.CycleStance(new List<int>());
+            Assert.Equal(SquadStance.Escort, _controller.CurrentStance);
+        }
+
+        [Fact]
+        public void Update_HoldArea_IssuesTaskGuardArea()
+        {
+            _controller = Build();
+            int bg = _bridge.CreatePed("bg", new Vector3(1f, 0f, 0f));
+            var party = new List<int> { bg };
+            _controller.CycleStance(party); // -> HoldArea
+
+            _controller.Update(Anchor, 50f, party, new List<EnemyTarget>());
+
+            Assert.True(_bridge.IsPedGuardingArea(bg));
+        }
+
+        [Fact]
+        public void Update_SearchAndDestroy_WithEnemy_IssuesTaskCombatPed()
+        {
+            _controller = Build();
+            int bg = _bridge.CreatePed("bg", new Vector3(1f, 0f, 0f));
+            var party = new List<int> { bg };
+            _controller.CycleStance(party); // HoldArea
+            _controller.CycleStance(party); // SearchAndDestroy
+
+            var enemy = new EnemyTarget(777, new Vector3(10f, 0f, 0f));
+            _controller.Update(Anchor, 50f, party, new List<EnemyTarget> { enemy });
+
+            Assert.True(_bridge.IsPedCombatingPed(bg));
+            Assert.Equal(777, _bridge.GetCombatPedTarget(bg));
+        }
+
+        [Fact]
+        public void Update_SearchAndDestroy_NoEnemies_FallsBackToSeek()
+        {
+            _controller = Build();
+            int bg = _bridge.CreatePed("bg", new Vector3(1f, 0f, 0f));
+            var party = new List<int> { bg };
+            _controller.CycleStance(party); // HoldArea
+            _controller.CycleStance(party); // SearchAndDestroy
+
+            _controller.Update(Anchor, 50f, party, new List<EnemyTarget>());
+
+            Assert.True(_bridge.IsPedCombatTargeting(bg)); // TaskCombatHatedTargetsAroundPed recorded
+        }
+
+        [Fact]
+        public void Update_SearchAndDestroy_RetargetsWhenAssignmentChanges()
+        {
+            _controller = Build();
+            int bg = _bridge.CreatePed("bg", new Vector3(1f, 0f, 0f));
+            var party = new List<int> { bg };
+            _controller.CycleStance(party);
+            _controller.CycleStance(party); // SearchAndDestroy
+
+            _controller.Update(Anchor, 50f, party, new List<EnemyTarget> { new EnemyTarget(100, new Vector3(5f, 0f, 0f)) });
+            Assert.Equal(100, _bridge.GetCombatPedTarget(bg));
+
+            // Previous target "dies"; a new enemy is the only one left.
+            _controller.Update(Anchor, 50f, party, new List<EnemyTarget> { new EnemyTarget(200, new Vector3(5f, 0f, 0f)) });
+            Assert.Equal(200, _bridge.GetCombatPedTarget(bg));
+        }
+    }
+}
