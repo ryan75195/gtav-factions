@@ -11,7 +11,7 @@ using FactionWars.UI.Interfaces;
 using FactionWars.ScriptHookV.Logging;
 using FactionWars.ScriptHookV.Models;
 using FactionWars.ScriptHookV.Services;
-using FactionWars.ScriptHookV.Utils;
+using FactionWars.Core.Utils;
 
 namespace FactionWars.ScriptHookV.Managers
 {

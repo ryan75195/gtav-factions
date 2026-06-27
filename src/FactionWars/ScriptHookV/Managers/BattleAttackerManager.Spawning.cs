@@ -7,7 +7,7 @@ using FactionWars.Core.Models;
 using FactionWars.ScriptHookV.Logging;
 using FactionWars.ScriptHookV.Models;
 using FactionWars.ScriptHookV.Services;
-using FactionWars.ScriptHookV.Utils;
+using FactionWars.Core.Utils;
 using FactionWars.Territory.Models;
 
 namespace FactionWars.ScriptHookV.Managers
