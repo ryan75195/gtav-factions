@@ -183,7 +183,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         }
 
         [Fact]
-        public void OnZoneEntered_CreatesBlueBlipForCommander()
+        public void OnZoneEntered_CreatesPurpleBlipForCommander()
         {
             // Arrange
             SetupManager();
@@ -192,9 +192,10 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             // Act
             _manager.OnZoneEntered(zone);
 
-            // Assert
+            // Assert - the commander uses a distinct Purple blip so it stands out from the
+            // faction-coloured property defenders (which now wear the player faction's colour).
             _pedBlipServiceMock.Verify(
-                p => p.CreateBlipForPed(It.IsAny<int>(), BlipColor.Blue),
+                p => p.CreateBlipForPed(It.IsAny<int>(), BlipColor.Purple),
                 Times.Once);
         }
 
