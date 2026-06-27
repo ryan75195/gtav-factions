@@ -82,7 +82,11 @@ namespace FactionWars.ScriptHookV.Persistence
         }
 
         /// <inheritdoc />
-        public void WriteCurrentSidecar(SaveFingerprint fingerprint, PlayerPosition position, string nativeSaveFilename)
+        public void WriteCurrentSidecar(
+            SaveFingerprint fingerprint,
+            PlayerPosition position,
+            string nativeSaveFilename,
+            RuntimeWorldState? runtimeWorldState = null)
         {
             if (!_hasGameLoaded)
             {
@@ -101,6 +105,7 @@ namespace FactionWars.ScriptHookV.Persistence
                 WrittenAtUtc = DateTime.UtcNow,
                 NativeSaveFilename = nativeSaveFilename,
                 PlayerPosition = position,
+                RuntimeWorldState = runtimeWorldState ?? new RuntimeWorldState { PlayerPosition = position },
                 GameState = gameState,
             };
 
@@ -120,7 +125,11 @@ namespace FactionWars.ScriptHookV.Persistence
                 _totalPlayTimeSeconds = sidecar.GameState.TotalPlayTimeSeconds;
                 _hasGameLoaded = true;
 
-                OnGameLoaded?.Invoke(this, new GameStateLoadedEventArgs(0, sidecar.GameState.SaveName, true));
+                OnGameLoaded?.Invoke(this, new GameStateLoadedEventArgs(
+                    0,
+                    sidecar.GameState.SaveName,
+                    true,
+                    runtimeWorldState: sidecar.RuntimeWorldState));
             }
             catch (Exception ex)
             {

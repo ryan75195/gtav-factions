@@ -33,6 +33,15 @@ namespace FactionWars.Core.Interfaces
         bool IsPedAlive(int pedHandle);
 
         /// <summary>
+        /// Returns true if the ped is currently engaged in combat with any target.
+        /// Used by the zone leash to avoid yanking actively-fighting peds (which
+        /// cancels their combat task and causes leash/combat thrashing).
+        /// </summary>
+        /// <param name="pedHandle">Handle of the ped to check.</param>
+        /// <returns>True if the ped is in combat.</returns>
+        bool IsPedInCombat(int pedHandle);
+
+        /// <summary>
         /// Checks whether the ped entity still exists in the world. Returns true for
         /// both alive and dead peds (GTA keeps a corpse around for a while before
         /// cleanup) and false for handles that have been streamed out by the
@@ -148,6 +157,11 @@ namespace FactionWars.Core.Interfaces
         void SetPedPosition(int pedHandle, Vector3 position);
 
         /// <summary>
+        /// Teleports the player character to a new position.
+        /// </summary>
+        void SetPlayerPosition(Vector3 position);
+
+        /// <summary>
         /// Changes the model/appearance of a ped.
         /// </summary>
         /// <param name="pedHandle">Handle of the ped to modify.</param>
@@ -168,6 +182,11 @@ namespace FactionWars.Core.Interfaces
         /// </summary>
         /// <returns>The player's heading in degrees (0-360).</returns>
         float GetPlayerHeading();
+
+        /// <summary>
+        /// Sets the player character heading in degrees.
+        /// </summary>
+        void SetPlayerHeading(float heading);
 
         /// <summary>
         /// Checks if the player character is currently dead.
@@ -313,11 +332,31 @@ namespace FactionWars.Core.Interfaces
         int GetPlayerVehicle();
 
         /// <summary>
+        /// Warps the player into the specified vehicle seat.
+        /// </summary>
+        void SetPlayerIntoVehicle(int vehicleHandle, int seatIndex);
+
+        /// <summary>
         /// Checks if a ped is currently in any vehicle.
         /// </summary>
         /// <param name="pedHandle">Handle of the ped to check.</param>
         /// <returns>True if the ped is in a vehicle, false otherwise.</returns>
         bool IsPedInVehicle(int pedHandle);
+
+        /// <summary>
+        /// Gets the vehicle occupied by a ped, or -1 if unavailable.
+        /// </summary>
+        int GetPedVehicle(int pedHandle);
+
+        /// <summary>
+        /// Gets the seat occupied by a ped in their current vehicle, or -1 if unavailable.
+        /// </summary>
+        int GetPedVehicleSeat(int pedHandle);
+
+        /// <summary>
+        /// Warps a ped into the specified vehicle seat.
+        /// </summary>
+        void SetPedIntoVehicle(int pedHandle, int vehicleHandle, int seatIndex);
 
         /// <summary>
         /// Checks if a ped is currently trying to enter a vehicle.
@@ -339,6 +378,16 @@ namespace FactionWars.Core.Interfaces
         /// <param name="vehicleHandle">Handle of the vehicle.</param>
         /// <returns>Vehicle class ID, or -1 if invalid.</returns>
         int GetVehicleClass(int vehicleHandle);
+
+        /// <summary>
+        /// Gets the heading of a vehicle.
+        /// </summary>
+        float GetVehicleHeading(int vehicleHandle);
+
+        /// <summary>
+        /// Sets the heading of a vehicle.
+        /// </summary>
+        void SetVehicleHeading(int vehicleHandle, float heading);
 
         /// <summary>
         /// Checks if a vehicle seat is a turret/gun seat.
@@ -490,6 +539,17 @@ namespace FactionWars.Core.Interfaces
         /// <param name="pedHandle">Handle of the ped to task.</param>
         /// <param name="radius">The radius in which to search for enemies.</param>
         void TaskCombatHatedTargetsAroundPed(int pedHandle, float radius);
+
+        /// <summary>
+        /// Tasks the ped to defend a sphere centred on <paramref name="center"/> with the
+        /// given radius, taking cover and engaging hostiles that enter the area.
+        /// </summary>
+        void TaskGuardArea(int pedHandle, Vector3 center, float radius);
+
+        /// <summary>
+        /// Tasks the ped to run to and fight a specific target ped.
+        /// </summary>
+        void TaskCombatPed(int pedHandle, int targetPedHandle);
 
         /// <summary>
         /// Tasks a ped to move toward another entity (player, vehicle, etc.) until
@@ -671,5 +731,13 @@ namespace FactionWars.Core.Interfaces
         /// <param name="control">The GTA V control ID.</param>
         /// <returns>True if the control was just pressed.</returns>
         bool IsControlJustPressed(int control);
+
+        /// <summary>
+        /// Disables a GTA V control for the current frame only. Must be re-applied
+        /// each frame to remain disabled. Used to throttle menu navigation so a held
+        /// control registers at most one move per cooldown interval.
+        /// </summary>
+        /// <param name="control">The GTA V control ID to disable this frame.</param>
+        void DisableControlThisFrame(int control);
     }
 }

@@ -5,7 +5,7 @@ using FactionWars.Core.Models;
 using FactionWars.ScriptHookV.Logging;
 using FactionWars.ScriptHookV.Models;
 using FactionWars.ScriptHookV.Services;
-using FactionWars.ScriptHookV.Utils;
+using FactionWars.Core.Utils;
 using FactionWars.Territory.Models;
 
 namespace FactionWars.ScriptHookV.Managers
@@ -97,12 +97,13 @@ namespace FactionWars.ScriptHookV.Managers
             var random = new Random();
 
             var spawnPos = CalculateRandomSpawnPosition(zone.Center, zone.Radius, random);
-            var pedHandle = _pedSpawningService.SpawnPed(model, spawnPos, enemyFactionId, zoneId);
+            var playerFactionId = _playerFactionIdAccessor() ?? string.Empty;
+            // Single spawn site owns relationship group, blip colour, and hostile stance.
+            var pedHandle = _spawner.Spawn(enemyFactionId, playerFactionId, model, spawnPos, zoneId);
 
             if (!pedHandle.IsValid) return;
 
             ConfigureEnemyDefender(pedHandle.Handle, tierConfig, zone.Center, zone.Radius);
-            _pedBlipService.CreateBlipForPed(pedHandle.Handle, FactionBlipColor.ForFactionId(enemyFactionId));
 
             if (!_spawnedPedTierByZone.ContainsKey(zoneId))
             {

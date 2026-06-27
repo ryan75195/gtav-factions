@@ -7,7 +7,7 @@ using FactionWars.Core.Models;
 using FactionWars.ScriptHookV.Logging;
 using FactionWars.ScriptHookV.Models;
 using FactionWars.ScriptHookV.Services;
-using FactionWars.ScriptHookV.Utils;
+using FactionWars.Core.Utils;
 using FactionWars.Territory.Models;
 
 namespace FactionWars.ScriptHookV.Managers
@@ -24,6 +24,11 @@ namespace FactionWars.ScriptHookV.Managers
             var zone = _zoneService.GetZone(zoneId);
             if (zone == null) return false;
 
+            // Never spawn the player's own faction as a hostile attacker: resolve the hostile
+            // attacker the same way the initial spawn does, and bail if there isn't one.
+            var attackerFactionId = GetHostileAttackerForPlayer(battle)?.FactionId;
+            if (attackerFactionId == null) return false;
+
             // Try preferred tier first
             if (battle.AttackerTroops.TryGetValue(preferredTier, out var allocatedCount))
             {
@@ -31,7 +36,7 @@ namespace FactionWars.ScriptHookV.Managers
 
                 if (allocatedCount > spawnedOfTier)
                 {
-                    SpawnSingleAttacker(zoneId, preferredTier, battle.AttackerFactionId, zone);
+                    SpawnSingleAttacker(zoneId, preferredTier, attackerFactionId, zone);
                     FileLogger.Combat($"BattleAttackerManager: Spawned replacement {preferredTier} in {zoneId}");
                     return true;
                 }
@@ -48,7 +53,7 @@ namespace FactionWars.ScriptHookV.Managers
 
                     if (allocatedCount > spawnedOfTier)
                     {
-                        SpawnSingleAttacker(zoneId, tier, battle.AttackerFactionId, zone);
+                        SpawnSingleAttacker(zoneId, tier, attackerFactionId, zone);
                         FileLogger.Combat($"BattleAttackerManager: Spawned replacement {tier} in {zoneId}");
                         return true;
                     }
@@ -70,12 +75,12 @@ namespace FactionWars.ScriptHookV.Managers
             var random = new Random();
 
             var spawnPos = CalculateRandomSpawnPosition(zone.Center, zone.Radius, random);
-            var pedHandle = _pedSpawningService.SpawnPed(model, spawnPos, attackerFactionId, zoneId);
+            // Single spawn site owns relationship group, blip colour, and hostile stance.
+            var pedHandle = _spawner.Spawn(attackerFactionId, _playerFactionId, model, spawnPos, zoneId);
 
             if (!pedHandle.IsValid) return;
 
             ConfigureAttacker(pedHandle.Handle, tierConfig, zone.Center, zone.Radius);
-            _pedBlipService.CreateBlipForPed(pedHandle.Handle, FactionBlipColor.ForFactionId(attackerFactionId));
 
             EnsureSpawnTracking(zoneId);
             _spawnedPedTierByZone[zoneId][pedHandle.Handle] = tier;
@@ -121,24 +126,11 @@ namespace FactionWars.ScriptHookV.Managers
                 _gameBridge.SetPedCanSwitchWeapons(pedHandle, false);
             }
 
-            // Set as hostile wanderer - will engage player and followers on sight
-            _gameBridge.SetPedAsHostileWanderer(pedHandle);
-
-            // Seek any hated targets in the battle, not only the player.
+            // Hostile stance (persistence, combat attributes) is set by ZoneCombatantSpawner at
+            // spawn time; the relationship matrix decides who this ped hates. Here we only add the
+            // tasking that drives them to seek any hated target in the battle, not only the player.
             _gameBridge.TaskCombatHatedTargetsAroundPed(pedHandle, wanderRadius);
         }
 
-        private void ConfigureBattleRelationships(ZoneBattle battle)
-        {
-            for (int i = 0; i < battle.Participants.Count; i++)
-            {
-                for (int j = i + 1; j < battle.Participants.Count; j++)
-                {
-                    var group1 = _pedSpawningService.GetRelationshipGroup(battle.Participants[i].FactionId);
-                    var group2 = _pedSpawningService.GetRelationshipGroup(battle.Participants[j].FactionId);
-                    _gameBridge.SetRelationshipBetweenGroups(group1, group2, relationship: 5, bidirectional: true);
-                }
-            }
-        }
     }
 }

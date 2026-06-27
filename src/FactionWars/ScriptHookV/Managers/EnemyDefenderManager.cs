@@ -3,15 +3,19 @@ using System.Collections.Generic;
 using System.Linq;
 using FactionWars.Combat.Interfaces;
 using FactionWars.Combat.Models;
+using FactionWars.Combat.Services;
 using FactionWars.Core.Interfaces;
 using FactionWars.Core.Models;
 using FactionWars.Territory.Interfaces;
 using FactionWars.Territory.Models;
 using FactionWars.UI.Interfaces;
+using FactionWars.ScriptHookV.Combat;
+using FactionWars.ScriptHookV.Combat.Interfaces;
 using FactionWars.ScriptHookV.Logging;
 using FactionWars.ScriptHookV.Models;
 using FactionWars.ScriptHookV.Services;
-using FactionWars.ScriptHookV.Utils;
+using FactionWars.Core.Utils;
+using FactionWars.ScriptHookV.Managers.Interfaces;
 
 namespace FactionWars.ScriptHookV.Managers
 {
@@ -20,7 +24,7 @@ namespace FactionWars.ScriptHookV.Managers
     /// Defenders patrol the zone and engage the player and player's troops on sight.
     /// Supports death detection, replacement spawning from reserves, and ground-level spawning.
     /// </summary>
-    public partial class EnemyDefenderManager
+    public partial class EnemyDefenderManager : IHostilePedHandleSource
     {
         private readonly IGameBridge _gameBridge;
         private readonly IZoneDefenderAllocationService _allocationService;
@@ -30,6 +34,8 @@ namespace FactionWars.ScriptHookV.Managers
         private readonly IPedBlipService _pedBlipService;
         private readonly IZoneService _zoneService;
         private readonly IZoneBattleManager? _zoneBattleManager;
+        private readonly IZoneCombatantSpawner _spawner;
+        private readonly Func<string?> _playerFactionIdAccessor;
 
         private readonly Dictionary<string, Dictionary<int, DefenderTier>> _spawnedPedTierByZone;
         private readonly Dictionary<int, int> _corpseDeathTimes; // pedHandle -> game time when died
@@ -59,6 +65,9 @@ namespace FactionWars.ScriptHookV.Managers
             _pedBlipService = dependencies.PedBlipService ?? throw new ArgumentNullException(nameof(dependencies.PedBlipService));
             _zoneService = dependencies.ZoneService ?? throw new ArgumentNullException(nameof(dependencies.ZoneService));
             _zoneBattleManager = dependencies.ZoneBattleManager;
+            _spawner = dependencies.Spawner
+                ?? new ZoneCombatantSpawner(new AllegianceResolver(), _pedSpawningService, _pedBlipService, _gameBridge);
+            _playerFactionIdAccessor = dependencies.CurrentPlayerFactionIdAccessor ?? (() => null);
 
             _spawnedPedTierByZone = new Dictionary<string, Dictionary<int, DefenderTier>>();
             _corpseDeathTimes = new Dictionary<int, int>();
@@ -74,7 +83,9 @@ namespace FactionWars.ScriptHookV.Managers
                 DefenderTierService = (IDefenderTierService?)dependencies[4],
                 PedBlipService = (IPedBlipService?)dependencies[5],
                 ZoneService = (IZoneService?)dependencies[6],
-                ZoneBattleManager = dependencies.Length > 7 ? (IZoneBattleManager?)dependencies[7] : null
+                ZoneBattleManager = dependencies.Length > 7 ? (IZoneBattleManager?)dependencies[7] : null,
+                Spawner = dependencies.Length > 8 ? (IZoneCombatantSpawner?)dependencies[8] : null,
+                CurrentPlayerFactionIdAccessor = dependencies.Length > 9 ? (Func<string?>?)dependencies[9] : null
             })
         {
         }
@@ -100,7 +111,8 @@ namespace FactionWars.ScriptHookV.Managers
                 return;
             }
 
-            ConfigureBattleRelationships(zone.Id);
+            // Faction-vs-faction and faction-vs-player relationships are wired once at init by
+            // RelationshipMatrixInitializer; no per-spawn relationship mutation here.
 
             // Initialize tracking for this zone
             if (!_spawnedPedTierByZone.ContainsKey(zone.Id))
@@ -108,6 +120,7 @@ namespace FactionWars.ScriptHookV.Managers
                 _spawnedPedTierByZone[zone.Id] = new Dictionary<int, DefenderTier>();
             }
 
+            var playerFactionId = _playerFactionIdAccessor() ?? string.Empty;
             var totalSpawned = 0;
             var random = new Random();
 
@@ -124,12 +137,12 @@ namespace FactionWars.ScriptHookV.Managers
                     if (!_pedSpawningService.CanSpawn()) break;
 
                     var spawnPos = CalculateRandomSpawnPosition(zone.Center, zone.Radius, random);
-                    var pedHandle = _pedSpawningService.SpawnPed(model, spawnPos, enemyFactionId, zone.Id);
+                    // Single spawn site owns relationship group, blip colour, and hostile stance.
+                    var pedHandle = _spawner.Spawn(enemyFactionId, playerFactionId, model, spawnPos, zone.Id);
                     if (!pedHandle.IsValid) continue;
 
-                    // Configure as hostile wanderer
+                    // Tier-specific combat loadout + zone patrol/seek tasking.
                     ConfigureEnemyDefender(pedHandle.Handle, tierConfig, zone.Center, zone.Radius);
-                    _pedBlipService.CreateBlipForPed(pedHandle.Handle, FactionBlipColor.ForFactionId(enemyFactionId));
 
                     // Track ped with its tier
                     _spawnedPedTierByZone[zone.Id][pedHandle.Handle] = tier;
@@ -149,11 +162,23 @@ namespace FactionWars.ScriptHookV.Managers
             if (zone == null) return;
 
             FileLogger.Combat($"EnemyDefenderManager: Player exited enemy zone {zone.Id}");
+            DespawnForZone(zone.Id);
+        }
 
-            if (_currentEnemyZoneId == zone.Id)
+        /// <summary>
+        /// Despawns this zone's enemy defenders, their blips, and corpses. Used both on zone exit
+        /// and by the ownership reconciler when the zone is captured/neutralised while the player
+        /// is still inside it (so no zone-exit event fires).
+        /// </summary>
+        /// <param name="zoneId">The zone whose enemy garrison should be removed.</param>
+        public void DespawnForZone(string zoneId)
+        {
+            if (string.IsNullOrEmpty(zoneId)) return;
+
+            if (_currentEnemyZoneId == zoneId)
                 _currentEnemyZoneId = null;
 
-            if (_spawnedPedTierByZone.TryGetValue(zone.Id, out var pedTiers))
+            if (_spawnedPedTierByZone.TryGetValue(zoneId, out var pedTiers))
             {
                 foreach (var pedHandle in pedTiers.Keys)
                 {
@@ -161,7 +186,7 @@ namespace FactionWars.ScriptHookV.Managers
                     _pedDespawnService.DespawnPed(pedHandle);
                     _corpseDeathTimes.Remove(pedHandle); // Also remove from corpse tracking
                 }
-                _spawnedPedTierByZone.Remove(zone.Id);
+                _spawnedPedTierByZone.Remove(zoneId);
             }
 
             // Also clean up any corpses from this zone
@@ -222,5 +247,16 @@ namespace FactionWars.ScriptHookV.Managers
         /// Checks for deaths, handles cleanup, and spawns replacements.
         /// </summary>
         /// <param name="enemyFactionId">The enemy faction ID for the current zone.</param>
+
+        /// <inheritdoc />
+        public IReadOnlyList<int> GetHostilePedHandles()
+        {
+            var handles = new List<int>();
+            foreach (var pedsInZone in _spawnedPedTierByZone.Values)
+            {
+                handles.AddRange(pedsInZone.Keys);
+            }
+            return handles;
+        }
     }
 }

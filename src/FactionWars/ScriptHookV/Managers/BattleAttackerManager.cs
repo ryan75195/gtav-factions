@@ -10,9 +10,13 @@ using FactionWars.Factions.Interfaces;
 using FactionWars.Territory.Interfaces;
 using FactionWars.Territory.Models;
 using FactionWars.UI.Interfaces;
+using FactionWars.Combat.Services;
+using FactionWars.ScriptHookV.Combat;
+using FactionWars.ScriptHookV.Combat.Interfaces;
 using FactionWars.ScriptHookV.Logging;
 using FactionWars.ScriptHookV.Models;
-using FactionWars.ScriptHookV.Utils;
+using FactionWars.Core.Utils;
+using FactionWars.ScriptHookV.Managers.Interfaces;
 
 namespace FactionWars.ScriptHookV.Managers
 {
@@ -20,7 +24,7 @@ namespace FactionWars.ScriptHookV.Managers
     /// Manages enemy attackers that spawn when the player enters their own zone that is under attack.
     /// Attackers are spawned based on the active battle's attacker troops and engage the player on sight.
     /// </summary>
-    public partial class BattleAttackerManager
+    public partial class BattleAttackerManager : IHostilePedHandleSource
     {
         private readonly IGameBridge _gameBridge;
         private readonly IZoneBattleManager _zoneBattleManager;
@@ -30,6 +34,7 @@ namespace FactionWars.ScriptHookV.Managers
         private readonly IPedBlipService _pedBlipService;
         private readonly IZoneService _zoneService;
         private readonly IFactionService _factionService;
+        private readonly IZoneCombatantSpawner _spawner;
         private string _playerFactionId;
 
         private readonly Dictionary<DefenderTier, string> _modelsByTier;
@@ -66,6 +71,8 @@ namespace FactionWars.ScriptHookV.Managers
             _pedBlipService = dependencies.PedBlipService ?? throw new ArgumentNullException(nameof(dependencies.PedBlipService));
             _zoneService = dependencies.ZoneService ?? throw new ArgumentNullException(nameof(dependencies.ZoneService));
             _factionService = dependencies.FactionService ?? throw new ArgumentNullException(nameof(dependencies.FactionService));
+            _spawner = dependencies.Spawner
+                ?? new ZoneCombatantSpawner(new AllegianceResolver(), _pedSpawningService, _pedBlipService, _gameBridge);
             _playerFactionId = playerFactionId ?? throw new ArgumentNullException(nameof(playerFactionId));
 
             // Enemy faction ped models (hostile attackers)
@@ -130,7 +137,8 @@ namespace FactionWars.ScriptHookV.Managers
             FileLogger.Combat($"BattleAttackerManager: Player entered zone {zone.Id} with hostile attacker {attackerToSpawn.FactionId}");
 
             _currentBattleZoneId = zone.Id;
-            ConfigureBattleRelationships(battle);
+            // Faction-vs-faction and faction-vs-player relationships are wired once at init by
+            // RelationshipMatrixInitializer; no per-spawn relationship mutation here.
 
             EnsureSpawnTracking(zone.Id);
 
@@ -186,7 +194,8 @@ namespace FactionWars.ScriptHookV.Managers
                 }
 
                 var spawnPos = CalculateRandomSpawnPosition(zone.Center, zone.Radius, random);
-                var pedHandle = _pedSpawningService.SpawnPed(model, spawnPos, attackerFactionId, zone.Id);
+                // Single spawn site owns relationship group, blip colour, and hostile stance.
+                var pedHandle = _spawner.Spawn(attackerFactionId, _playerFactionId, model, spawnPos, zone.Id);
                 if (!pedHandle.IsValid)
                 {
                     FileLogger.Combat($"BattleAttackerManager: SpawnPed returned invalid handle");
@@ -194,7 +203,6 @@ namespace FactionWars.ScriptHookV.Managers
                 }
 
                 ConfigureAttacker(pedHandle.Handle, tierConfig, zone.Center, zone.Radius);
-                _pedBlipService.CreateBlipForPed(pedHandle.Handle, FactionBlipColor.ForFactionId(attackerFactionId));
                 _spawnedPedTierByZone[zone.Id][pedHandle.Handle] = tier;
                 _spawnedPedFactionByZone[zone.Id][pedHandle.Handle] = attackerFactionId;
                 totalSpawned++;
@@ -216,5 +224,16 @@ namespace FactionWars.ScriptHookV.Managers
         /// Tracks despawned attackers so they can be restored if player re-enters.
         /// </summary>
         /// <param name="zone">The zone that was exited.</param>
+
+        /// <inheritdoc />
+        public IReadOnlyList<int> GetHostilePedHandles()
+        {
+            var handles = new List<int>();
+            foreach (var pedsInZone in _spawnedPedTierByZone.Values)
+            {
+                handles.AddRange(pedsInZone.Keys);
+            }
+            return handles;
+        }
     }
 }

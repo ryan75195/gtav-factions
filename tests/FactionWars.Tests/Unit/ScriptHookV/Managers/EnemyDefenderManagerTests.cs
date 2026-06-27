@@ -89,6 +89,52 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         }
 
         [Fact]
+        public void DespawnForZone_RemovesSpawnedDefendersAndBlips()
+        {
+            SetupManager();
+            var zone = CreateEnemyZone();
+            _allocationServiceMock.Setup(a => a.GetAllocation(EnemyFactionId, TestZoneId))
+                .Returns(CreateAllocationWithDefenders(basic: 3));
+            _manager.OnEnemyZoneEntered(zone, EnemyFactionId);
+            Assert.Equal(3, _manager.GetSpawnedDefenderCount(TestZoneId));
+
+            _manager.DespawnForZone(TestZoneId);
+
+            Assert.Equal(0, _manager.GetSpawnedDefenderCount(TestZoneId));
+            _pedDespawnServiceMock.Verify(d => d.DespawnPed(It.IsAny<int>()), Times.AtLeast(3));
+            _pedBlipServiceMock.Verify(b => b.RemoveBlipForPed(It.IsAny<int>()), Times.AtLeast(3));
+        }
+
+        [Fact]
+        public void OnEnemyZoneEntered_RoutesSpawnThroughZoneCombatantSpawner()
+        {
+            SetupManager();
+            var spawnerMock = new Mock<FactionWars.ScriptHookV.Combat.Interfaces.IZoneCombatantSpawner>();
+            spawnerMock.Setup(s => s.Spawn(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Vector3>(), It.IsAny<string>()))
+                .Returns(new PedHandle(42));
+            var manager = new EnemyDefenderManager(new FactionWars.ScriptHookV.Models.EnemyDefenderManagerDependencies
+            {
+                GameBridge = _gameBridge,
+                AllocationService = _allocationServiceMock.Object,
+                PedSpawningService = _pedSpawningServiceMock.Object,
+                PedDespawnService = _pedDespawnServiceMock.Object,
+                DefenderTierService = _defenderTierServiceMock.Object,
+                PedBlipService = _pedBlipServiceMock.Object,
+                ZoneService = _zoneServiceMock.Object,
+                ZoneBattleManager = _zoneBattleManagerMock.Object,
+                Spawner = spawnerMock.Object,
+                CurrentPlayerFactionIdAccessor = () => "michael"
+            });
+            var zone = CreateEnemyZone();
+            _allocationServiceMock.Setup(a => a.GetAllocation(EnemyFactionId, TestZoneId))
+                .Returns(CreateAllocationWithDefenders(basic: 1));
+
+            manager.OnEnemyZoneEntered(zone, EnemyFactionId);
+
+            spawnerMock.Verify(s => s.Spawn(EnemyFactionId, "michael", It.IsAny<string>(), It.IsAny<Vector3>(), TestZoneId), Times.AtLeastOnce);
+        }
+
+        [Fact]
         public void OnEnemyZoneEntered_SpawnsDefendersWithSprintingWander()
         {
             // Arrange
@@ -157,8 +203,11 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         }
 
         [Fact]
-        public void OnEnemyZoneEntered_WithThreeWayBattle_ConfiguresAllParticipantRelationships()
+        public void OnEnemyZoneEntered_SpawnsDefenderInFactionGroupWithCombatTasking()
         {
+            // Faction-vs-faction relationships are no longer wired per spawn — that is owned by
+            // RelationshipMatrixInitializer (see RelationshipMatrixInitializerTests). Here we only
+            // assert the enemy defender lands in its faction group and is tasked to engage.
             SetupManager();
             var zone = CreateEnemyZone();
             var allocation = CreateAllocationWithDefenders(basic: 1);
@@ -173,9 +222,6 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
 
             _manager.OnEnemyZoneEntered(zone, EnemyFactionId);
 
-            Assert.Equal(5, _gameBridge.GetRelationshipBetweenGroups("BALLAS", "FACTION_FRANKLIN"));
-            Assert.Equal(5, _gameBridge.GetRelationshipBetweenGroups("BALLAS", "FACTION_TREVOR"));
-            Assert.Equal(5, _gameBridge.GetRelationshipBetweenGroups("FACTION_FRANKLIN", "FACTION_TREVOR"));
             Assert.True(_gameBridge.IsPedCombatTargeting(1));
             Assert.Equal(EnemyFactionId.ToUpperInvariant(), _gameBridge.GetPedRelationshipGroup(1));
         }
@@ -372,5 +418,19 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         }
 
         #endregion
+
+        [Fact]
+        public void GetHostilePedHandles_ReturnsSpawnedEnemyHandles()
+        {
+            SetupManager();
+            var zone = CreateEnemyZone();
+            _allocationServiceMock.Setup(a => a.GetAllocation(EnemyFactionId, TestZoneId))
+                .Returns(CreateAllocationWithDefenders(basic: 2));
+            _manager.OnEnemyZoneEntered(zone, EnemyFactionId);
+
+            var handles = _manager.GetHostilePedHandles();
+            Assert.NotEmpty(handles);
+            Assert.Equal(_manager.GetSpawnedDefenderCount(TestZoneId), handles.Count);
+        }
     }
 }

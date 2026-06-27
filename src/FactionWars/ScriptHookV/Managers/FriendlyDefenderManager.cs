@@ -3,8 +3,12 @@ using System.Collections.Generic;
 using System.Linq;
 using FactionWars.Combat.Interfaces;
 using FactionWars.Combat.Models;
+using FactionWars.Combat.Services;
 using FactionWars.Core.Interfaces;
 using FactionWars.Core.Models;
+using FactionWars.Core.Utils;
+using FactionWars.ScriptHookV.Combat;
+using FactionWars.ScriptHookV.Combat.Interfaces;
 using FactionWars.ScriptHookV.Logging;
 using FactionWars.ScriptHookV.Models;
 using FactionWars.ScriptHookV.Services;
@@ -28,6 +32,7 @@ namespace FactionWars.ScriptHookV.Managers
         private readonly IDefenderTierService _defenderTierService;
         private readonly IPedBlipService _pedBlipService;
         private readonly IZoneService _zoneService;
+        private readonly IZoneCombatantSpawner _spawner;
         private string _playerFactionId;
 
         private readonly Dictionary<string, Dictionary<int, DefenderTier>> _spawnedPedTierByZone; // zoneId -> (pedHandle -> tier)
@@ -85,6 +90,8 @@ namespace FactionWars.ScriptHookV.Managers
             _defenderTierService = dependencies.DefenderTierService ?? throw new ArgumentNullException(nameof(dependencies.DefenderTierService));
             _pedBlipService = dependencies.PedBlipService ?? throw new ArgumentNullException(nameof(dependencies.PedBlipService));
             _zoneService = dependencies.ZoneService ?? throw new ArgumentNullException(nameof(dependencies.ZoneService));
+            _spawner = dependencies.Spawner
+                ?? new ZoneCombatantSpawner(new AllegianceResolver(), _pedSpawningService, _pedBlipService, _gameBridge);
             _playerFactionId = playerFactionId ?? throw new ArgumentNullException(nameof(playerFactionId));
 
             _spawnedPedTierByZone = new Dictionary<string, Dictionary<int, DefenderTier>>();
@@ -173,17 +180,16 @@ namespace FactionWars.ScriptHookV.Managers
                     if (!_pedSpawningService.CanSpawn()) break;
 
                     var spawnPos = CalculateRandomSpawnPosition(zone.Center, zone.Radius);
-                    var pedHandle = _pedSpawningService.SpawnPed(model, spawnPos, _playerFactionId, zone.Id);
+                    // Single spawn site: friendly defenders live in the player's faction group (so
+                    // the matrix makes them player-companions, rival-haters), faction-coloured.
+                    var pedHandle = _spawner.Spawn(_playerFactionId, _playerFactionId, model, spawnPos, zone.Id);
                     if (!pedHandle.IsValid) continue;
 
-                    // Set friendly relationship with player
-                    _gameBridge.SetPedAsFriendly(pedHandle.Handle);
                     ConfigureDefenderCombat(pedHandle.Handle, tierConfig);
                     // Bounded native wander — keeps idle peds inside the zone
                     // without per-tick checks. The leash sweep handles the
                     // combat-chase case separately.
                     _gameBridge.TaskPedWanderInBoundedArea(pedHandle.Handle, zone.Center, zone.Radius);
-                    _pedBlipService.CreateBlipForPed(pedHandle.Handle, BlipColor.LightBlue);
 
                     // Track ped with its tier
                     _spawnedPedTierByZone[zone.Id][pedHandle.Handle] = tier;

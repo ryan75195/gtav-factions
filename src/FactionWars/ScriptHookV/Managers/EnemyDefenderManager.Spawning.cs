@@ -33,28 +33,10 @@ namespace FactionWars.ScriptHookV.Managers
             _gameBridge.SetPedSeeingRange(pedHandle, perceptionRange);
             _gameBridge.SetPedHearingRange(pedHandle, perceptionRange);
 
-            // Set as hostile wanderer - will engage player and followers on sight
-            _gameBridge.SetPedAsHostileWanderer(pedHandle);
-
-            // Task to seek and fight hated targets (player, followers, friendly defenders)
+            // Hostile stance (persistence, combat attributes) is set by ZoneCombatantSpawner at
+            // spawn time; the relationship matrix decides who this ped hates. Here we only add the
+            // zone patrol/seek tasking that drives them toward hated targets in range.
             _gameBridge.TaskCombatHatedTargetsAroundPed(pedHandle, wanderRadius);
-        }
-
-        private void ConfigureBattleRelationships(string zoneId)
-        {
-            var battle = _zoneBattleManager?.GetBattleForZone(zoneId);
-            if (battle == null)
-                return;
-
-            for (int i = 0; i < battle.Participants.Count; i++)
-            {
-                for (int j = i + 1; j < battle.Participants.Count; j++)
-                {
-                    var group1 = _pedSpawningService.GetRelationshipGroup(battle.Participants[i].FactionId);
-                    var group2 = _pedSpawningService.GetRelationshipGroup(battle.Participants[j].FactionId);
-                    _gameBridge.SetRelationshipBetweenGroups(group1, group2, relationship: 5, bidirectional: true);
-                }
-            }
         }
 
         /// <summary>

@@ -17,8 +17,11 @@ namespace FactionWars.Persistence.Models
         /// <summary>Best-effort: filename of the GTA save this sidecar was written for. Not authoritative.</summary>
         public string NativeSaveFilename { get; set; } = string.Empty;
 
-        /// <summary>Recorded for a future restore-position feature; not consumed in v1.</summary>
+        /// <summary>Recorded player position at save time.</summary>
         public PlayerPosition PlayerPosition { get; set; } = new PlayerPosition();
+
+        /// <summary>Runtime world state that GTA's native save does not reliably preserve for the mod.</summary>
+        public RuntimeWorldState RuntimeWorldState { get; set; } = new RuntimeWorldState();
 
         public GameState GameState { get; set; } = new GameState();
     }

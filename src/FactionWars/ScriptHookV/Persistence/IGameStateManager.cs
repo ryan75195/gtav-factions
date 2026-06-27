@@ -36,7 +36,11 @@ namespace FactionWars.ScriptHookV.Persistence
         /// Captures the current game state into a sidecar tagged with the supplied fingerprint
         /// and writes it via the SidecarStore. Failures are logged and swallowed.
         /// </summary>
-        void WriteCurrentSidecar(SaveFingerprint fingerprint, PlayerPosition position, string nativeSaveFilename);
+        void WriteCurrentSidecar(
+            SaveFingerprint fingerprint,
+            PlayerPosition position,
+            string nativeSaveFilename,
+            RuntimeWorldState? runtimeWorldState = null);
 
         /// <summary>
         /// Applies the given sidecar's GameState to the current world.

@@ -65,6 +65,20 @@ namespace FactionWars.Tests.Unit.ScriptHookV
         }
 
         [Fact]
+        public void Update_StrayDefenderInCombat_NotLeashed()
+        {
+            var (manager, bridge, defenderHandle) = SpawnSingleDefender();
+
+            bridge.SetPedPosition(defenderHandle, new Vector3(ZoneCenter.X + ZoneRadius * 1.5f, ZoneCenter.Y, 0f));
+            bridge.SetPedInCombat(defenderHandle, true);
+
+            bridge.AdvanceGameTime(ZoneLeashEnforcer.LeashCheckIntervalMs + 100);
+            manager.Update();
+
+            Assert.False(bridge.IsPedGoingToCoord(defenderHandle));
+        }
+
+        [Fact]
         public void Update_StrayDefender_NoRetaskBeforeIntervalElapsed()
         {
             var (manager, bridge, defenderHandle) = SpawnSingleDefender();

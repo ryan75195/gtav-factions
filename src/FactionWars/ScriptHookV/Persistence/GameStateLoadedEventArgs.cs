@@ -1,4 +1,5 @@
 using System;
+using FactionWars.Persistence.Models;
 
 namespace FactionWars.ScriptHookV.Persistence
 {
@@ -27,12 +28,20 @@ namespace FactionWars.ScriptHookV.Persistence
         /// </summary>
         public Exception? Error { get; }
 
-        public GameStateLoadedEventArgs(int slotNumber, string saveName, bool success, Exception? error = null)
+        public RuntimeWorldState? RuntimeWorldState { get; }
+
+        public GameStateLoadedEventArgs(
+            int slotNumber,
+            string saveName,
+            bool success,
+            Exception? error = null,
+            RuntimeWorldState? runtimeWorldState = null)
         {
             SlotNumber = slotNumber;
             SaveName = saveName;
             Success = success;
             Error = error;
+            RuntimeWorldState = runtimeWorldState;
         }
     }
 }

@@ -16,13 +16,21 @@ namespace FactionWars.ScriptHookV.Persistence
     {
         private readonly IGameBridge _gameBridge;
         private readonly IGameStateManager _gameStateManager;
+        private readonly IFollowerService? _followerService;
+        private readonly IPlayerFactionDetector? _factionDetector;
         private readonly ConcurrentDictionary<string, SaveEvent> _pendingSaves =
             new ConcurrentDictionary<string, SaveEvent>(StringComparer.OrdinalIgnoreCase);
 
-        public NativeSaveSidecarWriter(IGameBridge gameBridge, IGameStateManager gameStateManager)
+        public NativeSaveSidecarWriter(
+            IGameBridge gameBridge,
+            IGameStateManager gameStateManager,
+            IFollowerService? followerService = null,
+            IPlayerFactionDetector? factionDetector = null)
         {
             _gameBridge = gameBridge ?? throw new ArgumentNullException(nameof(gameBridge));
             _gameStateManager = gameStateManager ?? throw new ArgumentNullException(nameof(gameStateManager));
+            _followerService = followerService;
+            _factionDetector = factionDetector;
         }
 
         public void Enqueue(SaveEvent saveEvent)
@@ -58,12 +66,78 @@ namespace FactionWars.ScriptHookV.Persistence
                 var heading = _gameBridge.GetPlayerHeading();
                 var position = new PlayerPosition { X = pos.X, Y = pos.Y, Z = pos.Z, Heading = heading };
                 var nativeFilename = Path.GetFileName(saveEvent.Path);
+                var runtimeWorldState = CaptureRuntimeWorldState(position);
 
-                _gameStateManager.WriteCurrentSidecar(fingerprint, position, nativeFilename);
+                _gameStateManager.WriteCurrentSidecar(fingerprint, position, nativeFilename, runtimeWorldState);
             }
             catch (Exception ex)
             {
                 FileLogger.Error("NativeSaveSidecarWriter: failed", ex);
+            }
+        }
+
+        private RuntimeWorldState CaptureRuntimeWorldState(PlayerPosition playerPosition)
+        {
+            var state = new RuntimeWorldState { PlayerPosition = playerPosition };
+
+            var playerVehicle = _gameBridge.IsPlayerInVehicle() ? _gameBridge.GetPlayerVehicle() : -1;
+            if (playerVehicle >= 0)
+            {
+                var vehiclePos = _gameBridge.GetVehiclePosition(playerVehicle);
+                state.PlayerVehicle = new SavedVehicleState
+                {
+                    ModelName = _gameBridge.GetVehicleModelName(playerVehicle),
+                    Position = new PlayerPosition
+                    {
+                        X = vehiclePos.X,
+                        Y = vehiclePos.Y,
+                        Z = vehiclePos.Z,
+                        Heading = _gameBridge.GetVehicleHeading(playerVehicle),
+                    },
+                };
+            }
+
+            CaptureFollowers(state, playerVehicle);
+            return state;
+        }
+
+        private void CaptureFollowers(RuntimeWorldState state, int playerVehicle)
+        {
+            if (_followerService == null || _factionDetector == null)
+            {
+                return;
+            }
+
+            var factionId = _factionDetector.GetFactionIdFromCharacterModel(_gameBridge.GetPlayerCharacterModel());
+            if (string.IsNullOrEmpty(factionId))
+            {
+                return;
+            }
+
+            foreach (var follower in _followerService.GetFollowers(factionId!))
+            {
+                if (follower.PedHandle < 0 || !_gameBridge.IsPedAlive(follower.PedHandle))
+                {
+                    continue;
+                }
+
+                var followerPos = _gameBridge.GetPedPosition(follower.PedHandle);
+                var seatIndex = _gameBridge.GetPedVehicle(follower.PedHandle) == playerVehicle
+                    ? _gameBridge.GetPedVehicleSeat(follower.PedHandle)
+                    : -1;
+
+                state.Followers.Add(new SavedFollowerState
+                {
+                    FactionId = follower.FactionId,
+                    Tier = follower.Tier,
+                    Position = new PlayerPosition
+                    {
+                        X = followerPos.X,
+                        Y = followerPos.Y,
+                        Z = followerPos.Z,
+                    },
+                    VehicleSeatIndex = seatIndex,
+                });
             }
         }
     }
