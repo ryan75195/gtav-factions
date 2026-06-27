@@ -186,8 +186,11 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         }
 
         [Fact]
-        public void OnEnemyZoneEntered_WithThreeWayBattle_ConfiguresAllParticipantRelationships()
+        public void OnEnemyZoneEntered_SpawnsDefenderInFactionGroupWithCombatTasking()
         {
+            // Faction-vs-faction relationships are no longer wired per spawn — that is owned by
+            // RelationshipMatrixInitializer (see RelationshipMatrixInitializerTests). Here we only
+            // assert the enemy defender lands in its faction group and is tasked to engage.
             SetupManager();
             var zone = CreateEnemyZone();
             var allocation = CreateAllocationWithDefenders(basic: 1);
@@ -202,9 +205,6 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
 
             _manager.OnEnemyZoneEntered(zone, EnemyFactionId);
 
-            Assert.Equal(5, _gameBridge.GetRelationshipBetweenGroups("BALLAS", "FACTION_FRANKLIN"));
-            Assert.Equal(5, _gameBridge.GetRelationshipBetweenGroups("BALLAS", "FACTION_TREVOR"));
-            Assert.Equal(5, _gameBridge.GetRelationshipBetweenGroups("FACTION_FRANKLIN", "FACTION_TREVOR"));
             Assert.True(_gameBridge.IsPedCombatTargeting(1));
             Assert.Equal(EnemyFactionId.ToUpperInvariant(), _gameBridge.GetPedRelationshipGroup(1));
         }

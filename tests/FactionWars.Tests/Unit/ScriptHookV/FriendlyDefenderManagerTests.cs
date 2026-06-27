@@ -47,7 +47,13 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             // Setup default mock behaviors
             _pedSpawningServiceMock.Setup(p => p.CanSpawn()).Returns(true);
             _pedSpawningServiceMock.Setup(p => p.SpawnPed(It.IsAny<string>(), It.IsAny<Vector3>(), It.IsAny<string>(), It.IsAny<string>()))
-                .Returns(() => new PedHandle(_gameBridge.CreatePed("test", new Vector3(0, 0, 0))));
+                .Returns<string, Vector3, string, string?>((model, position, factionId, zoneId) =>
+                {
+                    // Mirror real PedSpawningService: the spawned ped lands in its faction group.
+                    var handle = _gameBridge.CreatePed("test", new Vector3(0, 0, 0));
+                    _gameBridge.SetPedRelationshipGroup(handle, factionId.ToUpperInvariant());
+                    return new PedHandle(handle, factionId, position, "test", zoneId);
+                });
 
             _defenderTierServiceMock.Setup(d => d.GetTierConfig(It.IsAny<DefenderTier>()))
                 .Returns(new DefenderTierConfig(DefenderTier.Basic, 200, 100, 0, "weapon_pistol", 0.5f, 1.0f));
@@ -504,17 +510,16 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             // Act
             _manager.OnZoneEntered(zone);
 
-            // Assert - Friendly defenders should be in FRIENDLY_DEFENDERS group
-            // NOT in PLAYER group (would make them companions) and NOT in DEFENDER_ENEMIES (hostile)
+            // Assert - Friendly defenders live in the player's faction group (michael -> MICHAEL),
+            // so the relationship matrix makes them companions of the player and haters of rival
+            // factions. They are NOT moved to a synthetic FRIENDLY_DEFENDERS group.
             Assert.Equal(2, _manager.GetSpawnedDefenderCount(TestZoneId));
 
             var spawnedPeds = _gameBridge.GetSpawnedPeds();
             foreach (var pedHandle in spawnedPeds)
             {
                 var relationshipGroup = _gameBridge.GetPedRelationshipGroup(pedHandle);
-                Assert.Equal("FRIENDLY_DEFENDERS", relationshipGroup);
-                Assert.NotEqual("PLAYER", relationshipGroup);
-                Assert.NotEqual("DEFENDER_ENEMIES", relationshipGroup);
+                Assert.Equal(PlayerFactionId.ToUpperInvariant(), relationshipGroup);
             }
         }
 

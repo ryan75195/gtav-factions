@@ -134,9 +134,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV
                 Times.Exactly(5));
             _pedSpawningMock.Verify(p => p.SpawnPed(It.IsAny<string>(), It.IsAny<Vector3>(), "trevor", "downtown"),
                 Times.Never);
-            _gameBridgeMock.Verify(g => g.SetRelationshipBetweenGroups("MICHAEL", "FRANKLIN", 5, true), Times.Once);
-            _gameBridgeMock.Verify(g => g.SetRelationshipBetweenGroups("MICHAEL", "TREVOR", 5, true), Times.Once);
-            _gameBridgeMock.Verify(g => g.SetRelationshipBetweenGroups("FRANKLIN", "TREVOR", 5, true), Times.Once);
+            // Faction-vs-faction relationships are no longer wired per spawn (now owned by
+            // RelationshipMatrixInitializer); the attacker is still tasked to engage hated targets.
             _gameBridgeMock.Verify(g => g.TaskCombatHatedTargetsAroundPed(100, zone.Radius), Times.AtLeastOnce);
         }
 

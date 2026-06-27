@@ -915,9 +915,10 @@ namespace FactionWars.Core.Utils
         {
             if (_peds.TryGetValue(pedHandle, out var ped))
             {
-                // In mock, set to FRIENDLY_DEFENDERS group (separate from PLAYER group)
-                // This allows independent wandering behavior while still being friendly to player
-                ped.RelationshipGroup = "FRIENDLY_DEFENDERS";
+                // Relationship group/allegiance are owned by the relationship matrix (wired once
+                // at init), so this no longer reassigns groups. A friendly combatant keeps the
+                // faction group it spawned in and simply won't attack the player.
+                ped.IsAttackingPlayer = false;
             }
         }
 
@@ -947,10 +948,9 @@ namespace FactionWars.Core.Utils
         {
             if (_peds.TryGetValue(pedHandle, out var ped))
             {
-                if (string.IsNullOrEmpty(ped.RelationshipGroup))
-                {
-                    ped.RelationshipGroup = "DEFENDER_ENEMIES";
-                }
+                // Relationship group/allegiance are owned by the relationship matrix (wired once
+                // at init), so this no longer reassigns groups. A hostile combatant keeps the
+                // faction group it spawned in and is marked as engaging the player.
                 ped.IsAttackingPlayer = true;
             }
         }

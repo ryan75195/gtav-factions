@@ -136,7 +136,8 @@ namespace FactionWars.ScriptHookV.Managers
             FileLogger.Combat($"BattleAttackerManager: Player entered zone {zone.Id} with hostile attacker {attackerToSpawn.FactionId}");
 
             _currentBattleZoneId = zone.Id;
-            ConfigureBattleRelationships(battle);
+            // Faction-vs-faction and faction-vs-player relationships are wired once at init by
+            // RelationshipMatrixInitializer; no per-spawn relationship mutation here.
 
             EnsureSpawnTracking(zone.Id);
 

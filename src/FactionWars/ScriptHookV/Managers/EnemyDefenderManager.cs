@@ -110,7 +110,8 @@ namespace FactionWars.ScriptHookV.Managers
                 return;
             }
 
-            ConfigureBattleRelationships(zone.Id);
+            // Faction-vs-faction and faction-vs-player relationships are wired once at init by
+            // RelationshipMatrixInitializer; no per-spawn relationship mutation here.
 
             // Initialize tracking for this zone
             if (!_spawnedPedTierByZone.ContainsKey(zone.Id))

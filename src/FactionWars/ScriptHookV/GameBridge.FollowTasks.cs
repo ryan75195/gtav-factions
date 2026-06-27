@@ -56,32 +56,10 @@ namespace FactionWars.ScriptHookV
                     return;
                 }
 
-                var player = Game.Player.Character;
-                if (player == null || !player.Exists())
-                {
-                    FileLogger.Warn($"SetPedAsFriendly: Player doesn't exist, aborting");
-                    return;
-                }
-
-                FileLogger.AI($"SetPedAsFriendly: Ped {pedHandle} and player exist, setting up relationship groups");
-
-                // Create a separate FRIENDLY_DEFENDERS group (NOT the player's group)
-                // Being in the player's group makes GTA V treat peds as companions with special behavior
-                var friendlyDefendersGroup = World.AddRelationshipGroup("FRIENDLY_DEFENDERS");
-                var playerGroup = player.RelationshipGroup;
-                var defenderEnemyGroup = World.AddRelationshipGroup("DEFENDER_ENEMIES");
-
-                // Set ped to friendly defenders group
-                ped.RelationshipGroup = friendlyDefendersGroup;
-                FileLogger.AI($"SetPedAsFriendly: Ped {pedHandle} set to FRIENDLY_DEFENDERS group");
-
-                // FRIENDLY_DEFENDERS likes player (won't attack, even when damaged)
-                friendlyDefendersGroup.SetRelationshipBetweenGroups(playerGroup, Relationship.Companion, true);
-
-                // FRIENDLY_DEFENDERS hates enemy defenders (will attack)
-                friendlyDefendersGroup.SetRelationshipBetweenGroups(defenderEnemyGroup, Relationship.Hate, true);
-                FileLogger.AI($"SetPedAsFriendly: Relationship groups configured (Companion to player, Hate to enemies)");
-
+                // Relationship group and allegiance are owned by the relationship matrix, wired
+                // once at init (RelationshipMatrixInitializer). A friendly combatant keeps the
+                // player's faction group it was spawned in; here we only apply combat config so it
+                // fights, holds task, and never flees.
                 ConfigureFriendlyDefenderPed(ped);
 
                 FileLogger.AI($"SetPedAsFriendly: COMPLETED for ped {pedHandle} - persistent, combat configured, alertness=3");
