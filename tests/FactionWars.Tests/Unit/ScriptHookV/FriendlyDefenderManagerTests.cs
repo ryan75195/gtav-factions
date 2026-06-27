@@ -119,7 +119,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
         }
 
         [Fact]
-        public void OnFriendlyZoneEntered_CreatesLightBlueBlips()
+        public void OnFriendlyZoneEntered_CreatesPlayerFactionColouredBlips()
         {
             // Arrange
             SetupManager();
@@ -132,9 +132,10 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             // Act
             _manager.OnZoneEntered(zone);
 
-            // Assert
+            // Assert - friendly defenders wear the player faction's colour (michael -> blue),
+            // not a hardcoded light blue, so blip colour matches their relationship group.
             _pedBlipServiceMock.Verify(
-                p => p.CreateBlipForPed(It.IsAny<int>(), BlipColor.LightBlue),
+                p => p.CreateBlipForPed(It.IsAny<int>(), FactionBlipColor.ForFactionId(PlayerFactionId)),
                 Times.Exactly(2));
         }
 

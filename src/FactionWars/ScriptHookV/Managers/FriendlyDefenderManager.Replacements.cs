@@ -62,12 +62,11 @@ namespace FactionWars.ScriptHookV.Managers
             var tierConfig = _defenderTierService.GetTierConfig(tier);
 
             var spawnPos = CalculateRandomSpawnPosition(center, zoneRadius);
-            var pedHandle = _pedSpawningService.SpawnPed(model, spawnPos, _playerFactionId, zoneId);
+            // Single spawn site owns faction group, blip colour, and friendly combat stance.
+            var pedHandle = _spawner.Spawn(_playerFactionId, _playerFactionId, model, spawnPos, zoneId);
 
             if (!pedHandle.IsValid) return;
 
-            // Set friendly relationship with player
-            _gameBridge.SetPedAsFriendly(pedHandle.Handle);
             ConfigureDefenderCombat(pedHandle.Handle, tierConfig);
 
             // Use combat targeting if battle is active, otherwise walking wander
@@ -80,8 +79,6 @@ namespace FactionWars.ScriptHookV.Managers
             {
                 _gameBridge.TaskPedWanderInBoundedArea(pedHandle.Handle, center, zoneRadius);
             }
-
-            _pedBlipService.CreateBlipForPed(pedHandle.Handle, BlipColor.LightBlue);
 
             // Track ped with its tier
             if (!_spawnedPedTierByZone.ContainsKey(zoneId))
@@ -124,11 +121,10 @@ namespace FactionWars.ScriptHookV.Managers
                 if (!_pedSpawningService.CanSpawn()) break;
 
                 var spawnPos = CalculateRandomSpawnPosition(zoneCenter, zoneRadius);
-                var pedHandle = _pedSpawningService.SpawnPed(model, spawnPos, _playerFactionId, zoneId);
+                // Single spawn site owns faction group, blip colour, and friendly combat stance.
+                var pedHandle = _spawner.Spawn(_playerFactionId, _playerFactionId, model, spawnPos, zoneId);
                 if (!pedHandle.IsValid) continue;
 
-                // Set friendly relationship with player
-                _gameBridge.SetPedAsFriendly(pedHandle.Handle);
                 ConfigureDefenderCombat(pedHandle.Handle, tierConfig);
 
                 // Use combat targeting if battle is active, otherwise walking wander
@@ -141,8 +137,6 @@ namespace FactionWars.ScriptHookV.Managers
                 {
                     _gameBridge.TaskPedWanderInBoundedArea(pedHandle.Handle, zoneCenter, zoneRadius);
                 }
-
-                _pedBlipService.CreateBlipForPed(pedHandle.Handle, BlipColor.LightBlue);
 
                 // Track ped with its tier
                 existingPedTiers[pedHandle.Handle] = tier;
