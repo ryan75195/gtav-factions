@@ -100,5 +100,22 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             _controller.Update(Anchor, 50f, party, new List<EnemyTarget> { new EnemyTarget(200, new Vector3(5f, 0f, 0f)) });
             Assert.Equal(200, _bridge.GetCombatPedTarget(bg));
         }
+
+        [Fact]
+        public void Update_EscortStance_RepairsFollowerGroupForBodyguardNotFollowingPlayer()
+        {
+            // Controller starts in Escort by default — no cycling needed.
+            _controller = Build();
+            int bg = _bridge.CreatePed("bg", new Vector3(1f, 0f, 0f));
+            var party = new List<int> { bg };
+
+            // CreatePed does not add the ped to the follower group, so it is not following yet.
+            Assert.False(_bridge.IsPedFollowingPlayer(bg));
+
+            _controller.Update(Anchor, 50f, party, new List<EnemyTarget>());
+
+            // ApplyEscort must have called SetPedAsFollower to repair the group.
+            Assert.True(_bridge.IsPedFollowingPlayer(bg));
+        }
     }
 }

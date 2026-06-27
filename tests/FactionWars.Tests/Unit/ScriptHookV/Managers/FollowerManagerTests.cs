@@ -785,26 +785,6 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         }
 
         [Fact]
-        public void Update_WhenPlayerExitsVehicle_ShouldOrderFollowersToExitVehicle()
-        {
-            // Arrange
-            var factionId = "blue";
-            var follower = CreateFollowerWithPedHandle(factionId, DefenderTier.Basic, 42);
-            var followers = new List<Follower> { follower };
-
-            _followerServiceMock.Setup(s => s.GetFollowers(factionId)).Returns(followers);
-            _gameBridgeMock.Setup(g => g.IsPedAlive(42)).Returns(true);
-            _gameBridgeMock.Setup(g => g.IsPlayerInVehicle()).Returns(false);
-            _gameBridgeMock.Setup(g => g.IsPedInVehicle(42)).Returns(true);
-
-            // Act
-            _manager.Update(factionId);
-
-            // Assert
-            _gameBridgeMock.Verify(g => g.TaskPedLeaveVehicle(42), Times.Once);
-        }
-
-        [Fact]
         public void Update_WhenPlayerInVehicleAndFollowerAlreadyInVehicle_ShouldNotEnterAgain()
         {
             // Arrange
@@ -850,7 +830,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         }
 
         [Fact]
-        public void Update_WhenOnFootFollowerLostPlayerGroup_ShouldSetPedAsFollowerAgain()
+        public void Update_PlayerOnFoot_ExposesAliveHandlesWithoutTasking()
         {
             // Arrange
             var factionId = "blue";
@@ -860,87 +840,13 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             _followerServiceMock.Setup(s => s.GetFollowers(factionId)).Returns(followers);
             _gameBridgeMock.Setup(g => g.IsPedAlive(42)).Returns(true);
             _gameBridgeMock.Setup(g => g.IsPlayerInVehicle()).Returns(false);
-            _gameBridgeMock.Setup(g => g.IsPlayerDead()).Returns(false);
-            _gameBridgeMock.Setup(g => g.IsPedInVehicle(42)).Returns(false);
-            _gameBridgeMock.Setup(g => g.IsPedFollowingPlayer(42)).Returns(false);
 
             // Act
             _manager.Update(factionId);
 
-            // Assert
-            _gameBridgeMock.Verify(g => g.SetPedAsFollower(42), Times.Once);
-        }
-
-        [Fact]
-        public void Update_WhenPlayerDead_ShouldNotRepairFollowerGroup()
-        {
-            // Arrange
-            var factionId = "blue";
-            var follower = CreateFollowerWithPedHandle(factionId, DefenderTier.Basic, 42);
-            var followers = new List<Follower> { follower };
-
-            _followerServiceMock.Setup(s => s.GetFollowers(factionId)).Returns(followers);
-            _gameBridgeMock.Setup(g => g.IsPedAlive(42)).Returns(true);
-            _gameBridgeMock.Setup(g => g.IsPlayerInVehicle()).Returns(false);
-            _gameBridgeMock.Setup(g => g.IsPlayerDead()).Returns(true);
-            _gameBridgeMock.Setup(g => g.IsPedFollowingPlayer(42)).Returns(false);
-
-            // Act
-            _manager.Update(factionId);
-
-            // Assert
-            _gameBridgeMock.Verify(g => g.SetPedAsFollower(It.IsAny<int>()), Times.Never);
-        }
-
-        [Fact]
-        public void Update_OnFootFollowerStuckNotFollowing_ShouldReassertOncePerInterval()
-        {
-            // Arrange: a follower that never registers as "following" (as happens in-game
-            // when its own combat task detaches it from the player group). Without a
-            // throttle this re-runs the full SetPedAsFollower reconfigure every tick.
-            var factionId = "blue";
-            var follower = CreateFollowerWithPedHandle(factionId, DefenderTier.Basic, 42);
-            var followers = new List<Follower> { follower };
-
-            _followerServiceMock.Setup(s => s.GetFollowers(factionId)).Returns(followers);
-            _gameBridgeMock.Setup(g => g.IsPedAlive(42)).Returns(true);
-            _gameBridgeMock.Setup(g => g.IsPlayerInVehicle()).Returns(false);
-            _gameBridgeMock.Setup(g => g.IsPlayerDead()).Returns(false);
-            _gameBridgeMock.Setup(g => g.IsPedInVehicle(42)).Returns(false);
-            _gameBridgeMock.Setup(g => g.IsPedFollowingPlayer(42)).Returns(false);
-            _gameBridgeMock.Setup(g => g.IsPedInCombat(42)).Returns(false);
-            _gameBridgeMock.Setup(g => g.GetGameTime()).Returns(1000);
-
-            // Act: three ticks at the same game time (well within the throttle window)
-            _manager.Update(factionId);
-            _manager.Update(factionId);
-            _manager.Update(factionId);
-
-            // Assert: reasserted once, not once per tick
-            _gameBridgeMock.Verify(g => g.SetPedAsFollower(42), Times.Once);
-        }
-
-        [Fact]
-        public void Update_OnFootFollowerInCombat_ShouldNotReassertFollow()
-        {
-            // Arrange: an out-of-group follower that is actively fighting. Re-asserting
-            // would clear its tasks and cancel combat, so it must be left alone.
-            var factionId = "blue";
-            var follower = CreateFollowerWithPedHandle(factionId, DefenderTier.Basic, 42);
-            var followers = new List<Follower> { follower };
-
-            _followerServiceMock.Setup(s => s.GetFollowers(factionId)).Returns(followers);
-            _gameBridgeMock.Setup(g => g.IsPedAlive(42)).Returns(true);
-            _gameBridgeMock.Setup(g => g.IsPlayerInVehicle()).Returns(false);
-            _gameBridgeMock.Setup(g => g.IsPlayerDead()).Returns(false);
-            _gameBridgeMock.Setup(g => g.IsPedInVehicle(42)).Returns(false);
-            _gameBridgeMock.Setup(g => g.IsPedFollowingPlayer(42)).Returns(false);
-            _gameBridgeMock.Setup(g => g.IsPedInCombat(42)).Returns(true);
-
-            // Act
-            _manager.Update(factionId);
-
-            // Assert
+            // Assert — FollowerManager exposes the handle; on-foot tasking belongs to SquadStanceController.
+            Assert.Single(_manager.OnFootBodyguardHandles);
+            Assert.Equal(42, _manager.OnFootBodyguardHandles[0]);
             _gameBridgeMock.Verify(g => g.SetPedAsFollower(It.IsAny<int>()), Times.Never);
         }
 

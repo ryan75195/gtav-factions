@@ -29,6 +29,12 @@ namespace FactionWars.ScriptHookV.Managers
         public event EventHandler<Follower>? FollowerDied;
 
         /// <summary>
+        /// Alive on-foot bodyguard handles from the most recent <see cref="Update"/>. Empty when
+        /// the player is in a vehicle. The squad stance controller owns their on-foot tasking.
+        /// </summary>
+        public IReadOnlyList<int> OnFootBodyguardHandles { get; private set; } = Array.Empty<int>();
+
+        /// <summary>
         /// Creates a new FollowerManager.
         /// </summary>
         /// <param name="gameBridge">The game bridge for game interactions.</param>
@@ -217,49 +223,24 @@ namespace FactionWars.ScriptHookV.Managers
         {
             if (string.IsNullOrEmpty(factionId))
             {
+                OnFootBodyguardHandles = Array.Empty<int>();
                 return;
             }
 
             var followers = _followerService.GetFollowers(factionId);
-
             var playerInVehicle = _gameBridge.IsPlayerInVehicle();
             var playerVehicle = playerInVehicle ? _gameBridge.GetPlayerVehicle() : -1;
             var aliveFollowerHandles = GetAliveFollowerHandles(followers);
 
             if (playerInVehicle && playerVehicle >= 0)
-                AssignFollowersToVehicle(aliveFollowerHandles, playerVehicle);
-            else
-                UpdateOnFootFollowers(aliveFollowerHandles);
-        }
-
-        private List<int> GetAliveFollowerHandles(IEnumerable<Follower> followers)
-        {
-            var aliveFollowerHandles = new List<int>();
-
-            foreach (var follower in followers)
             {
-                if (follower.PedHandle < 0)
-                {
-                    continue;
-                }
-
-                // Check if the ped is dead
-                if (!_gameBridge.IsPedAlive(follower.PedHandle))
-                {
-                    // Handle death - remove blip, delete ped and notify service
-                    _pedBlipService.RemoveBlipForPed(follower.PedHandle);
-                    _gameBridge.DeletePed(follower.PedHandle);
-                    _followerService.HandleFollowerDeath(follower.Id);
-
-                    // Raise event
-                    FollowerDied?.Invoke(this, follower);
-                    continue;
-                }
-
-                aliveFollowerHandles.Add(follower.PedHandle);
+                AssignFollowersToVehicle(aliveFollowerHandles, playerVehicle);
+                OnFootBodyguardHandles = Array.Empty<int>();
             }
-
-            return aliveFollowerHandles;
+            else
+            {
+                OnFootBodyguardHandles = aliveFollowerHandles;
+            }
         }
 
     }

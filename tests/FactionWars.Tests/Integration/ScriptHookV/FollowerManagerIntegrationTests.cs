@@ -221,7 +221,7 @@ namespace FactionWars.Tests.Integration.ScriptHookV
         }
 
         [Fact]
-        public void Update_PlayerExitsVehicle_FollowersOrderedToExit()
+        public void Update_PlayerExitsVehicle_ExposesFollowerAsOnFootBodyguard()
         {
             // Arrange: Recruit a follower and put both player and follower in vehicle
             var result = _followerManager.RecruitFollower(MichaelFactionId, DefenderTier.Basic);
@@ -229,10 +229,10 @@ namespace FactionWars.Tests.Integration.ScriptHookV
             var pedHandle = result.Follower!.PedHandle;
 
             // Player enters vehicle
-            var vehicleHandle = _gameBridge.SetPlayerInVehicle(4);
+            _gameBridge.SetPlayerInVehicle(4);
             _followerManager.Update(MichaelFactionId);
 
-            // Verify follower is in vehicle
+            // Verify follower entered vehicle (vehicle path still works)
             Assert.True(_gameBridge.IsPedInVehicle(pedHandle));
 
             // Act: Player exits vehicle
@@ -240,26 +240,9 @@ namespace FactionWars.Tests.Integration.ScriptHookV
             _gameBridge.PlayerVehicleHandle = -1;
             _followerManager.Update(MichaelFactionId);
 
-            // Assert: Follower should exit vehicle
-            Assert.False(_gameBridge.IsPedInVehicle(pedHandle));
-        }
-
-        [Fact]
-        public void Update_OnFootFollowerLostPlayerGroup_ReattachesFollower()
-        {
-            // Arrange
-            var result = _followerManager.RecruitFollower(MichaelFactionId, DefenderTier.Basic);
-            Assert.True(result.Success);
-            var pedHandle = result.Follower!.PedHandle;
-
-            _gameBridge.RemovePedFromFollowerGroup(pedHandle);
-            Assert.DoesNotContain(pedHandle, _gameBridge.FollowingPeds);
-
-            // Act
-            _followerManager.Update(MichaelFactionId);
-
-            // Assert
-            Assert.Contains(pedHandle, _gameBridge.FollowingPeds);
+            // Assert: FollowerManager exposes the alive ped as an on-foot handle.
+            // Tasking the ped to leave the vehicle is now SquadStanceController's responsibility.
+            Assert.Contains(pedHandle, _followerManager.OnFootBodyguardHandles);
         }
 
         [Fact]
@@ -398,12 +381,12 @@ namespace FactionWars.Tests.Integration.ScriptHookV
 
             Assert.True(_gameBridge.IsPedInVehicle(pedHandle));
 
-            // Step 3: Player exits vehicle, follower follows
+            // Step 3: Player exits vehicle; FollowerManager exposes handle for SquadStanceController to task.
             _gameBridge.IsPlayerInVehicleValue = false;
             _gameBridge.PlayerVehicleHandle = -1;
             _followerManager.Update(MichaelFactionId);
 
-            Assert.False(_gameBridge.IsPedInVehicle(pedHandle));
+            Assert.Contains(pedHandle, _followerManager.OnFootBodyguardHandles);
 
             // Step 4: Follower dies in combat
             Follower? diedFollower = null;
