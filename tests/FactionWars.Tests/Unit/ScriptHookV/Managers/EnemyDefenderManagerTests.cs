@@ -89,6 +89,35 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         }
 
         [Fact]
+        public void OnEnemyZoneEntered_RoutesSpawnThroughZoneCombatantSpawner()
+        {
+            SetupManager();
+            var spawnerMock = new Mock<FactionWars.ScriptHookV.Combat.Interfaces.IZoneCombatantSpawner>();
+            spawnerMock.Setup(s => s.Spawn(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Vector3>(), It.IsAny<string>()))
+                .Returns(new PedHandle(42));
+            var manager = new EnemyDefenderManager(new FactionWars.ScriptHookV.Models.EnemyDefenderManagerDependencies
+            {
+                GameBridge = _gameBridge,
+                AllocationService = _allocationServiceMock.Object,
+                PedSpawningService = _pedSpawningServiceMock.Object,
+                PedDespawnService = _pedDespawnServiceMock.Object,
+                DefenderTierService = _defenderTierServiceMock.Object,
+                PedBlipService = _pedBlipServiceMock.Object,
+                ZoneService = _zoneServiceMock.Object,
+                ZoneBattleManager = _zoneBattleManagerMock.Object,
+                Spawner = spawnerMock.Object,
+                CurrentPlayerFactionIdAccessor = () => "michael"
+            });
+            var zone = CreateEnemyZone();
+            _allocationServiceMock.Setup(a => a.GetAllocation(EnemyFactionId, TestZoneId))
+                .Returns(CreateAllocationWithDefenders(basic: 1));
+
+            manager.OnEnemyZoneEntered(zone, EnemyFactionId);
+
+            spawnerMock.Verify(s => s.Spawn(EnemyFactionId, "michael", It.IsAny<string>(), It.IsAny<Vector3>(), TestZoneId), Times.AtLeastOnce);
+        }
+
+        [Fact]
         public void OnEnemyZoneEntered_SpawnsDefendersWithSprintingWander()
         {
             // Arrange

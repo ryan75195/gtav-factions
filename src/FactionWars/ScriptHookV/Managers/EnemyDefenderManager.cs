@@ -3,11 +3,14 @@ using System.Collections.Generic;
 using System.Linq;
 using FactionWars.Combat.Interfaces;
 using FactionWars.Combat.Models;
+using FactionWars.Combat.Services;
 using FactionWars.Core.Interfaces;
 using FactionWars.Core.Models;
 using FactionWars.Territory.Interfaces;
 using FactionWars.Territory.Models;
 using FactionWars.UI.Interfaces;
+using FactionWars.ScriptHookV.Combat;
+using FactionWars.ScriptHookV.Combat.Interfaces;
 using FactionWars.ScriptHookV.Logging;
 using FactionWars.ScriptHookV.Models;
 using FactionWars.ScriptHookV.Services;
@@ -30,6 +33,8 @@ namespace FactionWars.ScriptHookV.Managers
         private readonly IPedBlipService _pedBlipService;
         private readonly IZoneService _zoneService;
         private readonly IZoneBattleManager? _zoneBattleManager;
+        private readonly IZoneCombatantSpawner _spawner;
+        private readonly Func<string?> _playerFactionIdAccessor;
 
         private readonly Dictionary<string, Dictionary<int, DefenderTier>> _spawnedPedTierByZone;
         private readonly Dictionary<int, int> _corpseDeathTimes; // pedHandle -> game time when died
@@ -59,6 +64,9 @@ namespace FactionWars.ScriptHookV.Managers
             _pedBlipService = dependencies.PedBlipService ?? throw new ArgumentNullException(nameof(dependencies.PedBlipService));
             _zoneService = dependencies.ZoneService ?? throw new ArgumentNullException(nameof(dependencies.ZoneService));
             _zoneBattleManager = dependencies.ZoneBattleManager;
+            _spawner = dependencies.Spawner
+                ?? new ZoneCombatantSpawner(new AllegianceResolver(), _pedSpawningService, _pedBlipService, _gameBridge);
+            _playerFactionIdAccessor = dependencies.CurrentPlayerFactionIdAccessor ?? (() => null);
 
             _spawnedPedTierByZone = new Dictionary<string, Dictionary<int, DefenderTier>>();
             _corpseDeathTimes = new Dictionary<int, int>();
@@ -74,7 +82,9 @@ namespace FactionWars.ScriptHookV.Managers
                 DefenderTierService = (IDefenderTierService?)dependencies[4],
                 PedBlipService = (IPedBlipService?)dependencies[5],
                 ZoneService = (IZoneService?)dependencies[6],
-                ZoneBattleManager = dependencies.Length > 7 ? (IZoneBattleManager?)dependencies[7] : null
+                ZoneBattleManager = dependencies.Length > 7 ? (IZoneBattleManager?)dependencies[7] : null,
+                Spawner = dependencies.Length > 8 ? (IZoneCombatantSpawner?)dependencies[8] : null,
+                CurrentPlayerFactionIdAccessor = dependencies.Length > 9 ? (Func<string?>?)dependencies[9] : null
             })
         {
         }
@@ -108,6 +118,7 @@ namespace FactionWars.ScriptHookV.Managers
                 _spawnedPedTierByZone[zone.Id] = new Dictionary<int, DefenderTier>();
             }
 
+            var playerFactionId = _playerFactionIdAccessor() ?? string.Empty;
             var totalSpawned = 0;
             var random = new Random();
 
@@ -124,12 +135,12 @@ namespace FactionWars.ScriptHookV.Managers
                     if (!_pedSpawningService.CanSpawn()) break;
 
                     var spawnPos = CalculateRandomSpawnPosition(zone.Center, zone.Radius, random);
-                    var pedHandle = _pedSpawningService.SpawnPed(model, spawnPos, enemyFactionId, zone.Id);
+                    // Single spawn site owns relationship group, blip colour, and hostile stance.
+                    var pedHandle = _spawner.Spawn(enemyFactionId, playerFactionId, model, spawnPos, zone.Id);
                     if (!pedHandle.IsValid) continue;
 
-                    // Configure as hostile wanderer
+                    // Tier-specific combat loadout + zone patrol/seek tasking.
                     ConfigureEnemyDefender(pedHandle.Handle, tierConfig, zone.Center, zone.Radius);
-                    _pedBlipService.CreateBlipForPed(pedHandle.Handle, FactionBlipColor.ForFactionId(enemyFactionId));
 
                     // Track ped with its tier
                     _spawnedPedTierByZone[zone.Id][pedHandle.Handle] = tier;

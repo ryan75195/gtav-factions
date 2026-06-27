@@ -215,7 +215,8 @@ namespace FactionWars.ScriptHookV
                 DefenderTierService = spawnServices.DefenderTier,
                 PedBlipService = spawnServices.PedBlip,
                 ZoneService = zoneService,
-                ZoneBattleManager = zoneBattleManager
+                ZoneBattleManager = zoneBattleManager,
+                CurrentPlayerFactionIdAccessor = () => CurrentPlayerFactionId
             });
 
             _battleAttackerManager = new BattleAttackerManager(
