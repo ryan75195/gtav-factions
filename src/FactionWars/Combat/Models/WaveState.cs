@@ -11,8 +11,8 @@ namespace FactionWars.Combat.Models
     /// </summary>
     public class WaveState
     {
-        private readonly Dictionary<DefenderTier, int> _remaining;
-        private readonly Dictionary<DefenderTier, int> _spawned;
+        private readonly Dictionary<DefenderRole, int> _remaining;
+        private readonly Dictionary<DefenderRole, int> _spawned;
 
         /// <summary>
         /// Gets the total number of peds remaining to spawn across all tiers.
@@ -37,18 +37,18 @@ namespace FactionWars.Combat.Models
         /// <param name="heavyPeds">Number of heavy tier peds to spawn.</param>
         public WaveState(int basicPeds, int mediumPeds, int heavyPeds)
         {
-            _remaining = new Dictionary<DefenderTier, int>
+            _remaining = new Dictionary<DefenderRole, int>
             {
-                { DefenderTier.Basic, Math.Max(0, basicPeds) },
-                { DefenderTier.Medium, Math.Max(0, mediumPeds) },
-                { DefenderTier.Heavy, Math.Max(0, heavyPeds) }
+                { DefenderRole.Grunt, Math.Max(0, basicPeds) },
+                { DefenderRole.Gunner, Math.Max(0, mediumPeds) },
+                { DefenderRole.Rifleman, Math.Max(0, heavyPeds) }
             };
 
-            _spawned = new Dictionary<DefenderTier, int>
+            _spawned = new Dictionary<DefenderRole, int>
             {
-                { DefenderTier.Basic, 0 },
-                { DefenderTier.Medium, 0 },
-                { DefenderTier.Heavy, 0 }
+                { DefenderRole.Grunt, 0 },
+                { DefenderRole.Gunner, 0 },
+                { DefenderRole.Rifleman, 0 }
             };
         }
 
@@ -57,7 +57,7 @@ namespace FactionWars.Combat.Models
         /// </summary>
         /// <param name="tier">The tier to check.</param>
         /// <returns>The number of peds remaining for that tier.</returns>
-        public int GetRemaining(DefenderTier tier)
+        public int GetRemaining(DefenderRole tier)
         {
             return _remaining.TryGetValue(tier, out var count) ? count : 0;
         }
@@ -67,7 +67,7 @@ namespace FactionWars.Combat.Models
         /// </summary>
         /// <param name="tier">The tier to check.</param>
         /// <returns>The number of peds spawned for that tier.</returns>
-        public int GetSpawned(DefenderTier tier)
+        public int GetSpawned(DefenderRole tier)
         {
             return _spawned.TryGetValue(tier, out var count) ? count : 0;
         }
@@ -78,7 +78,7 @@ namespace FactionWars.Combat.Models
         /// </summary>
         /// <param name="tier">The tier that was spawned.</param>
         /// <param name="count">The number of peds spawned.</param>
-        public void RecordSpawned(DefenderTier tier, int count)
+        public void RecordSpawned(DefenderRole tier, int count)
         {
             if (count <= 0)
                 return;
@@ -95,7 +95,7 @@ namespace FactionWars.Combat.Models
         /// </summary>
         /// <param name="tier">The tier to check.</param>
         /// <returns>True if no more peds remain for this tier.</returns>
-        public bool IsTierComplete(DefenderTier tier)
+        public bool IsTierComplete(DefenderRole tier)
         {
             return GetRemaining(tier) == 0;
         }
@@ -104,23 +104,23 @@ namespace FactionWars.Combat.Models
         /// Returns a copy of the remaining counts by tier.
         /// </summary>
         /// <returns>A dictionary mapping tiers to remaining counts.</returns>
-        public Dictionary<DefenderTier, int> GetRemainingCopy()
+        public Dictionary<DefenderRole, int> GetRemainingCopy()
         {
-            return new Dictionary<DefenderTier, int>(_remaining);
+            return new Dictionary<DefenderRole, int>(_remaining);
         }
 
         /// <summary>
         /// Returns a copy of the spawned counts by tier.
         /// </summary>
         /// <returns>A dictionary mapping tiers to spawned counts.</returns>
-        public Dictionary<DefenderTier, int> GetSpawnedCopy()
+        public Dictionary<DefenderRole, int> GetSpawnedCopy()
         {
-            return new Dictionary<DefenderTier, int>(_spawned);
+            return new Dictionary<DefenderRole, int>(_spawned);
         }
 
         public override string ToString()
         {
-            return $"WaveState[Remaining: H={GetRemaining(DefenderTier.Heavy)}, M={GetRemaining(DefenderTier.Medium)}, B={GetRemaining(DefenderTier.Basic)}, Spawned: H={GetSpawned(DefenderTier.Heavy)}, M={GetSpawned(DefenderTier.Medium)}, B={GetSpawned(DefenderTier.Basic)}]";
+            return $"WaveState[Remaining: H={GetRemaining(DefenderRole.Rifleman)}, M={GetRemaining(DefenderRole.Gunner)}, B={GetRemaining(DefenderRole.Grunt)}, Spawned: H={GetSpawned(DefenderRole.Rifleman)}, M={GetSpawned(DefenderRole.Gunner)}, B={GetSpawned(DefenderRole.Grunt)}]";
         }
     }
 }

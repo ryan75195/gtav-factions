@@ -3,12 +3,12 @@ namespace FactionWars.Core.Models
     /// <summary>
     /// Configuration data for a defender tier including cost, stats, and equipment.
     /// </summary>
-    public class DefenderTierConfig
+    public class DefenderRoleConfig
     {
         /// <summary>
-        /// The tier this configuration applies to.
+        /// The combat role this configuration applies to.
         /// </summary>
-        public DefenderTier Tier { get; }
+        public DefenderRole Role { get; }
 
         /// <summary>
         /// The cost in dollars to purchase one defender of this tier.
@@ -47,18 +47,18 @@ namespace FactionWars.Core.Models
         public bool RagdollEnabled { get; }
 
         /// <summary>
-        /// Creates a new defender tier configuration.
+        /// Creates a new defender role configuration.
         /// </summary>
-        /// <param name="tier">The tier this configuration applies to.</param>
+        /// <param name="role">The combat role this configuration applies to.</param>
         /// <param name="cost">The cost to purchase one defender.</param>
         /// <param name="health">The health points.</param>
         /// <param name="armor">The armor value.</param>
         /// <param name="weapon">The weapon type name.</param>
         /// <param name="accuracy">The accuracy value (0.0 to 1.0).</param>
         /// <param name="combatModifier">The combat strength modifier.</param>
-        /// <param name="ragdollEnabled">Whether live peds of this tier can ragdoll.</param>
-        public DefenderTierConfig(
-            DefenderTier tier,
+        /// <param name="ragdollEnabled">Whether live peds of this role can ragdoll.</param>
+        public DefenderRoleConfig(
+            DefenderRole role,
             int cost,
             int health,
             int armor,
@@ -67,7 +67,7 @@ namespace FactionWars.Core.Models
             float combatModifier,
             bool ragdollEnabled = true)
         {
-            Tier = tier;
+            Role = role;
             Cost = cost;
             Health = health;
             Armor = armor;

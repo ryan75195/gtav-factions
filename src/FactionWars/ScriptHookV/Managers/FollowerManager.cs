@@ -18,10 +18,10 @@ namespace FactionWars.ScriptHookV.Managers
         private readonly IGameBridge _gameBridge;
         private readonly IFollowerService _followerService;
         private readonly IPedSpawningService _pedSpawningService;
-        private readonly IDefenderTierService _defenderTierService;
+        private readonly IDefenderRoleService _defenderRoleService;
         private readonly IPedBlipService _pedBlipService;
         private readonly IVehicleSeatPriorityService _seatPriorityService;
-        private readonly Dictionary<DefenderTier, string> _modelsByTier;
+        private readonly Dictionary<DefenderRole, string> _modelsByTier;
 
         /// <summary>
         /// Raised when a follower dies in combat.
@@ -40,7 +40,7 @@ namespace FactionWars.ScriptHookV.Managers
         /// <param name="gameBridge">The game bridge for game interactions.</param>
         /// <param name="followerService">The domain-layer follower service.</param>
         /// <param name="pedSpawningService">Service for spawning peds.</param>
-        /// <param name="defenderTierService">Service for defender tier configurations.</param>
+        /// <param name="defenderRoleService">Service for defender tier configurations.</param>
         /// <param name="pedBlipService">Service for managing ped blips on the minimap.</param>
         /// <param name="seatPriorityService">Service for coordinated vehicle seat assignment.</param>
         /// <exception cref="ArgumentNullException">Thrown if any parameter is null.</exception>
@@ -50,15 +50,15 @@ namespace FactionWars.ScriptHookV.Managers
             _gameBridge = dependencies.GameBridge ?? throw new ArgumentNullException(nameof(dependencies.GameBridge));
             _followerService = dependencies.FollowerService ?? throw new ArgumentNullException(nameof(dependencies.FollowerService));
             _pedSpawningService = dependencies.PedSpawningService ?? throw new ArgumentNullException(nameof(dependencies.PedSpawningService));
-            _defenderTierService = dependencies.DefenderTierService ?? throw new ArgumentNullException(nameof(dependencies.DefenderTierService));
+            _defenderRoleService = dependencies.DefenderRoleService ?? throw new ArgumentNullException(nameof(dependencies.DefenderRoleService));
             _pedBlipService = dependencies.PedBlipService ?? throw new ArgumentNullException(nameof(dependencies.PedBlipService));
             _seatPriorityService = dependencies.SeatPriorityService ?? throw new ArgumentNullException(nameof(dependencies.SeatPriorityService));
 
-            _modelsByTier = new Dictionary<DefenderTier, string>
+            _modelsByTier = new Dictionary<DefenderRole, string>
             {
-                { DefenderTier.Basic, "g_m_y_lost_01" },
-                { DefenderTier.Medium, "g_m_y_lost_02" },
-                { DefenderTier.Heavy, "g_m_y_lost_03" }
+                { DefenderRole.Grunt, "g_m_y_lost_01" },
+                { DefenderRole.Gunner, "g_m_y_lost_02" },
+                { DefenderRole.Rifleman, "g_m_y_lost_03" }
             };
         }
 
@@ -68,7 +68,7 @@ namespace FactionWars.ScriptHookV.Managers
                 GameBridge = (IGameBridge?)dependencies[0],
                 FollowerService = (IFollowerService?)dependencies[1],
                 PedSpawningService = (IPedSpawningService?)dependencies[2],
-                DefenderTierService = (IDefenderTierService?)dependencies[3],
+                DefenderRoleService = (IDefenderRoleService?)dependencies[3],
                 PedBlipService = (IPedBlipService?)dependencies[4],
                 SeatPriorityService = (IVehicleSeatPriorityService?)dependencies[5]
             })
@@ -80,7 +80,7 @@ namespace FactionWars.ScriptHookV.Managers
         /// </summary>
         /// <param name="tier">The tier to configure.</param>
         /// <param name="modelName">The ped model name to use.</param>
-        public void SetModelForTier(DefenderTier tier, string modelName)
+        public void SetModelForTier(DefenderRole tier, string modelName)
         {
             _modelsByTier[tier] = modelName;
         }
@@ -94,14 +94,14 @@ namespace FactionWars.ScriptHookV.Managers
         /// <param name="tier">The quality tier of the follower.</param>
         /// <returns>A result indicating success or failure with the recruited follower.</returns>
         /// <exception cref="ArgumentNullException">Thrown if factionId is null.</exception>
-        public FollowerRecruitResult RecruitFollower(string factionId, DefenderTier tier)
+        public FollowerRecruitResult RecruitFollower(string factionId, DefenderRole tier)
         {
             if (string.IsNullOrEmpty(factionId))
                 throw new ArgumentNullException(nameof(factionId));
 
             // Get cost for this tier
-            var tierConfig = _defenderTierService.GetTierConfig(tier);
-            var cost = tierConfig.Cost;
+            var roleConfig = _defenderRoleService.GetRoleConfig(tier);
+            var cost = roleConfig.Cost;
 
             // Check if player has enough money
             var playerMoney = _gameBridge.GetPlayerMoney();
@@ -153,7 +153,7 @@ namespace FactionWars.ScriptHookV.Managers
             _gameBridge.SetPedAsFollower(pedHandle.Handle);
 
             // Configure combat stats AFTER follower setup (health must be set last to persist)
-            ConfigureFollowerCombat(pedHandle.Handle, tierConfig);
+            ConfigureFollowerCombat(pedHandle.Handle, roleConfig);
 
             // Create a yellow blip on the minimap for this follower
             _pedBlipService.CreateBlipForPed(pedHandle.Handle, BlipColor.Yellow);

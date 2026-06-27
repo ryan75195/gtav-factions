@@ -14,9 +14,9 @@ namespace FactionWars.AI.Services
     {
         private readonly IFactionService _factionService;
         private readonly IAIBudgetService _budgetService;
-        private readonly IDefenderTierService? _tierService;
+        private readonly IDefenderRoleService? _tierService;
         private readonly ICapitalDeploymentService? _capitalDeploymentService;
-        private IDefenderTierService TierService =>
+        private IDefenderRoleService TierService =>
             _tierService ?? throw new InvalidOperationException("Tier service is required for multi-tier recruitment.");
 
         // Wealth thresholds
@@ -37,7 +37,7 @@ namespace FactionWars.AI.Services
         /// <summary>
         /// Creates a new AIRecruitmentService with multi-tier wealth-scaled recruitment.
         /// </summary>
-        public AIRecruitmentService(IFactionService factionService, IAIBudgetService budgetService, IDefenderTierService tierService)
+        public AIRecruitmentService(IFactionService factionService, IAIBudgetService budgetService, IDefenderRoleService tierService)
         {
             _factionService = factionService ?? throw new ArgumentNullException(nameof(factionService));
             _budgetService = budgetService ?? throw new ArgumentNullException(nameof(budgetService));
@@ -51,7 +51,7 @@ namespace FactionWars.AI.Services
         public AIRecruitmentService(
             IFactionService factionService,
             IAIBudgetService budgetService,
-            IDefenderTierService tierService,
+            IDefenderRoleService tierService,
             ICapitalDeploymentService capitalDeploymentService)
             : this(factionService, budgetService, tierService)
         {
@@ -60,7 +60,7 @@ namespace FactionWars.AI.Services
 
         /// <summary>
         /// Attempts to auto-recruit troops for a faction based on their wealth level.
-        /// Uses wealth-scaled tier distribution when IDefenderTierService is available.
+        /// Uses wealth-scaled tier distribution when IDefenderRoleService is available.
         /// When ICapitalDeploymentService is available, uses scaled recruitment max based on cash.
         /// </summary>
         /// <param name="factionId">The faction to recruit for.</param>
@@ -129,12 +129,12 @@ namespace FactionWars.AI.Services
             if (cash <= 0 || maxTroops <= 0)
                 return 0;
 
-            var recruited = new Dictionary<DefenderTier, int>
+            var recruited = new Dictionary<DefenderRole, int>
             {
-                { DefenderTier.Basic, 0 },
-                { DefenderTier.Medium, 0 },
-                { DefenderTier.Heavy, 0 },
-                { DefenderTier.Elite, 0 }
+                { DefenderRole.Grunt, 0 },
+                { DefenderRole.Gunner, 0 },
+                { DefenderRole.Rifleman, 0 },
+                { DefenderRole.Rocketeer, 0 }
             };
 
             int remainingBudget = BuyEliteTroops(cash, maxTroops, recruited, out int remainingSlots);

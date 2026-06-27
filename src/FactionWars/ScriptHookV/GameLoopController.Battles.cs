@@ -49,7 +49,7 @@ namespace FactionWars.ScriptHookV
                     int toAllocate = survivors > 0 ? Math.Max(1, Math.Min((survivors + 1) / 2, 5)) : 0;
                     if (toAllocate > 0)
                     {
-                        _allocationService?.SetAllocation(winnerFactionId, battle.ZoneId, DefenderTier.Basic, toAllocate);
+                        _allocationService?.SetAllocation(winnerFactionId, battle.ZoneId, DefenderRole.Grunt, toAllocate);
                     }
 
                     CheckFactionEliminated(defenderFactionId);

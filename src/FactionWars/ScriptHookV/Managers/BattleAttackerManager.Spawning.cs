@@ -14,7 +14,7 @@ namespace FactionWars.ScriptHookV.Managers
 {
     public partial class BattleAttackerManager
     {
-        private bool TrySpawnReplacement(string zoneId, DefenderTier preferredTier, ZoneBattle? battle)
+        private bool TrySpawnReplacement(string zoneId, DefenderRole preferredTier, ZoneBattle? battle)
         {
             if (battle == null) return false;
 
@@ -43,7 +43,7 @@ namespace FactionWars.ScriptHookV.Managers
             }
 
             // Try other tiers (highest first)
-            foreach (var tier in new[] { DefenderTier.Elite, DefenderTier.Heavy, DefenderTier.Medium, DefenderTier.Basic })
+            foreach (var tier in new[] { DefenderRole.Rocketeer, DefenderRole.Rifleman, DefenderRole.Gunner, DefenderRole.Grunt })
             {
                 if (tier == preferredTier) continue;
 
@@ -66,12 +66,12 @@ namespace FactionWars.ScriptHookV.Managers
         /// <summary>
         /// Spawns a single enemy attacker.
         /// </summary>
-        private void SpawnSingleAttacker(string zoneId, DefenderTier tier, string attackerFactionId, Zone zone)
+        private void SpawnSingleAttacker(string zoneId, DefenderRole tier, string attackerFactionId, Zone zone)
         {
             if (!_pedSpawningService.CanSpawn()) return;
 
             var model = _modelsByTier.TryGetValue(tier, out var m) ? m : "g_m_y_famca_01";
-            var tierConfig = _defenderTierService.GetTierConfig(tier);
+            var roleConfig = _defenderRoleService.GetRoleConfig(tier);
             var random = new Random();
 
             var spawnPos = CalculateRandomSpawnPosition(zone.Center, zone.Radius, random);
@@ -80,7 +80,7 @@ namespace FactionWars.ScriptHookV.Managers
 
             if (!pedHandle.IsValid) return;
 
-            ConfigureAttacker(pedHandle.Handle, tierConfig, zone.Center, zone.Radius);
+            ConfigureAttacker(pedHandle.Handle, roleConfig, zone.Center, zone.Radius);
 
             EnsureSpawnTracking(zoneId);
             _spawnedPedTierByZone[zoneId][pedHandle.Handle] = tier;
@@ -108,20 +108,20 @@ namespace FactionWars.ScriptHookV.Managers
         /// <summary>
         /// Configures an enemy attacker's combat attributes and behavior.
         /// </summary>
-        private void ConfigureAttacker(int pedHandle, DefenderTierConfig tierConfig, Vector3 zoneCenter, float wanderRadius)
+        private void ConfigureAttacker(int pedHandle, DefenderRoleConfig roleConfig, Vector3 zoneCenter, float wanderRadius)
         {
             // Give weapons
             _gameBridge.GivePedWeapon(pedHandle, "weapon_pistol");
-            _gameBridge.GivePedWeapon(pedHandle, tierConfig.Weapon);
-            _gameBridge.SetPedAccuracy(pedHandle, tierConfig.Accuracy);
-            _gameBridge.SetPedArmor(pedHandle, tierConfig.Armor);
-            _gameBridge.SetPedHealth(pedHandle, tierConfig.Health);
+            _gameBridge.GivePedWeapon(pedHandle, roleConfig.Weapon);
+            _gameBridge.SetPedAccuracy(pedHandle, roleConfig.Accuracy);
+            _gameBridge.SetPedArmor(pedHandle, roleConfig.Armor);
+            _gameBridge.SetPedHealth(pedHandle, roleConfig.Health);
             _gameBridge.SetPedCriticalHitsEnabled(pedHandle, true);
-            _gameBridge.SetPedRagdollEnabled(pedHandle, tierConfig.RagdollEnabled);
+            _gameBridge.SetPedRagdollEnabled(pedHandle, roleConfig.RagdollEnabled);
             _gameBridge.SetPedCombatAttributes(pedHandle, canUseCover: true, willFightArmedPeds: true);
 
             // Elite tier uses RPG - prevent AI from switching to pistol (AI prefers pistol to avoid self-damage)
-            if (tierConfig.Tier == DefenderTier.Elite)
+            if (roleConfig.Role == DefenderRole.Rocketeer)
             {
                 _gameBridge.SetPedCanSwitchWeapons(pedHandle, false);
             }

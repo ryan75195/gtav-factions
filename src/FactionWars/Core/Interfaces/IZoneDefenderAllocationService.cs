@@ -27,7 +27,7 @@ namespace FactionWars.Core.Interfaces
         /// <exception cref="System.ArgumentNullException">Thrown if factionState or zoneId is null.</exception>
         /// <exception cref="System.ArgumentException">Thrown if zoneId is empty or whitespace.</exception>
         /// <exception cref="System.ArgumentOutOfRangeException">Thrown if count is less than or equal to zero.</exception>
-        bool AllocateTroops(FactionState factionState, string zoneId, DefenderTier tier, int count);
+        bool AllocateTroops(FactionState factionState, string zoneId, DefenderRole tier, int count);
 
         /// <summary>
         /// Gets the allocation for a specific zone and faction.
@@ -65,7 +65,7 @@ namespace FactionWars.Core.Interfaces
         /// <exception cref="System.ArgumentNullException">Thrown if factionState or zoneId is null.</exception>
         /// <exception cref="System.ArgumentException">Thrown if zoneId is empty or whitespace.</exception>
         /// <exception cref="System.ArgumentOutOfRangeException">Thrown if count is less than or equal to zero.</exception>
-        bool WithdrawTroops(FactionState factionState, string zoneId, DefenderTier tier, int count);
+        bool WithdrawTroops(FactionState factionState, string zoneId, DefenderRole tier, int count);
 
         /// <summary>
         /// Directly sets the troop allocation for a zone without requiring reserve troops.
@@ -78,6 +78,6 @@ namespace FactionWars.Core.Interfaces
         /// <exception cref="System.ArgumentNullException">Thrown if factionId or zoneId is null.</exception>
         /// <exception cref="System.ArgumentException">Thrown if factionId or zoneId is empty or whitespace.</exception>
         /// <exception cref="System.ArgumentOutOfRangeException">Thrown if count is negative.</exception>
-        void SetAllocation(string factionId, string zoneId, DefenderTier tier, int count);
+        void SetAllocation(string factionId, string zoneId, DefenderRole tier, int count);
     }
 }

@@ -34,7 +34,7 @@ namespace FactionWars.Tests.Integration.Economy
         private readonly IZoneTraitResourceModifier _resourceModifier;
         private readonly ISupplyLineService _supplyLineService;
         private readonly IResourceTickService _resourceTickService;
-        private readonly IDefenderTierService _defenderTierService;
+        private readonly IDefenderRoleService _defenderRoleService;
         private readonly ITroopPurchaseService _troopPurchaseService;
         private readonly EconomyManager _economyManager;
 
@@ -66,10 +66,10 @@ namespace FactionWars.Tests.Integration.Economy
                 _resourceModifier,
                 _supplyLineService,
                 TickIntervalSeconds);
-            _defenderTierService = new DefenderTierService();
+            _defenderRoleService = new DefenderRoleService();
             _troopPurchaseService = new TroopPurchaseService(
                 _mockGameBridge.Object,
-                _defenderTierService,
+                _defenderRoleService,
                 _factionService);
             _economyManager = new EconomyManager(_resourceTickService, _mockGameBridge.Object);
         }
@@ -100,7 +100,7 @@ namespace FactionWars.Tests.Integration.Economy
 
             // Act: Purchase troops with earned money
             int initialMoney = _playerMoney;
-            var purchaseResult = _troopPurchaseService.PurchaseTroops(MichaelFactionId, DefenderTier.Basic, 2);
+            var purchaseResult = _troopPurchaseService.PurchaseTroops(MichaelFactionId, DefenderRole.Grunt, 2);
 
             // Assert: Purchase succeeded and money was deducted
             Assert.True(purchaseResult.Success, "Troop purchase should succeed with earned income");
@@ -109,7 +109,7 @@ namespace FactionWars.Tests.Integration.Economy
             // Assert: Troops were added to reserve
             var factionState = _factionService.GetFactionState(MichaelFactionId);
             Assert.NotNull(factionState);
-            Assert.True(factionState.GetReserveTroops(DefenderTier.Basic) >= 2,
+            Assert.True(factionState.GetReserveTroops(DefenderRole.Grunt) >= 2,
                 "Purchased troops should be in reserve pool");
         }
 
@@ -201,13 +201,13 @@ namespace FactionWars.Tests.Integration.Economy
             Assert.True(earnedMoney > 0, "Should have earned some money");
 
             // Act: Purchase medium tier troops
-            int mediumCost = _defenderTierService.GetCost(DefenderTier.Medium);
+            int mediumCost = _defenderRoleService.GetCost(DefenderRole.Gunner);
             int affordableCount = earnedMoney / mediumCost;
             Assert.True(affordableCount > 0, "Should be able to afford at least one troop");
 
             var result = _troopPurchaseService.PurchaseTroops(
                 MichaelFactionId,
-                DefenderTier.Medium,
+                DefenderRole.Gunner,
                 affordableCount);
 
             // Assert
@@ -224,27 +224,27 @@ namespace FactionWars.Tests.Integration.Economy
             _playerMoney = 10000; // Start with plenty of money
 
             // Act & Assert: Purchase each tier
-            int basicCost = _defenderTierService.GetCost(DefenderTier.Basic);
-            var basicResult = _troopPurchaseService.PurchaseTroops(MichaelFactionId, DefenderTier.Basic, 5);
+            int basicCost = _defenderRoleService.GetCost(DefenderRole.Grunt);
+            var basicResult = _troopPurchaseService.PurchaseTroops(MichaelFactionId, DefenderRole.Grunt, 5);
             Assert.True(basicResult.Success);
             Assert.Equal(5 * basicCost, basicResult.TotalCost);
 
-            int mediumCost = _defenderTierService.GetCost(DefenderTier.Medium);
-            var mediumResult = _troopPurchaseService.PurchaseTroops(MichaelFactionId, DefenderTier.Medium, 3);
+            int mediumCost = _defenderRoleService.GetCost(DefenderRole.Gunner);
+            var mediumResult = _troopPurchaseService.PurchaseTroops(MichaelFactionId, DefenderRole.Gunner, 3);
             Assert.True(mediumResult.Success);
             Assert.Equal(3 * mediumCost, mediumResult.TotalCost);
 
-            int heavyCost = _defenderTierService.GetCost(DefenderTier.Heavy);
-            var heavyResult = _troopPurchaseService.PurchaseTroops(MichaelFactionId, DefenderTier.Heavy, 2);
+            int heavyCost = _defenderRoleService.GetCost(DefenderRole.Rifleman);
+            var heavyResult = _troopPurchaseService.PurchaseTroops(MichaelFactionId, DefenderRole.Rifleman, 2);
             Assert.True(heavyResult.Success);
             Assert.Equal(2 * heavyCost, heavyResult.TotalCost);
 
             // Verify all troops in reserve
             var state = _factionService.GetFactionState(MichaelFactionId);
             Assert.NotNull(state);
-            Assert.Equal(5, state.GetReserveTroops(DefenderTier.Basic));
-            Assert.Equal(3, state.GetReserveTroops(DefenderTier.Medium));
-            Assert.Equal(2, state.GetReserveTroops(DefenderTier.Heavy));
+            Assert.Equal(5, state.GetReserveTroops(DefenderRole.Grunt));
+            Assert.Equal(3, state.GetReserveTroops(DefenderRole.Gunner));
+            Assert.Equal(2, state.GetReserveTroops(DefenderRole.Rifleman));
 
             // Verify total money deducted
             int totalSpent = (5 * basicCost) + (3 * mediumCost) + (2 * heavyCost);
@@ -259,7 +259,7 @@ namespace FactionWars.Tests.Integration.Economy
             _playerMoney = 100; // Very little money
 
             // Act: Try to buy heavy troops (cost $1000 each)
-            var result = _troopPurchaseService.PurchaseTroops(MichaelFactionId, DefenderTier.Heavy, 1);
+            var result = _troopPurchaseService.PurchaseTroops(MichaelFactionId, DefenderRole.Rifleman, 1);
 
             // Assert
             Assert.False(result.Success);
@@ -268,7 +268,7 @@ namespace FactionWars.Tests.Integration.Economy
 
             var state = _factionService.GetFactionState(MichaelFactionId);
             Assert.NotNull(state);
-            Assert.Equal(0, state.GetReserveTroops(DefenderTier.Heavy));
+            Assert.Equal(0, state.GetReserveTroops(DefenderRole.Rifleman));
         }
 
         #endregion
@@ -390,16 +390,16 @@ namespace FactionWars.Tests.Integration.Economy
             _playerMoney = 5000;
 
             // Act: Purchase troops of different tiers
-            _troopPurchaseService.PurchaseTroops(MichaelFactionId, DefenderTier.Basic, 3);
-            _troopPurchaseService.PurchaseTroops(MichaelFactionId, DefenderTier.Medium, 2);
-            _troopPurchaseService.PurchaseTroops(MichaelFactionId, DefenderTier.Heavy, 1);
+            _troopPurchaseService.PurchaseTroops(MichaelFactionId, DefenderRole.Grunt, 3);
+            _troopPurchaseService.PurchaseTroops(MichaelFactionId, DefenderRole.Gunner, 2);
+            _troopPurchaseService.PurchaseTroops(MichaelFactionId, DefenderRole.Rifleman, 1);
 
             // Assert: Each tier has correct count in reserve
             var state = _factionService.GetFactionState(MichaelFactionId);
             Assert.NotNull(state);
-            Assert.Equal(3, state.GetReserveTroops(DefenderTier.Basic));
-            Assert.Equal(2, state.GetReserveTroops(DefenderTier.Medium));
-            Assert.Equal(1, state.GetReserveTroops(DefenderTier.Heavy));
+            Assert.Equal(3, state.GetReserveTroops(DefenderRole.Grunt));
+            Assert.Equal(2, state.GetReserveTroops(DefenderRole.Gunner));
+            Assert.Equal(1, state.GetReserveTroops(DefenderRole.Rifleman));
             Assert.Equal(6, state.TotalReserveTroops);
         }
 
@@ -549,15 +549,15 @@ namespace FactionWars.Tests.Integration.Economy
             SetupFaction(MichaelFactionId, "Michael's Crew", initialCash: 0);
             _playerMoney = 500;
 
-            int basicCost = _defenderTierService.GetCost(DefenderTier.Basic); // $200
-            int mediumCost = _defenderTierService.GetCost(DefenderTier.Medium); // $500
-            int heavyCost = _defenderTierService.GetCost(DefenderTier.Heavy); // $1000
+            int basicCost = _defenderRoleService.GetCost(DefenderRole.Grunt); // $200
+            int mediumCost = _defenderRoleService.GetCost(DefenderRole.Gunner); // $500
+            int heavyCost = _defenderRoleService.GetCost(DefenderRole.Rifleman); // $1000
 
             // Act & Assert
-            Assert.True(_troopPurchaseService.CanAfford(DefenderTier.Basic, 2)); // $400
-            Assert.False(_troopPurchaseService.CanAfford(DefenderTier.Basic, 3)); // $600
-            Assert.True(_troopPurchaseService.CanAfford(DefenderTier.Medium, 1)); // $500
-            Assert.False(_troopPurchaseService.CanAfford(DefenderTier.Heavy, 1)); // $1000
+            Assert.True(_troopPurchaseService.CanAfford(DefenderRole.Grunt, 2)); // $400
+            Assert.False(_troopPurchaseService.CanAfford(DefenderRole.Grunt, 3)); // $600
+            Assert.True(_troopPurchaseService.CanAfford(DefenderRole.Gunner, 1)); // $500
+            Assert.False(_troopPurchaseService.CanAfford(DefenderRole.Rifleman, 1)); // $1000
         }
 
         #endregion

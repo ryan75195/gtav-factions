@@ -14,28 +14,28 @@ namespace FactionWars.Economy.Services
     public class TroopPurchaseService : ITroopPurchaseService
     {
         private readonly IGameBridge _gameBridge;
-        private readonly IDefenderTierService _defenderTierService;
+        private readonly IDefenderRoleService _defenderRoleService;
         private readonly IFactionService _factionService;
 
         /// <summary>
         /// Creates a new TroopPurchaseService.
         /// </summary>
         /// <param name="gameBridge">The game bridge for GTA V interactions.</param>
-        /// <param name="defenderTierService">Service for defender tier costs.</param>
+        /// <param name="defenderRoleService">Service for defender tier costs.</param>
         /// <param name="factionService">Service for faction operations.</param>
         /// <exception cref="ArgumentNullException">Thrown if any parameter is null.</exception>
         public TroopPurchaseService(
             IGameBridge gameBridge,
-            IDefenderTierService defenderTierService,
+            IDefenderRoleService defenderRoleService,
             IFactionService factionService)
         {
             _gameBridge = gameBridge ?? throw new ArgumentNullException(nameof(gameBridge));
-            _defenderTierService = defenderTierService ?? throw new ArgumentNullException(nameof(defenderTierService));
+            _defenderRoleService = defenderRoleService ?? throw new ArgumentNullException(nameof(defenderRoleService));
             _factionService = factionService ?? throw new ArgumentNullException(nameof(factionService));
         }
 
         /// <inheritdoc />
-        public bool CanAfford(DefenderTier tier, int count)
+        public bool CanAfford(DefenderRole tier, int count)
         {
             if (count < 0)
                 throw new ArgumentOutOfRangeException(nameof(count), "Count cannot be negative.");
@@ -49,19 +49,19 @@ namespace FactionWars.Economy.Services
         }
 
         /// <inheritdoc />
-        public int GetTroopCost(DefenderTier tier)
+        public int GetTroopCost(DefenderRole tier)
         {
-            return _defenderTierService.GetCost(tier);
+            return _defenderRoleService.GetCost(tier);
         }
 
         /// <inheritdoc />
-        public int CalculateTotalCost(DefenderTier tier, int count)
+        public int CalculateTotalCost(DefenderRole tier, int count)
         {
             return GetTroopCost(tier) * count;
         }
 
         /// <inheritdoc />
-        public TroopPurchaseResult PurchaseTroops(string factionId, DefenderTier tier, int count)
+        public TroopPurchaseResult PurchaseTroops(string factionId, DefenderRole tier, int count)
         {
             if (factionId == null)
                 throw new ArgumentNullException(nameof(factionId));

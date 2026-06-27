@@ -14,7 +14,7 @@ namespace FactionWars.Factions.Models
         private const int WeaponMultiplier = 2;
 
         private readonly HashSet<string> _ownedZoneIds;
-        private readonly Dictionary<DefenderTier, int> _reservePool;
+        private readonly Dictionary<DefenderRole, int> _reservePool;
         private int _cash;
         private int _recruitmentPoints;
         private int _weapons;
@@ -93,11 +93,11 @@ namespace FactionWars.Factions.Models
 
             FactionId = factionId;
             _ownedZoneIds = new HashSet<string>();
-            _reservePool = new Dictionary<DefenderTier, int>
+            _reservePool = new Dictionary<DefenderRole, int>
             {
-                { DefenderTier.Basic, Math.Max(0, initialTroopCount) },
-                { DefenderTier.Medium, 0 },
-                { DefenderTier.Heavy, 0 }
+                { DefenderRole.Grunt, Math.Max(0, initialTroopCount) },
+                { DefenderRole.Gunner, 0 },
+                { DefenderRole.Rifleman, 0 }
             };
             _cash = Math.Max(0, initialCash);
             _recruitmentPoints = 0;
@@ -208,7 +208,7 @@ namespace FactionWars.Factions.Models
             if (count < 0)
                 throw new ArgumentOutOfRangeException(nameof(count), "Count cannot be negative.");
 
-            AddReserveTroops(DefenderTier.Basic, count);
+            AddReserveTroops(DefenderRole.Grunt, count);
         }
 
         /// <summary>
@@ -224,7 +224,7 @@ namespace FactionWars.Factions.Models
                 throw new ArgumentOutOfRangeException(nameof(count), "Count cannot be negative.");
 
             var remaining = count;
-            var tierOrder = new[] { DefenderTier.Basic, DefenderTier.Medium, DefenderTier.Heavy };
+            var tierOrder = new[] { DefenderRole.Grunt, DefenderRole.Gunner, DefenderRole.Rifleman };
 
             foreach (var tier in tierOrder)
             {
@@ -262,7 +262,7 @@ namespace FactionWars.Factions.Models
         /// </summary>
         /// <param name="tier">The defender tier to query.</param>
         /// <returns>The number of troops in that tier's reserve.</returns>
-        public int GetReserveTroops(DefenderTier tier)
+        public int GetReserveTroops(DefenderRole tier)
         {
             return _reservePool.TryGetValue(tier, out var count) ? count : 0;
         }
@@ -273,7 +273,7 @@ namespace FactionWars.Factions.Models
         /// <param name="tier">The defender tier to add to.</param>
         /// <param name="count">The number of troops to add (must be non-negative).</param>
         /// <exception cref="ArgumentOutOfRangeException">Thrown if count is negative.</exception>
-        public void AddReserveTroops(DefenderTier tier, int count)
+        public void AddReserveTroops(DefenderRole tier, int count)
         {
             if (count < 0)
                 throw new ArgumentOutOfRangeException(nameof(count), "Count cannot be negative.");
@@ -291,7 +291,7 @@ namespace FactionWars.Factions.Models
         /// <param name="count">The number of troops to remove (must be non-negative).</param>
         /// <returns>True if the troops were removed, false if insufficient troops.</returns>
         /// <exception cref="ArgumentOutOfRangeException">Thrown if count is negative.</exception>
-        public bool RemoveReserveTroops(DefenderTier tier, int count)
+        public bool RemoveReserveTroops(DefenderRole tier, int count)
         {
             if (count < 0)
                 throw new ArgumentOutOfRangeException(nameof(count), "Count cannot be negative.");
@@ -309,7 +309,7 @@ namespace FactionWars.Factions.Models
         /// <param name="tier">The defender tier to check.</param>
         /// <param name="count">The minimum troop count to check for.</param>
         /// <returns>True if the tier has enough troops, false otherwise.</returns>
-        public bool HasReserveTroops(DefenderTier tier, int count)
+        public bool HasReserveTroops(DefenderRole tier, int count)
         {
             return _reservePool.TryGetValue(tier, out var current) && current >= count;
         }
@@ -319,9 +319,9 @@ namespace FactionWars.Factions.Models
         /// Modifying the returned dictionary will not affect the internal state.
         /// </summary>
         /// <returns>A new dictionary with the reserve pool counts by tier.</returns>
-        public Dictionary<DefenderTier, int> GetReservePoolCopy()
+        public Dictionary<DefenderRole, int> GetReservePoolCopy()
         {
-            return new Dictionary<DefenderTier, int>(_reservePool);
+            return new Dictionary<DefenderRole, int>(_reservePool);
         }
 
         #endregion

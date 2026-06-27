@@ -273,8 +273,8 @@ namespace FactionWars.Tests.Unit.Telemetry
                     ZoneBattleManager = battleManager.Object,
                 });
 
-            var attackerTroops = new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 5 } };
-            var defenderTroops = new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 3 } };
+            var attackerTroops = new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 5 } };
+            var defenderTroops = new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 3 } };
             var battle = new ZoneBattle("trevor", "michael", "zone1", attackerTroops, defenderTroops);
 
             battleManager.Raise(m => m.BattleStarted += null, battle);
@@ -303,15 +303,15 @@ namespace FactionWars.Tests.Unit.Telemetry
                     ZoneBattleManager = battleManager.Object,
                 });
 
-            var attackerTroops = new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 5 } };
-            var defenderTroops = new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 3 } };
+            var attackerTroops = new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 5 } };
+            var defenderTroops = new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 3 } };
             var battle = new ZoneBattle("trevor", "michael", "zone1", attackerTroops, defenderTroops);
             // Simulate casualties: attacker lost 2 troops, defender wiped.
-            battle.RemoveAttackerTroop(DefenderTier.Basic);
-            battle.RemoveAttackerTroop(DefenderTier.Basic);
-            battle.RemoveDefenderTroop(DefenderTier.Basic);
-            battle.RemoveDefenderTroop(DefenderTier.Basic);
-            battle.RemoveDefenderTroop(DefenderTier.Basic);
+            battle.RemoveAttackerTroop(DefenderRole.Grunt);
+            battle.RemoveAttackerTroop(DefenderRole.Grunt);
+            battle.RemoveDefenderTroop(DefenderRole.Grunt);
+            battle.RemoveDefenderTroop(DefenderRole.Grunt);
+            battle.RemoveDefenderTroop(DefenderRole.Grunt);
 
             battleManager.Raise(m => m.BattleEnded += null, battle, BattleOutcome.AttackersWon);
 
@@ -336,8 +336,8 @@ namespace FactionWars.Tests.Unit.Telemetry
                     ZoneBattleManager = battleManager.Object,
                 });
 
-            var attackerTroops = new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 5 } };
-            var defenderTroops = new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 3 } };
+            var attackerTroops = new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 5 } };
+            var defenderTroops = new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 3 } };
             var battle = new ZoneBattle("trevor", "michael", "zone1", attackerTroops, defenderTroops);
             battle.RemoveParticipant("trevor");
 
@@ -365,12 +365,12 @@ namespace FactionWars.Tests.Unit.Telemetry
                 });
 
             allocationService.Raise(a => a.TroopsAllocated += null,
-                this, new TroopsAllocatedEventArgs("trevor", "zone1", DefenderTier.Heavy, 2));
+                this, new TroopsAllocatedEventArgs("trevor", "zone1", DefenderRole.Rifleman, 2));
 
             _sink.Verify(s => s.WriteAllocation(It.Is<AllocationEventRow>(r =>
                 r.FactionId == "trevor"
                 && r.ZoneId == "zone1"
-                && r.Tier == DefenderTier.Heavy
+                && r.Tier == DefenderRole.Rifleman
                 && r.Count == 2
                 && r.Source == AllocationSource.AI)), Times.Once);
         }
@@ -433,13 +433,13 @@ namespace FactionWars.Tests.Unit.Telemetry
                 });
 
             raiseAttackerKilled(new AttackerKilledEventArgs(
-                "zone1", "trevor", DefenderTier.Basic, pedHandle: 50, killerPedHandle: 100));
+                "zone1", "trevor", DefenderRole.Grunt, pedHandle: 50, killerPedHandle: 100));
 
             _sink.Verify(s => s.WritePlayerEvent(It.Is<PlayerEventRow>(r =>
                 r.Type == PlayerEventType.Kill
                 && r.ZoneId == "zone1"
                 && r.TargetFaction == "trevor"
-                && r.TargetTier == DefenderTier.Basic)), Times.Once);
+                && r.TargetTier == DefenderRole.Grunt)), Times.Once);
         }
 
         [Fact]
@@ -455,7 +455,7 @@ namespace FactionWars.Tests.Unit.Telemetry
                 });
 
             raiseAttackerKilled(new AttackerKilledEventArgs(
-                "zone1", "trevor", DefenderTier.Basic, pedHandle: 50, killerPedHandle: 999));
+                "zone1", "trevor", DefenderRole.Grunt, pedHandle: 50, killerPedHandle: 999));
 
             _sink.Verify(s => s.WritePlayerEvent(It.IsAny<PlayerEventRow>()), Times.Never);
         }
@@ -715,7 +715,7 @@ namespace FactionWars.Tests.Unit.Telemetry
             var zoneBattleManager = new Mock<IZoneBattleManager>();
             var pedSpawning = new Mock<FactionWars.Combat.Interfaces.IPedSpawningService>();
             var pedDespawn = new Mock<FactionWars.Combat.Interfaces.IPedDespawnService>();
-            var defenderTier = new Mock<FactionWars.Core.Interfaces.IDefenderTierService>();
+            var defenderTier = new Mock<FactionWars.Core.Interfaces.IDefenderRoleService>();
             var pedBlip = new Mock<FactionWars.UI.Interfaces.IPedBlipService>();
             var zoneSvc = new Mock<IZoneService>();
             var factionSvc = new Mock<IFactionService>();

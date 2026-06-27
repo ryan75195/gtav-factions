@@ -91,7 +91,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             var allocationServiceMock = new Mock<IZoneDefenderAllocationService>();
             var pedSpawningServiceMock = new Mock<IPedSpawningService>();
             var pedDespawnServiceMock = new Mock<IPedDespawnService>();
-            var defenderTierServiceMock = new Mock<IDefenderTierService>();
+            var defenderRoleServiceMock = new Mock<IDefenderRoleService>();
             var pedBlipServiceMock = new Mock<IPedBlipService>();
             var zoneServiceMock = new Mock<IZoneService>();
 
@@ -100,9 +100,9 @@ namespace FactionWars.Tests.Unit.ScriptHookV
                 .Setup(p => p.SpawnPed(It.IsAny<string>(), It.IsAny<Vector3>(), It.IsAny<string>(), It.IsAny<string>()))
                 .Returns(() => new PedHandle(bridge.CreatePed("test", new Vector3(0f, 0f, 0f))));
 
-            defenderTierServiceMock
-                .Setup(d => d.GetTierConfig(It.IsAny<DefenderTier>()))
-                .Returns(new DefenderTierConfig(DefenderTier.Basic, 200, 100, 0, "weapon_pistol", 0.5f, 1.0f));
+            defenderRoleServiceMock
+                .Setup(d => d.GetRoleConfig(It.IsAny<DefenderRole>()))
+                .Returns(new DefenderRoleConfig(DefenderRole.Grunt, 200, 100, 0, "weapon_pistol", 0.5f, 1.0f));
 
             pedBlipServiceMock
                 .Setup(p => p.CreateBlipForPed(It.IsAny<int>(), It.IsAny<BlipColor>()))
@@ -115,7 +115,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             zoneServiceMock.Setup(z => z.GetZone(TestZoneId)).Returns(zone);
 
             var allocation = new ZoneDefenderAllocation(EnemyFactionId, TestZoneId);
-            allocation.AddTroops(DefenderTier.Basic, 1);
+            allocation.AddTroops(DefenderRole.Grunt, 1);
             allocationServiceMock.Setup(a => a.GetAllocation(EnemyFactionId, TestZoneId)).Returns(allocation);
 
             var manager = new EnemyDefenderManager(
@@ -123,7 +123,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
                 allocationServiceMock.Object,
                 pedSpawningServiceMock.Object,
                 pedDespawnServiceMock.Object,
-                defenderTierServiceMock.Object,
+                defenderRoleServiceMock.Object,
                 pedBlipServiceMock.Object,
                 zoneServiceMock.Object);
 

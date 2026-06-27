@@ -15,7 +15,7 @@ namespace FactionWars.Persistence.Models
         public int Weapons { get; set; }
         public int TroopCount { get; set; }
         public List<string> OwnedZoneIds { get; set; } = new List<string>();
-        public Dictionary<DefenderTier, int> ReservePool { get; set; } = new Dictionary<DefenderTier, int>();
+        public Dictionary<DefenderRole, int> ReservePool { get; set; } = new Dictionary<DefenderRole, int>();
 
         /// <summary>
         /// Creates a FactionStateData from a FactionState model.

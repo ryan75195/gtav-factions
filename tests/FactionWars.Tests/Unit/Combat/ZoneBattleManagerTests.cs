@@ -33,13 +33,13 @@ namespace FactionWars.Tests.Unit.Combat
             return new ZoneBattleManager(allocationService, factionService, zoneService, playerFactionId);
         }
 
-        private Dictionary<DefenderTier, int> CreateTroops(int basic, int medium, int heavy)
+        private Dictionary<DefenderRole, int> CreateTroops(int basic, int medium, int heavy)
         {
-            return new Dictionary<DefenderTier, int>
+            return new Dictionary<DefenderRole, int>
             {
-                { DefenderTier.Basic, basic },
-                { DefenderTier.Medium, medium },
-                { DefenderTier.Heavy, heavy }
+                { DefenderRole.Grunt, basic },
+                { DefenderRole.Gunner, medium },
+                { DefenderRole.Rifleman, heavy }
             };
         }
 
@@ -118,8 +118,8 @@ namespace FactionWars.Tests.Unit.Combat
                 defenderTroops: defenderTroops);
 
             // Assert
-            Assert.Equal(5, battle.AttackerTroops[DefenderTier.Basic]);
-            Assert.Equal(4, battle.DefenderTroops[DefenderTier.Basic]);
+            Assert.Equal(5, battle.AttackerTroops[DefenderRole.Grunt]);
+            Assert.Equal(4, battle.DefenderTroops[DefenderRole.Grunt]);
         }
 
         [Fact]
@@ -567,7 +567,7 @@ namespace FactionWars.Tests.Unit.Combat
                 defenderTroops: CreateTroops(4, 0, 0));
 
             ZoneBattle? eventBattle = null;
-            DefenderTier? eventTier = null;
+            DefenderRole? eventTier = null;
             string? eventSide = null;
             manager.TroopKilled += (b, tier, side) =>
             {
@@ -707,11 +707,11 @@ namespace FactionWars.Tests.Unit.Combat
             int initialAttackers = battle.TotalAttackerTroops;
 
             // Act
-            manager.ReportTroopKilled("zone_vinewood", "faction_trevor", DefenderTier.Basic);
+            manager.ReportTroopKilled("zone_vinewood", "faction_trevor", DefenderRole.Grunt);
 
             // Assert
             Assert.Equal(initialAttackers - 1, battle.TotalAttackerTroops);
-            Assert.Equal(4, battle.AttackerTroops[DefenderTier.Basic]);
+            Assert.Equal(4, battle.AttackerTroops[DefenderRole.Grunt]);
         }
 
         [Fact]
@@ -729,11 +729,11 @@ namespace FactionWars.Tests.Unit.Combat
             int initialDefenders = battle.TotalDefenderTroops;
 
             // Act
-            manager.ReportTroopKilled("zone_vinewood", "faction_michael", DefenderTier.Medium);
+            manager.ReportTroopKilled("zone_vinewood", "faction_michael", DefenderRole.Gunner);
 
             // Assert
             Assert.Equal(initialDefenders - 1, battle.TotalDefenderTroops);
-            Assert.Equal(1, battle.DefenderTroops[DefenderTier.Medium]);
+            Assert.Equal(1, battle.DefenderTroops[DefenderRole.Gunner]);
         }
 
         [Fact]
@@ -749,7 +749,7 @@ namespace FactionWars.Tests.Unit.Combat
                 defenderTroops: CreateTroops(4, 0, 0));
 
             ZoneBattle? eventBattle = null;
-            DefenderTier? eventTier = null;
+            DefenderRole? eventTier = null;
             string? eventSide = null;
             manager.TroopKilled += (b, tier, side) =>
             {
@@ -759,11 +759,11 @@ namespace FactionWars.Tests.Unit.Combat
             };
 
             // Act
-            manager.ReportTroopKilled("zone_vinewood", "faction_trevor", DefenderTier.Basic);
+            manager.ReportTroopKilled("zone_vinewood", "faction_trevor", DefenderRole.Grunt);
 
             // Assert
             Assert.NotNull(eventBattle);
-            Assert.Equal(DefenderTier.Basic, eventTier);
+            Assert.Equal(DefenderRole.Grunt, eventTier);
             Assert.Equal("attacker", eventSide);
         }
 
@@ -783,7 +783,7 @@ namespace FactionWars.Tests.Unit.Combat
             manager.BattleEnded += (b, outcome) => endedOutcome = outcome;
 
             // Act - kill the last attacker
-            manager.ReportTroopKilled("zone_vinewood", "faction_trevor", DefenderTier.Basic);
+            manager.ReportTroopKilled("zone_vinewood", "faction_trevor", DefenderRole.Grunt);
 
             // Assert
             Assert.Equal(0, manager.BattleCount);
@@ -798,7 +798,7 @@ namespace FactionWars.Tests.Unit.Combat
 
             // Act & Assert
             var exception = Record.Exception(() =>
-                manager.ReportTroopKilled("zone_nonexistent", "faction_trevor", DefenderTier.Basic));
+                manager.ReportTroopKilled("zone_nonexistent", "faction_trevor", DefenderRole.Grunt));
             Assert.Null(exception);
         }
 
@@ -816,7 +816,7 @@ namespace FactionWars.Tests.Unit.Combat
 
             // Act & Assert - faction_franklin is not in the battle
             var exception = Record.Exception(() =>
-                manager.ReportTroopKilled("zone_vinewood", "faction_franklin", DefenderTier.Basic));
+                manager.ReportTroopKilled("zone_vinewood", "faction_franklin", DefenderRole.Grunt));
             Assert.Null(exception);
         }
 
@@ -829,10 +829,10 @@ namespace FactionWars.Tests.Unit.Combat
         {
             var manager = CreateManager(playerFactionId: "player_faction");
             manager.StartBattle("zone_1", "trevor", "michael",
-                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 3 } },
-                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 5 } });
+                new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 3 } },
+                new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 5 } });
 
-            manager.ReportTroopKilled("zone_1", "trevor", DefenderTier.Basic);
+            manager.ReportTroopKilled("zone_1", "trevor", DefenderRole.Grunt);
 
             var battle = manager.GetBattleForZone("zone_1");
             Assert.Equal(2, battle!.Attackers[0].AliveCount);
@@ -844,8 +844,8 @@ namespace FactionWars.Tests.Unit.Combat
             var manager = CreateManager(playerFactionId: "player_faction");
             // Defender has 1 troop, player has callback returning 4.
             manager.StartBattle("zone_1", "trevor", "michael",
-                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 3 } },
-                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 1 } });
+                new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 3 } },
+                new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 1 } });
             manager.JoinAsAttacker("zone_1", "player_faction", true, () => 4, null);
             // Trevor leaves so it's only player vs michael (1 troop).
             manager.RemoveParticipant("zone_1", "trevor");
@@ -854,7 +854,7 @@ namespace FactionWars.Tests.Unit.Combat
             BattleOutcome? endedOutcome = null;
             manager.BattleEnded += (b, o) => { endedBattle = b; endedOutcome = o; };
 
-            manager.ReportTroopKilled("zone_1", "michael", DefenderTier.Basic);
+            manager.ReportTroopKilled("zone_1", "michael", DefenderRole.Grunt);
 
             Assert.NotNull(endedBattle);
             Assert.Equal(BattleOutcome.AttackersWon, endedOutcome);
@@ -866,10 +866,10 @@ namespace FactionWars.Tests.Unit.Combat
         {
             var manager = CreateManager(playerFactionId: "player_faction");
             manager.StartBattle("zone_1", "trevor", "michael",
-                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 3 } },
-                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 5 } });
+                new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 3 } },
+                new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 5 } });
 
-            manager.ReportTroopKilled("zone_1", "franklin", DefenderTier.Basic);
+            manager.ReportTroopKilled("zone_1", "franklin", DefenderRole.Grunt);
 
             var battle = manager.GetBattleForZone("zone_1");
             Assert.NotNull(battle);
@@ -896,8 +896,8 @@ namespace FactionWars.Tests.Unit.Combat
         {
             var manager = CreateManager(playerFactionId: "player_faction");
             manager.StartBattle("zone_1", "trevor", "michael",
-                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 3 } },
-                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 5 } });
+                new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 3 } },
+                new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 5 } });
             manager.JoinAsAttacker("zone_1", "player_faction", true, () => 4, null);
 
             int endCount = 0;
@@ -918,8 +918,8 @@ namespace FactionWars.Tests.Unit.Combat
         {
             var manager = CreateManager(playerFactionId: "player_faction");
             manager.StartBattle("zone_1", "trevor", "michael",
-                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 3 } },
-                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 5 } });
+                new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 3 } },
+                new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 5 } });
 
             ZoneBattle? endedBattle = null;
             BattleOutcome? endedOutcome = null;
@@ -965,8 +965,8 @@ namespace FactionWars.Tests.Unit.Combat
         {
             var manager = CreateManager(playerFactionId: "player_faction");
             manager.StartBattle("zone_1", "trevor", "michael",
-                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 3 } },
-                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 5 } });
+                new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 3 } },
+                new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 5 } });
             var zone = CreateTestZone("zone_1");
             zone.OwnerFactionId = "michael";
 
@@ -1016,8 +1016,8 @@ namespace FactionWars.Tests.Unit.Combat
         {
             var manager = CreateManager(playerFactionId: "player_faction");
             manager.StartBattle("zone_1", "trevor", "michael",
-                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 3 } },
-                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 3 } });
+                new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 3 } },
+                new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 3 } });
 
             bool result = manager.JoinAsAttacker(
                 zoneId: "zone_1",
@@ -1038,8 +1038,8 @@ namespace FactionWars.Tests.Unit.Combat
         {
             var manager = CreateManager(playerFactionId: "player_faction");
             manager.StartBattle("zone_1", "trevor", "michael",
-                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 3 } },
-                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 3 } });
+                new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 3 } },
+                new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 3 } });
             manager.JoinAsAttacker("zone_1", "player_faction", true, () => 4, null);
 
             bool result = manager.JoinAsAttacker(
@@ -1047,7 +1047,7 @@ namespace FactionWars.Tests.Unit.Combat
                 factionId: "franklin",
                 isPlayer: false,
                 aliveCountCallback: null,
-                troops: new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 2 } });
+                troops: new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 2 } });
 
             Assert.False(result);
         }
@@ -1057,15 +1057,15 @@ namespace FactionWars.Tests.Unit.Combat
         {
             var manager = CreateManager(playerFactionId: "player_faction");
             manager.StartBattle("zone_1", "trevor", "michael",
-                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 3 } },
-                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 3 } });
+                new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 3 } },
+                new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 3 } });
 
             bool result = manager.JoinAsAttacker(
                 zoneId: "zone_1",
                 factionId: "franklin",
                 isPlayer: false,
                 aliveCountCallback: null,
-                troops: new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 2 } });
+                troops: new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 2 } });
 
             Assert.False(result);
         }
@@ -1075,15 +1075,15 @@ namespace FactionWars.Tests.Unit.Combat
         {
             var manager = CreateManager(playerFactionId: "player_faction");
             manager.StartBattle("zone_1", "trevor", "michael",
-                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 3 } },
-                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 3 } });
+                new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 3 } },
+                new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 3 } });
 
             bool result = manager.JoinAsAttacker(
                 zoneId: "zone_1",
                 factionId: "trevor",
                 isPlayer: false,
                 aliveCountCallback: null,
-                troops: new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 1 } });
+                troops: new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 1 } });
 
             Assert.False(result);
         }
@@ -1105,8 +1105,8 @@ namespace FactionWars.Tests.Unit.Combat
         {
             var manager = CreateManager(playerFactionId: "player_faction");
             manager.StartBattle("zone_1", "trevor", "michael",
-                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 3 } },
-                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 3 } });
+                new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 3 } },
+                new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 3 } });
 
             Assert.False(manager.IsPlayerInBattle());
         }
@@ -1116,8 +1116,8 @@ namespace FactionWars.Tests.Unit.Combat
         {
             var manager = CreateManager(playerFactionId: "player_faction");
             manager.StartBattle("zone_1", "trevor", "michael",
-                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 3 } },
-                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 3 } });
+                new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 3 } },
+                new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 3 } });
 
             Assert.Null(manager.GetPlayerCurrentBattle());
         }

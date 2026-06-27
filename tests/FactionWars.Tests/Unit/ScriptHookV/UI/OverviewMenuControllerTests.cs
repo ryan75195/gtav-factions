@@ -47,9 +47,9 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
             // Setup default faction state
             // After consolidation, initialTroopCount goes to Basic tier, so we use reserve pool only
             var factionState = new FactionState(PlayerFactionId, 10000);
-            factionState.AddReserveTroops(DefenderTier.Basic, 20);
-            factionState.AddReserveTroops(DefenderTier.Medium, 15);
-            factionState.AddReserveTroops(DefenderTier.Heavy, 10);
+            factionState.AddReserveTroops(DefenderRole.Grunt, 20);
+            factionState.AddReserveTroops(DefenderRole.Gunner, 15);
+            factionState.AddReserveTroops(DefenderRole.Rifleman, 10);
             for (int i = 0; i < 8; i++)
             {
                 factionState.AddZone($"zone_{i}");

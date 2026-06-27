@@ -11,7 +11,7 @@ namespace FactionWars.ScriptHookV.Managers
             if (_currentEnemyZoneId == null || string.IsNullOrEmpty(enemyFactionId)) return;
             var defenderFactionId = enemyFactionId!;
 
-            var newlyDeadPeds = new List<(string zoneId, int pedHandle, DefenderTier tier)>();
+            var newlyDeadPeds = new List<(string zoneId, int pedHandle, DefenderRole tier)>();
             var streamedOutPeds = new List<(string zoneId, int pedHandle)>();
             var currentGameTime = _gameBridge.GetGameTime();
 

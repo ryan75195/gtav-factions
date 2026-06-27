@@ -30,13 +30,13 @@ namespace FactionWars.ScriptHookV.Managers
 
         private void RestoreFollower(string factionId, SavedFollowerState savedFollower, int vehicleHandle)
         {
-            var result = _followerService.Recruit(factionId, savedFollower.Tier);
+            var result = _followerService.Recruit(factionId, savedFollower.Role);
             if (!result.Success || result.Follower == null)
             {
                 return;
             }
 
-            var modelName = _modelsByTier.TryGetValue(savedFollower.Tier, out var model) ? model : "g_m_y_lost_01";
+            var modelName = _modelsByTier.TryGetValue(savedFollower.Role, out var model) ? model : "g_m_y_lost_01";
             var spawnPos = new Vector3(savedFollower.Position.X, savedFollower.Position.Y, savedFollower.Position.Z);
             var pedHandle = _pedSpawningService.SpawnPed(modelName, spawnPos, factionId, null);
             if (!pedHandle.IsValid)
@@ -47,7 +47,7 @@ namespace FactionWars.ScriptHookV.Managers
 
             result.Follower.SetPedHandle(pedHandle.Handle);
             _gameBridge.SetPedAsFollower(pedHandle.Handle);
-            ConfigureFollowerCombat(pedHandle.Handle, _defenderTierService.GetTierConfig(savedFollower.Tier));
+            ConfigureFollowerCombat(pedHandle.Handle, _defenderRoleService.GetRoleConfig(savedFollower.Role));
             _pedBlipService.CreateBlipForPed(pedHandle.Handle, BlipColor.Yellow);
 
             if (vehicleHandle >= 0 && savedFollower.VehicleSeatIndex >= 0)

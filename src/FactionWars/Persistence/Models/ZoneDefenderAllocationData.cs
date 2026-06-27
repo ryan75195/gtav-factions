@@ -10,7 +10,7 @@ namespace FactionWars.Persistence.Models
     {
         public string FactionId { get; set; } = string.Empty;
         public string ZoneId { get; set; } = string.Empty;
-        public Dictionary<DefenderTier, int> Troops { get; set; } = new Dictionary<DefenderTier, int>();
+        public Dictionary<DefenderRole, int> Troops { get; set; } = new Dictionary<DefenderRole, int>();
 
         /// <summary>
         /// Creates a ZoneDefenderAllocationData from a ZoneDefenderAllocation model.

@@ -20,7 +20,7 @@ namespace FactionWars.Combat.Models
         /// <summary>
         /// The tier of the troop that got the kill.
         /// </summary>
-        public DefenderTier KillerTier { get; }
+        public DefenderRole KillerTier { get; }
 
         /// <summary>
         /// The faction that lost a troop.
@@ -30,7 +30,7 @@ namespace FactionWars.Combat.Models
         /// <summary>
         /// The tier of the troop that was killed.
         /// </summary>
-        public DefenderTier VictimTier { get; }
+        public DefenderRole VictimTier { get; }
 
         /// <summary>
         /// The zone where the battle is taking place.
@@ -45,9 +45,9 @@ namespace FactionWars.Combat.Models
         public BattleKillEvent(
             string battleId,
             string killerFactionId,
-            DefenderTier killerTier,
+            DefenderRole killerTier,
             string victimFactionId,
-            DefenderTier victimTier,
+            DefenderRole victimTier,
             string zoneId,
             string zoneName)
         {

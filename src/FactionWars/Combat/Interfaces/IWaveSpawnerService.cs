@@ -26,7 +26,7 @@ namespace FactionWars.Combat.Interfaces
         /// </summary>
         /// <param name="state">The current wave state.</param>
         /// <returns>The next tier to spawn, or null if all tiers are complete.</returns>
-        DefenderTier? GetNextWaveTier(WaveState state);
+        DefenderRole? GetNextWaveTier(WaveState state);
 
         /// <summary>
         /// Gets the number of peds to spawn for a specific wave/tier, respecting a maximum limit.
@@ -36,12 +36,12 @@ namespace FactionWars.Combat.Interfaces
         /// <param name="tier">The tier to get spawn count for.</param>
         /// <param name="maxToSpawn">The maximum number of peds to spawn this tick.</param>
         /// <returns>The number of peds to spawn (0 if tier is complete).</returns>
-        int GetSpawnCountForWave(WaveState state, DefenderTier tier, int maxToSpawn);
+        int GetSpawnCountForWave(WaveState state, DefenderRole tier, int maxToSpawn);
 
         /// <summary>
         /// Gets the wave spawn order (Heavy → Medium → Basic).
         /// </summary>
         /// <returns>A list of tiers in spawn order.</returns>
-        IReadOnlyList<DefenderTier> GetWaveOrder();
+        IReadOnlyList<DefenderRole> GetWaveOrder();
     }
 }

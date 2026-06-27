@@ -11,7 +11,7 @@ namespace FactionWars.ScriptHookV.Managers
 {
     public partial class FriendlyDefenderManager
     {
-        private bool TrySpawnReplacementFromReserve(string zoneId, DefenderTier preferredTier, ZoneDefenderAllocation? allocation)
+        private bool TrySpawnReplacementFromReserve(string zoneId, DefenderRole preferredTier, ZoneDefenderAllocation? allocation)
         {
             if (allocation == null) return false;
 
@@ -32,7 +32,7 @@ namespace FactionWars.ScriptHookV.Managers
             }
 
             // If no reserve of that tier, try other tiers (highest first)
-            var tiersToTry = new[] { DefenderTier.Heavy, DefenderTier.Medium, DefenderTier.Basic };
+            var tiersToTry = new[] { DefenderRole.Rifleman, DefenderRole.Gunner, DefenderRole.Grunt };
             foreach (var tier in tiersToTry)
             {
                 if (tier == preferredTier) continue; // Already tried
@@ -54,12 +54,12 @@ namespace FactionWars.ScriptHookV.Managers
         /// Spawns a single defender of the specified tier.
         /// Uses combat targeting if a battle is active in the zone.
         /// </summary>
-        private void SpawnSingleDefender(string zoneId, DefenderTier tier, Vector3 center, float zoneRadius)
+        private void SpawnSingleDefender(string zoneId, DefenderRole tier, Vector3 center, float zoneRadius)
         {
             if (!_pedSpawningService.CanSpawn()) return;
 
             var model = FactionPedModels.GetModel(_playerFactionId, tier);
-            var tierConfig = _defenderTierService.GetTierConfig(tier);
+            var roleConfig = _defenderRoleService.GetRoleConfig(tier);
 
             var spawnPos = CalculateRandomSpawnPosition(center, zoneRadius);
             // Single spawn site owns faction group, blip colour, and friendly combat stance.
@@ -67,7 +67,7 @@ namespace FactionWars.ScriptHookV.Managers
 
             if (!pedHandle.IsValid) return;
 
-            ConfigureDefenderCombat(pedHandle.Handle, tierConfig);
+            ConfigureDefenderCombat(pedHandle.Handle, roleConfig);
 
             // Use combat targeting if battle is active, otherwise walking wander
             if (_zonesInBattle.Contains(zoneId))
@@ -83,7 +83,7 @@ namespace FactionWars.ScriptHookV.Managers
             // Track ped with its tier
             if (!_spawnedPedTierByZone.ContainsKey(zoneId))
             {
-                _spawnedPedTierByZone[zoneId] = new Dictionary<int, DefenderTier>();
+                _spawnedPedTierByZone[zoneId] = new Dictionary<int, DefenderRole>();
             }
             _spawnedPedTierByZone[zoneId][pedHandle.Handle] = tier;
         }
@@ -99,20 +99,20 @@ namespace FactionWars.ScriptHookV.Managers
         /// <param name="count">The number of troops allocated.</param>
         /// <param name="zoneCenter">The center of the zone for spawn positioning.</param>
         /// <param name="zoneRadius">The radius of the zone for spawn distribution.</param>
-        public void OnTroopsAllocated(string factionId, string zoneId, DefenderTier tier, int count, Vector3 zoneCenter, float zoneRadius)
+        public void OnTroopsAllocated(string factionId, string zoneId, DefenderRole tier, int count, Vector3 zoneCenter, float zoneRadius)
         {
             // Only spawn if this is the player's faction and they're in this zone
             if (factionId != _playerFactionId) return;
             if (_currentZoneId != zoneId) return;
 
             var model = FactionPedModels.GetModel(_playerFactionId, tier);
-            var tierConfig = _defenderTierService.GetTierConfig(tier);
+            var roleConfig = _defenderRoleService.GetRoleConfig(tier);
             var inBattle = _zonesInBattle.Contains(zoneId);
 
             // Get existing spawned peds for this zone to calculate spawn positions
             if (!_spawnedPedTierByZone.TryGetValue(zoneId, out var existingPedTiers))
             {
-                existingPedTiers = new Dictionary<int, DefenderTier>();
+                existingPedTiers = new Dictionary<int, DefenderRole>();
                 _spawnedPedTierByZone[zoneId] = existingPedTiers;
             }
 
@@ -125,7 +125,7 @@ namespace FactionWars.ScriptHookV.Managers
                 var pedHandle = _spawner.Spawn(_playerFactionId, _playerFactionId, model, spawnPos, zoneId);
                 if (!pedHandle.IsValid) continue;
 
-                ConfigureDefenderCombat(pedHandle.Handle, tierConfig);
+                ConfigureDefenderCombat(pedHandle.Handle, roleConfig);
 
                 // Use combat targeting if battle is active, otherwise walking wander
                 if (inBattle)
@@ -163,21 +163,21 @@ namespace FactionWars.ScriptHookV.Managers
         /// <summary>
         /// Configures a defender's combat attributes based on their tier configuration.
         /// </summary>
-        private void ConfigureDefenderCombat(int pedHandle, DefenderTierConfig tierConfig)
+        private void ConfigureDefenderCombat(int pedHandle, DefenderRoleConfig roleConfig)
         {
             // Give pistol first as secondary weapon for drive-by shooting
             _gameBridge.GivePedWeapon(pedHandle, "weapon_pistol");
             // Give tier-appropriate weapon last so it becomes the equipped/primary weapon
-            _gameBridge.GivePedWeapon(pedHandle, tierConfig.Weapon);
-            _gameBridge.SetPedAccuracy(pedHandle, tierConfig.Accuracy);
-            _gameBridge.SetPedArmor(pedHandle, tierConfig.Armor);
-            _gameBridge.SetPedHealth(pedHandle, tierConfig.Health);
+            _gameBridge.GivePedWeapon(pedHandle, roleConfig.Weapon);
+            _gameBridge.SetPedAccuracy(pedHandle, roleConfig.Accuracy);
+            _gameBridge.SetPedArmor(pedHandle, roleConfig.Armor);
+            _gameBridge.SetPedHealth(pedHandle, roleConfig.Health);
             _gameBridge.SetPedCriticalHitsEnabled(pedHandle, false);
-            _gameBridge.SetPedRagdollEnabled(pedHandle, tierConfig.RagdollEnabled);
+            _gameBridge.SetPedRagdollEnabled(pedHandle, roleConfig.RagdollEnabled);
             _gameBridge.SetPedCombatAttributes(pedHandle, canUseCover: true, willFightArmedPeds: true);
 
             // Elite tier uses RPG - prevent AI from switching to pistol (AI prefers pistol to avoid self-damage)
-            if (tierConfig.Tier == DefenderTier.Elite)
+            if (roleConfig.Role == DefenderRole.Rocketeer)
             {
                 _gameBridge.SetPedCanSwitchWeapons(pedHandle, false);
             }

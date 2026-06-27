@@ -23,7 +23,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         private Mock<IZoneDefenderAllocationService> _allocationServiceMock = null!;
         private Mock<IPedSpawningService> _pedSpawningServiceMock = null!;
         private Mock<IPedDespawnService> _pedDespawnServiceMock = null!;
-        private Mock<IDefenderTierService> _defenderTierServiceMock = null!;
+        private Mock<IDefenderRoleService> _defenderRoleServiceMock = null!;
         private Mock<IPedBlipService> _pedBlipServiceMock = null!;
         private Mock<IZoneService> _zoneServiceMock = null!;
         private Mock<IZoneBattleManager> _zoneBattleManagerMock = null!;
@@ -38,7 +38,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             _allocationServiceMock = new Mock<IZoneDefenderAllocationService>();
             _pedSpawningServiceMock = new Mock<IPedSpawningService>();
             _pedDespawnServiceMock = new Mock<IPedDespawnService>();
-            _defenderTierServiceMock = new Mock<IDefenderTierService>();
+            _defenderRoleServiceMock = new Mock<IDefenderRoleService>();
             _pedBlipServiceMock = new Mock<IPedBlipService>();
             _zoneServiceMock = new Mock<IZoneService>();
             _zoneBattleManagerMock = new Mock<IZoneBattleManager>();
@@ -55,8 +55,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
                     return new PedHandle(handle, factionId, position, model, zoneId);
                 });
 
-            _defenderTierServiceMock.Setup(d => d.GetTierConfig(It.IsAny<DefenderTier>()))
-                .Returns(new DefenderTierConfig(DefenderTier.Basic, 200, 100, 0, "weapon_pistol", 0.5f, 1.0f));
+            _defenderRoleServiceMock.Setup(d => d.GetRoleConfig(It.IsAny<DefenderRole>()))
+                .Returns(new DefenderRoleConfig(DefenderRole.Grunt, 200, 100, 0, "weapon_pistol", 0.5f, 1.0f));
 
             _pedBlipServiceMock.Setup(p => p.CreateBlipForPed(It.IsAny<int>(), It.IsAny<BlipColor>()))
                 .Returns(1);
@@ -66,7 +66,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
                 _allocationServiceMock.Object,
                 _pedSpawningServiceMock.Object,
                 _pedDespawnServiceMock.Object,
-                _defenderTierServiceMock.Object,
+                _defenderRoleServiceMock.Object,
                 _pedBlipServiceMock.Object,
                 _zoneServiceMock.Object,
                 _zoneBattleManagerMock.Object);
@@ -82,9 +82,9 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         private ZoneDefenderAllocation CreateAllocationWithDefenders(int basic, int medium = 0, int heavy = 0)
         {
             var allocation = new ZoneDefenderAllocation(EnemyFactionId, TestZoneId);
-            if (basic > 0) allocation.AddTroops(DefenderTier.Basic, basic);
-            if (medium > 0) allocation.AddTroops(DefenderTier.Medium, medium);
-            if (heavy > 0) allocation.AddTroops(DefenderTier.Heavy, heavy);
+            if (basic > 0) allocation.AddTroops(DefenderRole.Grunt, basic);
+            if (medium > 0) allocation.AddTroops(DefenderRole.Gunner, medium);
+            if (heavy > 0) allocation.AddTroops(DefenderRole.Rifleman, heavy);
             return allocation;
         }
 
@@ -118,7 +118,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
                 AllocationService = _allocationServiceMock.Object,
                 PedSpawningService = _pedSpawningServiceMock.Object,
                 PedDespawnService = _pedDespawnServiceMock.Object,
-                DefenderTierService = _defenderTierServiceMock.Object,
+                DefenderRoleService = _defenderRoleServiceMock.Object,
                 PedBlipService = _pedBlipServiceMock.Object,
                 ZoneService = _zoneServiceMock.Object,
                 ZoneBattleManager = _zoneBattleManagerMock.Object,
@@ -172,9 +172,9 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             _manager.OnEnemyZoneEntered(zone, EnemyFactionId);
             Assert.Equal(1, _manager.GetSpawnedDefenderCount(TestZoneId));
 
-            allocation.AddTroops(DefenderTier.Basic, 2);
+            allocation.AddTroops(DefenderRole.Grunt, 2);
 
-            _manager.OnTroopsAllocated(EnemyFactionId, TestZoneId, DefenderTier.Basic, 2);
+            _manager.OnTroopsAllocated(EnemyFactionId, TestZoneId, DefenderRole.Grunt, 2);
 
             Assert.Equal(3, _manager.GetSpawnedDefenderCount(TestZoneId));
         }
@@ -211,8 +211,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             SetupManager();
             var zone = CreateEnemyZone();
             var allocation = CreateAllocationWithDefenders(basic: 1);
-            var defender = BattleParticipant.ForAi(EnemyFactionId, BattleRole.Defender, new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 1 } });
-            var aiAttacker = BattleParticipant.ForAi("faction_franklin", BattleRole.Attacker, new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 1 } });
+            var defender = BattleParticipant.ForAi(EnemyFactionId, BattleRole.Defender, new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 1 } });
+            var aiAttacker = BattleParticipant.ForAi("faction_franklin", BattleRole.Attacker, new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 1 } });
             var playerAttacker = BattleParticipant.ForPlayer("faction_trevor", BattleRole.Attacker, () => 1);
             var battle = new ZoneBattle(TestZoneId, new List<BattleParticipant> { defender, aiAttacker, playerAttacker }, "faction_trevor");
 
@@ -320,7 +320,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
 
             _manager.Update(EnemyFactionId);
 
-            Assert.Equal(2, allocation.GetTroopCount(DefenderTier.Basic));
+            Assert.Equal(2, allocation.GetTroopCount(DefenderRole.Grunt));
         }
 
         [Fact]
@@ -345,7 +345,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             _manager.Update(EnemyFactionId);
 
             // Assert - Allocation should be decremented immediately (even though corpse persists)
-            Assert.Equal(1, allocation.GetTroopCount(DefenderTier.Basic));
+            Assert.Equal(1, allocation.GetTroopCount(DefenderRole.Grunt));
         }
 
         [Fact]

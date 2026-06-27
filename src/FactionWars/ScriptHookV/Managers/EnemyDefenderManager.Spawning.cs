@@ -10,20 +10,20 @@ namespace FactionWars.ScriptHookV.Managers
 {
     public partial class EnemyDefenderManager
     {
-        private void ConfigureEnemyDefender(int pedHandle, DefenderTierConfig tierConfig, Vector3 zoneCenter, float wanderRadius)
+        private void ConfigureEnemyDefender(int pedHandle, DefenderRoleConfig roleConfig, Vector3 zoneCenter, float wanderRadius)
         {
             // Give weapons
             _gameBridge.GivePedWeapon(pedHandle, "weapon_pistol");
-            _gameBridge.GivePedWeapon(pedHandle, tierConfig.Weapon);
-            _gameBridge.SetPedAccuracy(pedHandle, tierConfig.Accuracy);
-            _gameBridge.SetPedArmor(pedHandle, tierConfig.Armor);
-            _gameBridge.SetPedHealth(pedHandle, tierConfig.Health);
+            _gameBridge.GivePedWeapon(pedHandle, roleConfig.Weapon);
+            _gameBridge.SetPedAccuracy(pedHandle, roleConfig.Accuracy);
+            _gameBridge.SetPedArmor(pedHandle, roleConfig.Armor);
+            _gameBridge.SetPedHealth(pedHandle, roleConfig.Health);
             _gameBridge.SetPedCriticalHitsEnabled(pedHandle, true);
-            _gameBridge.SetPedRagdollEnabled(pedHandle, tierConfig.RagdollEnabled);
+            _gameBridge.SetPedRagdollEnabled(pedHandle, roleConfig.RagdollEnabled);
             _gameBridge.SetPedCombatAttributes(pedHandle, canUseCover: true, willFightArmedPeds: true);
 
             // Elite tier uses RPG - prevent AI from switching to pistol (AI prefers pistol to avoid self-damage)
-            if (tierConfig.Tier == DefenderTier.Elite)
+            if (roleConfig.Role == DefenderRole.Rocketeer)
             {
                 _gameBridge.SetPedCanSwitchWeapons(pedHandle, false);
             }

@@ -108,10 +108,10 @@ namespace FactionWars.ScriptHookV.UI
             menu.AddItem(moneyItem);
 
             // Reserve pool summary
-            var basicReserve = factionState?.GetReserveTroops(DefenderTier.Basic) ?? 0;
-            var mediumReserve = factionState?.GetReserveTroops(DefenderTier.Medium) ?? 0;
-            var heavyReserve = factionState?.GetReserveTroops(DefenderTier.Heavy) ?? 0;
-            var eliteReserve = factionState?.GetReserveTroops(DefenderTier.Elite) ?? 0;
+            var basicReserve = factionState?.GetReserveTroops(DefenderRole.Grunt) ?? 0;
+            var mediumReserve = factionState?.GetReserveTroops(DefenderRole.Gunner) ?? 0;
+            var heavyReserve = factionState?.GetReserveTroops(DefenderRole.Rifleman) ?? 0;
+            var eliteReserve = factionState?.GetReserveTroops(DefenderRole.Rocketeer) ?? 0;
 
             var reserveItem = new MenuItem(
                 ReserveSummaryItemId,
@@ -121,10 +121,10 @@ namespace FactionWars.ScriptHookV.UI
             menu.AddItem(reserveItem);
 
             // Purchase options for each tier
-            AddPurchaseItem(menu, PurchaseBasicItemId, DefenderTier.Basic, "Pistol, light armor", factionId);
-            AddPurchaseItem(menu, PurchaseMediumItemId, DefenderTier.Medium, "SMG, medium armor", factionId);
-            AddPurchaseItem(menu, PurchaseHeavyItemId, DefenderTier.Heavy, "Carbine, full armor", factionId);
-            AddPurchaseItem(menu, PurchaseEliteItemId, DefenderTier.Elite, "RPG, anti-vehicle specialist", factionId);
+            AddPurchaseItem(menu, PurchaseBasicItemId, DefenderRole.Grunt, "Pistol, light armor", factionId);
+            AddPurchaseItem(menu, PurchaseMediumItemId, DefenderRole.Gunner, "SMG, medium armor", factionId);
+            AddPurchaseItem(menu, PurchaseHeavyItemId, DefenderRole.Rifleman, "Carbine, full armor", factionId);
+            AddPurchaseItem(menu, PurchaseEliteItemId, DefenderRole.Rocketeer, "RPG, anti-vehicle specialist", factionId);
 
             // Back navigation
             var backItem = new MenuItem(
@@ -137,7 +137,7 @@ namespace FactionWars.ScriptHookV.UI
             _menuProvider.HoldToRepeatEnabled = true; // Enable hold-to-repeat for troop purchases
         }
 
-        private void AddPurchaseItem(MenuDefinition menu, string itemId, DefenderTier tier, string description, string? factionId)
+        private void AddPurchaseItem(MenuDefinition menu, string itemId, DefenderRole tier, string description, string? factionId)
         {
             var cost = _purchaseService.GetTroopCost(tier);
             var canPurchase = factionId != null && _purchaseService.CanAfford(tier, 1);
@@ -166,24 +166,24 @@ namespace FactionWars.ScriptHookV.UI
                     break;
 
                 case PurchaseBasicItemId:
-                    PurchaseTroop(factionId, DefenderTier.Basic);
+                    PurchaseTroop(factionId, DefenderRole.Grunt);
                     break;
 
                 case PurchaseMediumItemId:
-                    PurchaseTroop(factionId, DefenderTier.Medium);
+                    PurchaseTroop(factionId, DefenderRole.Gunner);
                     break;
 
                 case PurchaseHeavyItemId:
-                    PurchaseTroop(factionId, DefenderTier.Heavy);
+                    PurchaseTroop(factionId, DefenderRole.Rifleman);
                     break;
 
                 case PurchaseEliteItemId:
-                    PurchaseTroop(factionId, DefenderTier.Elite);
+                    PurchaseTroop(factionId, DefenderRole.Rocketeer);
                     break;
             }
         }
 
-        private void PurchaseTroop(string? factionId, DefenderTier tier)
+        private void PurchaseTroop(string? factionId, DefenderRole tier)
         {
             if (factionId != null)
             {

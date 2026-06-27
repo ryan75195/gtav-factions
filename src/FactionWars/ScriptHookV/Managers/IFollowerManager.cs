@@ -6,7 +6,7 @@ namespace FactionWars.ScriptHookV.Managers
 {
     public interface IFollowerManager
     {
-        FollowerRecruitResult RecruitFollower(string factionId, DefenderTier tier);
+        FollowerRecruitResult RecruitFollower(string factionId, DefenderRole tier);
 
         void RestoreFollowers(string factionId, IEnumerable<SavedFollowerState> followers, int vehicleHandle);
     }

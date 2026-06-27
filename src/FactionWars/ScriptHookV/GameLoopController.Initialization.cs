@@ -134,7 +134,7 @@ namespace FactionWars.ScriptHookV
                 GameBridge = _gameBridge,
                 FollowerService = _followerService,
                 PedSpawningService = spawnServices.PedSpawning,
-                DefenderTierService = spawnServices.DefenderTier,
+                DefenderRoleService = spawnServices.DefenderRole,
                 PedBlipService = spawnServices.PedBlip,
                 SeatPriorityService = seatPriorityService
             });
@@ -160,7 +160,7 @@ namespace FactionWars.ScriptHookV
                     AllocationService = allocationService,
                     PedSpawningService = spawnServices.PedSpawning,
                     PedDespawnService = spawnServices.PedDespawn,
-                    DefenderTierService = spawnServices.DefenderTier,
+                    DefenderRoleService = spawnServices.DefenderRole,
                     PedBlipService = spawnServices.PedBlip,
                     ZoneService = _zoneService
                 },
@@ -231,7 +231,7 @@ namespace FactionWars.ScriptHookV
                 AllocationService = allocationService,
                 PedSpawningService = spawnServices.PedSpawning,
                 PedDespawnService = spawnServices.PedDespawn,
-                DefenderTierService = spawnServices.DefenderTier,
+                DefenderRoleService = spawnServices.DefenderRole,
                 PedBlipService = spawnServices.PedBlip,
                 ZoneService = zoneService,
                 ZoneBattleManager = zoneBattleManager,
@@ -245,7 +245,7 @@ namespace FactionWars.ScriptHookV
                     ZoneBattleManager = zoneBattleManager,
                     PedSpawningService = spawnServices.PedSpawning,
                     PedDespawnService = spawnServices.PedDespawn,
-                    DefenderTierService = spawnServices.DefenderTier,
+                    DefenderRoleService = spawnServices.DefenderRole,
                     PedBlipService = spawnServices.PedBlip,
                     ZoneService = zoneService,
                     FactionService = _factionService

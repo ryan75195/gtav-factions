@@ -25,7 +25,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
         private Mock<IZoneDefenderAllocationService> _allocationServiceMock = null!;
         private Mock<IPedSpawningService> _pedSpawningServiceMock = null!;
         private Mock<IPedDespawnService> _pedDespawnServiceMock = null!;
-        private Mock<IDefenderTierService> _defenderTierServiceMock = null!;
+        private Mock<IDefenderRoleService> _defenderRoleServiceMock = null!;
         private Mock<IPedBlipService> _pedBlipServiceMock = null!;
         private Mock<IZoneService> _zoneServiceMock = null!;
         private FriendlyDefenderManager _manager = null!;
@@ -40,7 +40,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             _allocationServiceMock = new Mock<IZoneDefenderAllocationService>();
             _pedSpawningServiceMock = new Mock<IPedSpawningService>();
             _pedDespawnServiceMock = new Mock<IPedDespawnService>();
-            _defenderTierServiceMock = new Mock<IDefenderTierService>();
+            _defenderRoleServiceMock = new Mock<IDefenderRoleService>();
             _pedBlipServiceMock = new Mock<IPedBlipService>();
             _zoneServiceMock = new Mock<IZoneService>();
 
@@ -55,8 +55,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV
                     return new PedHandle(handle, factionId, position, "test", zoneId);
                 });
 
-            _defenderTierServiceMock.Setup(d => d.GetTierConfig(It.IsAny<DefenderTier>()))
-                .Returns(new DefenderTierConfig(DefenderTier.Basic, 200, 100, 0, "weapon_pistol", 0.5f, 1.0f));
+            _defenderRoleServiceMock.Setup(d => d.GetRoleConfig(It.IsAny<DefenderRole>()))
+                .Returns(new DefenderRoleConfig(DefenderRole.Grunt, 200, 100, 0, "weapon_pistol", 0.5f, 1.0f));
 
             _pedBlipServiceMock.Setup(p => p.CreateBlipForPed(It.IsAny<int>(), It.IsAny<BlipColor>()))
                 .Returns(1);
@@ -66,7 +66,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
                 _allocationServiceMock.Object,
                 _pedSpawningServiceMock.Object,
                 _pedDespawnServiceMock.Object,
-                _defenderTierServiceMock.Object,
+                _defenderRoleServiceMock.Object,
                 _pedBlipServiceMock.Object,
                 _zoneServiceMock.Object,
                 PlayerFactionId);
@@ -96,9 +96,9 @@ namespace FactionWars.Tests.Unit.ScriptHookV
         private ZoneDefenderAllocation CreateAllocationWithDefenders(int basic, int medium = 0, int heavy = 0)
         {
             var allocation = new ZoneDefenderAllocation(PlayerFactionId, TestZoneId);
-            if (basic > 0) allocation.AddTroops(DefenderTier.Basic, basic);
-            if (medium > 0) allocation.AddTroops(DefenderTier.Medium, medium);
-            if (heavy > 0) allocation.AddTroops(DefenderTier.Heavy, heavy);
+            if (basic > 0) allocation.AddTroops(DefenderRole.Grunt, basic);
+            if (medium > 0) allocation.AddTroops(DefenderRole.Gunner, medium);
+            if (heavy > 0) allocation.AddTroops(DefenderRole.Rifleman, heavy);
             return allocation;
         }
 
@@ -238,7 +238,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
                 _allocationServiceMock.Object,
                 _pedSpawningServiceMock.Object,
                 _pedDespawnServiceMock.Object,
-                _defenderTierServiceMock.Object,
+                _defenderRoleServiceMock.Object,
                 _pedBlipServiceMock.Object,
                 _zoneServiceMock.Object,
                 PlayerFactionId));
@@ -256,7 +256,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
                 _allocationServiceMock.Object,
                 _pedSpawningServiceMock.Object,
                 _pedDespawnServiceMock.Object,
-                _defenderTierServiceMock.Object,
+                _defenderRoleServiceMock.Object,
                 _pedBlipServiceMock.Object,
                 _zoneServiceMock.Object,
                 null!));
@@ -303,10 +303,10 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             var zone2 = new Zone("zone_2", "Zone 2", new Vector3(200, 200, 0)) { OwnerFactionId = PlayerFactionId };
 
             var allocation1 = new ZoneDefenderAllocation(PlayerFactionId, "zone_1");
-            allocation1.AddTroops(DefenderTier.Basic, 2);
+            allocation1.AddTroops(DefenderRole.Grunt, 2);
 
             var allocation2 = new ZoneDefenderAllocation(PlayerFactionId, "zone_2");
-            allocation2.AddTroops(DefenderTier.Basic, 1);
+            allocation2.AddTroops(DefenderRole.Grunt, 1);
 
             _allocationServiceMock.Setup(a => a.GetAllocation(PlayerFactionId, "zone_1")).Returns(allocation1);
             _allocationServiceMock.Setup(a => a.GetAllocation(PlayerFactionId, "zone_2")).Returns(allocation2);
@@ -397,14 +397,14 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             _allocationServiceMock.Setup(a => a.GetAllocation(PlayerFactionId, TestZoneId))
                 .Returns(allocation);
 
-            var tierConfig = new DefenderTierConfig(DefenderTier.Basic, 200, 100, 25, "weapon_pistol", 0.5f, 1.0f);
-            _defenderTierServiceMock.Setup(d => d.GetTierConfig(DefenderTier.Basic)).Returns(tierConfig);
+            var roleConfig = new DefenderRoleConfig(DefenderRole.Grunt, 200, 100, 25, "weapon_pistol", 0.5f, 1.0f);
+            _defenderRoleServiceMock.Setup(d => d.GetRoleConfig(DefenderRole.Grunt)).Returns(roleConfig);
 
             // Act
             _manager.OnZoneEntered(zone);
 
             // Assert - Verify the defender tier service was called
-            _defenderTierServiceMock.Verify(d => d.GetTierConfig(DefenderTier.Basic), Times.Once);
+            _defenderRoleServiceMock.Verify(d => d.GetRoleConfig(DefenderRole.Grunt), Times.Once);
             Assert.False(_gameBridge.GetPedCriticalHitsEnabled(1));
             Assert.True(_gameBridge.GetPedRagdollEnabled(1));
         }
@@ -743,7 +743,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             Assert.Equal(2, initialPeds.Count);
 
             // Act - Allocate more troops during battle
-            _manager.OnTroopsAllocated(PlayerFactionId, TestZoneId, DefenderTier.Basic, 2, zone.Center, zone.Radius);
+            _manager.OnTroopsAllocated(PlayerFactionId, TestZoneId, DefenderRole.Grunt, 2, zone.Center, zone.Radius);
 
             // Assert - New troops should also be in combat targeting mode
             var currentPeds = _gameBridge.GetSpawnedPeds();
@@ -845,14 +845,14 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             SetupManager();
             var zone = CreateFriendlyZone();
             var allocation = new ZoneDefenderAllocation(PlayerFactionId, TestZoneId);
-            allocation.AddTroops(DefenderTier.Elite, 1);
+            allocation.AddTroops(DefenderRole.Rocketeer, 1);
 
             _allocationServiceMock.Setup(a => a.GetAllocation(PlayerFactionId, TestZoneId))
                 .Returns(allocation);
 
             // Setup elite tier config with RPG
-            var eliteConfig = new DefenderTierConfig(DefenderTier.Elite, 2000, 250, 100, "WEAPON_RPG", 0.8f, 3.0f);
-            _defenderTierServiceMock.Setup(d => d.GetTierConfig(DefenderTier.Elite)).Returns(eliteConfig);
+            var eliteConfig = new DefenderRoleConfig(DefenderRole.Rocketeer, 2000, 250, 100, "WEAPON_RPG", 0.8f, 3.0f);
+            _defenderRoleServiceMock.Setup(d => d.GetRoleConfig(DefenderRole.Rocketeer)).Returns(eliteConfig);
 
             // Act
             _manager.OnZoneEntered(zone);

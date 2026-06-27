@@ -37,8 +37,8 @@ namespace FactionWars.Combat.Interfaces
             string zoneId,
             string attackerFactionId,
             string defenderFactionId,
-            Dictionary<DefenderTier, int> attackerTroops,
-            Dictionary<DefenderTier, int> defenderTroops);
+            Dictionary<DefenderRole, int> attackerTroops,
+            Dictionary<DefenderRole, int> defenderTroops);
 
         /// <summary>
         /// Ends a battle in a zone.
@@ -87,7 +87,7 @@ namespace FactionWars.Combat.Interfaces
         /// <param name="zoneId">The zone where the kill occurred.</param>
         /// <param name="factionId">The faction that lost the troop.</param>
         /// <param name="tier">The tier of the killed troop.</param>
-        void ReportTroopKilled(string zoneId, string factionId, DefenderTier tier);
+        void ReportTroopKilled(string zoneId, string factionId, DefenderRole tier);
 
         #endregion
 
@@ -140,7 +140,7 @@ namespace FactionWars.Combat.Interfaces
             string factionId,
             bool isPlayer,
             Func<int>? aliveCountCallback,
-            Dictionary<DefenderTier, int>? troops);
+            Dictionary<DefenderRole, int>? troops);
 
         /// <summary>
         /// Returns true if the player is currently a participant in any battle.
@@ -170,7 +170,7 @@ namespace FactionWars.Combat.Interfaces
         /// Raised when a troop is killed in battle.
         /// Parameters: battle, tier of killed troop, side ("attacker" or "defender")
         /// </summary>
-        event Action<ZoneBattle, DefenderTier, string>? TroopKilled;
+        event Action<ZoneBattle, DefenderRole, string>? TroopKilled;
 
         #endregion
     }

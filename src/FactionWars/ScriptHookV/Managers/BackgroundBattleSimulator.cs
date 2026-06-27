@@ -177,7 +177,7 @@ namespace FactionWars.ScriptHookV.Managers
                 ? Math.Max(1, Math.Min((decision.TroopsToCommit + 1) / 2, 5))
                 : 0;
             if (defendersToAllocate > 0)
-                _allocationService.SetAllocation(attackerFactionId, decision.TargetZoneId!, DefenderTier.Basic, defendersToAllocate);
+                _allocationService.SetAllocation(attackerFactionId, decision.TargetZoneId!, DefenderRole.Grunt, defendersToAllocate);
 
             _eventFeedService.AddZoneCaptured(zone.Name, attackerFactionName);
             _eventAlertService.RaiseZoneCaptured(zone.Name, attackerFactionName);
@@ -213,9 +213,9 @@ namespace FactionWars.ScriptHookV.Managers
                 return TroopComposition.Empty;
 
             return new TroopComposition(
-                allocation.GetTroopCount(DefenderTier.Basic),
-                allocation.GetTroopCount(DefenderTier.Medium),
-                allocation.GetTroopCount(DefenderTier.Heavy));
+                allocation.GetTroopCount(DefenderRole.Grunt),
+                allocation.GetTroopCount(DefenderRole.Gunner),
+                allocation.GetTroopCount(DefenderRole.Rifleman));
         }
 
         /// <summary>
@@ -250,7 +250,7 @@ namespace FactionWars.ScriptHookV.Managers
                 int defendersToAllocate = survivors > 0 ? Math.Max(1, Math.Min((survivors + 1) / 2, 5)) : 0;
                 if (defendersToAllocate > 0)
                 {
-                    _allocationService.SetAllocation(result.AttackerFactionId, result.ZoneId, DefenderTier.Basic, defendersToAllocate);
+                    _allocationService.SetAllocation(result.AttackerFactionId, result.ZoneId, DefenderRole.Grunt, defendersToAllocate);
                 }
             }
         }

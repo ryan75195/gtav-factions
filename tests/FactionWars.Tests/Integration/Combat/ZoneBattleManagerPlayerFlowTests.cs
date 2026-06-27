@@ -62,12 +62,12 @@ namespace FactionWars.Tests.Integration.Combat
         private static ZoneDefenderAllocation MakeAllocation(string factionId, string zoneId, int basicCount)
         {
             var alloc = new ZoneDefenderAllocation(factionId, zoneId);
-            alloc.AddTroops(DefenderTier.Basic, basicCount);
+            alloc.AddTroops(DefenderRole.Grunt, basicCount);
             return alloc;
         }
 
-        private static Dictionary<DefenderTier, int> Troops(int basic) =>
-            new Dictionary<DefenderTier, int> { { DefenderTier.Basic, basic } };
+        private static Dictionary<DefenderRole, int> Troops(int basic) =>
+            new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, basic } };
 
         #endregion
 
@@ -141,9 +141,9 @@ namespace FactionWars.Tests.Integration.Combat
             manager.BattleEnded += (b, o) => endedEvents.Add((b, o));
 
             // Act — kill all 3 Basic defenders
-            manager.ReportTroopKilled("zone_1", "michael", DefenderTier.Basic);
-            manager.ReportTroopKilled("zone_1", "michael", DefenderTier.Basic);
-            manager.ReportTroopKilled("zone_1", "michael", DefenderTier.Basic);
+            manager.ReportTroopKilled("zone_1", "michael", DefenderRole.Grunt);
+            manager.ReportTroopKilled("zone_1", "michael", DefenderRole.Grunt);
+            manager.ReportTroopKilled("zone_1", "michael", DefenderRole.Grunt);
 
             // Assert
             Assert.Single(endedEvents);
@@ -268,8 +268,8 @@ namespace FactionWars.Tests.Integration.Combat
 
             // AI₁ (trevor) attacks AI₂ (michael).
             manager.StartBattle("zone_1", "trevor", "michael",
-                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 1 } },
-                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 1 } });
+                new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 1 } },
+                new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 1 } });
 
             // Player walks in.
             int squadCount = 4;
@@ -282,8 +282,8 @@ namespace FactionWars.Tests.Integration.Combat
             manager.BattleEnded += (b, o) => endedEvents.Add((b, o));
 
             // Player wipes both AI sides.
-            manager.ReportTroopKilled("zone_1", "trevor", DefenderTier.Basic);
-            manager.ReportTroopKilled("zone_1", "michael", DefenderTier.Basic);
+            manager.ReportTroopKilled("zone_1", "trevor", DefenderRole.Grunt);
+            manager.ReportTroopKilled("zone_1", "michael", DefenderRole.Grunt);
 
             // Exactly one BattleEnded fires.
             Assert.Single(endedEvents);
@@ -303,8 +303,8 @@ namespace FactionWars.Tests.Integration.Combat
             var zone = MakeZone("zone_1", ownerFactionId: "michael");
 
             manager.StartBattle("zone_1", "trevor", "michael",
-                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 1 } },
-                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 1 } });
+                new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 1 } },
+                new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 1 } });
 
             var battle = manager.StartPlayerCombat(zone, "player_faction", () => 4);
             Assert.NotNull(battle);
@@ -313,7 +313,7 @@ namespace FactionWars.Tests.Integration.Combat
             var endedEvents = new List<(ZoneBattle, BattleOutcome)>();
             manager.BattleEnded += (b, o) => endedEvents.Add((b, o));
 
-            manager.ReportTroopKilled("zone_1", "michael", DefenderTier.Basic);
+            manager.ReportTroopKilled("zone_1", "michael", DefenderRole.Grunt);
 
             Assert.Empty(endedEvents);
             var collapsedBattle = manager.GetBattleForZone("zone_1");
@@ -324,7 +324,7 @@ namespace FactionWars.Tests.Integration.Combat
             Assert.True(battle.IsOngoing);
             zoneSvc.Verify(z => z.TransferZoneOwnership("zone_1", "trevor"), Times.Once);
 
-            manager.ReportTroopKilled("zone_1", "trevor", DefenderTier.Basic);
+            manager.ReportTroopKilled("zone_1", "trevor", DefenderRole.Grunt);
 
             Assert.Single(endedEvents);
             Assert.Equal(BattleOutcome.AttackersWon, endedEvents[0].Item2);
@@ -348,7 +348,7 @@ namespace FactionWars.Tests.Integration.Combat
             var zone = MakeZone("zone_1", ownerFactionId: "michael");
             manager.StartPlayerCombat(zone, "player_faction", () => 4);
 
-            manager.ReportTroopKilled("zone_1", "michael", DefenderTier.Basic);
+            manager.ReportTroopKilled("zone_1", "michael", DefenderRole.Grunt);
 
             zoneSvc.Verify(z => z.TransferZoneOwnership("zone_1", null), Times.Once);
         }
@@ -425,7 +425,7 @@ namespace FactionWars.Tests.Integration.Combat
             // Wipe the defender directly on the battle model — bypassing
             // ReportTroopKilled / ResolveBattleIfDone — so the only path that can
             // see "battle is over" is the Tick loop.
-            battle!.RemoveDefenderTroop(DefenderTier.Basic);
+            battle!.RemoveDefenderTroop(DefenderRole.Grunt);
             Assert.False(battle.IsOngoing);
 
             manager.Tick(0f);

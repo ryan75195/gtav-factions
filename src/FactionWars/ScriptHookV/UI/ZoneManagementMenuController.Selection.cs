@@ -59,32 +59,32 @@ namespace FactionWars.ScriptHookV.UI
             switch (itemId)
             {
                 case AllocateBasicItemId:
-                    _allocationService.AllocateTroops(factionState, _selectedZoneId, DefenderTier.Basic, 1);
+                    _allocationService.AllocateTroops(factionState, _selectedZoneId, DefenderRole.Grunt, 1);
                     ShowZoneDetailMenu(_selectedZoneId, AllocateBasicItemId);
                     break;
 
                 case AllocateMediumItemId:
-                    _allocationService.AllocateTroops(factionState, _selectedZoneId, DefenderTier.Medium, 1);
+                    _allocationService.AllocateTroops(factionState, _selectedZoneId, DefenderRole.Gunner, 1);
                     ShowZoneDetailMenu(_selectedZoneId, AllocateMediumItemId);
                     break;
 
                 case AllocateHeavyItemId:
-                    _allocationService.AllocateTroops(factionState, _selectedZoneId, DefenderTier.Heavy, 1);
+                    _allocationService.AllocateTroops(factionState, _selectedZoneId, DefenderRole.Rifleman, 1);
                     ShowZoneDetailMenu(_selectedZoneId, AllocateHeavyItemId);
                     break;
 
                 case WithdrawBasicItemId:
-                    _allocationService.WithdrawTroops(factionState, _selectedZoneId, DefenderTier.Basic, 1);
+                    _allocationService.WithdrawTroops(factionState, _selectedZoneId, DefenderRole.Grunt, 1);
                     ShowZoneDetailMenu(_selectedZoneId, WithdrawBasicItemId);
                     break;
 
                 case WithdrawMediumItemId:
-                    _allocationService.WithdrawTroops(factionState, _selectedZoneId, DefenderTier.Medium, 1);
+                    _allocationService.WithdrawTroops(factionState, _selectedZoneId, DefenderRole.Gunner, 1);
                     ShowZoneDetailMenu(_selectedZoneId, WithdrawMediumItemId);
                     break;
 
                 case WithdrawHeavyItemId:
-                    _allocationService.WithdrawTroops(factionState, _selectedZoneId, DefenderTier.Heavy, 1);
+                    _allocationService.WithdrawTroops(factionState, _selectedZoneId, DefenderRole.Rifleman, 1);
                     ShowZoneDetailMenu(_selectedZoneId, WithdrawHeavyItemId);
                     break;
             }

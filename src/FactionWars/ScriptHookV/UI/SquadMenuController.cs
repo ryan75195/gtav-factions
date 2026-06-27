@@ -172,10 +172,10 @@ namespace FactionWars.ScriptHookV.UI
             var canRecruit = factionId != null && followerCount < maxFollowers;
 
             // Recruit options for each tier
-            AddRecruitItem(menu, RecruitBasicItemId, DefenderTier.Basic, "Pistol bodyguard", canRecruit);
-            AddRecruitItem(menu, RecruitMediumItemId, DefenderTier.Medium, "SMG bodyguard", canRecruit);
-            AddRecruitItem(menu, RecruitHeavyItemId, DefenderTier.Heavy, "Carbine bodyguard", canRecruit);
-            AddRecruitItem(menu, RecruitEliteItemId, DefenderTier.Elite, "RPG bodyguard", canRecruit);
+            AddRecruitItem(menu, RecruitBasicItemId, DefenderRole.Grunt, "Pistol bodyguard", canRecruit);
+            AddRecruitItem(menu, RecruitMediumItemId, DefenderRole.Gunner, "SMG bodyguard", canRecruit);
+            AddRecruitItem(menu, RecruitHeavyItemId, DefenderRole.Rifleman, "Carbine bodyguard", canRecruit);
+            AddRecruitItem(menu, RecruitEliteItemId, DefenderRole.Rocketeer, "RPG bodyguard", canRecruit);
 
             // Manage followers
             var manageFollowersItem = new MenuItem(
@@ -194,7 +194,7 @@ namespace FactionWars.ScriptHookV.UI
             _menuProvider.ShowMenu(menu, _lastSelectedItemId);
         }
 
-        private void AddRecruitItem(MenuDefinition menu, string itemId, DefenderTier tier, string description, bool canRecruit)
+        private void AddRecruitItem(MenuDefinition menu, string itemId, DefenderRole tier, string description, bool canRecruit)
         {
             var cost = _purchaseService.GetTroopCost(tier);
             var canAfford = _purchaseService.CanAfford(tier, 1);

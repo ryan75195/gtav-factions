@@ -8,13 +8,13 @@ namespace FactionWars.ScriptHookV.UI
     {
         private void AddPurchaseItems(MenuDefinition menu, string? factionId)
         {
-            var basicCost = _purchaseService.GetTroopCost(DefenderTier.Basic);
-            var mediumCost = _purchaseService.GetTroopCost(DefenderTier.Medium);
-            var heavyCost = _purchaseService.GetTroopCost(DefenderTier.Heavy);
+            var basicCost = _purchaseService.GetTroopCost(DefenderRole.Grunt);
+            var mediumCost = _purchaseService.GetTroopCost(DefenderRole.Gunner);
+            var heavyCost = _purchaseService.GetTroopCost(DefenderRole.Rifleman);
 
-            var canPurchaseBasic = factionId != null && _purchaseService.CanAfford(DefenderTier.Basic, 1);
-            var canPurchaseMedium = factionId != null && _purchaseService.CanAfford(DefenderTier.Medium, 1);
-            var canPurchaseHeavy = factionId != null && _purchaseService.CanAfford(DefenderTier.Heavy, 1);
+            var canPurchaseBasic = factionId != null && _purchaseService.CanAfford(DefenderRole.Grunt, 1);
+            var canPurchaseMedium = factionId != null && _purchaseService.CanAfford(DefenderRole.Gunner, 1);
+            var canPurchaseHeavy = factionId != null && _purchaseService.CanAfford(DefenderRole.Rifleman, 1);
 
             var purchaseBasicItem = new MenuItem(
                 PurchaseBasicItemId,
@@ -40,9 +40,9 @@ namespace FactionWars.ScriptHookV.UI
 
         private void AddRecruitmentItems(MenuDefinition menu, string? factionId)
         {
-            var basicCost = _purchaseService.GetTroopCost(DefenderTier.Basic);
-            var mediumCost = _purchaseService.GetTroopCost(DefenderTier.Medium);
-            var heavyCost = _purchaseService.GetTroopCost(DefenderTier.Heavy);
+            var basicCost = _purchaseService.GetTroopCost(DefenderRole.Grunt);
+            var mediumCost = _purchaseService.GetTroopCost(DefenderRole.Gunner);
+            var heavyCost = _purchaseService.GetTroopCost(DefenderRole.Rifleman);
             var followerCount = factionId != null ? _followerService.GetFollowerCount(factionId) : 0;
             var maxFollowers = _followerService.GetMaxFollowers();
 
@@ -59,21 +59,21 @@ namespace FactionWars.ScriptHookV.UI
                 RecruitBasicItemId,
                 $"Recruit Basic Follower (${basicCost})",
                 "Spawns a basic bodyguard");
-            recruitBasicItem.IsEnabled = canRecruit && _purchaseService.CanAfford(DefenderTier.Basic, 1);
+            recruitBasicItem.IsEnabled = canRecruit && _purchaseService.CanAfford(DefenderRole.Grunt, 1);
             menu.AddItem(recruitBasicItem);
 
             var recruitMediumItem = new MenuItem(
                 RecruitMediumItemId,
                 $"Recruit Medium Follower (${mediumCost})",
                 "Spawns a medium bodyguard");
-            recruitMediumItem.IsEnabled = canRecruit && _purchaseService.CanAfford(DefenderTier.Medium, 1);
+            recruitMediumItem.IsEnabled = canRecruit && _purchaseService.CanAfford(DefenderRole.Gunner, 1);
             menu.AddItem(recruitMediumItem);
 
             var recruitHeavyItem = new MenuItem(
                 RecruitHeavyItemId,
                 $"Recruit Heavy Follower (${heavyCost})",
                 "Spawns a heavy bodyguard");
-            recruitHeavyItem.IsEnabled = canRecruit && _purchaseService.CanAfford(DefenderTier.Heavy, 1);
+            recruitHeavyItem.IsEnabled = canRecruit && _purchaseService.CanAfford(DefenderRole.Rifleman, 1);
             menu.AddItem(recruitHeavyItem);
         }
 

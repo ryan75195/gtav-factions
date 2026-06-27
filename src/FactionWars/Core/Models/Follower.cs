@@ -23,7 +23,7 @@ namespace FactionWars.Core.Models
         /// The quality tier of this follower (Basic, Medium, or Heavy).
         /// Determines cost, weapons, health, armor, and accuracy.
         /// </summary>
-        public DefenderTier Tier { get; }
+        public DefenderRole Tier { get; }
 
         /// <summary>
         /// The ped handle for this follower in the game world.
@@ -48,7 +48,7 @@ namespace FactionWars.Core.Models
         /// <param name="tier">The quality tier of the follower.</param>
         /// <param name="pedHandle">The ped handle, or -1 if not spawned.</param>
         /// <exception cref="ArgumentNullException">Thrown if factionId is null or empty.</exception>
-        public Follower(string factionId, DefenderTier tier, int pedHandle = -1)
+        public Follower(string factionId, DefenderRole tier, int pedHandle = -1)
         {
             if (string.IsNullOrEmpty(factionId))
             {

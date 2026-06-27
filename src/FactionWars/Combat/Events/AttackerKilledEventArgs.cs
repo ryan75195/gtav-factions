@@ -7,11 +7,11 @@ namespace FactionWars.Combat.Events
     {
         public string ZoneId { get; }
         public string FactionId { get; }
-        public DefenderTier Tier { get; }
+        public DefenderRole Tier { get; }
         public int PedHandle { get; }
         public int KillerPedHandle { get; }
 
-        public AttackerKilledEventArgs(string zoneId, string factionId, DefenderTier tier,
+        public AttackerKilledEventArgs(string zoneId, string factionId, DefenderRole tier,
             int pedHandle, int killerPedHandle)
         {
             ZoneId = zoneId ?? throw new ArgumentNullException(nameof(zoneId));
