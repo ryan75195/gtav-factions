@@ -126,11 +126,63 @@ namespace FactionWars.ScriptHookV
                 }
             }
 
-            // A button held = Menu hold-to-repeat (same as Enter held)
-            if (_gameBridge.IsControlPressed(ControlFrontendAccept))
+            // Note: the A button's held state for menu hold-to-repeat is polled
+            // live where it is consumed (see IsSelectKeyHeld). It must NOT be
+            // latched here: controllers have no key-up event, so latching would
+            // leave the flag stuck true and spam hold-to-repeat after release.
+        }
+
+        /// <summary>
+        /// Single source of truth for whether the menu select key is held, used
+        /// to drive menu hold-to-repeat. Combines the keyboard Enter key (tracked
+        /// via OnKeyDown/OnKeyUp) with a live poll of the controller A button.
+        /// The controller is polled live (not latched) because gamepads have no
+        /// key-up event to clear a latched flag.
+        /// </summary>
+        private bool IsSelectKeyHeld()
+        {
+            return _enterKeyHeld || _gameBridge.IsControlPressed(ControlFrontendAccept);
+        }
+
+        /// <summary>
+        /// Throttles held menu navigation so a held Up/Down registers at most one
+        /// move per cooldown interval. NativeUI's built-in navigation accelerates
+        /// while held, which feels twitchy and skips items on a controller. On
+        /// frames inside the cooldown we suppress the frontend Up/Down controls so
+        /// NativeUI sees no navigation input. A fresh press always moves immediately.
+        /// Must run before the menu pool processes input (see OnTick).
+        /// </summary>
+        private void ThrottleMenuNavigation()
+        {
+            if (_menuProvider == null || !_menuProvider.IsMenuVisible)
             {
-                _enterKeyHeld = true;
+                _menuNavWasPressed = false;
+                return;
             }
+
+            bool navPressed = _gameBridge.IsControlPressed(ControlFrontendUp)
+                || _gameBridge.IsControlPressed(ControlFrontendDown);
+
+            if (!navPressed)
+            {
+                _menuNavWasPressed = false;
+                return;
+            }
+
+            int now = _gameBridge.GetGameTime();
+            bool freshPress = !_menuNavWasPressed;
+            _menuNavWasPressed = true;
+
+            if (freshPress || now - _lastMenuNavMoveGameTime >= MenuNavRepeatCooldownMs)
+            {
+                // Allow this move; NativeUI processes the navigation this frame.
+                _lastMenuNavMoveGameTime = now;
+                return;
+            }
+
+            // Within cooldown: hide navigation inputs from NativeUI this frame.
+            _gameBridge.DisableControlThisFrame(ControlFrontendUp);
+            _gameBridge.DisableControlThisFrame(ControlFrontendDown);
         }
 
         /// <summary>

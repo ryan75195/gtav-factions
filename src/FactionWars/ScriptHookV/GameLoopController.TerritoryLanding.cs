@@ -139,6 +139,17 @@ namespace FactionWars.ScriptHookV
                 RequestOwnedTerritoryPlacement(CurrentPlayerFactionId, "respawn");
             }
 
+            // TEMP: snapshot the friendly-defender relationship across the death/respawn edge.
+            // Remove with the rest of the [REL-DIAG] instrumentation once confirmed.
+            if (isDead != _wasPlayerDead)
+            {
+                FileLogger.AI(
+                    $"[REL-DIAG] player {(isDead ? "DIED" : "RESPAWNED")}: " +
+                    $"FRIENDLY_DEFENDERS->PLAYER={_gameBridge.GetGroupRelationship("FRIENDLY_DEFENDERS", "PLAYER")} " +
+                    $"PLAYER->FRIENDLY_DEFENDERS={_gameBridge.GetGroupRelationship("PLAYER", "FRIENDLY_DEFENDERS")} " +
+                    $"playerGroupHash={_gameBridge.GetPlayerRelationshipGroupHash()}");
+            }
+
             _wasPlayerDead = isDead;
         }
 

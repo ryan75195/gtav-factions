@@ -117,6 +117,14 @@ namespace FactionWars.ScriptHookV
         private const int ControlDpadDown = 173;     // INPUT_PHONE_DOWN
         private const int ControlLB = 37;            // INPUT_AIM (LB/L1)
         private const int ControlFrontendAccept = 201; // A/Cross button
+        private const int ControlFrontendUp = 188;     // INPUT_FRONTEND_UP
+        private const int ControlFrontendDown = 187;   // INPUT_FRONTEND_DOWN
+
+        // Menu navigation throttle: debounces held Up/Down so navigation does not
+        // accelerate/skip on a controller. A fresh press always moves immediately.
+        private const int MenuNavRepeatCooldownMs = 140;
+        private bool _menuNavWasPressed;
+        private int _lastMenuNavMoveGameTime;
 
         /// <summary>
         /// Event raised when the player switches to a different character.

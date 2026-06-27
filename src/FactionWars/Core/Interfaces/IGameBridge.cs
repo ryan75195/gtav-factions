@@ -33,6 +33,15 @@ namespace FactionWars.Core.Interfaces
         bool IsPedAlive(int pedHandle);
 
         /// <summary>
+        /// Returns true if the ped is currently engaged in combat with any target.
+        /// Used by the zone leash to avoid yanking actively-fighting peds (which
+        /// cancels their combat task and causes leash/combat thrashing).
+        /// </summary>
+        /// <param name="pedHandle">Handle of the ped to check.</param>
+        /// <returns>True if the ped is in combat.</returns>
+        bool IsPedInCombat(int pedHandle);
+
+        /// <summary>
         /// Checks whether the ped entity still exists in the world. Returns true for
         /// both alive and dead peds (GTA keeps a corpse around for a while before
         /// cleanup) and false for handles that have been streamed out by the
@@ -71,6 +80,30 @@ namespace FactionWars.Core.Interfaces
         /// <param name="relationship">Relationship value to apply.</param>
         /// <param name="bidirectional">Whether to apply the same relationship both ways.</param>
         void SetRelationshipBetweenGroups(string groupName1, string groupName2, int relationship, bool bidirectional = true);
+
+        // --- TEMP DIAGNOSTICS (issue: friendly defenders turn hostile after player death + defended win) ---
+        // Read-only probes used only by instrumentation logging. Remove once root cause is confirmed.
+
+        /// <summary>
+        /// Reads the current relationship value FROM groupName1 TOWARD groupName2.
+        /// Returns GTA native values (0=Companion..5=Hate, 255=Pedestrians) or -1 on failure.
+        /// </summary>
+        int GetGroupRelationship(string groupName1, string groupName2);
+
+        /// <summary>
+        /// Returns true if the ped is actively in combat against the player ped.
+        /// </summary>
+        bool IsPedInCombatWithPlayer(int pedHandle);
+
+        /// <summary>
+        /// Returns the relationship-group hash currently assigned to the ped (0 if unavailable).
+        /// </summary>
+        int GetPedRelationshipGroupHash(int pedHandle);
+
+        /// <summary>
+        /// Returns the relationship-group hash currently assigned to the player ped (0 if unavailable).
+        /// </summary>
+        int GetPlayerRelationshipGroupHash();
 
         /// <summary>
         /// Creates a blip on the map at the specified position.
@@ -711,5 +744,13 @@ namespace FactionWars.Core.Interfaces
         /// <param name="control">The GTA V control ID.</param>
         /// <returns>True if the control was just pressed.</returns>
         bool IsControlJustPressed(int control);
+
+        /// <summary>
+        /// Disables a GTA V control for the current frame only. Must be re-applied
+        /// each frame to remain disabled. Used to throttle menu navigation so a held
+        /// control registers at most one move per cooldown interval.
+        /// </summary>
+        /// <param name="control">The GTA V control ID to disable this frame.</param>
+        void DisableControlThisFrame(int control);
     }
 }

@@ -89,6 +89,12 @@ namespace FactionWars.ScriptHookV
             return Game.IsControlJustPressed((GTA.Control)control);
         }
 
+        /// <inheritdoc />
+        public void DisableControlThisFrame(int control)
+        {
+            Function.Call(Hash.DISABLE_CONTROL_ACTION, 0, control, true);
+        }
+
         private static WeaponHash GetWeaponHash(string weaponName)
         {
             return (WeaponHash)StringHash.AtStringHash(weaponName.ToUpperInvariant(), 0);

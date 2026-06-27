@@ -34,6 +34,12 @@ namespace FactionWars.ScriptHookV.Managers
                     if (!ZoneLeashEnforcer.ShouldLeash(pedPos, zone.Center, zone.Radius))
                         continue;
 
+                    // Don't yank a ped that's actively fighting — clearing its tasks
+                    // cancels combat, the AI immediately re-engages and strays again,
+                    // and the leash re-fires every interval (thrash + log spam).
+                    if (_gameBridge.IsPedInCombat(pedHandle))
+                        continue;
+
                     var returnPoint = ZoneLeashEnforcer.PickReturnPoint(zone.Center, zone.Radius, _leashRandom);
                     _gameBridge.ClearPedTasks(pedHandle);
                     _gameBridge.TaskGoToCoord(pedHandle, returnPoint);

@@ -49,7 +49,6 @@ namespace FactionWars.ScriptHookV
             if (pedGroup != null)
             {
                 pedGroup.Add(ped, false);
-                FileLogger.Info($"Added ped {pedHandle} to player's ped group");
                 return;
             }
 

@@ -198,6 +198,32 @@ namespace FactionWars.Core.Utils
             }
         }
 
+        // --- TEMP DIAGNOSTICS (see IGameBridge). Read-only probes for instrumentation. ---
+
+        public int GetGroupRelationship(string groupName1, string groupName2)
+        {
+            if (string.IsNullOrWhiteSpace(groupName1) || string.IsNullOrWhiteSpace(groupName2))
+                return -1;
+
+            return _relationships.TryGetValue((groupName1.ToUpperInvariant(), groupName2.ToUpperInvariant()), out var rel)
+                ? rel
+                : 255; // Pedestrians/default when no explicit relationship is set
+        }
+
+        /// <summary>Test hook: handles reported as fighting the player by the mock.</summary>
+        public HashSet<int> PedsInCombatWithPlayer { get; } = new HashSet<int>();
+
+        public bool IsPedInCombatWithPlayer(int pedHandle) => PedsInCombatWithPlayer.Contains(pedHandle);
+
+        public int GetPedRelationshipGroupHash(int pedHandle)
+        {
+            return _peds.TryGetValue(pedHandle, out var ped) && ped.RelationshipGroup != null
+                ? ped.RelationshipGroup.GetHashCode()
+                : 0;
+        }
+
+        public int GetPlayerRelationshipGroupHash() => "PLAYER".GetHashCode();
+
         public int CreateBlip(Vector3 position)
         {
             var handle = _nextBlipHandle++;
@@ -1031,6 +1057,19 @@ namespace FactionWars.Core.Utils
 
         public bool IsPedGoingToCoord(int pedHandle) => _goToCoordPeds.ContainsKey(pedHandle);
 
+        private readonly HashSet<int> _pedsInCombat = new HashSet<int>();
+
+        /// <summary>Test hook: marks/unmarks a ped as being in combat.</summary>
+        public void SetPedInCombat(int pedHandle, bool inCombat)
+        {
+            if (inCombat)
+                _pedsInCombat.Add(pedHandle);
+            else
+                _pedsInCombat.Remove(pedHandle);
+        }
+
+        public bool IsPedInCombat(int pedHandle) => _pedsInCombat.Contains(pedHandle);
+
         public Vector3? GetPedGoToCoordDestination(int pedHandle)
         {
             return _goToCoordPeds.TryGetValue(pedHandle, out var dest) ? dest : (Vector3?)null;
@@ -1438,6 +1477,17 @@ namespace FactionWars.Core.Utils
         public bool IsControlPressed(int control) => _pressedControls.Contains(control);
 
         public bool IsControlJustPressed(int control) => _justPressedControls.Contains(control);
+
+        /// <summary>
+        /// Records each DisableControlThisFrame call so tests can assert which
+        /// controls were suppressed. Call ClearDisabledControls() between ticks.
+        /// </summary>
+        public List<int> DisabledControls { get; } = new List<int>();
+
+        public void DisableControlThisFrame(int control) => DisabledControls.Add(control);
+
+        /// <summary>Clears recorded DisableControlThisFrame calls (for testing).</summary>
+        public void ClearDisabledControls() => DisabledControls.Clear();
 
         private class PedState
         {

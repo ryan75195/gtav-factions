@@ -69,6 +69,10 @@ namespace FactionWars.ScriptHookV.Managers
             CleanupExpiredCorpses(currentGameTime);
 
             EnforceZoneLeash(currentGameTime);
+
+            // TEMP: instrumentation for the "defenders turn hostile after player death" bug.
+            // Remove along with FriendlyDefenderManager.Diagnostics.cs once confirmed.
+            LogRelationshipDiagnostics(currentGameTime);
         }
 
         /// <summary>
@@ -101,6 +105,12 @@ namespace FactionWars.ScriptHookV.Managers
 
                     var pedPos = _gameBridge.GetPedPosition(pedHandle);
                     if (!ZoneLeashEnforcer.ShouldLeash(pedPos, zone.Center, zone.Radius))
+                        continue;
+
+                    // Don't yank a ped that's actively fighting — clearing its tasks
+                    // cancels combat, the AI immediately re-engages and strays again,
+                    // and the leash re-fires every interval (thrash + log spam).
+                    if (_gameBridge.IsPedInCombat(pedHandle))
                         continue;
 
                     var returnPoint = ZoneLeashEnforcer.PickReturnPoint(zone.Center, zone.Radius, _leashRandom);

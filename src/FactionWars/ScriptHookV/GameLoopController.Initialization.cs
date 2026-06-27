@@ -165,6 +165,19 @@ namespace FactionWars.ScriptHookV
             _territoryManager.ZoneExited += (sender, zone) => _friendlyDefenderManager.OnZoneExited(zone);
             _territoryManager.ZoneEntered += (sender, zone) => _commanderManager?.OnZoneEntered(zone);
             _territoryManager.ZoneExited += (sender, zone) => _commanderManager?.OnZoneExited(zone);
+            _zoneService.ZoneOwnershipChanged += (sender, e) =>
+            {
+                // A zone can leave the player's ownership while the player is still inside it
+                // (captured/neutralized mid-fight), so no zone-exit event fires and the friendly
+                // defenders orphan as un-cleaned blue blips. Despawn them via the same path as a
+                // physical zone exit.
+                if (e.NewOwner != CurrentPlayerFactionId)
+                {
+                    var lostZone = _zoneService?.GetZone(e.ZoneId);
+                    if (lostZone != null)
+                        _friendlyDefenderManager.OnZoneExited(lostZone);
+                }
+            };
             _zoneBoundaryBlipManager = new ZoneBoundaryBlipManager(_gameBridge, _territoryManager);
             return allocationService;
         }

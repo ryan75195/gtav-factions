@@ -14,8 +14,6 @@ namespace FactionWars.ScriptHookV
         {
             try
             {
-                FileLogger.Info($"SetPedAsFollower called for handle {pedHandle}");
-
                 var ped = Entity.FromHandle(pedHandle) as Ped;
                 if (ped == null || !ped.Exists())
                 {
@@ -36,7 +34,6 @@ namespace FactionWars.ScriptHookV
                 // Set relationship to be friendly with the player
                 var playerGroup = player.RelationshipGroup;
                 ped.RelationshipGroup = playerGroup;
-                FileLogger.Info($"Set ped {pedHandle} to player's relationship group");
 
                 // Ensure followers hate the defender enemies group (used by hostile zone defenders)
                 var defenderEnemyGroup = World.AddRelationshipGroup("DEFENDER_ENEMIES");
@@ -45,8 +42,6 @@ namespace FactionWars.ScriptHookV
                 AddPedToPlayerGroup(player, ped, pedHandle);
 
                 ConfigureFollowerCombat(ped);
-
-                FileLogger.Info($"Follower {pedHandle} configured: combat and follow behavior set");
             }
             catch (Exception ex)
             {
