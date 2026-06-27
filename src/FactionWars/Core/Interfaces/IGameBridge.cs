@@ -541,6 +541,17 @@ namespace FactionWars.Core.Interfaces
         void TaskCombatHatedTargetsAroundPed(int pedHandle, float radius);
 
         /// <summary>
+        /// Tasks the ped to defend a sphere centred on <paramref name="center"/> with the
+        /// given radius, taking cover and engaging hostiles that enter the area.
+        /// </summary>
+        void TaskGuardArea(int pedHandle, Vector3 center, float radius);
+
+        /// <summary>
+        /// Tasks the ped to run to and fight a specific target ped.
+        /// </summary>
+        void TaskCombatPed(int pedHandle, int targetPedHandle);
+
+        /// <summary>
         /// Tasks a ped to move toward another entity (player, vehicle, etc.) until
         /// they are within stoppingRange meters. Wraps TASK_GO_TO_ENTITY.
         /// Used by the defender rally controller to make defenders converge on the player.

@@ -622,5 +622,30 @@ namespace FactionWars.Tests.Unit.Core
         }
 
         #endregion
+
+        [Fact]
+        public void TaskGuardArea_RecordsCentreAndRadius()
+        {
+            var mock = new MockGameBridge();
+            int ped = mock.CreatePed("test", new Vector3(0f, 0f, 0f));
+
+            mock.TaskGuardArea(ped, new Vector3(10f, 20f, 30f), 8f);
+
+            Assert.True(mock.IsPedGuardingArea(ped));
+            Assert.Equal(new Vector3(10f, 20f, 30f), mock.GetGuardAreaCenter(ped));
+            Assert.Equal(8f, mock.GetGuardAreaRadius(ped));
+        }
+
+        [Fact]
+        public void TaskCombatPed_RecordsTarget()
+        {
+            var mock = new MockGameBridge();
+            int ped = mock.CreatePed("test", new Vector3(0f, 0f, 0f));
+
+            mock.TaskCombatPed(ped, 555);
+
+            Assert.True(mock.IsPedCombatingPed(ped));
+            Assert.Equal(555, mock.GetCombatPedTarget(ped));
+        }
     }
 }

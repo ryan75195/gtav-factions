@@ -807,6 +807,55 @@ namespace FactionWars.Core.Utils
             return _combatTargetingPeds.TryGetValue(pedHandle, out var radius) ? radius : (float?)null;
         }
 
+        private readonly Dictionary<int, Vector3> _guardAreaCenter = new Dictionary<int, Vector3>();
+        private readonly Dictionary<int, float> _guardAreaRadius = new Dictionary<int, float>();
+        private readonly Dictionary<int, int> _combatPedTargets = new Dictionary<int, int>();
+
+        public void TaskGuardArea(int pedHandle, Vector3 center, float radius)
+        {
+            if (!_peds.ContainsKey(pedHandle)) return;
+
+            // Primary-task replacement: a new TASK_X wipes the previous task.
+            _wanderingPeds.Remove(pedHandle);
+            _pedsFacingPosition.Remove(pedHandle);
+            _combatTargetingPeds.Remove(pedHandle);
+            _goToEntityPeds.Remove(pedHandle);
+            _followEntityPeds.Remove(pedHandle);
+            _combatPedTargets.Remove(pedHandle);
+
+            _guardAreaCenter[pedHandle] = center;
+            _guardAreaRadius[pedHandle] = radius;
+        }
+
+        public bool IsPedGuardingArea(int pedHandle) => _guardAreaCenter.ContainsKey(pedHandle);
+
+        public Vector3 GetGuardAreaCenter(int pedHandle)
+            => _guardAreaCenter.TryGetValue(pedHandle, out var c) ? c : Vector3.Zero;
+
+        public float GetGuardAreaRadius(int pedHandle)
+            => _guardAreaRadius.TryGetValue(pedHandle, out var r) ? r : 0f;
+
+        public void TaskCombatPed(int pedHandle, int targetPedHandle)
+        {
+            if (!_peds.ContainsKey(pedHandle)) return;
+
+            // Primary-task replacement.
+            _wanderingPeds.Remove(pedHandle);
+            _pedsFacingPosition.Remove(pedHandle);
+            _combatTargetingPeds.Remove(pedHandle);
+            _goToEntityPeds.Remove(pedHandle);
+            _followEntityPeds.Remove(pedHandle);
+            _guardAreaCenter.Remove(pedHandle);
+            _guardAreaRadius.Remove(pedHandle);
+
+            _combatPedTargets[pedHandle] = targetPedHandle;
+        }
+
+        public bool IsPedCombatingPed(int pedHandle) => _combatPedTargets.ContainsKey(pedHandle);
+
+        public int GetCombatPedTarget(int pedHandle)
+            => _combatPedTargets.TryGetValue(pedHandle, out var t) ? t : -1;
+
         private readonly Dictionary<int, GoToEntityState> _goToEntityPeds = new Dictionary<int, GoToEntityState>();
 
         private class GoToEntityState
