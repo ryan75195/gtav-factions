@@ -16,6 +16,7 @@ using FactionWars.ScriptHookV.Combat.Interfaces;
 using FactionWars.ScriptHookV.Logging;
 using FactionWars.ScriptHookV.Models;
 using FactionWars.Core.Utils;
+using FactionWars.ScriptHookV.Managers.Interfaces;
 
 namespace FactionWars.ScriptHookV.Managers
 {
@@ -23,7 +24,7 @@ namespace FactionWars.ScriptHookV.Managers
     /// Manages enemy attackers that spawn when the player enters their own zone that is under attack.
     /// Attackers are spawned based on the active battle's attacker troops and engage the player on sight.
     /// </summary>
-    public partial class BattleAttackerManager
+    public partial class BattleAttackerManager : IHostilePedHandleSource
     {
         private readonly IGameBridge _gameBridge;
         private readonly IZoneBattleManager _zoneBattleManager;
@@ -223,5 +224,16 @@ namespace FactionWars.ScriptHookV.Managers
         /// Tracks despawned attackers so they can be restored if player re-enters.
         /// </summary>
         /// <param name="zone">The zone that was exited.</param>
+
+        /// <inheritdoc />
+        public IReadOnlyList<int> GetHostilePedHandles()
+        {
+            var handles = new List<int>();
+            foreach (var pedsInZone in _spawnedPedTierByZone.Values)
+            {
+                handles.AddRange(pedsInZone.Keys);
+            }
+            return handles;
+        }
     }
 }

@@ -418,5 +418,19 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         }
 
         #endregion
+
+        [Fact]
+        public void GetHostilePedHandles_ReturnsSpawnedEnemyHandles()
+        {
+            SetupManager();
+            var zone = CreateEnemyZone();
+            _allocationServiceMock.Setup(a => a.GetAllocation(EnemyFactionId, TestZoneId))
+                .Returns(CreateAllocationWithDefenders(basic: 2));
+            _manager.OnEnemyZoneEntered(zone, EnemyFactionId);
+
+            var handles = _manager.GetHostilePedHandles();
+            Assert.NotEmpty(handles);
+            Assert.Equal(_manager.GetSpawnedDefenderCount(TestZoneId), handles.Count);
+        }
     }
 }

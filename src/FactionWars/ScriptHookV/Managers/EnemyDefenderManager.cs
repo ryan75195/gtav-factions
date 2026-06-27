@@ -15,6 +15,7 @@ using FactionWars.ScriptHookV.Logging;
 using FactionWars.ScriptHookV.Models;
 using FactionWars.ScriptHookV.Services;
 using FactionWars.Core.Utils;
+using FactionWars.ScriptHookV.Managers.Interfaces;
 
 namespace FactionWars.ScriptHookV.Managers
 {
@@ -23,7 +24,7 @@ namespace FactionWars.ScriptHookV.Managers
     /// Defenders patrol the zone and engage the player and player's troops on sight.
     /// Supports death detection, replacement spawning from reserves, and ground-level spawning.
     /// </summary>
-    public partial class EnemyDefenderManager
+    public partial class EnemyDefenderManager : IHostilePedHandleSource
     {
         private readonly IGameBridge _gameBridge;
         private readonly IZoneDefenderAllocationService _allocationService;
@@ -246,5 +247,16 @@ namespace FactionWars.ScriptHookV.Managers
         /// Checks for deaths, handles cleanup, and spawns replacements.
         /// </summary>
         /// <param name="enemyFactionId">The enemy faction ID for the current zone.</param>
+
+        /// <inheritdoc />
+        public IReadOnlyList<int> GetHostilePedHandles()
+        {
+            var handles = new List<int>();
+            foreach (var pedsInZone in _spawnedPedTierByZone.Values)
+            {
+                handles.AddRange(pedsInZone.Keys);
+            }
+            return handles;
+        }
     }
 }
