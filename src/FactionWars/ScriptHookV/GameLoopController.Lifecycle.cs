@@ -126,6 +126,13 @@ namespace FactionWars.ScriptHookV
                 }
             }
 
+            // D-pad Up = Cycle bodyguard squad stance
+            if (_gameBridge.IsControlJustPressed(ControlDpadUp))
+            {
+                var bodyguards = _followerManager?.OnFootBodyguardHandles ?? System.Array.Empty<int>();
+                _squadStanceController?.CycleStance(bodyguards);
+            }
+
             // Note: the A button's held state for menu hold-to-repeat is polled
             // live where it is consumed (see IsSelectKeyHeld). It must NOT be
             // latched here: controllers have no key-up event, so latching would

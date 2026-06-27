@@ -15,6 +15,7 @@ using FactionWars.Economy.Interfaces;
 using FactionWars.Factions.Interfaces;
 using FactionWars.ScriptHookV.Data;
 using FactionWars.ScriptHookV.Logging;
+using FactionWars.ScriptHookV.Combat.Interfaces;
 using FactionWars.ScriptHookV.Managers;
 using FactionWars.ScriptHookV.Models;
 using FactionWars.ScriptHookV.Persistence;
@@ -49,6 +50,9 @@ namespace FactionWars.ScriptHookV
         private MapBlipManager? _mapBlipManager;
         private EconomyManager? _economyManager;
         private FollowerManager? _followerManager;
+        private SquadStanceController? _squadStanceController;
+        private IEnemyTargetCollector? _enemyTargetCollector;
+        private IAreaAnchorResolver? _areaAnchorResolver;
         private IFollowerService? _followerService;
         private TerritoryManager? _territoryManager;
         private ZoneBoundaryBlipManager? _zoneBoundaryBlipManager;
@@ -114,7 +118,9 @@ namespace FactionWars.ScriptHookV
 
         // Controller input constants (GTA V control IDs)
         private const int ControlDpadRight = 175;   // INPUT_PHONE_RIGHT
+        private const int ControlDpadUp = 172;       // INPUT_PHONE_UP
         private const int ControlDpadDown = 173;     // INPUT_PHONE_DOWN
+        private const float SquadDefaultLooseRadius = 30f;
         private const int ControlLB = 37;            // INPUT_AIM (LB/L1)
         private const int ControlFrontendAccept = 201; // A/Cross button
         private const int ControlFrontendUp = 188;     // INPUT_FRONTEND_UP
