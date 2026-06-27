@@ -1,4 +1,6 @@
 using FactionWars.Core.Models;
+using FactionWars.Persistence.Converters;
+using Newtonsoft.Json;
 using System.Collections.Generic;
 
 namespace FactionWars.Persistence.Models
@@ -10,6 +12,8 @@ namespace FactionWars.Persistence.Models
     {
         public string FactionId { get; set; } = string.Empty;
         public string ZoneId { get; set; } = string.Empty;
+
+        [JsonConverter(typeof(LegacyRoleDictionaryConverter))]
         public Dictionary<DefenderRole, int> Troops { get; set; } = new Dictionary<DefenderRole, int>();
 
         /// <summary>
