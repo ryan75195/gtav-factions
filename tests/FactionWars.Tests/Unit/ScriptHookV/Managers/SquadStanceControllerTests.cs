@@ -117,5 +117,26 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             // ApplyEscort must have called SetPedAsFollower to repair the group.
             Assert.True(_bridge.IsPedFollowingPlayer(bg));
         }
+
+        [Fact]
+        public void Update_EscortStance_OrdersBodyguardInVehicleToLeave()
+        {
+            // Arrange: controller starts in Escort by default — no cycling needed.
+            _controller = Build();
+            int vehicle = _bridge.CreateTestVehicle();
+            int bg = _bridge.CreatePed("bg", new Vector3(1f, 0f, 0f));
+            _bridge.PutPedInVehicle(bg, vehicle, 1); // seat 1 = front passenger
+            var party = new List<int> { bg };
+
+            // Player is on foot by default (IsPlayerInVehicleValue = false).
+            Assert.True(_bridge.IsPedInVehicle(bg)); // pre-condition: bodyguard is in a vehicle
+
+            _controller.Update(Anchor, 50f, party, new List<EnemyTarget>());
+
+            // TaskPedLeaveVehicle removes the ped from _pedsInVehicles; IsPedInVehicle becomes false.
+            Assert.False(_bridge.IsPedInVehicle(bg));
+            // The continue in ApplyEscort skips SetPedAsFollower for this tick.
+            Assert.False(_bridge.IsPedFollowingPlayer(bg));
+        }
     }
 }
