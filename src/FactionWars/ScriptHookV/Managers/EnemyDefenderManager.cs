@@ -161,11 +161,23 @@ namespace FactionWars.ScriptHookV.Managers
             if (zone == null) return;
 
             FileLogger.Combat($"EnemyDefenderManager: Player exited enemy zone {zone.Id}");
+            DespawnForZone(zone.Id);
+        }
 
-            if (_currentEnemyZoneId == zone.Id)
+        /// <summary>
+        /// Despawns this zone's enemy defenders, their blips, and corpses. Used both on zone exit
+        /// and by the ownership reconciler when the zone is captured/neutralised while the player
+        /// is still inside it (so no zone-exit event fires).
+        /// </summary>
+        /// <param name="zoneId">The zone whose enemy garrison should be removed.</param>
+        public void DespawnForZone(string zoneId)
+        {
+            if (string.IsNullOrEmpty(zoneId)) return;
+
+            if (_currentEnemyZoneId == zoneId)
                 _currentEnemyZoneId = null;
 
-            if (_spawnedPedTierByZone.TryGetValue(zone.Id, out var pedTiers))
+            if (_spawnedPedTierByZone.TryGetValue(zoneId, out var pedTiers))
             {
                 foreach (var pedHandle in pedTiers.Keys)
                 {
@@ -173,7 +185,7 @@ namespace FactionWars.ScriptHookV.Managers
                     _pedDespawnService.DespawnPed(pedHandle);
                     _corpseDeathTimes.Remove(pedHandle); // Also remove from corpse tracking
                 }
-                _spawnedPedTierByZone.Remove(zone.Id);
+                _spawnedPedTierByZone.Remove(zoneId);
             }
 
             // Also clean up any corpses from this zone

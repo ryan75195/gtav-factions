@@ -89,6 +89,23 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         }
 
         [Fact]
+        public void DespawnForZone_RemovesSpawnedDefendersAndBlips()
+        {
+            SetupManager();
+            var zone = CreateEnemyZone();
+            _allocationServiceMock.Setup(a => a.GetAllocation(EnemyFactionId, TestZoneId))
+                .Returns(CreateAllocationWithDefenders(basic: 3));
+            _manager.OnEnemyZoneEntered(zone, EnemyFactionId);
+            Assert.Equal(3, _manager.GetSpawnedDefenderCount(TestZoneId));
+
+            _manager.DespawnForZone(TestZoneId);
+
+            Assert.Equal(0, _manager.GetSpawnedDefenderCount(TestZoneId));
+            _pedDespawnServiceMock.Verify(d => d.DespawnPed(It.IsAny<int>()), Times.AtLeast(3));
+            _pedBlipServiceMock.Verify(b => b.RemoveBlipForPed(It.IsAny<int>()), Times.AtLeast(3));
+        }
+
+        [Fact]
         public void OnEnemyZoneEntered_RoutesSpawnThroughZoneCombatantSpawner()
         {
             SetupManager();
