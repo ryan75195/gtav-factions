@@ -574,6 +574,39 @@ namespace FactionWars.Core.Utils
             _activeWeaponSetCount[pedHandle] = (_activeWeaponSetCount.TryGetValue(pedHandle, out var c) ? c : 0) + 1;
         }
 
+        private readonly HashSet<int> _shootingPeds = new HashSet<int>();
+        private readonly Dictionary<int, int> _pedAmmo = new Dictionary<int, int>();
+
+        /// <summary>Test hook: marks/unmarks a ped as actively firing.</summary>
+        public void SetPedShooting(int pedHandle, bool shooting)
+        {
+            if (shooting) _shootingPeds.Add(pedHandle);
+            else _shootingPeds.Remove(pedHandle);
+        }
+
+        /// <inheritdoc />
+        public bool IsPedShooting(int pedHandle) => _shootingPeds.Contains(pedHandle);
+
+        /// <inheritdoc />
+        public string GetSelectedWeapon(int pedHandle)
+        {
+            if (_activeWeapon.TryGetValue(pedHandle, out var active) && !string.IsNullOrEmpty(active))
+                return active.ToUpperInvariant();
+            if (_peds.TryGetValue(pedHandle, out var ped) && !string.IsNullOrEmpty(ped.Weapon))
+                return ped.Weapon.ToUpperInvariant();
+            return string.Empty;
+        }
+
+        /// <summary>Test hook: sets the ammo read back by GetPedAmmo.</summary>
+        public void SetPedAmmo(int pedHandle, int ammo) => _pedAmmo[pedHandle] = ammo;
+
+        /// <inheritdoc />
+        public int GetPedAmmo(int pedHandle) => _pedAmmo.TryGetValue(pedHandle, out var a) ? a : -1;
+
+        /// <inheritdoc />
+        public int GetPedCombatAbilityValue(int pedHandle)
+            => _combatAbility.TryGetValue(pedHandle, out var ability) ? ability : -1;
+
         public string GetPedActiveWeapon(int pedHandle) =>
             _activeWeapon.TryGetValue(pedHandle, out var w) ? w : string.Empty;
 
@@ -839,6 +872,9 @@ namespace FactionWars.Core.Utils
                 _goToEntityPeds.Remove(pedHandle);
                 _followEntityPeds.Remove(pedHandle);
                 _combatTargetingPeds[pedHandle] = radius;
+                // Calibration (log-derived): a combat task puts the ped in combat, matching
+                // the real game's inCombat=True shortly after TASK_COMBAT_*.
+                _pedsInCombat.Add(pedHandle);
             }
         }
 
@@ -897,6 +933,9 @@ namespace FactionWars.Core.Utils
             _guardAreaRadius.Remove(pedHandle);
 
             _combatPedTargets[pedHandle] = targetPedHandle;
+            // Calibration (log-derived): a combat task puts the ped in combat, matching the
+            // real game's inCombat=True shortly after TASK_COMBAT_PED.
+            _pedsInCombat.Add(pedHandle);
         }
 
         public bool IsPedCombatingPed(int pedHandle) => _combatPedTargets.ContainsKey(pedHandle);
@@ -1109,6 +1148,8 @@ namespace FactionWars.Core.Utils
                 _goToEntityPeds.Remove(pedHandle);
                 _followEntityPeds.Remove(pedHandle);
                 _goToCoordPeds.Remove(pedHandle);
+                // Calibration (log-derived): clearing tasks ends combat.
+                _pedsInCombat.Remove(pedHandle);
             }
         }
 

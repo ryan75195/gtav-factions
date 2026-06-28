@@ -39,6 +39,9 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             var (manager, bridge, defenderHandle) = SpawnSingleEnemyDefender();
 
             bridge.SetPedPosition(defenderHandle, new Vector3(ZoneCenter.X + ZoneRadius * 1.5f, ZoneCenter.Y, 0f));
+            // Strayed but not actively fighting — the leash only retasks non-combat peds, and the
+            // spawn combat task now (correctly) leaves the defender in combat until it disengages.
+            bridge.SetPedInCombat(defenderHandle, false);
 
             bridge.AdvanceGameTime(ZoneLeashEnforcer.LeashCheckIntervalMs + 100);
             manager.Update(EnemyFactionId);
@@ -75,6 +78,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             var (manager, bridge, defenderHandle) = SpawnSingleEnemyDefender();
 
             bridge.SetPedPosition(defenderHandle, new Vector3(ZoneCenter.X + ZoneRadius * 1.5f, ZoneCenter.Y, 0f));
+            // Strayed but not actively fighting — the leash only retasks non-combat peds.
+            bridge.SetPedInCombat(defenderHandle, false);
 
             bridge.AdvanceGameTime(ZoneLeashEnforcer.LeashCheckIntervalMs - 100);
             manager.Update(EnemyFactionId);
