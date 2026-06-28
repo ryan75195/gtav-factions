@@ -50,7 +50,7 @@ namespace FactionWars.ScriptHookV
             InitializeEnemyAndRallyManagers(spawnServices, allocationService);
             _areaAnchorResolver = new AreaAnchorResolver();
             _enemyTargetCollector = new EnemyTargetCollector(_gameBridge);
-            _squadStanceController = new SquadStanceController(_gameBridge, new SquadStanceResolver(), new TargetAssignmentResolver(), new PedIntentReconciler(_gameBridge));
+            _squadStanceController = new SquadStanceController(_gameBridge, new SquadStanceResolver(), new TargetAssignmentResolver(), new PedIntentReconciler(_gameBridge), new SquadEngagementResolver(new EngageRangeProvider()));
             ApplyRelationshipMatrix(CurrentPlayerFactionId);
 
             InitializeAiAndVictorySystems();

@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using FactionWars.Combat.Models;
 using FactionWars.Combat.Services;
 using FactionWars.Core.Interfaces;
+using FactionWars.Core.Models;
 using FactionWars.Core.Utils;
 using FactionWars.ScriptHookV.Managers;
 using Xunit;
@@ -14,9 +15,13 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         private SquadStanceController _controller = null!;
 
         private SquadStanceController Build()
-            => new SquadStanceController(_bridge, new SquadStanceResolver(), new TargetAssignmentResolver(), new PedIntentReconciler(_bridge));
+            => new SquadStanceController(_bridge, new SquadStanceResolver(), new TargetAssignmentResolver(), new PedIntentReconciler(_bridge), new SquadEngagementResolver(new EngageRangeProvider()));
 
         private static readonly Vector3 Anchor = new Vector3(0f, 0f, 0f);
+
+        // Most stance tests don't depend on role-specific engage ranges; an empty map falls back to
+        // the Grunt range (18m), which the in-range S&D tests stay within.
+        private static readonly IReadOnlyDictionary<int, DefenderRole> NoRoles = new Dictionary<int, DefenderRole>();
 
         [Fact]
         public void CycleStance_AdvancesEscortToHoldAreaToSearchAndDestroyToEscort()
@@ -49,7 +54,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             var party = new List<int> { bg };
             _controller.CycleStance(party); // -> HoldArea
 
-            _controller.Update(Anchor, 50f, party, new List<EnemyTarget>());
+            _controller.Update(Anchor, 50f, party, new List<EnemyTarget>(), NoRoles);
 
             Assert.True(_bridge.IsPedGuardingArea(bg));
         }
@@ -66,7 +71,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             _controller.CycleStance(party); // -> HoldArea
 
             // Far-off zone anchor with a large radius.
-            _controller.Update(new Vector3(1000f, 1000f, 0f), 80f, party, new List<EnemyTarget>());
+            _controller.Update(new Vector3(1000f, 1000f, 0f), 80f, party, new List<EnemyTarget>(), NoRoles);
 
             var guardCenter = _bridge.GetGuardAreaCenter(bg);
             float distFromPlayer = _bridge.PlayerPosition.DistanceTo(guardCenter);
@@ -85,7 +90,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             var party = new List<int> { bg };
             _controller.CycleStance(party); // -> HoldArea
 
-            _controller.Update(Anchor, 50f, party, new List<EnemyTarget>());
+            _controller.Update(Anchor, 50f, party, new List<EnemyTarget>(), NoRoles);
 
             Assert.False(_bridge.IsPedInVehicle(bg));
         }
@@ -101,13 +106,13 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             _controller.CycleStance(party); // HoldArea
             _controller.CycleStance(party); // SearchAndDestroy
 
-            _controller.Update(Anchor, 50f, party, new List<EnemyTarget> { new EnemyTarget(777, new Vector3(10f, 0f, 0f)) });
+            _controller.Update(Anchor, 50f, party, new List<EnemyTarget> { new EnemyTarget(777, new Vector3(10f, 0f, 0f)) }, NoRoles);
 
             Assert.False(_bridge.IsPedInVehicle(bg));
         }
 
         [Fact]
-        public void Update_SearchAndDestroy_WithEnemy_IssuesTaskCombatPed()
+        public void Update_SearchAndDestroy_InRangeWithLos_IssuesTaskCombatPed()
         {
             _controller = Build();
             int bg = _bridge.CreatePed("bg", new Vector3(1f, 0f, 0f));
@@ -115,11 +120,31 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             _controller.CycleStance(party); // HoldArea
             _controller.CycleStance(party); // SearchAndDestroy
 
+            // 9m away (<= Grunt range 18) with line of sight -> engage.
             var enemy = new EnemyTarget(777, new Vector3(10f, 0f, 0f));
-            _controller.Update(Anchor, 50f, party, new List<EnemyTarget> { enemy });
+            _bridge.SetLineOfSight(bg, 777, true);
+            _controller.Update(Anchor, 50f, party, new List<EnemyTarget> { enemy }, NoRoles);
 
             Assert.True(_bridge.IsPedCombatingPed(bg));
             Assert.Equal(777, _bridge.GetCombatPedTarget(bg));
+        }
+
+        [Fact]
+        public void Update_SearchAndDestroy_OutOfRange_AdvancesOnTarget()
+        {
+            _controller = Build();
+            int bg = _bridge.CreatePed("bg", new Vector3(0f, 0f, 0f));
+            var party = new List<int> { bg };
+            _controller.CycleStance(party); // HoldArea
+            _controller.CycleStance(party); // SearchAndDestroy
+
+            // 60m away (> Grunt range 18): advance toward the enemy entity, do not engage yet.
+            var enemy = new EnemyTarget(777, new Vector3(60f, 0f, 0f));
+            _bridge.SetLineOfSight(bg, 777, true);
+            _controller.Update(Anchor, 250f, party, new List<EnemyTarget> { enemy }, NoRoles);
+
+            Assert.Equal(777, _bridge.GetGoToEntityTarget(bg)!.Value);
+            Assert.False(_bridge.IsPedCombatingPed(bg));
         }
 
         [Fact]
@@ -131,7 +156,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             _controller.CycleStance(party); // HoldArea
             _controller.CycleStance(party); // SearchAndDestroy
 
-            _controller.Update(Anchor, 50f, party, new List<EnemyTarget>());
+            _controller.Update(Anchor, 50f, party, new List<EnemyTarget>(), NoRoles);
 
             Assert.True(_bridge.IsPedCombatTargeting(bg)); // TaskCombatHatedTargetsAroundPed recorded
         }
@@ -144,9 +169,10 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             var party = new List<int> { bg };
             _controller.CycleStance(party);
             _controller.CycleStance(party); // SearchAndDestroy
+            _bridge.SetLineOfSight(bg, 100, true);
 
-            // Commit to enemy 100.
-            _controller.Update(Anchor, 50f, party, new List<EnemyTarget> { new EnemyTarget(100, new Vector3(5f, 0f, 0f)) });
+            // Commit to enemy 100 (4m away, in range + LOS -> engage).
+            _controller.Update(Anchor, 50f, party, new List<EnemyTarget> { new EnemyTarget(100, new Vector3(5f, 0f, 0f)) }, NoRoles);
             Assert.Equal(100, _bridge.GetCombatPedTarget(bg));
 
             // Enemy 100 is still alive; a NEARER enemy 200 appears. The bodyguard must stay
@@ -155,7 +181,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             {
                 new EnemyTarget(100, new Vector3(5f, 0f, 0f)),
                 new EnemyTarget(200, new Vector3(2f, 0f, 0f))
-            });
+            }, NoRoles);
 
             Assert.Equal(100, _bridge.GetCombatPedTarget(bg));
         }
@@ -168,12 +194,14 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             var party = new List<int> { bg };
             _controller.CycleStance(party);
             _controller.CycleStance(party); // SearchAndDestroy
+            _bridge.SetLineOfSight(bg, 100, true);
+            _bridge.SetLineOfSight(bg, 200, true);
 
-            _controller.Update(Anchor, 50f, party, new List<EnemyTarget> { new EnemyTarget(100, new Vector3(5f, 0f, 0f)) });
+            _controller.Update(Anchor, 50f, party, new List<EnemyTarget> { new EnemyTarget(100, new Vector3(5f, 0f, 0f)) }, NoRoles);
             Assert.Equal(100, _bridge.GetCombatPedTarget(bg));
 
             // Previous target "dies"; a new enemy is the only one left.
-            _controller.Update(Anchor, 50f, party, new List<EnemyTarget> { new EnemyTarget(200, new Vector3(5f, 0f, 0f)) });
+            _controller.Update(Anchor, 50f, party, new List<EnemyTarget> { new EnemyTarget(200, new Vector3(5f, 0f, 0f)) }, NoRoles);
             Assert.Equal(200, _bridge.GetCombatPedTarget(bg));
         }
 
@@ -187,7 +215,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             var party = new List<int> { bg };
             _controller.CycleStance(party); // -> HoldArea
 
-            _controller.Update(Anchor, 50f, party, new List<EnemyTarget>());
+            _controller.Update(Anchor, 50f, party, new List<EnemyTarget>(), NoRoles);
 
             // Native group-follow overrides TaskGuardArea; entering HoldArea must detach the
             // bodyguard from the player group so the guard task actually holds.
@@ -205,10 +233,10 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             _controller.CycleStance(party); // HoldArea
             _controller.CycleStance(party); // SearchAndDestroy
 
-            _controller.Update(Anchor, 50f, party, new List<EnemyTarget> { new EnemyTarget(777, new Vector3(10f, 0f, 0f)) });
+            // A distant enemy: the follower advances (and detaching from the group happens whether it
+            // advances or engages). Group-follow would otherwise pin it to the player.
+            _controller.Update(Anchor, 50f, party, new List<EnemyTarget> { new EnemyTarget(777, new Vector3(10f, 0f, 0f)) }, NoRoles);
 
-            // The bodyguard is tasked to attack a distant enemy; group-follow would pin it to the
-            // player. Entering S&D must detach it so it can engage.
             Assert.False(_bridge.IsPedFollowingPlayer(bg));
         }
 
@@ -222,7 +250,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             _controller.CycleStance(party); // HoldArea
             _controller.CycleStance(party); // SearchAndDestroy
 
-            _controller.Update(Anchor, 50f, party, new List<EnemyTarget>()); // seek fallback
+            _controller.Update(Anchor, 50f, party, new List<EnemyTarget>(), NoRoles); // seek fallback
 
             Assert.False(_bridge.IsPedFollowingPlayer(bg));
         }
@@ -238,7 +266,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             // CreatePed does not add the ped to the follower group, so it is not following yet.
             Assert.False(_bridge.IsPedFollowingPlayer(bg));
 
-            _controller.Update(Anchor, 50f, party, new List<EnemyTarget>());
+            _controller.Update(Anchor, 50f, party, new List<EnemyTarget>(), NoRoles);
 
             // ApplyEscort must have called SetPedAsFollower to repair the group.
             Assert.True(_bridge.IsPedFollowingPlayer(bg));
@@ -257,7 +285,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             // Player is on foot by default (IsPlayerInVehicleValue = false).
             Assert.True(_bridge.IsPedInVehicle(bg)); // pre-condition: bodyguard is in a vehicle
 
-            _controller.Update(Anchor, 50f, party, new List<EnemyTarget>());
+            _controller.Update(Anchor, 50f, party, new List<EnemyTarget>(), NoRoles);
 
             // TaskPedLeaveVehicle removes the ped from _pedsInVehicles; IsPedInVehicle becomes false.
             Assert.False(_bridge.IsPedInVehicle(bg));

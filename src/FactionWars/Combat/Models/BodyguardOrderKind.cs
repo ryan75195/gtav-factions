@@ -8,6 +8,7 @@ namespace FactionWars.Combat.Models
         FollowPlayer,
         HoldAtPoint,
         SeekInRadius,
-        AttackTarget
+        AttackTarget,
+        AdvanceOnTarget
     }
 }
