@@ -24,7 +24,10 @@ namespace FactionWars.ScriptHookV
             _zoneBattleManager?.Tick(deltaTime);
             _policeSuppressionController?.Update();
             _victoryManager?.Update(deltaTime);
-            _followerManager?.Update(CurrentPlayerFactionId ?? "");
+            // Only Escort boards the player's vehicle; HoldArea/S&D keep the squad on the ground.
+            var boardPlayerVehicle = _squadStanceController == null
+                || _squadStanceController.CurrentStance == SquadStance.Escort;
+            _followerManager?.Update(CurrentPlayerFactionId ?? "", boardPlayerVehicle);
             UpdateSquadStance();
             UpdateFollowerSniperWeapons();
             _friendlyDefenderManager?.Update();

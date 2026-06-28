@@ -74,6 +74,39 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         }
 
         [Fact]
+        public void Update_HoldArea_DisembarksBodyguardStillInVehicle()
+        {
+            // Drop-off flow: a bodyguard that boarded during Escort must get out when the
+            // player switches to HoldArea, so the squad can hold the ground and the player drives off.
+            _controller = Build();
+            int vehicle = _bridge.CreateTestVehicle();
+            int bg = _bridge.CreatePed("bg", new Vector3(1f, 0f, 0f));
+            _bridge.PutPedInVehicle(bg, vehicle, 1);
+            var party = new List<int> { bg };
+            _controller.CycleStance(party); // -> HoldArea
+
+            _controller.Update(Anchor, 50f, party, new List<EnemyTarget>());
+
+            Assert.False(_bridge.IsPedInVehicle(bg));
+        }
+
+        [Fact]
+        public void Update_SearchAndDestroy_DisembarksBodyguardStillInVehicle()
+        {
+            _controller = Build();
+            int vehicle = _bridge.CreateTestVehicle();
+            int bg = _bridge.CreatePed("bg", new Vector3(1f, 0f, 0f));
+            _bridge.PutPedInVehicle(bg, vehicle, 1);
+            var party = new List<int> { bg };
+            _controller.CycleStance(party); // HoldArea
+            _controller.CycleStance(party); // SearchAndDestroy
+
+            _controller.Update(Anchor, 50f, party, new List<EnemyTarget> { new EnemyTarget(777, new Vector3(10f, 0f, 0f)) });
+
+            Assert.False(_bridge.IsPedInVehicle(bg));
+        }
+
+        [Fact]
         public void Update_SearchAndDestroy_WithEnemy_IssuesTaskCombatPed()
         {
             _controller = Build();
