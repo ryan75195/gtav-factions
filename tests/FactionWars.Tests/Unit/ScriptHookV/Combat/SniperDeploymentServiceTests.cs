@@ -67,5 +67,27 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Combat
 
             Assert.Equal("WEAPON_SNIPERRIFLE", _bridge.GetPedActiveWeapon(ped));
         }
+
+        [Fact]
+        public void UpdateCloseDefense_SameFarThreat_SetActiveWeaponCalledOnlyOnce()
+        {
+            int ped = _bridge.CreatePed("s_m_y_blackops_03", new Vector3(0f, 0f, 0f));
+            var farThreats = new List<Vector3> { new Vector3(40f, 0f, 0f) };
+
+            _service.UpdateCloseDefense(ped, farThreats);
+            _service.UpdateCloseDefense(ped, farThreats);
+
+            Assert.Equal(1, _bridge.GetActiveWeaponSetCount(ped));
+        }
+
+        [Fact]
+        public void UpdateCloseDefense_NullThreats_SetsRifleAndDoesNotThrow()
+        {
+            int ped = _bridge.CreatePed("s_m_y_blackops_03", new Vector3(0f, 0f, 0f));
+
+            _service.UpdateCloseDefense(ped, null!);
+
+            Assert.Equal("WEAPON_SNIPERRIFLE", _bridge.GetPedActiveWeapon(ped));
+        }
     }
 }

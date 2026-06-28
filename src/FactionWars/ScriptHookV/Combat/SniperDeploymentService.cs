@@ -44,6 +44,7 @@ namespace FactionWars.ScriptHookV.Combat
 
         public void UpdateCloseDefense(int sniperHandle, IReadOnlyList<Vector3> threatPositions)
         {
+            if (threatPositions == null) threatPositions = System.Array.Empty<Vector3>();
             var sniperPos = _gameBridge.GetPedPosition(sniperHandle);
             bool threatClose = false;
             foreach (var threat in threatPositions)
