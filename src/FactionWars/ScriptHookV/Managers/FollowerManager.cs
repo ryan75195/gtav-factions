@@ -222,9 +222,7 @@ namespace FactionWars.ScriptHookV.Managers
         }
 
         /// <summary>
-        /// Updates follower state. Should be called each game tick.
-        /// Checks for follower deaths and handles cleanup.
-        /// Also manages vehicle enter/exit behavior with coordinated seat assignment.
+        /// Updates follower state each tick: death cleanup and vehicle enter/exit with coordinated seats.
         /// </summary>
         /// <param name="factionId">The faction to update followers for.</param>
         /// <param name="boardPlayerVehicle">
@@ -239,6 +237,7 @@ namespace FactionWars.ScriptHookV.Managers
                 OnFootBodyguardHandles = Array.Empty<int>();
                 SniperBodyguardHandles = Array.Empty<int>();
                 _trackedFollowers = Array.Empty<TrackedCombatant>();
+                _onFootBodyguardRoles = new Dictionary<int, DefenderRole>();
                 return;
             }
 
@@ -247,6 +246,7 @@ namespace FactionWars.ScriptHookV.Managers
             var playerVehicle = playerInVehicle ? _gameBridge.GetPlayerVehicle() : -1;
             var aliveFollowerHandles = GetAliveFollowerHandles(followers);
             _trackedFollowers = BuildTrackedFollowers(followers, aliveFollowerHandles);
+            CaptureFollowerRoles(_trackedFollowers);
 
             if (playerInVehicle && playerVehicle >= 0 && boardPlayerVehicle)
             {
@@ -256,8 +256,7 @@ namespace FactionWars.ScriptHookV.Managers
             }
             else
             {
-                // Player on foot, or holding/hunting: keep bodyguards on the ground for the
-                // squad stance controller to task (it disembarks any still in a vehicle).
+                // On foot / holding / hunting: keep bodyguards grounded for the squad stance controller.
                 OnFootBodyguardHandles = aliveFollowerHandles;
                 SniperBodyguardHandles = FilterSniperHandles(followers, aliveFollowerHandles);
             }
