@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using FactionWars.Combat.Interfaces;
 using FactionWars.Combat.Models;
 using FactionWars.Core.Interfaces;
+using FactionWars.ScriptHookV.Logging;
 
 namespace FactionWars.ScriptHookV.Managers
 {
@@ -37,11 +38,14 @@ namespace FactionWars.ScriptHookV.Managers
         {
             if (onFootBodyguardHandles == null || onFootBodyguardHandles.Count == 0)
             {
+                FileLogger.AI("SquadStance.CycleStance: ignored (no on-foot bodyguards)");
                 return;
             }
 
+            var previous = _currentStance;
             _currentStance = _currentStance.Next();
             _lastApplied.Clear();
+            FileLogger.AI($"SquadStance.CycleStance: {previous} -> {_currentStance} (party={onFootBodyguardHandles.Count})");
             _gameBridge.ShowNotification($"~b~Bodyguards:~w~ {StanceLabel(_currentStance)}");
         }
 

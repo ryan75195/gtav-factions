@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using FactionWars.Combat.Models;
 using FactionWars.Core.Interfaces;
+using FactionWars.ScriptHookV.Logging;
 
 namespace FactionWars.ScriptHookV
 {
@@ -38,6 +39,8 @@ namespace FactionWars.ScriptHookV
             _battleAttackerManager?.Update();
         }
 
+        private string _lastSquadStanceSummary = "";
+
         private void UpdateSquadStance()
         {
             if (_squadStanceController == null || _followerManager == null) return;
@@ -46,9 +49,19 @@ namespace FactionWars.ScriptHookV
             var anchor = ResolveSquadAnchor();
             IReadOnlyList<EnemyTarget> enemies = System.Array.Empty<EnemyTarget>();
 
+            int hostileCount = 0;
             if (_squadStanceController.CurrentStance == SquadStance.SearchAndDestroy && handles.Count > 0)
             {
-                enemies = _enemyTargetCollector!.Collect(GatherHostileHandles(), anchor.Center, anchor.Radius);
+                var hostileHandles = GatherHostileHandles();
+                hostileCount = hostileHandles.Count;
+                enemies = _enemyTargetCollector!.Collect(hostileHandles, anchor.Center, anchor.Radius);
+            }
+
+            var summary = $"stance={_squadStanceController.CurrentStance} onFoot={handles.Count} inVehicle={_gameBridge.IsPlayerInVehicle()} hostiles={hostileCount} enemiesInRange={enemies.Count}";
+            if (summary != _lastSquadStanceSummary)
+            {
+                FileLogger.AI($"UpdateSquadStance: {summary}");
+                _lastSquadStanceSummary = summary;
             }
 
             _squadStanceController.Update(anchor.Center, anchor.Radius, handles, enemies);
