@@ -574,6 +574,19 @@ namespace FactionWars.Core.Utils
             _activeWeaponSetCount[pedHandle] = (_activeWeaponSetCount.TryGetValue(pedHandle, out var c) ? c : 0) + 1;
         }
 
+        private readonly HashSet<(int, int)> _clearLos = new HashSet<(int, int)>();
+
+        /// <summary>Test hook: sets whether `from` has clear LOS to `to`.</summary>
+        public void SetLineOfSight(int from, int to, bool clear)
+        {
+            if (clear) _clearLos.Add((from, to));
+            else _clearLos.Remove((from, to));
+        }
+
+        /// <inheritdoc />
+        public bool HasClearLineOfSight(int fromPedHandle, int toPedHandle)
+            => _clearLos.Contains((fromPedHandle, toPedHandle));
+
         private readonly HashSet<int> _shootingPeds = new HashSet<int>();
         private readonly Dictionary<int, int> _pedAmmo = new Dictionary<int, int>();
 
