@@ -14,7 +14,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         private SquadStanceController _controller = null!;
 
         private SquadStanceController Build()
-            => new SquadStanceController(_bridge, new SquadStanceResolver(), new TargetAssignmentResolver());
+            => new SquadStanceController(_bridge, new SquadStanceResolver(), new TargetAssignmentResolver(), new PedIntentReconciler(_bridge));
 
         private static readonly Vector3 Anchor = new Vector3(0f, 0f, 0f);
 

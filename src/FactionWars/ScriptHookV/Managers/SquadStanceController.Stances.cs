@@ -34,7 +34,7 @@ namespace FactionWars.ScriptHookV.Managers
             {
                 if (_gameBridge.IsPedInVehicle(pedHandle))
                 {
-                    _gameBridge.TaskPedLeaveVehicle(pedHandle);
+                    _reconciler.Submit(pedHandle, PedIntent.LeaveVehicle());
                     continue;
                 }
                 if (_gameBridge.IsPedFollowingPlayer(pedHandle))
@@ -51,7 +51,9 @@ namespace FactionWars.ScriptHookV.Managers
                     continue;
                 }
 
-                _gameBridge.SetPedAsFollower(pedHandle);
+                // Periodic repair: force re-application even though the intent is unchanged.
+                _reconciler.Forget(pedHandle);
+                _reconciler.Submit(pedHandle, PedIntent.FollowPlayer());
                 _lastFollowReassertMs[pedHandle] = now;
                 FileLogger.AI($"SquadStance Escort: ped {pedHandle} re-followed");
             }
@@ -63,7 +65,7 @@ namespace FactionWars.ScriptHookV.Managers
         private bool DisembarkedThisTick(int pedHandle)
         {
             if (!_gameBridge.IsPedInVehicle(pedHandle)) return false;
-            _gameBridge.TaskPedLeaveVehicle(pedHandle);
+            _reconciler.Submit(pedHandle, PedIntent.LeaveVehicle());
             return true;
         }
 
@@ -78,8 +80,7 @@ namespace FactionWars.ScriptHookV.Managers
                 if (AlreadyApplied(pedHandle, SquadStance.HoldArea, BodyguardOrderKind.HoldAtPoint, i)) continue;
 
                 var order = _stanceResolver.Resolve(SquadStance.HoldArea, holdCenter, HoldRingRadius, i, handles.Count);
-                _gameBridge.RemovePedFromFollowerGroup(pedHandle);
-                _gameBridge.TaskGuardArea(pedHandle, order.Point, HoldRadiusPerBodyguard);
+                _reconciler.Submit(pedHandle, PedIntent.GuardArea(order.Point, HoldRadiusPerBodyguard, i));
                 Remember(pedHandle, SquadStance.HoldArea, BodyguardOrderKind.HoldAtPoint, i);
                 FileLogger.AI($"SquadStance HoldArea: ped {pedHandle} guard ({order.Point.X:F0},{order.Point.Y:F0}) inPlayerGroup={_gameBridge.IsPedFollowingPlayer(pedHandle)} inCombat={_gameBridge.IsPedInCombat(pedHandle)}");
             }
@@ -106,8 +107,7 @@ namespace FactionWars.ScriptHookV.Managers
                 if (!assignment.TryGetValue(pedHandle, out var targetHandle)) continue;
                 if (AlreadyApplied(pedHandle, SquadStance.SearchAndDestroy, BodyguardOrderKind.AttackTarget, targetHandle)) continue;
 
-                _gameBridge.RemovePedFromFollowerGroup(pedHandle);
-                _gameBridge.TaskCombatPed(pedHandle, targetHandle);
+                _reconciler.Submit(pedHandle, PedIntent.CombatTarget(targetHandle));
                 Remember(pedHandle, SquadStance.SearchAndDestroy, BodyguardOrderKind.AttackTarget, targetHandle);
                 FileLogger.AI($"SquadStance S&D: ped {pedHandle} attack {targetHandle} inPlayerGroup={_gameBridge.IsPedFollowingPlayer(pedHandle)} inCombat={_gameBridge.IsPedInCombat(pedHandle)}");
             }
@@ -133,8 +133,7 @@ namespace FactionWars.ScriptHookV.Managers
             {
                 if (DisembarkedThisTick(pedHandle)) continue;
                 if (AlreadyApplied(pedHandle, SquadStance.SearchAndDestroy, BodyguardOrderKind.SeekInRadius, 0)) continue;
-                _gameBridge.RemovePedFromFollowerGroup(pedHandle);
-                _gameBridge.TaskCombatHatedTargetsAroundPed(pedHandle, anchorRadius);
+                _reconciler.Submit(pedHandle, PedIntent.SeekHatedTargets(new Vector3(0f, 0f, 0f), anchorRadius));
                 Remember(pedHandle, SquadStance.SearchAndDestroy, BodyguardOrderKind.SeekInRadius, 0);
                 FileLogger.AI($"SquadStance S&D-seek: ped {pedHandle} seek r{anchorRadius:F0} inPlayerGroup={_gameBridge.IsPedFollowingPlayer(pedHandle)} inCombat={_gameBridge.IsPedInCombat(pedHandle)}");
             }
