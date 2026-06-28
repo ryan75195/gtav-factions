@@ -85,5 +85,49 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             Assert.Equal(1, manager.GetSpawnedDefenderCount(TestZoneId));
             Assert.True(bridge.IsPedGuardingArea(1));
         }
+
+        [Fact]
+        public void Update_PlayerRushesEnemySniper_SwitchesToSidearm()
+        {
+            // Arrange
+            var bridge = new MockGameBridge();
+            var manager = BuildManager(bridge);
+            var zone = new Zone(TestZoneId, "Sniper Zone", new Vector3(100f, 100f, 0f), 150f, 1);
+            zone.OwnerFactionId = EnemyFactionId;
+            manager.OnEnemyZoneEntered(zone, EnemyFactionId);
+            const int sniperHandle = 1;
+            var pos = bridge.GetPedPosition(sniperHandle);
+            bridge.SetPlayerPosition(new Vector3(pos.X + 5f, pos.Y, pos.Z));
+
+            // Act
+            manager.Update(EnemyFactionId);
+
+            // Assert
+            Assert.Equal("weapon_pistol", bridge.GetPedActiveWeapon(sniperHandle));
+        }
+
+        [Fact]
+        public void Update_PlayerFarFromEnemySniper_KeepsRifle()
+        {
+            // Arrange
+            var bridge = new MockGameBridge();
+            var manager = BuildManager(bridge);
+            var zone = new Zone(TestZoneId, "Sniper Zone", new Vector3(100f, 100f, 0f), 150f, 1);
+            zone.OwnerFactionId = EnemyFactionId;
+            manager.OnEnemyZoneEntered(zone, EnemyFactionId);
+            const int sniperHandle = 1;
+            var pos = bridge.GetPedPosition(sniperHandle);
+            // Rush in to trigger sidearm, then retreat so the sniper switches back to rifle
+            bridge.SetPlayerPosition(new Vector3(pos.X + 5f, pos.Y, pos.Z));
+            manager.Update(EnemyFactionId);
+            bridge.SetPlayerPosition(new Vector3(pos.X + 100f, pos.Y, pos.Z));
+
+            // Act
+            manager.Update(EnemyFactionId);
+
+            // Assert - after player retreats, sniper returns to rifle; exactly 2 swaps, no thrash
+            Assert.Equal("WEAPON_SNIPERRIFLE", bridge.GetPedActiveWeapon(sniperHandle));
+            Assert.Equal(2, bridge.GetActiveWeaponSetCount(sniperHandle));
+        }
     }
 }

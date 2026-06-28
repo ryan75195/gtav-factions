@@ -9,7 +9,6 @@ namespace FactionWars.ScriptHookV.Managers
         public void Update(string? enemyFactionId)
         {
             if (_currentEnemyZoneId == null || string.IsNullOrEmpty(enemyFactionId)) return;
-            var defenderFactionId = enemyFactionId!;
 
             var newlyDeadPeds = new List<(string zoneId, int pedHandle, DefenderRole tier)>();
             var streamedOutPeds = new List<(string zoneId, int pedHandle)>();
@@ -56,13 +55,31 @@ namespace FactionWars.ScriptHookV.Managers
             // Process each newly dead defender (track as corpse, decrement allocation, spawn replacement)
             foreach (var (zoneId, pedHandle, tier) in newlyDeadPeds)
             {
-                HandleDefenderDeath(zoneId, pedHandle, tier, defenderFactionId);
+                HandleDefenderDeath(zoneId, pedHandle, tier, enemyFactionId!);
             }
 
             // Clean up corpses that have exceeded the delay
             CleanupExpiredCorpses(currentGameTime);
 
             EnforceZoneLeash(currentGameTime);
+            UpdateSniperCloseDefense();
+        }
+
+        private void UpdateSniperCloseDefense()
+        {
+            var playerPos = _gameBridge.GetPlayerPosition();
+            var threatPositions = new[] { playerPos };
+
+            foreach (var zoneKvp in _spawnedPedTierByZone)
+            {
+                foreach (var pedKvp in zoneKvp.Value)
+                {
+                    if (pedKvp.Value != DefenderRole.Sniper) continue;
+                    var handle = pedKvp.Key;
+                    if (!_gameBridge.DoesPedExist(handle) || !_gameBridge.IsPedAlive(handle)) continue;
+                    _sniperDeployment.UpdateCloseDefense(handle, threatPositions);
+                }
+            }
         }
 
         /// <summary>
