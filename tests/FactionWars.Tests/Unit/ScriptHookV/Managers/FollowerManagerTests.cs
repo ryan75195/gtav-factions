@@ -875,6 +875,28 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         }
 
         [Fact]
+        public void Update_WhenNotBoardingAndPlayerInVehicle_ShouldNotBoardAndKeepBodyguardsOnFoot()
+        {
+            // In HoldArea / S&D the squad holds or hunts on the ground rather than piling into
+            // the player's car, so the player can drop them off and drive away to lock an area down.
+            var factionId = "blue";
+            var follower = CreateFollowerWithPedHandle(factionId, DefenderRole.Grunt, 42);
+            var followers = new List<Follower> { follower };
+
+            _followerServiceMock.Setup(s => s.GetFollowers(factionId)).Returns(followers);
+            _gameBridgeMock.Setup(g => g.IsPedAlive(42)).Returns(true);
+            _gameBridgeMock.Setup(g => g.IsPlayerInVehicle()).Returns(true);
+            _gameBridgeMock.Setup(g => g.GetPlayerVehicle()).Returns(100);
+
+            // Act
+            _manager.Update(factionId, boardPlayerVehicle: false);
+
+            // Assert
+            _gameBridgeMock.Verify(g => g.TaskPedEnterVehicle(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>()), Times.Never);
+            Assert.Equal(new[] { 42 }, _manager.OnFootBodyguardHandles);
+        }
+
+        [Fact]
         public void Update_WhenFollowerInCombat_ShouldClearCombatThenBoard()
         {
             // The player wants to flee with the squad: a fighting follower must break off combat

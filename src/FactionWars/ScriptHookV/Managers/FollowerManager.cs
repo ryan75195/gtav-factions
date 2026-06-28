@@ -226,11 +226,17 @@ namespace FactionWars.ScriptHookV.Managers
         /// Also manages vehicle enter/exit behavior with coordinated seat assignment.
         /// </summary>
         /// <param name="factionId">The faction to update followers for.</param>
-        public void Update(string factionId)
+        /// <param name="boardPlayerVehicle">
+        /// When true (Escort), followers board the player's vehicle to follow. When false
+        /// (HoldArea / SearchAndDestroy), they stay on the ground so the player can drop them
+        /// off and drive away while they lock down the area.
+        /// </param>
+        public void Update(string factionId, bool boardPlayerVehicle = true)
         {
             if (string.IsNullOrEmpty(factionId))
             {
                 OnFootBodyguardHandles = Array.Empty<int>();
+                SniperBodyguardHandles = Array.Empty<int>();
                 return;
             }
 
@@ -239,7 +245,7 @@ namespace FactionWars.ScriptHookV.Managers
             var playerVehicle = playerInVehicle ? _gameBridge.GetPlayerVehicle() : -1;
             var aliveFollowerHandles = GetAliveFollowerHandles(followers);
 
-            if (playerInVehicle && playerVehicle >= 0)
+            if (playerInVehicle && playerVehicle >= 0 && boardPlayerVehicle)
             {
                 AssignFollowersToVehicle(aliveFollowerHandles, playerVehicle);
                 OnFootBodyguardHandles = Array.Empty<int>();
@@ -247,6 +253,8 @@ namespace FactionWars.ScriptHookV.Managers
             }
             else
             {
+                // Player on foot, or holding/hunting: keep bodyguards on the ground for the
+                // squad stance controller to task (it disembarks any still in a vehicle).
                 OnFootBodyguardHandles = aliveFollowerHandles;
                 SniperBodyguardHandles = FilterSniperHandles(followers, aliveFollowerHandles);
             }

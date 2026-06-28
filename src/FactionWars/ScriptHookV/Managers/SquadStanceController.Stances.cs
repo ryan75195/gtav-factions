@@ -57,6 +57,16 @@ namespace FactionWars.ScriptHookV.Managers
             }
         }
 
+        // A bodyguard that boarded the player's vehicle during Escort must get out before it can
+        // hold or hunt on the ground. Returns true if it was in a vehicle (and was tasked to leave),
+        // so the caller skips ground tasking until it is out.
+        private bool DisembarkedThisTick(int pedHandle)
+        {
+            if (!_gameBridge.IsPedInVehicle(pedHandle)) return false;
+            _gameBridge.TaskPedLeaveVehicle(pedHandle);
+            return true;
+        }
+
         private void ApplyHoldArea(IReadOnlyList<int> handles)
         {
             // Center the hold ring on the player so bodyguards hold near you, not across the zone.
@@ -64,6 +74,7 @@ namespace FactionWars.ScriptHookV.Managers
             for (int i = 0; i < handles.Count; i++)
             {
                 int pedHandle = handles[i];
+                if (DisembarkedThisTick(pedHandle)) continue;
                 if (AlreadyApplied(pedHandle, SquadStance.HoldArea, BodyguardOrderKind.HoldAtPoint, i)) continue;
 
                 var order = _stanceResolver.Resolve(SquadStance.HoldArea, holdCenter, HoldRingRadius, i, handles.Count);
@@ -91,6 +102,7 @@ namespace FactionWars.ScriptHookV.Managers
             var assignment = _assignmentResolver.Assign(bodyguards, enemies, BuildPreviousAssignment());
             foreach (var pedHandle in handles)
             {
+                if (DisembarkedThisTick(pedHandle)) continue;
                 if (!assignment.TryGetValue(pedHandle, out var targetHandle)) continue;
                 if (AlreadyApplied(pedHandle, SquadStance.SearchAndDestroy, BodyguardOrderKind.AttackTarget, targetHandle)) continue;
 
@@ -119,6 +131,7 @@ namespace FactionWars.ScriptHookV.Managers
         {
             foreach (var pedHandle in handles)
             {
+                if (DisembarkedThisTick(pedHandle)) continue;
                 if (AlreadyApplied(pedHandle, SquadStance.SearchAndDestroy, BodyguardOrderKind.SeekInRadius, 0)) continue;
                 _gameBridge.RemovePedFromFollowerGroup(pedHandle);
                 _gameBridge.TaskCombatHatedTargetsAroundPed(pedHandle, anchorRadius);
