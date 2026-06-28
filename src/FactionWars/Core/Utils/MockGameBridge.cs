@@ -565,6 +565,16 @@ namespace FactionWars.Core.Utils
             }
         }
 
+        private readonly Dictionary<int, string> _activeWeapon = new Dictionary<int, string>();
+
+        public void SetPedActiveWeapon(int pedHandle, string weaponName)
+        {
+            _activeWeapon[pedHandle] = weaponName;
+        }
+
+        public string GetPedActiveWeapon(int pedHandle) =>
+            _activeWeapon.TryGetValue(pedHandle, out var w) ? w : string.Empty;
+
         /// <summary>
         /// Gets whether a ped can switch weapons (for testing purposes).
         /// </summary>
