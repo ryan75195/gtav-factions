@@ -23,18 +23,15 @@ namespace FactionWars.ScriptHookV
                 Script.Wait(10);
                 collisionWait++;
             }
-            FileLogger.Spawn($"Collision request complete after {collisionWait * 10}ms");
 
             var outArg = new OutputArgument();
             bool gotGround = Function.Call<bool>(Hash.GET_GROUND_Z_FOR_3D_COORD,
                 position.X, position.Y, position.Z + 100f, outArg, false, false);
             groundZ = gotGround ? outArg.GetResult<float>() : 0f;
-            FileLogger.Spawn($"Ground height check: success={gotGround}, groundZ={groundZ:F1}");
 
             if (gotGround && groundZ > 0)
             {
                 gtaPosition.Z = groundZ;
-                FileLogger.Spawn($"Adjusted Z to ground: {gtaPosition.Z:F1}");
                 return true;
             }
 
@@ -55,7 +52,6 @@ namespace FactionWars.ScriptHookV
             }
 
             model.Request(5000);
-            FileLogger.Spawn($"Model requested, waiting for load...");
             int waitCounter = 0;
             while (!model.IsLoaded && waitCounter < 100)
             {
@@ -63,7 +59,6 @@ namespace FactionWars.ScriptHookV
                 waitCounter++;
             }
 
-            FileLogger.Spawn($"Model load wait complete: waitCounter={waitCounter}, IsLoaded={model.IsLoaded}");
             if (model.IsLoaded)
                 return true;
 

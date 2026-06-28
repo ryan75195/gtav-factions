@@ -8,19 +8,19 @@ namespace FactionWars.ScriptHookV
 {
     public partial class GameLoopController
     {
-        private void ConfigureSpawnedDefenders(IList<PedHandle> spawnedPeds, DefenderTier tier, string defenderFactionId)
+        private void ConfigureSpawnedDefenders(IList<PedHandle> spawnedPeds, DefenderRole tier, string defenderFactionId)
         {
             FileLogger.Combat($"ConfigureSpawnedDefenders: {spawnedPeds.Count} peds, tier={tier}, faction={defenderFactionId}");
 
-            var defenderTierService = _container.Resolve<IDefenderTierService>();
-            var config = defenderTierService.GetTierConfig(tier);
+            var defenderRoleService = _container.Resolve<IDefenderRoleService>();
+            var config = defenderRoleService.GetRoleConfig(tier);
 
             // Map weapon names to GTA V weapon names
             var weaponName = tier switch
             {
-                DefenderTier.Basic => "WEAPON_PISTOL",
-                DefenderTier.Medium => "WEAPON_SMG",
-                DefenderTier.Heavy => "WEAPON_CARBINERIFLE",
+                DefenderRole.Grunt => "WEAPON_PISTOL",
+                DefenderRole.Gunner => "WEAPON_SMG",
+                DefenderRole.Rifleman => "WEAPON_CARBINERIFLE",
                 _ => "WEAPON_PISTOL"
             };
 

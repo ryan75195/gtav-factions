@@ -35,9 +35,9 @@ namespace FactionWars.ScriptHookV.Managers
         /// </summary>
         /// <param name="tier">The tier to get cost for.</param>
         /// <returns>The cost in dollars.</returns>
-        public int GetRecruitCost(DefenderTier tier)
+        public int GetRecruitCost(DefenderRole tier)
         {
-            var config = _defenderTierService.GetTierConfig(tier);
+            var config = _defenderRoleService.GetRoleConfig(tier);
             return config.Cost;
         }
 
@@ -66,7 +66,7 @@ namespace FactionWars.ScriptHookV.Managers
         /// <param name="factionId">The faction to check.</param>
         /// <param name="tier">The tier of follower to recruit.</param>
         /// <returns>True if recruitment is possible and player has funds, false otherwise.</returns>
-        public bool CanRecruitWithCost(string factionId, DefenderTier tier)
+        public bool CanRecruitWithCost(string factionId, DefenderRole tier)
         {
             // First check basic recruitment constraints
             if (!CanRecruit(factionId))
@@ -75,9 +75,9 @@ namespace FactionWars.ScriptHookV.Managers
             }
 
             // Check if player has enough money
-            var tierConfig = _defenderTierService.GetTierConfig(tier);
+            var roleConfig = _defenderRoleService.GetRoleConfig(tier);
             var playerMoney = _gameBridge.GetPlayerMoney();
-            return playerMoney >= tierConfig.Cost;
+            return playerMoney >= roleConfig.Cost;
         }
 
         /// <summary>
@@ -85,6 +85,6 @@ namespace FactionWars.ScriptHookV.Managers
         /// Sets weapon, accuracy, armor, health, and combat behavior.
         /// </summary>
         /// <param name="pedHandle">Handle of the ped to configure.</param>
-        /// <param name="tierConfig">The tier configuration to apply.</param>
+        /// <param name="roleConfig">The tier configuration to apply.</param>
     }
 }

@@ -159,9 +159,9 @@ namespace FactionWars.ScriptHookV.UI
 
         private static void AddReserveSummary(MenuDefinition menu, FactionState? factionState)
         {
-            var basicReserve = factionState?.GetReserveTroops(DefenderTier.Basic) ?? 0;
-            var mediumReserve = factionState?.GetReserveTroops(DefenderTier.Medium) ?? 0;
-            var heavyReserve = factionState?.GetReserveTroops(DefenderTier.Heavy) ?? 0;
+            var basicReserve = factionState?.GetReserveTroops(DefenderRole.Grunt) ?? 0;
+            var mediumReserve = factionState?.GetReserveTroops(DefenderRole.Gunner) ?? 0;
+            var heavyReserve = factionState?.GetReserveTroops(DefenderRole.Rifleman) ?? 0;
 
             var reserveItem = new MenuItem(
                 ReserveSummaryItemId,
@@ -192,9 +192,9 @@ namespace FactionWars.ScriptHookV.UI
                 foreach (var zone in ownedZones)
                 {
                     var allocation = factionId != null ? _allocationService.GetAllocation(factionId, zone.Id) : null;
-                    var basic = allocation?.GetTroopCount(DefenderTier.Basic) ?? 0;
-                    var medium = allocation?.GetTroopCount(DefenderTier.Medium) ?? 0;
-                    var heavy = allocation?.GetTroopCount(DefenderTier.Heavy) ?? 0;
+                    var basic = allocation?.GetTroopCount(DefenderRole.Grunt) ?? 0;
+                    var medium = allocation?.GetTroopCount(DefenderRole.Gunner) ?? 0;
+                    var heavy = allocation?.GetTroopCount(DefenderRole.Rifleman) ?? 0;
                     var total = basic + medium + heavy;
 
                     var zoneItem = new MenuItem(

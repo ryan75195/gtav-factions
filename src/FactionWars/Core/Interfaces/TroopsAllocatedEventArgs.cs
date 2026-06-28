@@ -10,10 +10,10 @@ namespace FactionWars.Core.Interfaces
     {
         public string FactionId { get; }
         public string ZoneId { get; }
-        public DefenderTier Tier { get; }
+        public DefenderRole Tier { get; }
         public int Count { get; }
 
-        public TroopsAllocatedEventArgs(string factionId, string zoneId, DefenderTier tier, int count)
+        public TroopsAllocatedEventArgs(string factionId, string zoneId, DefenderRole tier, int count)
         {
             FactionId = factionId;
             ZoneId = zoneId;

@@ -27,6 +27,9 @@ namespace FactionWars.Tests.Mocks
         /// <inheritdoc />
         public event EventHandler? MenuClosed;
 
+        /// <inheritdoc />
+        public event EventHandler<string>? MenuBackedOut;
+
         /// <summary>
         /// Gets the currently selected item index, or -1 if no menu is open.
         /// </summary>
@@ -99,6 +102,22 @@ namespace FactionWars.Tests.Mocks
                 return;
 
             ItemSelected?.Invoke(this, new MenuItemSelectedEventArgs(_currentDefinition.Id, itemId));
+        }
+
+        /// <summary>
+        /// Simulates the user pressing the native back control (B / Backspace / Esc), which tears
+        /// down the current menu and raises <see cref="MenuBackedOut"/> with the closed menu's id.
+        /// </summary>
+        public void SimulateBackOut()
+        {
+            var closedId = _currentDefinition?.Id;
+            if (closedId == null)
+                return;
+
+            _currentDefinition = null;
+            SelectedIndex = -1;
+            MenuClosed?.Invoke(this, EventArgs.Empty);
+            MenuBackedOut?.Invoke(this, closedId);
         }
     }
 }

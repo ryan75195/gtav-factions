@@ -16,7 +16,7 @@ namespace FactionWars.Tests.Unit.Core.Models
         {
             var allocation = new ZoneDefenderAllocation("faction-1", "zone-1");
 
-            Assert.Equal(0, allocation.GetTroopCount(DefenderTier.Elite));
+            Assert.Equal(0, allocation.GetTroopCount(DefenderRole.Rocketeer));
         }
 
         [Fact]
@@ -24,10 +24,10 @@ namespace FactionWars.Tests.Unit.Core.Models
         {
             var allocation = new ZoneDefenderAllocation("faction-1", "zone-1");
 
-            Assert.Equal(0, allocation.GetTroopCount(DefenderTier.Basic));
-            Assert.Equal(0, allocation.GetTroopCount(DefenderTier.Medium));
-            Assert.Equal(0, allocation.GetTroopCount(DefenderTier.Heavy));
-            Assert.Equal(0, allocation.GetTroopCount(DefenderTier.Elite));
+            Assert.Equal(0, allocation.GetTroopCount(DefenderRole.Grunt));
+            Assert.Equal(0, allocation.GetTroopCount(DefenderRole.Gunner));
+            Assert.Equal(0, allocation.GetTroopCount(DefenderRole.Rifleman));
+            Assert.Equal(0, allocation.GetTroopCount(DefenderRole.Rocketeer));
         }
 
         #endregion
@@ -39,17 +39,17 @@ namespace FactionWars.Tests.Unit.Core.Models
         {
             var allocation = new ZoneDefenderAllocation("faction-1", "zone-1");
 
-            allocation.AddTroops(DefenderTier.Elite, 5);
+            allocation.AddTroops(DefenderRole.Rocketeer, 5);
 
-            Assert.Equal(5, allocation.GetTroopCount(DefenderTier.Elite));
+            Assert.Equal(5, allocation.GetTroopCount(DefenderRole.Rocketeer));
         }
 
         [Fact]
         public void AddTroops_EliteTier_IncludedInTotalTroops()
         {
             var allocation = new ZoneDefenderAllocation("faction-1", "zone-1");
-            allocation.AddTroops(DefenderTier.Basic, 3);
-            allocation.AddTroops(DefenderTier.Elite, 2);
+            allocation.AddTroops(DefenderRole.Grunt, 3);
+            allocation.AddTroops(DefenderRole.Rocketeer, 2);
 
             Assert.Equal(5, allocation.TotalTroops);
         }
@@ -62,12 +62,12 @@ namespace FactionWars.Tests.Unit.Core.Models
         public void RemoveTroops_EliteTier_DecreasesTroopCount()
         {
             var allocation = new ZoneDefenderAllocation("faction-1", "zone-1");
-            allocation.AddTroops(DefenderTier.Elite, 5);
+            allocation.AddTroops(DefenderRole.Rocketeer, 5);
 
-            var result = allocation.RemoveTroops(DefenderTier.Elite, 2);
+            var result = allocation.RemoveTroops(DefenderRole.Rocketeer, 2);
 
             Assert.True(result);
-            Assert.Equal(3, allocation.GetTroopCount(DefenderTier.Elite));
+            Assert.Equal(3, allocation.GetTroopCount(DefenderRole.Rocketeer));
         }
 
         #endregion
@@ -78,18 +78,18 @@ namespace FactionWars.Tests.Unit.Core.Models
         public void HasTroops_EliteTier_ReturnsTrueWhenSufficient()
         {
             var allocation = new ZoneDefenderAllocation("faction-1", "zone-1");
-            allocation.AddTroops(DefenderTier.Elite, 5);
+            allocation.AddTroops(DefenderRole.Rocketeer, 5);
 
-            Assert.True(allocation.HasTroops(DefenderTier.Elite, 3));
+            Assert.True(allocation.HasTroops(DefenderRole.Rocketeer, 3));
         }
 
         [Fact]
         public void HasTroops_EliteTier_ReturnsFalseWhenInsufficient()
         {
             var allocation = new ZoneDefenderAllocation("faction-1", "zone-1");
-            allocation.AddTroops(DefenderTier.Elite, 2);
+            allocation.AddTroops(DefenderRole.Rocketeer, 2);
 
-            Assert.False(allocation.HasTroops(DefenderTier.Elite, 5));
+            Assert.False(allocation.HasTroops(DefenderRole.Rocketeer, 5));
         }
 
         #endregion
@@ -100,12 +100,12 @@ namespace FactionWars.Tests.Unit.Core.Models
         public void GetTroopsCopy_IncludesEliteTier()
         {
             var allocation = new ZoneDefenderAllocation("faction-1", "zone-1");
-            allocation.AddTroops(DefenderTier.Elite, 7);
+            allocation.AddTroops(DefenderRole.Rocketeer, 7);
 
             var troops = allocation.GetTroopsCopy();
 
-            Assert.True(troops.ContainsKey(DefenderTier.Elite));
-            Assert.Equal(7, troops[DefenderTier.Elite]);
+            Assert.True(troops.ContainsKey(DefenderRole.Rocketeer));
+            Assert.Equal(7, troops[DefenderRole.Rocketeer]);
         }
 
         #endregion
@@ -116,7 +116,7 @@ namespace FactionWars.Tests.Unit.Core.Models
         public void ToString_IncludesEliteCount()
         {
             var allocation = new ZoneDefenderAllocation("faction-1", "zone-1");
-            allocation.AddTroops(DefenderTier.Elite, 3);
+            allocation.AddTroops(DefenderRole.Rocketeer, 3);
 
             var result = allocation.ToString();
 
@@ -127,10 +127,10 @@ namespace FactionWars.Tests.Unit.Core.Models
         public void ToString_IncludesAllTiers()
         {
             var allocation = new ZoneDefenderAllocation("faction-1", "zone-1");
-            allocation.AddTroops(DefenderTier.Basic, 10);
-            allocation.AddTroops(DefenderTier.Medium, 5);
-            allocation.AddTroops(DefenderTier.Heavy, 2);
-            allocation.AddTroops(DefenderTier.Elite, 1);
+            allocation.AddTroops(DefenderRole.Grunt, 10);
+            allocation.AddTroops(DefenderRole.Gunner, 5);
+            allocation.AddTroops(DefenderRole.Rifleman, 2);
+            allocation.AddTroops(DefenderRole.Rocketeer, 1);
 
             var result = allocation.ToString();
 

@@ -60,7 +60,7 @@ namespace FactionWars.AI.Controllers
             int totalDeployed = 0;
 
             // Deploy all tiers proportionally
-            foreach (var tier in new[] { DefenderTier.Basic, DefenderTier.Medium, DefenderTier.Heavy, DefenderTier.Elite })
+            foreach (var tier in new[] { DefenderRole.Grunt, DefenderRole.Gunner, DefenderRole.Rifleman, DefenderRole.Rocketeer })
             {
                 int reserves = factionState.GetReserveTroops(tier);
                 int toDeploy = (int)(reserves * deployPercent);
@@ -97,16 +97,16 @@ namespace FactionWars.AI.Controllers
             FileLogger.AI($"      SimulateBattle: {attackerFactionId} vs {defenderFactionId} for {zone.Name}");
 
             // Build troop dictionaries for timed battle
-            var attackerTroopDict = new Dictionary<DefenderTier, int>
+            var attackerTroopDict = new Dictionary<DefenderRole, int>
             {
-                { DefenderTier.Basic, decision.TroopsToCommit },
-                { DefenderTier.Medium, 0 },
-                { DefenderTier.Heavy, 0 }
+                { DefenderRole.Grunt, decision.TroopsToCommit },
+                { DefenderRole.Gunner, 0 },
+                { DefenderRole.Rifleman, 0 }
             };
 
             var defenderTroopDict = BuildDefenderTroopsDictionary(defenderFactionId, decision.TargetZoneId!);
 
-            FileLogger.AI($"      SimulateBattle: AttackerTroops={decision.TroopsToCommit} Basic, DefenderTroops={defenderTroopDict[DefenderTier.Basic]}B/{defenderTroopDict[DefenderTier.Medium]}M/{defenderTroopDict[DefenderTier.Heavy]}H");
+            FileLogger.AI($"      SimulateBattle: AttackerTroops={decision.TroopsToCommit} Basic, DefenderTroops={defenderTroopDict[DefenderRole.Grunt]}B/{defenderTroopDict[DefenderRole.Gunner]}M/{defenderTroopDict[DefenderRole.Rifleman]}H");
 
             // Start timed battle instead of instant simulation
             var battle = _zoneBattleManager.StartBattle(
@@ -169,7 +169,7 @@ namespace FactionWars.AI.Controllers
                 : 0;
             if (defendersToAllocate > 0)
             {
-                _allocationService.SetAllocation(attackerFactionId, decision.TargetZoneId!, DefenderTier.Basic, defendersToAllocate);
+                _allocationService.SetAllocation(attackerFactionId, decision.TargetZoneId!, DefenderRole.Grunt, defendersToAllocate);
                 FileLogger.AI($"      SimulateBattle: Allocated {defendersToAllocate} defenders to {zone.Name}");
             }
 
@@ -185,26 +185,26 @@ namespace FactionWars.AI.Controllers
                 return TroopComposition.Empty;
 
             return new TroopComposition(
-                allocation.GetTroopCount(DefenderTier.Basic),
-                allocation.GetTroopCount(DefenderTier.Medium),
-                allocation.GetTroopCount(DefenderTier.Heavy));
+                allocation.GetTroopCount(DefenderRole.Grunt),
+                allocation.GetTroopCount(DefenderRole.Gunner),
+                allocation.GetTroopCount(DefenderRole.Rifleman));
         }
 
-        private Dictionary<DefenderTier, int> BuildDefenderTroopsDictionary(string defenderFactionId, string zoneId)
+        private Dictionary<DefenderRole, int> BuildDefenderTroopsDictionary(string defenderFactionId, string zoneId)
         {
-            var result = new Dictionary<DefenderTier, int>
+            var result = new Dictionary<DefenderRole, int>
             {
-                { DefenderTier.Basic, 0 },
-                { DefenderTier.Medium, 0 },
-                { DefenderTier.Heavy, 0 }
+                { DefenderRole.Grunt, 0 },
+                { DefenderRole.Gunner, 0 },
+                { DefenderRole.Rifleman, 0 }
             };
 
             var allocation = _allocationService.GetAllocation(defenderFactionId, zoneId);
             if (allocation != null)
             {
-                result[DefenderTier.Basic] = allocation.GetTroopCount(DefenderTier.Basic);
-                result[DefenderTier.Medium] = allocation.GetTroopCount(DefenderTier.Medium);
-                result[DefenderTier.Heavy] = allocation.GetTroopCount(DefenderTier.Heavy);
+                result[DefenderRole.Grunt] = allocation.GetTroopCount(DefenderRole.Grunt);
+                result[DefenderRole.Gunner] = allocation.GetTroopCount(DefenderRole.Gunner);
+                result[DefenderRole.Rifleman] = allocation.GetTroopCount(DefenderRole.Rifleman);
             }
 
             return result;
@@ -234,7 +234,7 @@ namespace FactionWars.AI.Controllers
                 int defendersToAllocate = survivors > 0 ? Math.Max(1, Math.Min((survivors + 1) / 2, 5)) : 0;
                 if (defendersToAllocate > 0)
                 {
-                    _allocationService.SetAllocation(result.AttackerFactionId, result.ZoneId, DefenderTier.Basic, defendersToAllocate);
+                    _allocationService.SetAllocation(result.AttackerFactionId, result.ZoneId, DefenderRole.Grunt, defendersToAllocate);
                     FileLogger.AI($"      ApplyBattleResult: Allocated {defendersToAllocate} defenders to {result.ZoneId}");
                 }
             }

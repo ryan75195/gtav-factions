@@ -7,23 +7,23 @@ using Xunit;
 
 namespace FactionWars.Tests.Unit.Core
 {
-    public class DefenderTierServiceTests
+    public class DefenderRoleServiceTests
     {
-        private readonly IDefenderTierService _service;
+        private readonly IDefenderRoleService _service;
 
-        public DefenderTierServiceTests()
+        public DefenderRoleServiceTests()
         {
-            _service = new DefenderTierService();
+            _service = new DefenderRoleService();
         }
 
         [Fact]
-        public void GetTierConfig_Basic_ReturnsCorrectConfiguration()
+        public void GetRoleConfig_Basic_ReturnsCorrectConfiguration()
         {
             // Act
-            var config = _service.GetTierConfig(DefenderTier.Basic);
+            var config = _service.GetRoleConfig(DefenderRole.Grunt);
 
             // Assert
-            Assert.Equal(DefenderTier.Basic, config.Tier);
+            Assert.Equal(DefenderRole.Grunt, config.Role);
             Assert.Equal(200, config.Cost);
             Assert.Equal(200, config.Health);
             Assert.Equal(50, config.Armor);
@@ -33,13 +33,13 @@ namespace FactionWars.Tests.Unit.Core
         }
 
         [Fact]
-        public void GetTierConfig_Medium_ReturnsCorrectConfiguration()
+        public void GetRoleConfig_Medium_ReturnsCorrectConfiguration()
         {
             // Act
-            var config = _service.GetTierConfig(DefenderTier.Medium);
+            var config = _service.GetRoleConfig(DefenderRole.Gunner);
 
             // Assert
-            Assert.Equal(DefenderTier.Medium, config.Tier);
+            Assert.Equal(DefenderRole.Gunner, config.Role);
             Assert.Equal(500, config.Cost);
             Assert.Equal(350, config.Health);
             Assert.Equal(100, config.Armor);
@@ -49,13 +49,13 @@ namespace FactionWars.Tests.Unit.Core
         }
 
         [Fact]
-        public void GetTierConfig_Heavy_ReturnsCorrectConfiguration()
+        public void GetRoleConfig_Heavy_ReturnsCorrectConfiguration()
         {
             // Act
-            var config = _service.GetTierConfig(DefenderTier.Heavy);
+            var config = _service.GetRoleConfig(DefenderRole.Rifleman);
 
             // Assert
-            Assert.Equal(DefenderTier.Heavy, config.Tier);
+            Assert.Equal(DefenderRole.Rifleman, config.Role);
             Assert.Equal(1000, config.Cost);
             Assert.Equal(500, config.Health);
             Assert.Equal(200, config.Armor);
@@ -65,13 +65,13 @@ namespace FactionWars.Tests.Unit.Core
         }
 
         [Fact]
-        public void GetTierConfig_Elite_ReturnsCorrectConfiguration()
+        public void GetRoleConfig_Elite_ReturnsCorrectConfiguration()
         {
             // Act
-            var config = _service.GetTierConfig(DefenderTier.Elite);
+            var config = _service.GetRoleConfig(DefenderRole.Rocketeer);
 
             // Assert
-            Assert.Equal(DefenderTier.Elite, config.Tier);
+            Assert.Equal(DefenderRole.Rocketeer, config.Role);
             Assert.Equal(2000, config.Cost);
             Assert.Equal(650, config.Health);
             Assert.Equal(200, config.Armor);
@@ -82,48 +82,49 @@ namespace FactionWars.Tests.Unit.Core
         }
 
         [Fact]
-        public void GetAllTierConfigs_ReturnsAllFourTiers()
+        public void GetAllRoleConfigs_ReturnsAllFourTiers()
         {
             // Act
-            var configs = _service.GetAllTierConfigs();
+            var configs = _service.GetAllRoleConfigs();
 
             // Assert
-            Assert.Equal(4, configs.Count);
-            Assert.Contains(configs, c => c.Tier == DefenderTier.Basic);
-            Assert.Contains(configs, c => c.Tier == DefenderTier.Medium);
-            Assert.Contains(configs, c => c.Tier == DefenderTier.Heavy);
-            Assert.Contains(configs, c => c.Tier == DefenderTier.Elite);
+            Assert.Equal(5, configs.Count);
+            Assert.Contains(configs, c => c.Role == DefenderRole.Grunt);
+            Assert.Contains(configs, c => c.Role == DefenderRole.Gunner);
+            Assert.Contains(configs, c => c.Role == DefenderRole.Rifleman);
+            Assert.Contains(configs, c => c.Role == DefenderRole.Rocketeer);
+            Assert.Contains(configs, c => c.Role == DefenderRole.Sniper);
         }
 
         [Fact]
         public void GetCost_ReturnsCorrectCostForEachTier()
         {
             // Assert
-            Assert.Equal(200, _service.GetCost(DefenderTier.Basic));
-            Assert.Equal(500, _service.GetCost(DefenderTier.Medium));
-            Assert.Equal(1000, _service.GetCost(DefenderTier.Heavy));
-            Assert.Equal(2000, _service.GetCost(DefenderTier.Elite));
+            Assert.Equal(200, _service.GetCost(DefenderRole.Grunt));
+            Assert.Equal(500, _service.GetCost(DefenderRole.Gunner));
+            Assert.Equal(1000, _service.GetCost(DefenderRole.Rifleman));
+            Assert.Equal(2000, _service.GetCost(DefenderRole.Rocketeer));
         }
 
         [Fact]
         public void GetCombatModifier_ReturnsCorrectModifierForEachTier()
         {
             // Basic=1.0, Medium=1.5, Heavy=2.0, Elite=2.5
-            Assert.Equal(1.0f, _service.GetCombatModifier(DefenderTier.Basic), 2);
-            Assert.Equal(1.5f, _service.GetCombatModifier(DefenderTier.Medium), 2);
-            Assert.Equal(2.0f, _service.GetCombatModifier(DefenderTier.Heavy), 2);
-            Assert.Equal(2.5f, _service.GetCombatModifier(DefenderTier.Elite), 2);
+            Assert.Equal(1.0f, _service.GetCombatModifier(DefenderRole.Grunt), 2);
+            Assert.Equal(1.5f, _service.GetCombatModifier(DefenderRole.Gunner), 2);
+            Assert.Equal(2.0f, _service.GetCombatModifier(DefenderRole.Rifleman), 2);
+            Assert.Equal(2.5f, _service.GetCombatModifier(DefenderRole.Rocketeer), 2);
         }
 
         [Fact]
         public void CalculateTotalCost_WithMixedTiers_ReturnsCorrectSum()
         {
             // Arrange
-            var troops = new Dictionary<DefenderTier, int>
+            var troops = new Dictionary<DefenderRole, int>
             {
-                { DefenderTier.Basic, 10 },   // 10 * 200 = 2000
-                { DefenderTier.Medium, 5 },   // 5 * 500 = 2500
-                { DefenderTier.Heavy, 2 }     // 2 * 1000 = 2000
+                { DefenderRole.Grunt, 10 },   // 10 * 200 = 2000
+                { DefenderRole.Gunner, 5 },   // 5 * 500 = 2500
+                { DefenderRole.Rifleman, 2 }     // 2 * 1000 = 2000
             };
 
             // Act
@@ -137,7 +138,7 @@ namespace FactionWars.Tests.Unit.Core
         public void CalculateTotalCost_WithEmptyDictionary_ReturnsZero()
         {
             // Arrange
-            var troops = new Dictionary<DefenderTier, int>();
+            var troops = new Dictionary<DefenderRole, int>();
 
             // Act
             var totalCost = _service.CalculateTotalCost(troops);
@@ -157,11 +158,11 @@ namespace FactionWars.Tests.Unit.Core
         public void CalculateTotalStrength_WithMixedTiers_ReturnsCorrectSum()
         {
             // Arrange
-            var troops = new Dictionary<DefenderTier, int>
+            var troops = new Dictionary<DefenderRole, int>
             {
-                { DefenderTier.Basic, 10 },   // 10 * 1.0 = 10
-                { DefenderTier.Medium, 5 },   // 5 * 1.5 = 7.5
-                { DefenderTier.Heavy, 2 }     // 2 * 2.0 = 4
+                { DefenderRole.Grunt, 10 },   // 10 * 1.0 = 10
+                { DefenderRole.Gunner, 5 },   // 5 * 1.5 = 7.5
+                { DefenderRole.Rifleman, 2 }     // 2 * 2.0 = 4
             };
 
             // Act
@@ -175,7 +176,7 @@ namespace FactionWars.Tests.Unit.Core
         public void CalculateTotalStrength_WithEmptyDictionary_ReturnsZero()
         {
             // Arrange
-            var troops = new Dictionary<DefenderTier, int>();
+            var troops = new Dictionary<DefenderRole, int>();
 
             // Act
             var totalStrength = _service.CalculateTotalStrength(troops);
@@ -192,10 +193,10 @@ namespace FactionWars.Tests.Unit.Core
         }
 
         [Fact]
-        public void DefenderTierService_ImplementsIDefenderTierService()
+        public void DefenderRoleService_ImplementsIDefenderRoleService()
         {
             // Assert
-            Assert.IsAssignableFrom<IDefenderTierService>(_service);
+            Assert.IsAssignableFrom<IDefenderRoleService>(_service);
         }
     }
 }

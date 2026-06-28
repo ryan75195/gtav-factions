@@ -10,11 +10,11 @@ namespace FactionWars.Telemetry.Models
         public PlayerEventType Type { get; }
         public string? ZoneId { get; }
         public string? TargetFaction { get; }
-        public DefenderTier? TargetTier { get; }
+        public DefenderRole? TargetTier { get; }
         public string Details { get; }
 
         public PlayerEventRow(DateTime timestamp, long playTimeSeconds, PlayerEventType type,
-            string? zoneId, string? targetFaction, DefenderTier? targetTier, string details)
+            string? zoneId, string? targetFaction, DefenderRole? targetTier, string details)
         {
             Timestamp = timestamp;
             PlayTimeSeconds = playTimeSeconds;

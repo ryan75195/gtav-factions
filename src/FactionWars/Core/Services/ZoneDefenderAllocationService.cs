@@ -29,7 +29,7 @@ namespace FactionWars.Core.Services
         }
 
         /// <inheritdoc />
-        public bool AllocateTroops(FactionState factionState, string zoneId, DefenderTier tier, int count)
+        public bool AllocateTroops(FactionState factionState, string zoneId, DefenderRole tier, int count)
         {
             if (factionState == null)
                 throw new ArgumentNullException(nameof(factionState));
@@ -99,7 +99,7 @@ namespace FactionWars.Core.Services
         }
 
         /// <inheritdoc />
-        public bool WithdrawTroops(FactionState factionState, string zoneId, DefenderTier tier, int count)
+        public bool WithdrawTroops(FactionState factionState, string zoneId, DefenderRole tier, int count)
         {
             if (factionState == null)
                 throw new ArgumentNullException(nameof(factionState));
@@ -133,7 +133,7 @@ namespace FactionWars.Core.Services
         }
 
         /// <inheritdoc />
-        public void SetAllocation(string factionId, string zoneId, DefenderTier tier, int count)
+        public void SetAllocation(string factionId, string zoneId, DefenderRole tier, int count)
         {
             if (factionId == null)
                 throw new ArgumentNullException(nameof(factionId));

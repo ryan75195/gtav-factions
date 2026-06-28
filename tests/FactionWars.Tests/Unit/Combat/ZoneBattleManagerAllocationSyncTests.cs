@@ -47,14 +47,14 @@ namespace FactionWars.Tests.Unit.Combat
         private static ZoneDefenderAllocation BuildAllocation(string factionId, string zoneId, int basic)
         {
             var allocation = new ZoneDefenderAllocation(factionId, zoneId);
-            allocation.AddTroops(DefenderTier.Basic, basic);
+            allocation.AddTroops(DefenderRole.Grunt, basic);
             return allocation;
         }
 
         private static FactionState BuildFactionStateWithReserve(string factionId, int basic)
         {
             var state = new FactionState(factionId);
-            state.AddReserveTroops(DefenderTier.Basic, basic);
+            state.AddReserveTroops(DefenderRole.Grunt, basic);
             return state;
         }
 
@@ -63,8 +63,8 @@ namespace FactionWars.Tests.Unit.Combat
             return new ZoneBattleManager(_allocationService.Object, _factionService.Object, _zoneService.Object, playerFactionId: null);
         }
 
-        private static Dictionary<DefenderTier, int> Troops(int basic)
-            => new Dictionary<DefenderTier, int> { { DefenderTier.Basic, basic } };
+        private static Dictionary<DefenderRole, int> Troops(int basic)
+            => new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, basic } };
 
         [Fact]
         public void SimulatedKills_DecrementSourceOfTruthState()
@@ -97,10 +97,10 @@ namespace FactionWars.Tests.Unit.Combat
             Assert.True(attackerKills > 0, "Expected at least one attacker kill");
 
             // Each defender kill decrements ZoneDefenderAllocation by 1.
-            Assert.Equal(100 - defenderKills, _defenderAllocation.GetTroopCount(DefenderTier.Basic));
+            Assert.Equal(100 - defenderKills, _defenderAllocation.GetTroopCount(DefenderRole.Grunt));
 
             // Each attacker kill decrements the attacking faction's reserve by 1.
-            Assert.Equal(100 - attackerKills, _attackerState.GetReserveTroops(DefenderTier.Basic));
+            Assert.Equal(100 - attackerKills, _attackerState.GetReserveTroops(DefenderRole.Grunt));
         }
     }
 }

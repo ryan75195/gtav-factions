@@ -25,7 +25,7 @@ namespace FactionWars.Economy.Models
         /// <summary>
         /// The tier of troops purchased.
         /// </summary>
-        public DefenderTier Tier { get; }
+        public DefenderRole Tier { get; }
 
         /// <summary>
         /// Error message if purchase failed, null otherwise.
@@ -35,7 +35,7 @@ namespace FactionWars.Economy.Models
         /// <summary>
         /// Creates a successful purchase result.
         /// </summary>
-        public static TroopPurchaseResult Successful(DefenderTier tier, int count, int cost)
+        public static TroopPurchaseResult Successful(DefenderRole tier, int count, int cost)
         {
             return new TroopPurchaseResult(true, tier, count, cost, null);
         }
@@ -43,12 +43,12 @@ namespace FactionWars.Economy.Models
         /// <summary>
         /// Creates a failed purchase result.
         /// </summary>
-        public static TroopPurchaseResult Failed(DefenderTier tier, string errorMessage)
+        public static TroopPurchaseResult Failed(DefenderRole tier, string errorMessage)
         {
             return new TroopPurchaseResult(false, tier, 0, 0, errorMessage);
         }
 
-        private TroopPurchaseResult(bool success, DefenderTier tier, int troopsPurchased, int totalCost, string? errorMessage)
+        private TroopPurchaseResult(bool success, DefenderRole tier, int troopsPurchased, int totalCost, string? errorMessage)
         {
             Success = success;
             Tier = tier;

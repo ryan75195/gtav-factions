@@ -60,15 +60,15 @@ namespace FactionWars.ScriptHookV.Managers
         }
 
         /// <inheritdoc />
-        public IReadOnlyDictionary<int, DefenderTier> GetDefendersInZone(string zoneId)
+        public IReadOnlyDictionary<int, DefenderRole> GetDefendersInZone(string zoneId)
         {
             if (_spawnedPedTierByZone.TryGetValue(zoneId, out var pedTiers))
             {
                 // Return a snapshot copy so callers iterating in a tick aren't affected by
                 // concurrent additions/removals from the same tick (e.g. defender death).
-                return new Dictionary<int, DefenderTier>(pedTiers);
+                return new Dictionary<int, DefenderRole>(pedTiers);
             }
-            return new Dictionary<int, DefenderTier>();
+            return new Dictionary<int, DefenderRole>();
         }
 
         /// <summary>
@@ -77,7 +77,7 @@ namespace FactionWars.ScriptHookV.Managers
         /// <param name="zoneId">The zone ID.</param>
         /// <param name="tier">The defender tier to count.</param>
         /// <returns>The number of spawned defenders of that tier.</returns>
-        public int GetSpawnedCountByTier(string zoneId, DefenderTier tier)
+        public int GetSpawnedCountByTier(string zoneId, DefenderRole tier)
         {
             if (!_spawnedPedTierByZone.TryGetValue(zoneId, out var pedTiers))
                 return 0;

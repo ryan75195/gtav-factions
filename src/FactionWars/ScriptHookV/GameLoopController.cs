@@ -15,6 +15,7 @@ using FactionWars.Economy.Interfaces;
 using FactionWars.Factions.Interfaces;
 using FactionWars.ScriptHookV.Data;
 using FactionWars.ScriptHookV.Logging;
+using FactionWars.ScriptHookV.Combat.Interfaces;
 using FactionWars.ScriptHookV.Managers;
 using FactionWars.ScriptHookV.Models;
 using FactionWars.ScriptHookV.Persistence;
@@ -49,6 +50,9 @@ namespace FactionWars.ScriptHookV
         private MapBlipManager? _mapBlipManager;
         private EconomyManager? _economyManager;
         private FollowerManager? _followerManager;
+        private SquadStanceController? _squadStanceController;
+        private IEnemyTargetCollector? _enemyTargetCollector;
+        private IAreaAnchorResolver? _areaAnchorResolver;
         private IFollowerService? _followerService;
         private TerritoryManager? _territoryManager;
         private ZoneBoundaryBlipManager? _zoneBoundaryBlipManager;
@@ -56,6 +60,7 @@ namespace FactionWars.ScriptHookV
         private FriendlyDefenderManager? _friendlyDefenderManager;
         private DefenderRallyController? _defenderRallyController;
         private EnemyDefenderManager? _enemyDefenderManager;
+        private ISniperDeploymentService? _sharedSniperDeployment;
         private BattleAttackerManager? _battleAttackerManager;
         private PoliceSuppressionController? _policeSuppressionController;
         private CommanderManager? _commanderManager;
@@ -96,6 +101,7 @@ namespace FactionWars.ScriptHookV
         private int _pendingOwnedTerritoryAttempts;
         private bool _pendingOwnedTerritoryLoggedSuccess;
         private bool _pendingOwnedTerritoryWaitingForControlLogged;
+        private RuntimeWorldState? _pendingRuntimeWorldRestore;
         private const int OwnedTerritoryPlacementRetryTicks = 300;
 
         private const float ThreatDecayInterval = 60f;  // Decay every 60 seconds
@@ -113,9 +119,19 @@ namespace FactionWars.ScriptHookV
 
         // Controller input constants (GTA V control IDs)
         private const int ControlDpadRight = 175;   // INPUT_PHONE_RIGHT
+        private const int ControlDpadLeft = 174;     // INPUT_PHONE_LEFT
         private const int ControlDpadDown = 173;     // INPUT_PHONE_DOWN
+        private const float SquadDefaultLooseRadius = 30f;
         private const int ControlLB = 37;            // INPUT_AIM (LB/L1)
         private const int ControlFrontendAccept = 201; // A/Cross button
+        private const int ControlFrontendUp = 188;     // INPUT_FRONTEND_UP
+        private const int ControlFrontendDown = 187;   // INPUT_FRONTEND_DOWN
+
+        // Menu navigation throttle: debounces held Up/Down so navigation does not
+        // accelerate/skip on a controller. A fresh press always moves immediately.
+        private const int MenuNavRepeatCooldownMs = 140;
+        private bool _menuNavWasPressed;
+        private int _lastMenuNavMoveGameTime;
 
         /// <summary>
         /// Event raised when the player switches to a different character.

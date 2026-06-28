@@ -46,6 +46,9 @@ namespace FactionWars.ScriptHookV.UI
         /// <inheritdoc />
         public event EventHandler? MenuClosed;
 
+        /// <inheritdoc />
+        public event EventHandler<string>? MenuBackedOut;
+
         /// <summary>
         /// Creates a new NativeUIMenuProvider with real NativeUI integration.
         /// </summary>
@@ -203,10 +206,15 @@ namespace FactionWars.ScriptHookV.UI
         /// </summary>
         private void OnNativeUIMenuClose(UIMenu sender)
         {
+            var closedId = _currentDefinition?.Id;
             _itemIdMap.Clear();
             _currentMenu = null;
             _currentDefinition = null;
             MenuClosed?.Invoke(this, EventArgs.Empty);
+            if (closedId != null)
+            {
+                MenuBackedOut?.Invoke(this, closedId);
+            }
         }
 
         /// <summary>

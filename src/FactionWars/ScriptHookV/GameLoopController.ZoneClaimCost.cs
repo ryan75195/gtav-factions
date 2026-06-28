@@ -7,8 +7,8 @@ namespace FactionWars.ScriptHookV
     {
         private int GetBasicTroopCost()
         {
-            var tierService = _container.Resolve<IDefenderTierService>();
-            return tierService.GetTierConfig(DefenderTier.Basic).Cost;
+            var tierService = _container.Resolve<IDefenderRoleService>();
+            return tierService.GetRoleConfig(DefenderRole.Grunt).Cost;
         }
 
         /// <summary>

@@ -16,36 +16,36 @@ namespace FactionWars.Tests.Unit.Persistence
         public void FromAllocation_IncludesEliteTier()
         {
             var allocation = new ZoneDefenderAllocation("faction-1", "zone-1");
-            allocation.AddTroops(DefenderTier.Elite, 5);
+            allocation.AddTroops(DefenderRole.Rocketeer, 5);
 
             var data = ZoneDefenderAllocationData.FromAllocation(allocation);
 
-            Assert.True(data.Troops.ContainsKey(DefenderTier.Elite));
-            Assert.Equal(5, data.Troops[DefenderTier.Elite]);
+            Assert.True(data.Troops.ContainsKey(DefenderRole.Rocketeer));
+            Assert.Equal(5, data.Troops[DefenderRole.Rocketeer]);
         }
 
         [Fact]
         public void FromAllocation_IncludesAllTiers()
         {
             var allocation = new ZoneDefenderAllocation("faction-1", "zone-1");
-            allocation.AddTroops(DefenderTier.Basic, 10);
-            allocation.AddTroops(DefenderTier.Medium, 7);
-            allocation.AddTroops(DefenderTier.Heavy, 3);
-            allocation.AddTroops(DefenderTier.Elite, 1);
+            allocation.AddTroops(DefenderRole.Grunt, 10);
+            allocation.AddTroops(DefenderRole.Gunner, 7);
+            allocation.AddTroops(DefenderRole.Rifleman, 3);
+            allocation.AddTroops(DefenderRole.Rocketeer, 1);
 
             var data = ZoneDefenderAllocationData.FromAllocation(allocation);
 
-            Assert.Equal(10, data.Troops[DefenderTier.Basic]);
-            Assert.Equal(7, data.Troops[DefenderTier.Medium]);
-            Assert.Equal(3, data.Troops[DefenderTier.Heavy]);
-            Assert.Equal(1, data.Troops[DefenderTier.Elite]);
+            Assert.Equal(10, data.Troops[DefenderRole.Grunt]);
+            Assert.Equal(7, data.Troops[DefenderRole.Gunner]);
+            Assert.Equal(3, data.Troops[DefenderRole.Rifleman]);
+            Assert.Equal(1, data.Troops[DefenderRole.Rocketeer]);
         }
 
         [Fact]
         public void FromAllocation_PreservesFactionIdAndZoneId()
         {
             var allocation = new ZoneDefenderAllocation("test-faction", "test-zone");
-            allocation.AddTroops(DefenderTier.Elite, 2);
+            allocation.AddTroops(DefenderRole.Rocketeer, 2);
 
             var data = ZoneDefenderAllocationData.FromAllocation(allocation);
 
@@ -64,15 +64,15 @@ namespace FactionWars.Tests.Unit.Persistence
             {
                 FactionId = "faction-1",
                 ZoneId = "zone-1",
-                Troops = new System.Collections.Generic.Dictionary<DefenderTier, int>
+                Troops = new System.Collections.Generic.Dictionary<DefenderRole, int>
                 {
-                    { DefenderTier.Elite, 4 }
+                    { DefenderRole.Rocketeer, 4 }
                 }
             };
 
             var allocation = data.ToAllocation();
 
-            Assert.Equal(4, allocation.GetTroopCount(DefenderTier.Elite));
+            Assert.Equal(4, allocation.GetTroopCount(DefenderRole.Rocketeer));
         }
 
         [Fact]
@@ -82,21 +82,21 @@ namespace FactionWars.Tests.Unit.Persistence
             {
                 FactionId = "faction-1",
                 ZoneId = "zone-1",
-                Troops = new System.Collections.Generic.Dictionary<DefenderTier, int>
+                Troops = new System.Collections.Generic.Dictionary<DefenderRole, int>
                 {
-                    { DefenderTier.Basic, 8 },
-                    { DefenderTier.Medium, 4 },
-                    { DefenderTier.Heavy, 2 },
-                    { DefenderTier.Elite, 1 }
+                    { DefenderRole.Grunt, 8 },
+                    { DefenderRole.Gunner, 4 },
+                    { DefenderRole.Rifleman, 2 },
+                    { DefenderRole.Rocketeer, 1 }
                 }
             };
 
             var allocation = data.ToAllocation();
 
-            Assert.Equal(8, allocation.GetTroopCount(DefenderTier.Basic));
-            Assert.Equal(4, allocation.GetTroopCount(DefenderTier.Medium));
-            Assert.Equal(2, allocation.GetTroopCount(DefenderTier.Heavy));
-            Assert.Equal(1, allocation.GetTroopCount(DefenderTier.Elite));
+            Assert.Equal(8, allocation.GetTroopCount(DefenderRole.Grunt));
+            Assert.Equal(4, allocation.GetTroopCount(DefenderRole.Gunner));
+            Assert.Equal(2, allocation.GetTroopCount(DefenderRole.Rifleman));
+            Assert.Equal(1, allocation.GetTroopCount(DefenderRole.Rocketeer));
         }
 
         [Fact]
@@ -106,9 +106,9 @@ namespace FactionWars.Tests.Unit.Persistence
             {
                 FactionId = "my-faction",
                 ZoneId = "my-zone",
-                Troops = new System.Collections.Generic.Dictionary<DefenderTier, int>
+                Troops = new System.Collections.Generic.Dictionary<DefenderRole, int>
                 {
-                    { DefenderTier.Elite, 1 }
+                    { DefenderRole.Rocketeer, 1 }
                 }
             };
 
@@ -125,18 +125,18 @@ namespace FactionWars.Tests.Unit.Persistence
             {
                 FactionId = "faction-1",
                 ZoneId = "zone-1",
-                Troops = new System.Collections.Generic.Dictionary<DefenderTier, int>
+                Troops = new System.Collections.Generic.Dictionary<DefenderRole, int>
                 {
-                    { DefenderTier.Basic, 0 },
-                    { DefenderTier.Elite, 5 }
+                    { DefenderRole.Grunt, 0 },
+                    { DefenderRole.Rocketeer, 5 }
                 }
             };
 
             var allocation = data.ToAllocation();
 
             // Zero values should result in zero troop count
-            Assert.Equal(0, allocation.GetTroopCount(DefenderTier.Basic));
-            Assert.Equal(5, allocation.GetTroopCount(DefenderTier.Elite));
+            Assert.Equal(0, allocation.GetTroopCount(DefenderRole.Grunt));
+            Assert.Equal(5, allocation.GetTroopCount(DefenderRole.Rocketeer));
         }
 
         #endregion
@@ -148,10 +148,10 @@ namespace FactionWars.Tests.Unit.Persistence
         {
             // Create original allocation with all tiers
             var original = new ZoneDefenderAllocation("faction-1", "zone-1");
-            original.AddTroops(DefenderTier.Basic, 12);
-            original.AddTroops(DefenderTier.Medium, 6);
-            original.AddTroops(DefenderTier.Heavy, 3);
-            original.AddTroops(DefenderTier.Elite, 1);
+            original.AddTroops(DefenderRole.Grunt, 12);
+            original.AddTroops(DefenderRole.Gunner, 6);
+            original.AddTroops(DefenderRole.Rifleman, 3);
+            original.AddTroops(DefenderRole.Rocketeer, 1);
 
             // Convert to data and back
             var data = ZoneDefenderAllocationData.FromAllocation(original);
@@ -160,10 +160,10 @@ namespace FactionWars.Tests.Unit.Persistence
             // Verify all fields preserved
             Assert.Equal(original.FactionId, restored.FactionId);
             Assert.Equal(original.ZoneId, restored.ZoneId);
-            Assert.Equal(original.GetTroopCount(DefenderTier.Basic), restored.GetTroopCount(DefenderTier.Basic));
-            Assert.Equal(original.GetTroopCount(DefenderTier.Medium), restored.GetTroopCount(DefenderTier.Medium));
-            Assert.Equal(original.GetTroopCount(DefenderTier.Heavy), restored.GetTroopCount(DefenderTier.Heavy));
-            Assert.Equal(original.GetTroopCount(DefenderTier.Elite), restored.GetTroopCount(DefenderTier.Elite));
+            Assert.Equal(original.GetTroopCount(DefenderRole.Grunt), restored.GetTroopCount(DefenderRole.Grunt));
+            Assert.Equal(original.GetTroopCount(DefenderRole.Gunner), restored.GetTroopCount(DefenderRole.Gunner));
+            Assert.Equal(original.GetTroopCount(DefenderRole.Rifleman), restored.GetTroopCount(DefenderRole.Rifleman));
+            Assert.Equal(original.GetTroopCount(DefenderRole.Rocketeer), restored.GetTroopCount(DefenderRole.Rocketeer));
             Assert.Equal(original.TotalTroops, restored.TotalTroops);
         }
 

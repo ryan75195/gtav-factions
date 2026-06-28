@@ -41,7 +41,13 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             // Setup default mock behaviors
             _pedSpawningServiceMock.Setup(p => p.CanSpawn()).Returns(true);
             _pedSpawningServiceMock.Setup(p => p.SpawnPed(It.IsAny<string>(), It.IsAny<Vector3>(), It.IsAny<string>(), It.IsAny<string>()))
-                .Returns(() => new PedHandle(_gameBridge.CreatePed("test", new Vector3(0, 0, 0))));
+                .Returns<string, Vector3, string, string?>((model, position, factionId, zoneId) =>
+                {
+                    // Mirror real PedSpawningService: the spawned ped lands in its faction group.
+                    var handle = _gameBridge.CreatePed("test", new Vector3(0, 0, 0));
+                    _gameBridge.SetPedRelationshipGroup(handle, factionId.ToUpperInvariant());
+                    return new PedHandle(handle, factionId, position, "test", zoneId);
+                });
 
             _pedBlipServiceMock.Setup(p => p.CreateBlipForPed(It.IsAny<int>(), It.IsAny<BlipColor>()))
                 .Returns(1);
@@ -177,7 +183,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         }
 
         [Fact]
-        public void OnZoneEntered_CreatesBlueBlipForCommander()
+        public void OnZoneEntered_CreatesPurpleBlipForCommander()
         {
             // Arrange
             SetupManager();
@@ -186,9 +192,10 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             // Act
             _manager.OnZoneEntered(zone);
 
-            // Assert
+            // Assert - the commander uses a distinct Purple blip so it stands out from the
+            // faction-coloured property defenders (which now wear the player faction's colour).
             _pedBlipServiceMock.Verify(
-                p => p.CreateBlipForPed(It.IsAny<int>(), BlipColor.Blue),
+                p => p.CreateBlipForPed(It.IsAny<int>(), BlipColor.Purple),
                 Times.Once);
         }
 
@@ -287,11 +294,12 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             // Act
             _manager.OnZoneEntered(zone);
 
-            // Assert - Commander should be in FRIENDLY_DEFENDERS group
+            // Assert - Commander lives in the player's faction group; the relationship matrix
+            // (wired once at init) makes that group a companion of the player.
             var spawnedPeds = _gameBridge.GetSpawnedPeds();
             Assert.Single(spawnedPeds);
             var relationshipGroup = _gameBridge.GetPedRelationshipGroup(spawnedPeds[0]);
-            Assert.Equal("FRIENDLY_DEFENDERS", relationshipGroup);
+            Assert.Equal(PlayerFactionId.ToUpperInvariant(), relationshipGroup);
         }
 
         [Fact]

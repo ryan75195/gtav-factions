@@ -23,7 +23,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         private Mock<IZoneDefenderAllocationService> _allocationServiceMock = null!;
         private Mock<IPedSpawningService> _pedSpawningServiceMock = null!;
         private Mock<IPedDespawnService> _pedDespawnServiceMock = null!;
-        private Mock<IDefenderTierService> _defenderTierServiceMock = null!;
+        private Mock<IDefenderRoleService> _defenderRoleServiceMock = null!;
         private Mock<IPedBlipService> _pedBlipServiceMock = null!;
         private Mock<IZoneService> _zoneServiceMock = null!;
         private Mock<IZoneBattleManager> _zoneBattleManagerMock = null!;
@@ -38,7 +38,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             _allocationServiceMock = new Mock<IZoneDefenderAllocationService>();
             _pedSpawningServiceMock = new Mock<IPedSpawningService>();
             _pedDespawnServiceMock = new Mock<IPedDespawnService>();
-            _defenderTierServiceMock = new Mock<IDefenderTierService>();
+            _defenderRoleServiceMock = new Mock<IDefenderRoleService>();
             _pedBlipServiceMock = new Mock<IPedBlipService>();
             _zoneServiceMock = new Mock<IZoneService>();
             _zoneBattleManagerMock = new Mock<IZoneBattleManager>();
@@ -55,8 +55,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
                     return new PedHandle(handle, factionId, position, model, zoneId);
                 });
 
-            _defenderTierServiceMock.Setup(d => d.GetTierConfig(It.IsAny<DefenderTier>()))
-                .Returns(new DefenderTierConfig(DefenderTier.Basic, 200, 100, 0, "weapon_pistol", 0.5f, 1.0f));
+            _defenderRoleServiceMock.Setup(d => d.GetRoleConfig(It.IsAny<DefenderRole>()))
+                .Returns(new DefenderRoleConfig(DefenderRole.Grunt, 200, 100, 0, "weapon_pistol", 0.5f, 1.0f));
 
             _pedBlipServiceMock.Setup(p => p.CreateBlipForPed(It.IsAny<int>(), It.IsAny<BlipColor>()))
                 .Returns(1);
@@ -66,7 +66,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
                 _allocationServiceMock.Object,
                 _pedSpawningServiceMock.Object,
                 _pedDespawnServiceMock.Object,
-                _defenderTierServiceMock.Object,
+                _defenderRoleServiceMock.Object,
                 _pedBlipServiceMock.Object,
                 _zoneServiceMock.Object,
                 _zoneBattleManagerMock.Object);
@@ -82,10 +82,56 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         private ZoneDefenderAllocation CreateAllocationWithDefenders(int basic, int medium = 0, int heavy = 0)
         {
             var allocation = new ZoneDefenderAllocation(EnemyFactionId, TestZoneId);
-            if (basic > 0) allocation.AddTroops(DefenderTier.Basic, basic);
-            if (medium > 0) allocation.AddTroops(DefenderTier.Medium, medium);
-            if (heavy > 0) allocation.AddTroops(DefenderTier.Heavy, heavy);
+            if (basic > 0) allocation.AddTroops(DefenderRole.Grunt, basic);
+            if (medium > 0) allocation.AddTroops(DefenderRole.Gunner, medium);
+            if (heavy > 0) allocation.AddTroops(DefenderRole.Rifleman, heavy);
             return allocation;
+        }
+
+        [Fact]
+        public void DespawnForZone_RemovesSpawnedDefendersAndBlips()
+        {
+            SetupManager();
+            var zone = CreateEnemyZone();
+            _allocationServiceMock.Setup(a => a.GetAllocation(EnemyFactionId, TestZoneId))
+                .Returns(CreateAllocationWithDefenders(basic: 3));
+            _manager.OnEnemyZoneEntered(zone, EnemyFactionId);
+            Assert.Equal(3, _manager.GetSpawnedDefenderCount(TestZoneId));
+
+            _manager.DespawnForZone(TestZoneId);
+
+            Assert.Equal(0, _manager.GetSpawnedDefenderCount(TestZoneId));
+            _pedDespawnServiceMock.Verify(d => d.DespawnPed(It.IsAny<int>()), Times.AtLeast(3));
+            _pedBlipServiceMock.Verify(b => b.RemoveBlipForPed(It.IsAny<int>()), Times.AtLeast(3));
+        }
+
+        [Fact]
+        public void OnEnemyZoneEntered_RoutesSpawnThroughZoneCombatantSpawner()
+        {
+            SetupManager();
+            var spawnerMock = new Mock<FactionWars.ScriptHookV.Combat.Interfaces.IZoneCombatantSpawner>();
+            spawnerMock.Setup(s => s.Spawn(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Vector3>(), It.IsAny<string>()))
+                .Returns(new PedHandle(42));
+            var manager = new EnemyDefenderManager(new FactionWars.ScriptHookV.Models.EnemyDefenderManagerDependencies
+            {
+                GameBridge = _gameBridge,
+                AllocationService = _allocationServiceMock.Object,
+                PedSpawningService = _pedSpawningServiceMock.Object,
+                PedDespawnService = _pedDespawnServiceMock.Object,
+                DefenderRoleService = _defenderRoleServiceMock.Object,
+                PedBlipService = _pedBlipServiceMock.Object,
+                ZoneService = _zoneServiceMock.Object,
+                ZoneBattleManager = _zoneBattleManagerMock.Object,
+                Spawner = spawnerMock.Object,
+                CurrentPlayerFactionIdAccessor = () => "michael"
+            });
+            var zone = CreateEnemyZone();
+            _allocationServiceMock.Setup(a => a.GetAllocation(EnemyFactionId, TestZoneId))
+                .Returns(CreateAllocationWithDefenders(basic: 1));
+
+            manager.OnEnemyZoneEntered(zone, EnemyFactionId);
+
+            spawnerMock.Verify(s => s.Spawn(EnemyFactionId, "michael", It.IsAny<string>(), It.IsAny<Vector3>(), TestZoneId), Times.AtLeastOnce);
         }
 
         [Fact]
@@ -126,9 +172,9 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             _manager.OnEnemyZoneEntered(zone, EnemyFactionId);
             Assert.Equal(1, _manager.GetSpawnedDefenderCount(TestZoneId));
 
-            allocation.AddTroops(DefenderTier.Basic, 2);
+            allocation.AddTroops(DefenderRole.Grunt, 2);
 
-            _manager.OnTroopsAllocated(EnemyFactionId, TestZoneId, DefenderTier.Basic, 2);
+            _manager.OnTroopsAllocated(EnemyFactionId, TestZoneId, DefenderRole.Grunt, 2);
 
             Assert.Equal(3, _manager.GetSpawnedDefenderCount(TestZoneId));
         }
@@ -157,13 +203,16 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         }
 
         [Fact]
-        public void OnEnemyZoneEntered_WithThreeWayBattle_ConfiguresAllParticipantRelationships()
+        public void OnEnemyZoneEntered_SpawnsDefenderInFactionGroupWithCombatTasking()
         {
+            // Faction-vs-faction relationships are no longer wired per spawn — that is owned by
+            // RelationshipMatrixInitializer (see RelationshipMatrixInitializerTests). Here we only
+            // assert the enemy defender lands in its faction group and is tasked to engage.
             SetupManager();
             var zone = CreateEnemyZone();
             var allocation = CreateAllocationWithDefenders(basic: 1);
-            var defender = BattleParticipant.ForAi(EnemyFactionId, BattleRole.Defender, new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 1 } });
-            var aiAttacker = BattleParticipant.ForAi("faction_franklin", BattleRole.Attacker, new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 1 } });
+            var defender = BattleParticipant.ForAi(EnemyFactionId, BattleRole.Defender, new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 1 } });
+            var aiAttacker = BattleParticipant.ForAi("faction_franklin", BattleRole.Attacker, new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 1 } });
             var playerAttacker = BattleParticipant.ForPlayer("faction_trevor", BattleRole.Attacker, () => 1);
             var battle = new ZoneBattle(TestZoneId, new List<BattleParticipant> { defender, aiAttacker, playerAttacker }, "faction_trevor");
 
@@ -173,9 +222,6 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
 
             _manager.OnEnemyZoneEntered(zone, EnemyFactionId);
 
-            Assert.Equal(5, _gameBridge.GetRelationshipBetweenGroups("BALLAS", "FACTION_FRANKLIN"));
-            Assert.Equal(5, _gameBridge.GetRelationshipBetweenGroups("BALLAS", "FACTION_TREVOR"));
-            Assert.Equal(5, _gameBridge.GetRelationshipBetweenGroups("FACTION_FRANKLIN", "FACTION_TREVOR"));
             Assert.True(_gameBridge.IsPedCombatTargeting(1));
             Assert.Equal(EnemyFactionId.ToUpperInvariant(), _gameBridge.GetPedRelationshipGroup(1));
         }
@@ -274,7 +320,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
 
             _manager.Update(EnemyFactionId);
 
-            Assert.Equal(2, allocation.GetTroopCount(DefenderTier.Basic));
+            Assert.Equal(2, allocation.GetTroopCount(DefenderRole.Grunt));
         }
 
         [Fact]
@@ -299,7 +345,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             _manager.Update(EnemyFactionId);
 
             // Assert - Allocation should be decremented immediately (even though corpse persists)
-            Assert.Equal(1, allocation.GetTroopCount(DefenderTier.Basic));
+            Assert.Equal(1, allocation.GetTroopCount(DefenderRole.Grunt));
         }
 
         [Fact]
@@ -372,5 +418,19 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         }
 
         #endregion
+
+        [Fact]
+        public void GetHostilePedHandles_ReturnsSpawnedEnemyHandles()
+        {
+            SetupManager();
+            var zone = CreateEnemyZone();
+            _allocationServiceMock.Setup(a => a.GetAllocation(EnemyFactionId, TestZoneId))
+                .Returns(CreateAllocationWithDefenders(basic: 2));
+            _manager.OnEnemyZoneEntered(zone, EnemyFactionId);
+
+            var handles = _manager.GetHostilePedHandles();
+            Assert.NotEmpty(handles);
+            Assert.Equal(_manager.GetSpawnedDefenderCount(TestZoneId), handles.Count);
+        }
     }
 }

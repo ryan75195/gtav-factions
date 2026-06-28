@@ -33,10 +33,11 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
             _playerContextMock.Setup(p => p.CurrentFactionId).Returns(PlayerFactionId);
 
             _purchaseServiceMock.Setup(p => p.GetPlayerMoney()).Returns(25000);
-            _purchaseServiceMock.Setup(p => p.GetTroopCost(DefenderTier.Basic)).Returns(200);
-            _purchaseServiceMock.Setup(p => p.GetTroopCost(DefenderTier.Medium)).Returns(500);
-            _purchaseServiceMock.Setup(p => p.GetTroopCost(DefenderTier.Heavy)).Returns(1000);
-            _purchaseServiceMock.Setup(p => p.GetTroopCost(DefenderTier.Elite)).Returns(2000);
+            _purchaseServiceMock.Setup(p => p.GetTroopCost(DefenderRole.Grunt)).Returns(200);
+            _purchaseServiceMock.Setup(p => p.GetTroopCost(DefenderRole.Gunner)).Returns(500);
+            _purchaseServiceMock.Setup(p => p.GetTroopCost(DefenderRole.Rifleman)).Returns(1000);
+            _purchaseServiceMock.Setup(p => p.GetTroopCost(DefenderRole.Rocketeer)).Returns(2000);
+            _purchaseServiceMock.Setup(p => p.GetTroopCost(DefenderRole.Sniper)).Returns(1500);
 
             _followerServiceMock.Setup(f => f.GetFollowerCount(PlayerFactionId)).Returns(0);
             _followerServiceMock.Setup(f => f.GetMaxFollowers()).Returns(6);
@@ -116,7 +117,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
         public void Show_ShouldIncludeAllFourTierRecruitOptions()
         {
             // Arrange
-            _purchaseServiceMock.Setup(p => p.CanAfford(It.IsAny<DefenderTier>(), 1)).Returns(true);
+            _purchaseServiceMock.Setup(p => p.CanAfford(It.IsAny<DefenderRole>(), 1)).Returns(true);
 
             // Act
             _controller.Show();
@@ -129,6 +130,36 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
             Assert.NotNull(menu.GetItem(SquadMenuController.RecruitMediumItemId));
             Assert.NotNull(menu.GetItem(SquadMenuController.RecruitHeavyItemId));
             Assert.NotNull(menu.GetItem(SquadMenuController.RecruitEliteItemId));
+        }
+
+        [Fact]
+        public void Show_ShouldIncludeSniperRecruitOption()
+        {
+            // Arrange
+            _purchaseServiceMock.Setup(p => p.CanAfford(It.IsAny<DefenderRole>(), 1)).Returns(true);
+
+            // Act
+            _controller.Show();
+
+            // Assert
+            var menu = _menuProvider.GetCurrentMenuDefinition();
+            Assert.NotNull(menu);
+            var sniperItem = menu!.GetItem(SquadMenuController.RecruitSniperItemId);
+            Assert.NotNull(sniperItem);
+            Assert.Contains("Sniper", sniperItem!.Text);
+        }
+
+        [Fact]
+        public void SniperRecruitItem_ShouldShowCorrectCost()
+        {
+            // Act
+            _controller.Show();
+
+            // Assert
+            var menu = _menuProvider.GetCurrentMenuDefinition();
+            var sniperItem = menu?.GetItem(SquadMenuController.RecruitSniperItemId);
+            Assert.NotNull(sniperItem);
+            Assert.Contains("1,500", sniperItem!.Text);
         }
 
         [Fact]
@@ -175,15 +206,15 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
         }
 
         [Fact]
-        public void Show_ShouldHaveEightItems()
+        public void Show_ShouldHaveNineItems()
         {
             // Act
             _controller.Show();
 
-            // Assert - money display, follower summary, 4 recruit options, manage, back = 8
+            // Assert - money display, follower summary, 5 recruit options, manage, back = 9
             var menu = _menuProvider.GetCurrentMenuDefinition();
             Assert.NotNull(menu);
-            Assert.Equal(8, menu!.Items.Count);
+            Assert.Equal(9, menu!.Items.Count);
         }
 
         [Fact]
@@ -246,7 +277,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
         {
             // Arrange
             var menuProvider = new MockMenuProvider();
-            var follower = new Follower(PlayerFactionId, DefenderTier.Basic, pedHandle: 42);
+            var follower = new Follower(PlayerFactionId, DefenderRole.Grunt, pedHandle: 42);
             var followerManagerMock = new Mock<IFollowerManager>();
             var controller = new SquadMenuController(
                 new SquadMenuControllerDependencies

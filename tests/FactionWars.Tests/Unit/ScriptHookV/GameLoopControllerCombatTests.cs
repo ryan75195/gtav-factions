@@ -74,7 +74,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             Assert.NotNull(zone);
             Assert.False(zone!.IsContested);
 
-            var troops = new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 1 } };
+            var troops = new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 1 } };
             battleManager.StartBattle(
                 zoneId: "vinewood_hills",
                 attackerFactionId: "trevor",
@@ -108,12 +108,12 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             Assert.NotEqual(defenderFactionId, controller.CurrentPlayerFactionId);
 
             var allocSvc = _container.Resolve<IZoneDefenderAllocationService>();
-            allocSvc.SetAllocation(defenderFactionId, "vinewood_hills", DefenderTier.Basic, 1);
+            allocSvc.SetAllocation(defenderFactionId, "vinewood_hills", DefenderRole.Grunt, 1);
 
             battleManager.StartPlayerCombat(zone!, controller.CurrentPlayerFactionId!, () => 1);
 
             // Player wipes the lone defender.
-            battleManager.ReportTroopKilled("vinewood_hills", defenderFactionId, DefenderTier.Basic);
+            battleManager.ReportTroopKilled("vinewood_hills", defenderFactionId, DefenderRole.Grunt);
 
             var resultZone = zoneService.GetZone("vinewood_hills");
             Assert.NotNull(resultZone);
@@ -144,7 +144,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             var zone = zoneRepo.GetById("vinewood_hills");
             Assert.NotNull(zone);
             zoneService.TransferZoneOwnership("vinewood_hills", defenderFactionId);
-            allocSvc.SetAllocation(defenderFactionId, "vinewood_hills", DefenderTier.Basic, 1);
+            allocSvc.SetAllocation(defenderFactionId, "vinewood_hills", DefenderRole.Grunt, 1);
 
             battleManager.StartPlayerCombat(zone!, controller.CurrentPlayerFactionId!, () => 1);
 
@@ -171,7 +171,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             var zoneRepo = _container.Resolve<IZoneRepository>();
             var battleManager = _container.Resolve<IZoneBattleManager>();
 
-            var troops = new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 1 } };
+            var troops = new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 1 } };
             battleManager.StartBattle(
                 zoneId: "vinewood_hills",
                 attackerFactionId: "trevor",
@@ -215,17 +215,17 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             var zone = zoneRepo.GetById("vinewood_hills");
             Assert.NotNull(zone);
             zoneService.TransferZoneOwnership("vinewood_hills", defenderFactionId);
-            allocSvc.SetAllocation(defenderFactionId, "vinewood_hills", DefenderTier.Basic, 5);
+            allocSvc.SetAllocation(defenderFactionId, "vinewood_hills", DefenderRole.Grunt, 5);
 
             var trevorState = factionService.GetFactionState(defenderFactionId);
             Assert.NotNull(trevorState);
-            trevorState!.AddReserveTroops(DefenderTier.Basic, 10);
+            trevorState!.AddReserveTroops(DefenderRole.Grunt, 10);
 
             var battle = battleManager.StartPlayerCombat(zone!, controller.CurrentPlayerFactionId!, () => 1);
             Assert.NotNull(battle);
             Assert.Equal(5, battle!.TotalDefenderTroops);
 
-            bool ok = allocSvc.AllocateTroops(trevorState, "vinewood_hills", DefenderTier.Basic, 10);
+            bool ok = allocSvc.AllocateTroops(trevorState, "vinewood_hills", DefenderRole.Grunt, 10);
             Assert.True(ok);
 
             Assert.Equal(15, battle.TotalDefenderTroops);
@@ -253,7 +253,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             var zone = zoneRepo.GetById("vinewood_hills");
             Assert.NotNull(zone);
             zoneService.TransferZoneOwnership("vinewood_hills", defenderFactionId);
-            allocSvc.SetAllocation(defenderFactionId, "vinewood_hills", DefenderTier.Basic, 5);
+            allocSvc.SetAllocation(defenderFactionId, "vinewood_hills", DefenderRole.Grunt, 5);
 
             battleManager.StartPlayerCombat(zone!, controller.CurrentPlayerFactionId!, () => 1);
 

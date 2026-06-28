@@ -19,17 +19,10 @@ namespace FactionWars.ScriptHookV
                 if (ped == null || !ped.Exists())
                     return;
 
-                var player = Game.Player.Character;
-                if (player == null || !player.Exists())
-                    return;
-
-                // Preserve the faction relationship group assigned by PedSpawningService
-                // so AI factions can hate each other during 3-way battles.
-                var enemyGroup = ped.RelationshipGroup;
-                var playerGroup = player.RelationshipGroup;
-
-                // Make the groups hate each other (bidirectional)
-                enemyGroup.SetRelationshipBetweenGroups(playerGroup, Relationship.Hate, true);
+                // Relationship group and allegiance are owned by the relationship matrix, wired
+                // once at init (RelationshipMatrixInitializer). A hostile combatant keeps the
+                // faction group PedSpawningService assigned; here we only apply combat config so it
+                // patrols and engages whoever the matrix says it hates.
 
                 // Configure ped for patrol + engage behavior
                 ped.IsPersistent = true;

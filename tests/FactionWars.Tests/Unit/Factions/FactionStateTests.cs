@@ -192,8 +192,8 @@ namespace FactionWars.Tests.Unit.Factions
             var state = new FactionState("faction_michael");
 
             // Act - Add troops through reserve pool
-            state.AddReserveTroops(DefenderTier.Basic, 30);
-            state.AddReserveTroops(DefenderTier.Medium, 20);
+            state.AddReserveTroops(DefenderRole.Grunt, 30);
+            state.AddReserveTroops(DefenderRole.Gunner, 20);
 
             // Assert - TroopCount reflects total reserve
             Assert.Equal(50, state.TroopCount);
@@ -204,10 +204,10 @@ namespace FactionWars.Tests.Unit.Factions
         {
             // Arrange - After consolidation, TroopCount is read-only computed property
             var state = new FactionState("faction_michael");
-            state.AddReserveTroops(DefenderTier.Basic, 10);
+            state.AddReserveTroops(DefenderRole.Grunt, 10);
 
             // Act - Remove some from reserve
-            state.RemoveReserveTroops(DefenderTier.Basic, 3);
+            state.RemoveReserveTroops(DefenderRole.Grunt, 3);
 
             // Assert - TroopCount reflects change
             Assert.Equal(7, state.TroopCount);
@@ -222,7 +222,7 @@ namespace FactionWars.Tests.Unit.Factions
 
             // Assert - TroopCount is computed from reserve pool
             Assert.Equal(20, state.TroopCount);
-            Assert.Equal(20, state.GetReserveTroops(DefenderTier.Basic));
+            Assert.Equal(20, state.GetReserveTroops(DefenderRole.Grunt));
         }
 
         #endregion
@@ -462,7 +462,7 @@ namespace FactionWars.Tests.Unit.Factions
 
             // Assert - TroopCount reflects reserve pool, Basic tier increased
             Assert.Equal(15, state.TroopCount);
-            Assert.Equal(15, state.GetReserveTroops(DefenderTier.Basic));
+            Assert.Equal(15, state.GetReserveTroops(DefenderRole.Grunt));
         }
 
         [Fact]
@@ -480,16 +480,16 @@ namespace FactionWars.Tests.Unit.Factions
         {
             // Arrange - After consolidation, LoseTroops removes Basic first
             var state = new FactionState("faction_michael");
-            state.AddReserveTroops(DefenderTier.Basic, 10);
-            state.AddReserveTroops(DefenderTier.Medium, 5);
+            state.AddReserveTroops(DefenderRole.Grunt, 10);
+            state.AddReserveTroops(DefenderRole.Gunner, 5);
 
             // Act
             state.LoseTroops(8);
 
             // Assert - 8 removed from Basic (10->2), Medium unchanged
             Assert.Equal(7, state.TroopCount);
-            Assert.Equal(2, state.GetReserveTroops(DefenderTier.Basic));
-            Assert.Equal(5, state.GetReserveTroops(DefenderTier.Medium));
+            Assert.Equal(2, state.GetReserveTroops(DefenderRole.Grunt));
+            Assert.Equal(5, state.GetReserveTroops(DefenderRole.Gunner));
         }
 
         [Fact]
@@ -497,16 +497,16 @@ namespace FactionWars.Tests.Unit.Factions
         {
             // Arrange - When Basic is depleted, overflow to Medium
             var state = new FactionState("faction_michael");
-            state.AddReserveTroops(DefenderTier.Basic, 5);
-            state.AddReserveTroops(DefenderTier.Medium, 10);
+            state.AddReserveTroops(DefenderRole.Grunt, 5);
+            state.AddReserveTroops(DefenderRole.Gunner, 10);
 
             // Act - Lose 8 troops (5 from Basic, 3 from Medium)
             state.LoseTroops(8);
 
             // Assert
             Assert.Equal(7, state.TroopCount);
-            Assert.Equal(0, state.GetReserveTroops(DefenderTier.Basic));
-            Assert.Equal(7, state.GetReserveTroops(DefenderTier.Medium));
+            Assert.Equal(0, state.GetReserveTroops(DefenderRole.Grunt));
+            Assert.Equal(7, state.GetReserveTroops(DefenderRole.Gunner));
         }
 
         [Fact]
@@ -520,7 +520,7 @@ namespace FactionWars.Tests.Unit.Factions
 
             // Assert - Should clamp to 0, not go negative
             Assert.Equal(0, state.TroopCount);
-            Assert.Equal(0, state.GetReserveTroops(DefenderTier.Basic));
+            Assert.Equal(0, state.GetReserveTroops(DefenderRole.Grunt));
         }
 
         [Fact]
@@ -563,7 +563,7 @@ namespace FactionWars.Tests.Unit.Factions
         {
             // Arrange - After consolidation, MilitaryStrength uses TotalReserveTroops
             var state = new FactionState("faction_michael");
-            state.AddReserveTroops(DefenderTier.Basic, 10);
+            state.AddReserveTroops(DefenderRole.Grunt, 10);
             state.Weapons = 5;
 
             // Act
@@ -589,9 +589,9 @@ namespace FactionWars.Tests.Unit.Factions
         {
             // Arrange - After consolidation, all tiers contribute to strength
             var state = new FactionState("faction_michael");
-            state.AddReserveTroops(DefenderTier.Basic, 20);
-            state.AddReserveTroops(DefenderTier.Medium, 20);
-            state.AddReserveTroops(DefenderTier.Heavy, 10);
+            state.AddReserveTroops(DefenderRole.Grunt, 20);
+            state.AddReserveTroops(DefenderRole.Gunner, 20);
+            state.AddReserveTroops(DefenderRole.Rifleman, 10);
 
             // Act & Assert - 50 total reserve troops, no weapons
             Assert.Equal(50, state.MilitaryStrength);
@@ -678,9 +678,9 @@ namespace FactionWars.Tests.Unit.Factions
             var state = new FactionState("faction_michael");
 
             // Assert
-            Assert.Equal(0, state.GetReserveTroops(DefenderTier.Basic));
-            Assert.Equal(0, state.GetReserveTroops(DefenderTier.Medium));
-            Assert.Equal(0, state.GetReserveTroops(DefenderTier.Heavy));
+            Assert.Equal(0, state.GetReserveTroops(DefenderRole.Grunt));
+            Assert.Equal(0, state.GetReserveTroops(DefenderRole.Gunner));
+            Assert.Equal(0, state.GetReserveTroops(DefenderRole.Rifleman));
         }
 
         [Fact]
@@ -690,14 +690,14 @@ namespace FactionWars.Tests.Unit.Factions
             var state = new FactionState("faction_michael");
 
             // Act
-            state.AddReserveTroops(DefenderTier.Basic, 10);
-            state.AddReserveTroops(DefenderTier.Medium, 5);
-            state.AddReserveTroops(DefenderTier.Heavy, 2);
+            state.AddReserveTroops(DefenderRole.Grunt, 10);
+            state.AddReserveTroops(DefenderRole.Gunner, 5);
+            state.AddReserveTroops(DefenderRole.Rifleman, 2);
 
             // Assert
-            Assert.Equal(10, state.GetReserveTroops(DefenderTier.Basic));
-            Assert.Equal(5, state.GetReserveTroops(DefenderTier.Medium));
-            Assert.Equal(2, state.GetReserveTroops(DefenderTier.Heavy));
+            Assert.Equal(10, state.GetReserveTroops(DefenderRole.Grunt));
+            Assert.Equal(5, state.GetReserveTroops(DefenderRole.Gunner));
+            Assert.Equal(2, state.GetReserveTroops(DefenderRole.Rifleman));
         }
 
         [Fact]
@@ -707,11 +707,11 @@ namespace FactionWars.Tests.Unit.Factions
             var state = new FactionState("faction_michael");
 
             // Act
-            state.AddReserveTroops(DefenderTier.Basic, 5);
-            state.AddReserveTroops(DefenderTier.Basic, 3);
+            state.AddReserveTroops(DefenderRole.Grunt, 5);
+            state.AddReserveTroops(DefenderRole.Grunt, 3);
 
             // Assert
-            Assert.Equal(8, state.GetReserveTroops(DefenderTier.Basic));
+            Assert.Equal(8, state.GetReserveTroops(DefenderRole.Grunt));
         }
 
         [Fact]
@@ -722,7 +722,7 @@ namespace FactionWars.Tests.Unit.Factions
 
             // Act & Assert
             Assert.Throws<ArgumentOutOfRangeException>(() =>
-                state.AddReserveTroops(DefenderTier.Basic, -1));
+                state.AddReserveTroops(DefenderRole.Grunt, -1));
         }
 
         [Fact]
@@ -730,14 +730,14 @@ namespace FactionWars.Tests.Unit.Factions
         {
             // Arrange
             var state = new FactionState("faction_michael");
-            state.AddReserveTroops(DefenderTier.Basic, 10);
+            state.AddReserveTroops(DefenderRole.Grunt, 10);
 
             // Act
-            var removed = state.RemoveReserveTroops(DefenderTier.Basic, 3);
+            var removed = state.RemoveReserveTroops(DefenderRole.Grunt, 3);
 
             // Assert
             Assert.True(removed);
-            Assert.Equal(7, state.GetReserveTroops(DefenderTier.Basic));
+            Assert.Equal(7, state.GetReserveTroops(DefenderRole.Grunt));
         }
 
         [Fact]
@@ -745,14 +745,14 @@ namespace FactionWars.Tests.Unit.Factions
         {
             // Arrange
             var state = new FactionState("faction_michael");
-            state.AddReserveTroops(DefenderTier.Basic, 5);
+            state.AddReserveTroops(DefenderRole.Grunt, 5);
 
             // Act
-            var removed = state.RemoveReserveTroops(DefenderTier.Basic, 10);
+            var removed = state.RemoveReserveTroops(DefenderRole.Grunt, 10);
 
             // Assert
             Assert.False(removed);
-            Assert.Equal(5, state.GetReserveTroops(DefenderTier.Basic)); // Unchanged
+            Assert.Equal(5, state.GetReserveTroops(DefenderRole.Grunt)); // Unchanged
         }
 
         [Fact]
@@ -763,7 +763,7 @@ namespace FactionWars.Tests.Unit.Factions
 
             // Act & Assert
             Assert.Throws<ArgumentOutOfRangeException>(() =>
-                state.RemoveReserveTroops(DefenderTier.Basic, -1));
+                state.RemoveReserveTroops(DefenderRole.Grunt, -1));
         }
 
         [Fact]
@@ -771,11 +771,11 @@ namespace FactionWars.Tests.Unit.Factions
         {
             // Arrange
             var state = new FactionState("faction_michael");
-            state.AddReserveTroops(DefenderTier.Heavy, 5);
+            state.AddReserveTroops(DefenderRole.Rifleman, 5);
 
             // Act & Assert
-            Assert.True(state.HasReserveTroops(DefenderTier.Heavy, 3));
-            Assert.True(state.HasReserveTroops(DefenderTier.Heavy, 5));
+            Assert.True(state.HasReserveTroops(DefenderRole.Rifleman, 3));
+            Assert.True(state.HasReserveTroops(DefenderRole.Rifleman, 5));
         }
 
         [Fact]
@@ -783,10 +783,10 @@ namespace FactionWars.Tests.Unit.Factions
         {
             // Arrange
             var state = new FactionState("faction_michael");
-            state.AddReserveTroops(DefenderTier.Heavy, 5);
+            state.AddReserveTroops(DefenderRole.Rifleman, 5);
 
             // Act & Assert
-            Assert.False(state.HasReserveTroops(DefenderTier.Heavy, 10));
+            Assert.False(state.HasReserveTroops(DefenderRole.Rifleman, 10));
         }
 
         [Fact]
@@ -794,9 +794,9 @@ namespace FactionWars.Tests.Unit.Factions
         {
             // Arrange
             var state = new FactionState("faction_michael");
-            state.AddReserveTroops(DefenderTier.Basic, 10);
-            state.AddReserveTroops(DefenderTier.Medium, 5);
-            state.AddReserveTroops(DefenderTier.Heavy, 2);
+            state.AddReserveTroops(DefenderRole.Grunt, 10);
+            state.AddReserveTroops(DefenderRole.Gunner, 5);
+            state.AddReserveTroops(DefenderRole.Rifleman, 2);
 
             // Act & Assert
             Assert.Equal(17, state.TotalReserveTroops);
@@ -807,9 +807,9 @@ namespace FactionWars.Tests.Unit.Factions
         {
             // Arrange - After consolidation, TroopCount is computed from reserve pool
             var state = new FactionState("faction_michael");
-            state.AddReserveTroops(DefenderTier.Basic, 10);
-            state.AddReserveTroops(DefenderTier.Medium, 5);
-            state.AddReserveTroops(DefenderTier.Heavy, 2);
+            state.AddReserveTroops(DefenderRole.Grunt, 10);
+            state.AddReserveTroops(DefenderRole.Gunner, 5);
+            state.AddReserveTroops(DefenderRole.Rifleman, 2);
 
             // Act & Assert - TroopCount should equal sum of all reserve troops
             Assert.Equal(17, state.TroopCount);
@@ -821,16 +821,16 @@ namespace FactionWars.Tests.Unit.Factions
         {
             // Arrange
             var state = new FactionState("faction_michael");
-            state.AddReserveTroops(DefenderTier.Basic, 10);
-            state.AddReserveTroops(DefenderTier.Medium, 5);
+            state.AddReserveTroops(DefenderRole.Grunt, 10);
+            state.AddReserveTroops(DefenderRole.Gunner, 5);
 
             // Act
             var pool = state.GetReservePoolCopy();
 
             // Assert
-            Assert.Equal(10, pool[DefenderTier.Basic]);
-            Assert.Equal(5, pool[DefenderTier.Medium]);
-            Assert.Equal(0, pool[DefenderTier.Heavy]);
+            Assert.Equal(10, pool[DefenderRole.Grunt]);
+            Assert.Equal(5, pool[DefenderRole.Gunner]);
+            Assert.Equal(0, pool[DefenderRole.Rifleman]);
         }
 
         [Fact]
@@ -838,14 +838,14 @@ namespace FactionWars.Tests.Unit.Factions
         {
             // Arrange
             var state = new FactionState("faction_michael");
-            state.AddReserveTroops(DefenderTier.Basic, 10);
+            state.AddReserveTroops(DefenderRole.Grunt, 10);
 
             // Act - modify the returned copy
             var pool = state.GetReservePoolCopy();
-            pool[DefenderTier.Basic] = 100;
+            pool[DefenderRole.Grunt] = 100;
 
             // Assert - internal state should be unchanged
-            Assert.Equal(10, state.GetReserveTroops(DefenderTier.Basic));
+            Assert.Equal(10, state.GetReserveTroops(DefenderRole.Grunt));
         }
 
         #endregion

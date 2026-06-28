@@ -187,6 +187,6 @@ namespace FactionWars.Factions.Interfaces
         /// <returns>True if troops were added, false if faction or state not found.</returns>
         /// <exception cref="System.ArgumentNullException">Thrown if factionId is null.</exception>
         /// <exception cref="System.ArgumentOutOfRangeException">Thrown if count is negative.</exception>
-        bool AddReserveTroops(string factionId, DefenderTier tier, int count);
+        bool AddReserveTroops(string factionId, DefenderRole tier, int count);
     }
 }

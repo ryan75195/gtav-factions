@@ -20,14 +20,14 @@ namespace FactionWars.ScriptHookV.UI
 
             // Get current allocation
             var allocation = factionId != null ? _allocationService.GetAllocation(factionId, zoneId) : null;
-            var currentBasic = allocation?.GetTroopCount(DefenderTier.Basic) ?? 0;
-            var currentMedium = allocation?.GetTroopCount(DefenderTier.Medium) ?? 0;
-            var currentHeavy = allocation?.GetTroopCount(DefenderTier.Heavy) ?? 0;
+            var currentBasic = allocation?.GetTroopCount(DefenderRole.Grunt) ?? 0;
+            var currentMedium = allocation?.GetTroopCount(DefenderRole.Gunner) ?? 0;
+            var currentHeavy = allocation?.GetTroopCount(DefenderRole.Rifleman) ?? 0;
 
             // Get reserve counts
-            var reserveBasic = factionState?.GetReserveTroops(DefenderTier.Basic) ?? 0;
-            var reserveMedium = factionState?.GetReserveTroops(DefenderTier.Medium) ?? 0;
-            var reserveHeavy = factionState?.GetReserveTroops(DefenderTier.Heavy) ?? 0;
+            var reserveBasic = factionState?.GetReserveTroops(DefenderRole.Grunt) ?? 0;
+            var reserveMedium = factionState?.GetReserveTroops(DefenderRole.Gunner) ?? 0;
+            var reserveHeavy = factionState?.GetReserveTroops(DefenderRole.Rifleman) ?? 0;
             AddCurrentAllocationItems(menu, currentBasic, currentMedium, currentHeavy);
             AddAllocateItems(menu, reserveBasic, reserveMedium, reserveHeavy);
             AddWithdrawItems(menu, currentBasic, currentMedium, currentHeavy);

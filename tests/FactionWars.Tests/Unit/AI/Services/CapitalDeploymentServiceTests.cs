@@ -61,9 +61,11 @@ namespace FactionWars.Tests.Unit.AI.Services
                 name: $"Test Zone {id}",
                 center: new Vector3(0, 0, 0),
                 radius: 150f,
-                strategicValue: strategicValue);
-            zone.OwnerFactionId = ownerFactionId;
-            zone.IsContested = isContested;
+                strategicValue: strategicValue)
+            {
+                OwnerFactionId = ownerFactionId,
+                IsContested = isContested
+            };
             return zone;
         }
 
@@ -76,14 +78,14 @@ namespace FactionWars.Tests.Unit.AI.Services
         {
             faction ??= CreateTestFaction(FactionType.Michael);
             factionState ??= CreateTestFactionState(faction.Id);
-            ownedZones ??= new List<Zone> { CreateTestZone("zone-1", ownerFactionId: faction.Id) };
-            allZones ??= new List<Zone>
-            {
+            ownedZones ??= [CreateTestZone("zone-1", ownerFactionId: faction.Id)];
+            allZones ??=
+            [
                 CreateTestZone("zone-1", ownerFactionId: faction.Id),
                 CreateTestZone("zone-2", ownerFactionId: "enemy-faction"),
                 CreateTestZone("zone-3")
-            };
-            enemyFactions ??= new List<Faction> { CreateTestFaction(FactionType.Trevor, "enemy-faction") };
+            ];
+            enemyFactions ??= [CreateTestFaction(FactionType.Trevor, "enemy-faction")];
 
             return new AIContext(faction, factionState, ownedZones, allZones, enemyFactions);
         }
@@ -91,7 +93,7 @@ namespace FactionWars.Tests.Unit.AI.Services
         private void SetupZoneAllocation(string factionId, string zoneId, int totalTroops)
         {
             var allocation = new ZoneDefenderAllocation(factionId, zoneId);
-            allocation.AddTroops(DefenderTier.Basic, totalTroops);
+            allocation.AddTroops(DefenderRole.Grunt, totalTroops);
             _mockAllocationService
                 .Setup(a => a.GetAllocation(factionId, zoneId))
                 .Returns(allocation);
@@ -162,7 +164,7 @@ namespace FactionWars.Tests.Unit.AI.Services
         {
             // Contested zones have threat level 2.0
             var zone = CreateTestZone("zone-1", ownerFactionId: "faction-michael", strategicValue: 10, isContested: true);
-            var context = CreateTestContext(ownedZones: new List<Zone> { zone });
+            var context = CreateTestContext(ownedZones: [zone]);
 
             // Setup: no defenders allocated
             _mockAllocationService.Setup(a => a.GetAllocation(It.IsAny<string>(), It.IsAny<string>())).Returns((ZoneDefenderAllocation?)null);
@@ -179,8 +181,8 @@ namespace FactionWars.Tests.Unit.AI.Services
             // Safe zone with no adjacent enemies and not contested
             var ownedZone = CreateTestZone("zone-1", ownerFactionId: "faction-michael", strategicValue: 5);
             var context = CreateTestContext(
-                ownedZones: new List<Zone> { ownedZone },
-                allZones: new List<Zone> { ownedZone }); // No enemy zones
+                ownedZones: [ownedZone],
+                allZones: [ownedZone]); // No enemy zones
 
             _mockAllocationService.Setup(a => a.GetAllocation(It.IsAny<string>(), It.IsAny<string>())).Returns((ZoneDefenderAllocation?)null);
 
@@ -194,7 +196,7 @@ namespace FactionWars.Tests.Unit.AI.Services
         {
             // Zone with defenders should have lower priority than without
             var zone = CreateTestZone("zone-1", ownerFactionId: "faction-michael", strategicValue: 10, isContested: true);
-            var context = CreateTestContext(ownedZones: new List<Zone> { zone });
+            var context = CreateTestContext(ownedZones: [zone]);
 
             // Setup: 10 defenders allocated
             SetupZoneAllocation("faction-michael", "zone-1", 10);
@@ -215,8 +217,8 @@ namespace FactionWars.Tests.Unit.AI.Services
             ownedZone.AdjacentZoneIds.Add("zone-2");
 
             var context = CreateTestContext(
-                ownedZones: new List<Zone> { ownedZone },
-                allZones: new List<Zone> { ownedZone, enemyZone });
+                ownedZones: [ownedZone],
+                allZones: [ownedZone, enemyZone]);
 
             _mockAllocationService.Setup(a => a.GetAllocation(It.IsAny<string>(), It.IsAny<string>())).Returns((ZoneDefenderAllocation?)null);
 
@@ -234,7 +236,7 @@ namespace FactionWars.Tests.Unit.AI.Services
             var lowValueZone = CreateTestZone("zone-low", ownerFactionId: "faction-michael", strategicValue: 1, isContested: true);
             var highValueZone = CreateTestZone("zone-high", ownerFactionId: "faction-michael", strategicValue: 10, isContested: true);
 
-            var context = CreateTestContext(ownedZones: new List<Zone> { lowValueZone, highValueZone });
+            var context = CreateTestContext(ownedZones: [lowValueZone, highValueZone]);
             _mockAllocationService.Setup(a => a.GetAllocation(It.IsAny<string>(), It.IsAny<string>())).Returns((ZoneDefenderAllocation?)null);
 
             var lowResult = _service.GetDefensePriority(lowValueZone, context);
@@ -392,6 +394,39 @@ namespace FactionWars.Tests.Unit.AI.Services
             Assert.True(result > 0.7f, $"Undefended neutral zone should be good opportunity, got {result}");
         }
 
+        [Fact]
+        public void GetAttackOpportunity_LowResourceFaction_BoostsCheapExpansion()
+        {
+            var faction = CreateTestFaction(FactionType.Michael);
+            var factionState = CreateTestFactionState(faction.Id, troops: 10);
+            var neutralZone = CreateTestZone("cheap-expansion", ownerFactionId: null, strategicValue: 2);
+
+            var context = CreateTestContext(faction: faction, factionState: factionState);
+
+            var result = _service.GetAttackOpportunity(neutralZone, context);
+
+            Assert.True(result >= 0.4f, $"Low-resource faction should still expand into cheap adjacent territory, got {result}");
+        }
+
+        [Fact]
+        public void GetAttackOpportunity_ContestedTarget_AppliesAttritionPenalty()
+        {
+            var faction = CreateTestFaction(FactionType.Michael);
+            var factionState = CreateTestFactionState(faction.Id, troops: 100);
+            var safeTarget = CreateTestZone("safe-target", ownerFactionId: "enemy-faction", strategicValue: 10);
+            var contestedTarget = CreateTestZone("contested-target", ownerFactionId: "enemy-faction", strategicValue: 10, isContested: true);
+
+            var context = CreateTestContext(faction: faction, factionState: factionState);
+
+            SetupZoneAllocation("enemy-faction", safeTarget.Id, 5);
+            SetupZoneAllocation("enemy-faction", contestedTarget.Id, 5);
+
+            var safeResult = _service.GetAttackOpportunity(safeTarget, context);
+            var contestedResult = _service.GetAttackOpportunity(contestedTarget, context);
+
+            Assert.True(contestedResult < safeResult, $"Contested target ({contestedResult}) should be less attractive than safe target ({safeResult})");
+        }
+
         #endregion
 
         #region GetBestDecision Tests
@@ -405,8 +440,8 @@ namespace FactionWars.Tests.Unit.AI.Services
 
             var context = CreateTestContext(
                 faction: faction,
-                ownedZones: new List<Zone> { ownedZone },
-                allZones: new List<Zone> { ownedZone }); // No enemy zones to attack
+                ownedZones: [ownedZone],
+                allZones: [ownedZone]); // No enemy zones to attack
 
             _mockAllocationService.Setup(a => a.GetAllocation(It.IsAny<string>(), It.IsAny<string>())).Returns((ZoneDefenderAllocation?)null);
 
@@ -434,8 +469,8 @@ namespace FactionWars.Tests.Unit.AI.Services
             var context = CreateTestContext(
                 faction: faction,
                 factionState: factionState,
-                ownedZones: new List<Zone> { ownedZone },
-                allZones: new List<Zone> { ownedZone, enemyZone });
+                ownedZones: [ownedZone],
+                allZones: [ownedZone, enemyZone]);
 
             // Enemy zone has few defenders
             SetupZoneAllocation("enemy-faction", "enemy", 5);
@@ -464,8 +499,8 @@ namespace FactionWars.Tests.Unit.AI.Services
             var context = CreateTestContext(
                 faction: faction,
                 factionState: factionState,
-                ownedZones: new List<Zone> { ownedZone },
-                allZones: new List<Zone> { ownedZone, enemyZone });
+                ownedZones: [ownedZone],
+                allZones: [ownedZone, enemyZone]);
 
             // Enemy has many defenders
             SetupZoneAllocation("enemy-faction", "enemy", 50);
@@ -490,8 +525,8 @@ namespace FactionWars.Tests.Unit.AI.Services
             var context = CreateTestContext(
                 faction: faction,
                 factionState: factionState,
-                ownedZones: new List<Zone> { contestedZone },
-                allZones: new List<Zone> { contestedZone, enemyZone });
+                ownedZones: [contestedZone],
+                allZones: [contestedZone, enemyZone]);
 
             // Both have some defenders
             SetupZoneAllocation(faction.Id, "contested", 5);
@@ -509,8 +544,8 @@ namespace FactionWars.Tests.Unit.AI.Services
             var faction = CreateTestFaction(FactionType.Michael);
             var context = CreateTestContext(
                 faction: faction,
-                ownedZones: new List<Zone>(),
-                allZones: new List<Zone> { CreateTestZone("enemy", ownerFactionId: "enemy-faction") });
+                ownedZones: [],
+                allZones: [CreateTestZone("enemy", ownerFactionId: "enemy-faction")]);
 
             var result = _service.GetBestDecision(context);
 
@@ -533,8 +568,8 @@ namespace FactionWars.Tests.Unit.AI.Services
             var context = CreateTestContext(
                 faction: faction,
                 factionState: factionState,
-                ownedZones: new List<Zone> { ownedZone },
-                allZones: new List<Zone> { ownedZone, enemyZone });
+                ownedZones: [ownedZone],
+                allZones: [ownedZone, enemyZone]);
 
             SetupZoneAllocation("enemy-faction", "enemy", 10);
             _mockAllocationService.Setup(a => a.GetAllocation(faction.Id, It.IsAny<string>())).Returns((ZoneDefenderAllocation?)null);
@@ -547,6 +582,34 @@ namespace FactionWars.Tests.Unit.AI.Services
             Assert.Equal(50, result.TroopsToCommit);
         }
 
+        [Fact]
+        public void GetBestDecision_TrevorLowResources_PrefersNorthernExpansionOverContestedCityFight()
+        {
+            var faction = CreateTestFaction(FactionType.Trevor, "trevor");
+            var factionState = CreateTestFactionState(faction.Id, troops: 10);
+            var ownedZone = CreateTestZone("grapeseed", ownerFactionId: faction.Id, strategicValue: 4);
+            var northernTarget = CreateTestZone("paleto_forest", ownerFactionId: null, strategicValue: 2);
+            var cityTarget = CreateTestZone("mission_row", ownerFactionId: "enemy-faction", strategicValue: 10, isContested: true);
+
+            ownedZone.AdjacentZoneIds.Add(northernTarget.Id);
+            ownedZone.AdjacentZoneIds.Add(cityTarget.Id);
+
+            var context = CreateTestContext(
+                faction: faction,
+                factionState: factionState,
+                ownedZones: [ownedZone],
+                allZones: [ownedZone, northernTarget, cityTarget]);
+
+            _mockAllocationService.Setup(a => a.GetAllocation("enemy-faction", cityTarget.Id)).Returns((ZoneDefenderAllocation?)null);
+            _mockAllocationService.Setup(a => a.GetAllocation(faction.Id, ownedZone.Id)).Returns((ZoneDefenderAllocation?)null);
+
+            var result = _service.GetBestDecision(context);
+
+            Assert.NotNull(result);
+            Assert.Equal(AIDecisionType.Attack, result!.DecisionType);
+            Assert.Equal(northernTarget.Id, result.TargetZoneId);
+        }
+
         #endregion
 
         #region CalculateThreatLevel Tests (via GetDefensePriority)
@@ -556,7 +619,7 @@ namespace FactionWars.Tests.Unit.AI.Services
         {
             // Contested zones have highest threat
             var zone = CreateTestZone("zone-1", ownerFactionId: "faction-michael", strategicValue: 10, isContested: true);
-            var context = CreateTestContext(ownedZones: new List<Zone> { zone });
+            var context = CreateTestContext(ownedZones: [zone]);
 
             // With max strategic value and no defenders, contested threat shows through
             _mockAllocationService.Setup(a => a.GetAllocation(It.IsAny<string>(), It.IsAny<string>())).Returns((ZoneDefenderAllocation?)null);
@@ -575,8 +638,8 @@ namespace FactionWars.Tests.Unit.AI.Services
             ownedZone.AdjacentZoneIds.Add("enemy");
 
             var context = CreateTestContext(
-                ownedZones: new List<Zone> { ownedZone },
-                allZones: new List<Zone> { ownedZone, enemyZone });
+                ownedZones: [ownedZone],
+                allZones: [ownedZone, enemyZone]);
 
             _mockAllocationService.Setup(a => a.GetAllocation(It.IsAny<string>(), It.IsAny<string>())).Returns((ZoneDefenderAllocation?)null);
 
@@ -592,8 +655,8 @@ namespace FactionWars.Tests.Unit.AI.Services
             var safeZone = CreateTestZone("safe", ownerFactionId: "faction-michael", strategicValue: 10);
             // No adjacent enemy zones
             var context = CreateTestContext(
-                ownedZones: new List<Zone> { safeZone },
-                allZones: new List<Zone> { safeZone });
+                ownedZones: [safeZone],
+                allZones: [safeZone]);
 
             _mockAllocationService.Setup(a => a.GetAllocation(It.IsAny<string>(), It.IsAny<string>())).Returns((ZoneDefenderAllocation?)null);
 

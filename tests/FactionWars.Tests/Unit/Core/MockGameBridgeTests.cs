@@ -297,35 +297,35 @@ namespace FactionWars.Tests.Unit.Core
         }
 
         [Fact]
-        public void SetPedAsFriendly_SetsFriendlyDefendersGroup()
+        public void SetPedAsFriendly_PreservesFactionGroupAndDoesNotAttackPlayer()
         {
             // Arrange
             var mockBridge = new MockGameBridge();
             var handle = mockBridge.CreatePed("test_model", Vector3.Zero);
+            mockBridge.SetPedRelationshipGroup(handle, "FACTION_MICHAEL");
 
             // Act
             mockBridge.SetPedAsFriendly(handle);
 
-            // Assert - Should be in FRIENDLY_DEFENDERS group, not PLAYER or DEFENDER_ENEMIES
-            var group = mockBridge.GetPedRelationshipGroup(handle);
-            Assert.Equal("FRIENDLY_DEFENDERS", group);
-            Assert.NotEqual("PLAYER", group);
-            Assert.NotEqual("DEFENDER_ENEMIES", group);
+            // Assert - Group is owned by the relationship matrix now; SetPedAsFriendly no longer
+            // reassigns it. The ped keeps the faction group it spawned in.
+            Assert.Equal("FACTION_MICHAEL", mockBridge.GetPedRelationshipGroup(handle));
         }
 
         [Fact]
-        public void SetPedAsHostileWanderer_SetsDefenderEnemiesGroup()
+        public void SetPedAsHostileWanderer_MarksAttackingPlayerWithoutReassigningGroup()
         {
             // Arrange
             var mockBridge = new MockGameBridge();
             var handle = mockBridge.CreatePed("test_model", Vector3.Zero);
+            mockBridge.SetPedRelationshipGroup(handle, "FACTION_BALLAS");
 
             // Act
             mockBridge.SetPedAsHostileWanderer(handle);
 
-            // Assert - Should be in DEFENDER_ENEMIES group (hostile to player)
-            var group = mockBridge.GetPedRelationshipGroup(handle);
-            Assert.Equal("DEFENDER_ENEMIES", group);
+            // Assert - Group is owned by the relationship matrix now; the ped keeps the faction
+            // group it spawned in (no reassignment to a synthetic enemies group).
+            Assert.Equal("FACTION_BALLAS", mockBridge.GetPedRelationshipGroup(handle));
         }
 
         [Fact]
@@ -622,5 +622,30 @@ namespace FactionWars.Tests.Unit.Core
         }
 
         #endregion
+
+        [Fact]
+        public void TaskGuardArea_RecordsCentreAndRadius()
+        {
+            var mock = new MockGameBridge();
+            int ped = mock.CreatePed("test", new Vector3(0f, 0f, 0f));
+
+            mock.TaskGuardArea(ped, new Vector3(10f, 20f, 30f), 8f);
+
+            Assert.True(mock.IsPedGuardingArea(ped));
+            Assert.Equal(new Vector3(10f, 20f, 30f), mock.GetGuardAreaCenter(ped));
+            Assert.Equal(8f, mock.GetGuardAreaRadius(ped));
+        }
+
+        [Fact]
+        public void TaskCombatPed_RecordsTarget()
+        {
+            var mock = new MockGameBridge();
+            int ped = mock.CreatePed("test", new Vector3(0f, 0f, 0f));
+
+            mock.TaskCombatPed(ped, 555);
+
+            Assert.True(mock.IsPedCombatingPed(ped));
+            Assert.Equal(555, mock.GetCombatPedTarget(ped));
+        }
     }
 }

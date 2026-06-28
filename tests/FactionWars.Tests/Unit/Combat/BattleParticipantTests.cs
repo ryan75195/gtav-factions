@@ -8,14 +8,14 @@ namespace FactionWars.Tests.Unit.Combat
 {
     public class BattleParticipantTests
     {
-        private static Dictionary<DefenderTier, int> Troops(int basic = 0, int medium = 0, int heavy = 0, int elite = 0)
+        private static Dictionary<DefenderRole, int> Troops(int basic = 0, int medium = 0, int heavy = 0, int elite = 0)
         {
-            return new Dictionary<DefenderTier, int>
+            return new Dictionary<DefenderRole, int>
             {
-                { DefenderTier.Basic, basic },
-                { DefenderTier.Medium, medium },
-                { DefenderTier.Heavy, heavy },
-                { DefenderTier.Elite, elite }
+                { DefenderRole.Grunt, basic },
+                { DefenderRole.Gunner, medium },
+                { DefenderRole.Rifleman, heavy },
+                { DefenderRole.Rocketeer, elite }
             };
         }
 
@@ -27,8 +27,8 @@ namespace FactionWars.Tests.Unit.Combat
             Assert.Equal("trevor", p.FactionId);
             Assert.Equal(BattleRole.Attacker, p.Role);
             Assert.False(p.IsPlayer);
-            Assert.Equal(5, p.Troops[DefenderTier.Basic]);
-            Assert.Equal(2, p.Troops[DefenderTier.Medium]);
+            Assert.Equal(5, p.Troops[DefenderRole.Grunt]);
+            Assert.Equal(2, p.Troops[DefenderRole.Gunner]);
         }
 
         [Fact]
@@ -44,11 +44,11 @@ namespace FactionWars.Tests.Unit.Combat
         {
             var p = BattleParticipant.ForAi("trevor", BattleRole.Attacker, Troops(basic: 5));
 
-            p.RemoveTroop(DefenderTier.Basic);
+            p.RemoveTroop(DefenderRole.Grunt);
             Assert.Equal(4, p.AliveCount);
 
-            p.RemoveTroop(DefenderTier.Basic);
-            p.RemoveTroop(DefenderTier.Basic);
+            p.RemoveTroop(DefenderRole.Grunt);
+            p.RemoveTroop(DefenderRole.Grunt);
             Assert.Equal(2, p.AliveCount);
         }
 
@@ -57,7 +57,7 @@ namespace FactionWars.Tests.Unit.Combat
         {
             var p = BattleParticipant.ForAi("trevor", BattleRole.Attacker, Troops(basic: 0));
 
-            Assert.False(p.RemoveTroop(DefenderTier.Basic));
+            Assert.False(p.RemoveTroop(DefenderRole.Grunt));
             Assert.Equal(0, p.AliveCount);
         }
 
@@ -66,8 +66,8 @@ namespace FactionWars.Tests.Unit.Combat
         {
             var p = BattleParticipant.ForAi("trevor", BattleRole.Attacker, Troops(basic: 1));
 
-            p.AddTroops(DefenderTier.Basic, 4);
-            Assert.Equal(5, p.Troops[DefenderTier.Basic]);
+            p.AddTroops(DefenderRole.Grunt, 4);
+            Assert.Equal(5, p.Troops[DefenderRole.Grunt]);
             Assert.Equal(5, p.AliveCount);
         }
 
@@ -94,7 +94,7 @@ namespace FactionWars.Tests.Unit.Combat
             // RemoveTroop is a no-op for player participants and returns false.
             var p = BattleParticipant.ForPlayer("player_faction", BattleRole.Attacker, () => 2);
 
-            Assert.False(p.RemoveTroop(DefenderTier.Basic));
+            Assert.False(p.RemoveTroop(DefenderRole.Grunt));
             Assert.Equal(2, p.AliveCount);
         }
 

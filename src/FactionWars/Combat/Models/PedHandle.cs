@@ -40,7 +40,7 @@ namespace FactionWars.Combat.Models
         /// The defender tier of this ped, if it's a defender.
         /// Null for attackers, followers, or other non-defender peds.
         /// </summary>
-        public DefenderTier? DefenderTier { get; }
+        public DefenderRole? DefenderRole { get; }
 
         /// <summary>
         /// The UTC time when this ped handle was created.
@@ -65,7 +65,7 @@ namespace FactionWars.Combat.Models
         /// <summary>
         /// Returns true if this ped is a defender (has a defender tier assigned).
         /// </summary>
-        public bool IsDefender => DefenderTier.HasValue;
+        public bool IsDefender => DefenderRole.HasValue;
 
         /// <summary>
         /// Represents an invalid ped handle (handle = -1).
@@ -87,14 +87,14 @@ namespace FactionWars.Combat.Models
             Vector3 spawnPosition = default,
             string? modelName = null,
             string? zoneId = null,
-            DefenderTier? defenderTier = null)
+            DefenderRole? defenderTier = null)
         {
             Handle = handle;
             FactionId = factionId;
             SpawnPosition = spawnPosition;
             ModelName = modelName;
             ZoneId = zoneId;
-            DefenderTier = defenderTier;
+            DefenderRole = defenderTier;
             CreatedAt = DateTime.UtcNow;
             IsMarkedForDeletion = false;
             IsRecycled = false;

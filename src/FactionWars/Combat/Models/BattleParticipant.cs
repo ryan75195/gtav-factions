@@ -23,13 +23,13 @@ namespace FactionWars.Combat.Models
         /// player participants — their alive count comes from the
         /// squad callback. Mutable during a battle.
         /// </summary>
-        public Dictionary<DefenderTier, int> Troops { get; }
+        public Dictionary<DefenderRole, int> Troops { get; }
 
         private BattleParticipant(
             string factionId,
             BattleRole role,
             bool isPlayer,
-            Dictionary<DefenderTier, int> troops,
+            Dictionary<DefenderRole, int> troops,
             Func<int>? playerAliveCountCallback)
         {
             FactionId = factionId;
@@ -39,18 +39,18 @@ namespace FactionWars.Combat.Models
             _playerAliveCountCallback = playerAliveCountCallback;
         }
 
-        public static BattleParticipant ForAi(string factionId, BattleRole role, Dictionary<DefenderTier, int> troops)
+        public static BattleParticipant ForAi(string factionId, BattleRole role, Dictionary<DefenderRole, int> troops)
         {
             if (factionId == null) throw new ArgumentNullException(nameof(factionId));
             if (troops == null) throw new ArgumentNullException(nameof(troops));
-            return new BattleParticipant(factionId, role, isPlayer: false, new Dictionary<DefenderTier, int>(troops), null);
+            return new BattleParticipant(factionId, role, isPlayer: false, new Dictionary<DefenderRole, int>(troops), null);
         }
 
         public static BattleParticipant ForPlayer(string factionId, BattleRole role, Func<int> aliveCountCallback)
         {
             if (factionId == null) throw new ArgumentNullException(nameof(factionId));
             if (aliveCountCallback == null) throw new ArgumentNullException(nameof(aliveCountCallback));
-            return new BattleParticipant(factionId, role, isPlayer: true, new Dictionary<DefenderTier, int>(), aliveCountCallback);
+            return new BattleParticipant(factionId, role, isPlayer: true, new Dictionary<DefenderRole, int>(), aliveCountCallback);
         }
 
         public BattleParticipant WithRole(BattleRole role)
@@ -59,7 +59,7 @@ namespace FactionWars.Combat.Models
                 FactionId,
                 role,
                 IsPlayer,
-                new Dictionary<DefenderTier, int>(Troops),
+                new Dictionary<DefenderRole, int>(Troops),
                 _playerAliveCountCallback);
         }
 
@@ -82,7 +82,7 @@ namespace FactionWars.Combat.Models
         /// Decrements one troop of the given tier. No-op for player participants.
         /// </summary>
         /// <returns>True if a troop was removed.</returns>
-        public bool RemoveTroop(DefenderTier tier)
+        public bool RemoveTroop(DefenderRole tier)
         {
             if (IsPlayer) return false;
             if (Troops.TryGetValue(tier, out int count) && count > 0)
@@ -97,7 +97,7 @@ namespace FactionWars.Combat.Models
         /// Adds <paramref name="count"/> troops of the given tier. No-op for
         /// player participants and for non-positive counts.
         /// </summary>
-        public void AddTroops(DefenderTier tier, int count)
+        public void AddTroops(DefenderRole tier, int count)
         {
             if (IsPlayer || count <= 0) return;
             if (Troops.ContainsKey(tier)) Troops[tier] += count;

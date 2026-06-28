@@ -40,7 +40,7 @@ namespace FactionWars.Tests.Unit.Telemetry
         public void Tick_BuildsSnapshotAndWritesToSink()
         {
             var michael = new Faction("michael", "Michael's Crew");
-            _factionService.Setup(s => s.GetAllFactions()).Returns(new[] { michael });
+            _factionService.Setup(s => s.GetAllFactions()).Returns([michael]);
             _factionService.Setup(s => s.GetFactionState("michael"))
                 .Returns(new FactionState("michael") { Cash = 500 });
             _zoneService.Setup(z => z.GetZoneCount("michael")).Returns(8);
@@ -80,7 +80,7 @@ namespace FactionWars.Tests.Unit.Telemetry
         public void TickAfterDispose_DoesNotCallSink()
         {
             var michael = new Faction("michael", "Michael's Crew");
-            _factionService.Setup(s => s.GetAllFactions()).Returns(new[] { michael });
+            _factionService.Setup(s => s.GetAllFactions()).Returns([michael]);
             _factionService.Setup(s => s.GetFactionState("michael"))
                 .Returns(new FactionState("michael") { Cash = 500 });
 
@@ -111,7 +111,7 @@ namespace FactionWars.Tests.Unit.Telemetry
         public void Update_AccumulatesUnderInterval_DoesNotTrigger()
         {
             var michael = new Faction("michael", "Michael's Crew");
-            _factionService.Setup(s => s.GetAllFactions()).Returns(new[] { michael });
+            _factionService.Setup(s => s.GetAllFactions()).Returns([michael]);
             _factionService.Setup(s => s.GetFactionState("michael"))
                 .Returns(new FactionState("michael") { Cash = 500 });
 
@@ -128,7 +128,7 @@ namespace FactionWars.Tests.Unit.Telemetry
         public void Update_AccumulatesAtInterval_TriggersOnce()
         {
             var michael = new Faction("michael", "Michael's Crew");
-            _factionService.Setup(s => s.GetAllFactions()).Returns(new[] { michael });
+            _factionService.Setup(s => s.GetAllFactions()).Returns([michael]);
             _factionService.Setup(s => s.GetFactionState("michael"))
                 .Returns(new FactionState("michael") { Cash = 500 });
 
@@ -145,7 +145,7 @@ namespace FactionWars.Tests.Unit.Telemetry
         public void Update_AfterTrigger_ResetsAccumulator()
         {
             var michael = new Faction("michael", "Michael's Crew");
-            _factionService.Setup(s => s.GetAllFactions()).Returns(new[] { michael });
+            _factionService.Setup(s => s.GetAllFactions()).Returns([michael]);
             _factionService.Setup(s => s.GetFactionState("michael"))
                 .Returns(new FactionState("michael") { Cash = 500 });
 
@@ -206,6 +206,103 @@ namespace FactionWars.Tests.Unit.Telemetry
                 r.Type == PlayerEventType.RespawnAtHospital
                 && r.ZoneId == null
                 && r.Details.Contains("\"x\":10"))), Times.Once);
+        }
+
+        [Fact]
+        public void Update_PlayerInBattle_WritesBattleEntered()
+        {
+            var battle = CreatePlayerAttackBattle();
+            var battleManager = new Mock<IZoneBattleManager>();
+            battleManager.Setup(b => b.GetPlayerCurrentBattle()).Returns(battle);
+            _gameStateManager.Setup(g => g.TotalPlayTimeSeconds).Returns(500L);
+
+            using var svc = new TelemetryService(_sink.Object, _factionService.Object,
+                _zoneService.Object, _gameStateManager.Object,
+                new TelemetryServiceOptions { ZoneBattleManager = battleManager.Object });
+
+            svc.Update(0.1f);
+
+            _sink.Verify(s => s.WritePlayerEvent(It.Is<PlayerEventRow>(r =>
+                r.Type == PlayerEventType.BattleEntered
+                && r.ZoneId == "pillbox_hill"
+                && r.TargetFaction == "franklin"
+                && r.PlayTimeSeconds == 500L
+                && r.Details.Contains("\"player_faction\":\"michael\""))), Times.Once);
+        }
+
+        [Fact]
+        public void Update_PlayerLeavesBattleBeforeResolution_WritesBattleAbandoned()
+        {
+            ZoneBattle? currentBattle = CreatePlayerAttackBattle();
+            var battleManager = new Mock<IZoneBattleManager>();
+            battleManager.Setup(b => b.GetPlayerCurrentBattle()).Returns(() => currentBattle);
+
+            using var svc = new TelemetryService(_sink.Object, _factionService.Object,
+                _zoneService.Object, _gameStateManager.Object,
+                new TelemetryServiceOptions { ZoneBattleManager = battleManager.Object });
+
+            svc.Update(0.1f);
+            currentBattle = null;
+            svc.Update(0.1f);
+
+            _sink.Verify(s => s.WritePlayerEvent(It.Is<PlayerEventRow>(r =>
+                r.Type == PlayerEventType.BattleAbandoned
+                && r.ZoneId == "pillbox_hill")), Times.Once);
+        }
+
+        [Fact]
+        public void Update_PlayerBattleEnds_WritesBattleExitedNotAbandoned()
+        {
+            ZoneBattle? currentBattle = CreatePlayerAttackBattle();
+            var completedBattle = currentBattle;
+            var battleManager = new Mock<IZoneBattleManager>();
+            battleManager.Setup(b => b.GetPlayerCurrentBattle()).Returns(() => currentBattle);
+
+            using var svc = new TelemetryService(_sink.Object, _factionService.Object,
+                _zoneService.Object, _gameStateManager.Object,
+                new TelemetryServiceOptions { ZoneBattleManager = battleManager.Object });
+
+            svc.Update(0.1f);
+            battleManager.Raise(b => b.BattleEnded += null, completedBattle!, BattleOutcome.AttackersWon);
+            currentBattle = null;
+            svc.Update(0.1f);
+
+            _sink.Verify(s => s.WritePlayerEvent(It.Is<PlayerEventRow>(r =>
+                r.Type == PlayerEventType.BattleExited
+                && r.ZoneId == "pillbox_hill")), Times.Once);
+            _sink.Verify(s => s.WritePlayerEvent(It.Is<PlayerEventRow>(r =>
+                r.Type == PlayerEventType.BattleAbandoned)), Times.Never);
+        }
+
+        [Fact]
+        public void Update_PlayerDiesInBattle_WritesBattleDeath()
+        {
+            var dead = false;
+            var battle = CreatePlayerAttackBattle();
+            var battleManager = new Mock<IZoneBattleManager>();
+            battleManager.Setup(b => b.GetPlayerCurrentBattle()).Returns(battle);
+
+            using var svc = new TelemetryService(_sink.Object, _factionService.Object,
+                _zoneService.Object, _gameStateManager.Object,
+                new TelemetryServiceOptions
+                {
+                    ZoneBattleManager = battleManager.Object,
+                    IsPlayerDead = () => dead,
+                    GetCurrentZoneId = () => "pillbox_hill",
+                    GetPlayerPosition = () => new Vector3(1f, 2f, 3f)
+                });
+
+            dead = true;
+            svc.Update(0.1f);
+
+            _sink.Verify(s => s.WritePlayerEvent(It.Is<PlayerEventRow>(r =>
+                r.Type == PlayerEventType.Death
+                && r.ZoneId == "pillbox_hill")), Times.Once);
+            _sink.Verify(s => s.WritePlayerEvent(It.Is<PlayerEventRow>(r =>
+                r.Type == PlayerEventType.BattleDeath
+                && r.ZoneId == "pillbox_hill"
+                && r.TargetFaction == "franklin"
+                && r.Details.Contains("\"player_role\":\"Attacker\""))), Times.Once);
         }
 
         // ---- Domain event subscription tests (Task 11) ----
@@ -273,8 +370,8 @@ namespace FactionWars.Tests.Unit.Telemetry
                     ZoneBattleManager = battleManager.Object,
                 });
 
-            var attackerTroops = new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 5 } };
-            var defenderTroops = new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 3 } };
+            var attackerTroops = new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 5 } };
+            var defenderTroops = new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 3 } };
             var battle = new ZoneBattle("trevor", "michael", "zone1", attackerTroops, defenderTroops);
 
             battleManager.Raise(m => m.BattleStarted += null, battle);
@@ -303,15 +400,15 @@ namespace FactionWars.Tests.Unit.Telemetry
                     ZoneBattleManager = battleManager.Object,
                 });
 
-            var attackerTroops = new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 5 } };
-            var defenderTroops = new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 3 } };
+            var attackerTroops = new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 5 } };
+            var defenderTroops = new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 3 } };
             var battle = new ZoneBattle("trevor", "michael", "zone1", attackerTroops, defenderTroops);
             // Simulate casualties: attacker lost 2 troops, defender wiped.
-            battle.RemoveAttackerTroop(DefenderTier.Basic);
-            battle.RemoveAttackerTroop(DefenderTier.Basic);
-            battle.RemoveDefenderTroop(DefenderTier.Basic);
-            battle.RemoveDefenderTroop(DefenderTier.Basic);
-            battle.RemoveDefenderTroop(DefenderTier.Basic);
+            battle.RemoveAttackerTroop(DefenderRole.Grunt);
+            battle.RemoveAttackerTroop(DefenderRole.Grunt);
+            battle.RemoveDefenderTroop(DefenderRole.Grunt);
+            battle.RemoveDefenderTroop(DefenderRole.Grunt);
+            battle.RemoveDefenderTroop(DefenderRole.Grunt);
 
             battleManager.Raise(m => m.BattleEnded += null, battle, BattleOutcome.AttackersWon);
 
@@ -336,8 +433,8 @@ namespace FactionWars.Tests.Unit.Telemetry
                     ZoneBattleManager = battleManager.Object,
                 });
 
-            var attackerTroops = new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 5 } };
-            var defenderTroops = new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 3 } };
+            var attackerTroops = new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 5 } };
+            var defenderTroops = new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 3 } };
             var battle = new ZoneBattle("trevor", "michael", "zone1", attackerTroops, defenderTroops);
             battle.RemoveParticipant("trevor");
 
@@ -365,12 +462,12 @@ namespace FactionWars.Tests.Unit.Telemetry
                 });
 
             allocationService.Raise(a => a.TroopsAllocated += null,
-                this, new TroopsAllocatedEventArgs("trevor", "zone1", DefenderTier.Heavy, 2));
+                this, new TroopsAllocatedEventArgs("trevor", "zone1", DefenderRole.Rifleman, 2));
 
             _sink.Verify(s => s.WriteAllocation(It.Is<AllocationEventRow>(r =>
                 r.FactionId == "trevor"
                 && r.ZoneId == "zone1"
-                && r.Tier == DefenderTier.Heavy
+                && r.Tier == DefenderRole.Rifleman
                 && r.Count == 2
                 && r.Source == AllocationSource.AI)), Times.Once);
         }
@@ -433,13 +530,13 @@ namespace FactionWars.Tests.Unit.Telemetry
                 });
 
             raiseAttackerKilled(new AttackerKilledEventArgs(
-                "zone1", "trevor", DefenderTier.Basic, pedHandle: 50, killerPedHandle: 100));
+                "zone1", "trevor", DefenderRole.Grunt, pedHandle: 50, killerPedHandle: 100));
 
             _sink.Verify(s => s.WritePlayerEvent(It.Is<PlayerEventRow>(r =>
                 r.Type == PlayerEventType.Kill
                 && r.ZoneId == "zone1"
                 && r.TargetFaction == "trevor"
-                && r.TargetTier == DefenderTier.Basic)), Times.Once);
+                && r.TargetTier == DefenderRole.Grunt)), Times.Once);
         }
 
         [Fact]
@@ -455,7 +552,7 @@ namespace FactionWars.Tests.Unit.Telemetry
                 });
 
             raiseAttackerKilled(new AttackerKilledEventArgs(
-                "zone1", "trevor", DefenderTier.Basic, pedHandle: 50, killerPedHandle: 999));
+                "zone1", "trevor", DefenderRole.Grunt, pedHandle: 50, killerPedHandle: 999));
 
             _sink.Verify(s => s.WritePlayerEvent(It.IsAny<PlayerEventRow>()), Times.Never);
         }
@@ -698,6 +795,18 @@ namespace FactionWars.Tests.Unit.Telemetry
                 _zoneService.Object, _gameStateManager.Object);
             svc.Dispose();
         }
+
+        private static ZoneBattle CreatePlayerAttackBattle()
+        {
+            var participants = new List<BattleParticipant>
+            {
+                BattleParticipant.ForAi("franklin", BattleRole.Defender,
+                    new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 5 } }),
+                BattleParticipant.ForPlayer("michael", BattleRole.Attacker, () => 1)
+            };
+
+            return new ZoneBattle("pillbox_hill", participants, playerFactionId: "michael");
+        }
     }
 
     /// <summary>
@@ -715,7 +824,7 @@ namespace FactionWars.Tests.Unit.Telemetry
             var zoneBattleManager = new Mock<IZoneBattleManager>();
             var pedSpawning = new Mock<FactionWars.Combat.Interfaces.IPedSpawningService>();
             var pedDespawn = new Mock<FactionWars.Combat.Interfaces.IPedDespawnService>();
-            var defenderTier = new Mock<FactionWars.Core.Interfaces.IDefenderTierService>();
+            var defenderTier = new Mock<FactionWars.Core.Interfaces.IDefenderRoleService>();
             var pedBlip = new Mock<FactionWars.UI.Interfaces.IPedBlipService>();
             var zoneSvc = new Mock<IZoneService>();
             var factionSvc = new Mock<IFactionService>();
@@ -729,8 +838,7 @@ namespace FactionWars.Tests.Unit.Telemetry
             raiser = (args) =>
             {
                 var field = typeof(BattleAttackerManager).GetField("AttackerKilled",
-                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-                if (field == null) throw new InvalidOperationException("AttackerKilled field not found");
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic) ?? throw new InvalidOperationException("AttackerKilled field not found");
                 var handler = (EventHandler<AttackerKilledEventArgs>?)field.GetValue(manager);
                 handler?.Invoke(manager, args);
             };

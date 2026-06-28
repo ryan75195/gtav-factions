@@ -10,7 +10,7 @@ namespace FactionWars.Combat.Models
     /// </summary>
     public class DefenderSpawnPlan
     {
-        private readonly Dictionary<DefenderTier, int> _pedsByTier;
+        private readonly Dictionary<DefenderRole, int> _pedsByTier;
 
         /// <summary>
         /// Total number of peds to spawn across all tiers.
@@ -22,11 +22,11 @@ namespace FactionWars.Combat.Models
         /// </summary>
         public DefenderSpawnPlan()
         {
-            _pedsByTier = new Dictionary<DefenderTier, int>
+            _pedsByTier = new Dictionary<DefenderRole, int>
             {
-                { DefenderTier.Basic, 0 },
-                { DefenderTier.Medium, 0 },
-                { DefenderTier.Heavy, 0 }
+                { DefenderRole.Grunt, 0 },
+                { DefenderRole.Gunner, 0 },
+                { DefenderRole.Rifleman, 0 }
             };
         }
 
@@ -38,11 +38,11 @@ namespace FactionWars.Combat.Models
         /// <param name="heavyPeds">Number of heavy tier peds.</param>
         public DefenderSpawnPlan(int basicPeds, int mediumPeds, int heavyPeds)
         {
-            _pedsByTier = new Dictionary<DefenderTier, int>
+            _pedsByTier = new Dictionary<DefenderRole, int>
             {
-                { DefenderTier.Basic, basicPeds >= 0 ? basicPeds : 0 },
-                { DefenderTier.Medium, mediumPeds >= 0 ? mediumPeds : 0 },
-                { DefenderTier.Heavy, heavyPeds >= 0 ? heavyPeds : 0 }
+                { DefenderRole.Grunt, basicPeds >= 0 ? basicPeds : 0 },
+                { DefenderRole.Gunner, mediumPeds >= 0 ? mediumPeds : 0 },
+                { DefenderRole.Rifleman, heavyPeds >= 0 ? heavyPeds : 0 }
             };
         }
 
@@ -51,7 +51,7 @@ namespace FactionWars.Combat.Models
         /// </summary>
         /// <param name="tier">The defender tier.</param>
         /// <returns>The number of peds to spawn for that tier.</returns>
-        public int GetPedCount(DefenderTier tier)
+        public int GetPedCount(DefenderRole tier)
         {
             return _pedsByTier.TryGetValue(tier, out var count) ? count : 0;
         }
@@ -61,7 +61,7 @@ namespace FactionWars.Combat.Models
         /// </summary>
         /// <param name="tier">The defender tier.</param>
         /// <param name="count">The number of peds (must be non-negative).</param>
-        public void SetPedCount(DefenderTier tier, int count)
+        public void SetPedCount(DefenderRole tier, int count)
         {
             _pedsByTier[tier] = count >= 0 ? count : 0;
         }
@@ -70,9 +70,9 @@ namespace FactionWars.Combat.Models
         /// Returns a copy of the ped counts by tier.
         /// </summary>
         /// <returns>A dictionary mapping tiers to ped counts.</returns>
-        public Dictionary<DefenderTier, int> GetPedCountsCopy()
+        public Dictionary<DefenderRole, int> GetPedCountsCopy()
         {
-            return new Dictionary<DefenderTier, int>(_pedsByTier);
+            return new Dictionary<DefenderRole, int>(_pedsByTier);
         }
 
         /// <summary>
@@ -83,7 +83,7 @@ namespace FactionWars.Combat.Models
 
         public override string ToString()
         {
-            return $"DefenderSpawnPlan[Basic={GetPedCount(DefenderTier.Basic)}, Medium={GetPedCount(DefenderTier.Medium)}, Heavy={GetPedCount(DefenderTier.Heavy)}, Total={TotalPeds}]";
+            return $"DefenderSpawnPlan[Basic={GetPedCount(DefenderRole.Grunt)}, Medium={GetPedCount(DefenderRole.Gunner)}, Heavy={GetPedCount(DefenderRole.Rifleman)}, Total={TotalPeds}]";
         }
     }
 }

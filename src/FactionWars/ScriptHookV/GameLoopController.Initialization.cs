@@ -13,6 +13,8 @@ using FactionWars.Core.Services;
 using FactionWars.Persistence.Models;
 using FactionWars.Economy.Interfaces;
 using FactionWars.Factions.Interfaces;
+using FactionWars.Combat.Services;
+using FactionWars.ScriptHookV.Combat;
 using FactionWars.ScriptHookV.Data;
 using FactionWars.ScriptHookV.Logging;
 using FactionWars.ScriptHookV.Managers;
@@ -47,6 +49,10 @@ namespace FactionWars.ScriptHookV
             _battleHudRenderer = new BattleHudRenderer();
 
             InitializeEnemyAndRallyManagers(spawnServices, allocationService);
+            _areaAnchorResolver = new AreaAnchorResolver();
+            _enemyTargetCollector = new EnemyTargetCollector(_gameBridge);
+            _squadStanceController = new SquadStanceController(_gameBridge, new SquadStanceResolver(), new TargetAssignmentResolver());
+            ApplyRelationshipMatrix(CurrentPlayerFactionId);
 
             InitializeAiAndVictorySystems();
 
@@ -54,7 +60,6 @@ namespace FactionWars.ScriptHookV
             InitializeMenuControllers(allocationService);
 
             InitializeStateTelemetryAndSession();
-
             LogInitializationComplete();
         }
 
@@ -128,7 +133,7 @@ namespace FactionWars.ScriptHookV
                 GameBridge = _gameBridge,
                 FollowerService = _followerService,
                 PedSpawningService = spawnServices.PedSpawning,
-                DefenderTierService = spawnServices.DefenderTier,
+                DefenderRoleService = spawnServices.DefenderRole,
                 PedBlipService = spawnServices.PedBlip,
                 SeatPriorityService = seatPriorityService
             });
@@ -144,9 +149,9 @@ namespace FactionWars.ScriptHookV
             _zoneBattleManager.TroopKilled += OnZoneBattleTroopKilled;
             _zoneBattleManager.BattleStarted += OnZoneBattleStarted;
             _policeSuppressionController = new PoliceSuppressionController(_gameBridge, _zoneBattleManager);
-
             var allocationService = _container.Resolve<IZoneDefenderAllocationService>();
             _allocationService = allocationService;
+            _sharedSniperDeployment = new SniperDeploymentService(new PerchResolver(), _gameBridge);
             _friendlyDefenderManager = new FriendlyDefenderManager(
                 new FriendlyDefenderManagerDependencies
                 {
@@ -154,9 +159,10 @@ namespace FactionWars.ScriptHookV
                     AllocationService = allocationService,
                     PedSpawningService = spawnServices.PedSpawning,
                     PedDespawnService = spawnServices.PedDespawn,
-                    DefenderTierService = spawnServices.DefenderTier,
+                    DefenderRoleService = spawnServices.DefenderRole,
                     PedBlipService = spawnServices.PedBlip,
-                    ZoneService = _zoneService
+                    ZoneService = _zoneService,
+                    SniperDeployment = _sharedSniperDeployment
                 },
                 CurrentPlayerFactionId ?? "");
 
@@ -166,7 +172,33 @@ namespace FactionWars.ScriptHookV
             _territoryManager.ZoneEntered += (sender, zone) => _commanderManager?.OnZoneEntered(zone);
             _territoryManager.ZoneExited += (sender, zone) => _commanderManager?.OnZoneExited(zone);
             _zoneBoundaryBlipManager = new ZoneBoundaryBlipManager(_gameBridge, _territoryManager);
+            WireZoneOwnershipReconciliation();
             return allocationService;
+        }
+
+        /// <summary>
+        /// Wires reactions to ownership changes that happen while the player is still inside a zone
+        /// (no exit/re-enter fires): the reconciler despawns whichever side just lost the zone, and
+        /// the boundary blip is recoloured into the new owner's colour.
+        /// </summary>
+        private void WireZoneOwnershipReconciliation()
+        {
+            if (_zoneService == null) return;
+
+            var ownershipReconciler = new ZoneOwnershipReconciler(
+                despawnFriendlyForZone: zoneId =>
+                {
+                    var lostZone = _zoneService?.GetZone(zoneId);
+                    if (lostZone != null)
+                        _friendlyDefenderManager?.OnZoneExited(lostZone);
+                },
+                despawnEnemyForZone: zoneId => _enemyDefenderManager?.DespawnForZone(zoneId),
+                getPlayerFactionId: () => CurrentPlayerFactionId);
+
+            _zoneService.ZoneOwnershipChanged += (sender, e) =>
+                ownershipReconciler.OnOwnershipChanged(e.ZoneId, e.PreviousOwner, e.NewOwner);
+            _zoneService.ZoneOwnershipChanged += (sender, e) =>
+                _zoneBoundaryBlipManager?.OnOwnershipChanged(e.ZoneId, e.NewOwner);
         }
 
         private void InitializeCommanderManager(SpawnServices spawnServices)
@@ -199,10 +231,12 @@ namespace FactionWars.ScriptHookV
                 AllocationService = allocationService,
                 PedSpawningService = spawnServices.PedSpawning,
                 PedDespawnService = spawnServices.PedDespawn,
-                DefenderTierService = spawnServices.DefenderTier,
+                DefenderRoleService = spawnServices.DefenderRole,
                 PedBlipService = spawnServices.PedBlip,
                 ZoneService = zoneService,
-                ZoneBattleManager = zoneBattleManager
+                ZoneBattleManager = zoneBattleManager,
+                CurrentPlayerFactionIdAccessor = () => CurrentPlayerFactionId,
+                SniperDeployment = _sharedSniperDeployment
             });
 
             _battleAttackerManager = new BattleAttackerManager(
@@ -212,7 +246,7 @@ namespace FactionWars.ScriptHookV
                     ZoneBattleManager = zoneBattleManager,
                     PedSpawningService = spawnServices.PedSpawning,
                     PedDespawnService = spawnServices.PedDespawn,
-                    DefenderTierService = spawnServices.DefenderTier,
+                    DefenderRoleService = spawnServices.DefenderRole,
                     PedBlipService = spawnServices.PedBlip,
                     ZoneService = zoneService,
                     FactionService = _factionService

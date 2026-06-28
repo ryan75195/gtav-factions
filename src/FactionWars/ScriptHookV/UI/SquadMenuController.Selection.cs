@@ -33,7 +33,7 @@ namespace FactionWars.ScriptHookV.UI
             }
         }
 
-        private void RecruitFollower(string factionId, DefenderTier tier)
+        private void RecruitFollower(string factionId, DefenderRole tier)
         {
             if (_followerManager != null)
             {

@@ -11,7 +11,15 @@ namespace FactionWars.AI.Services
     /// Service for intelligent capital deployment decisions.
     /// Helps AI factions use their cash effectively instead of hoarding.
     /// </summary>
-    public class CapitalDeploymentService : ICapitalDeploymentService
+    /// <remarks>
+    /// Creates a new capital deployment service.
+    /// </remarks>
+    /// <param name="budgetService">Service for checking attack affordability.</param>
+    /// <param name="allocationService">Service for zone defender allocations.</param>
+    /// <exception cref="ArgumentNullException">Thrown if any parameter is null.</exception>
+    public partial class CapitalDeploymentService(
+        IAIBudgetService budgetService,
+        IZoneDefenderAllocationService allocationService) : ICapitalDeploymentService
     {
         private const float MaxStrategicValue = 10f;
         private const int BaseRecruitmentRate = 10;
@@ -21,22 +29,8 @@ namespace FactionWars.AI.Services
         private const float MinCommitPercent = 0.5f;
         private const float AttackOpportunityThreshold = 0.4f;  // Lowered from 0.7 to allow expansion to mid-value zones
 
-        private readonly IAIBudgetService _budgetService;
-        private readonly IZoneDefenderAllocationService _allocationService;
-
-        /// <summary>
-        /// Creates a new capital deployment service.
-        /// </summary>
-        /// <param name="budgetService">Service for checking attack affordability.</param>
-        /// <param name="allocationService">Service for zone defender allocations.</param>
-        /// <exception cref="ArgumentNullException">Thrown if any parameter is null.</exception>
-        public CapitalDeploymentService(
-            IAIBudgetService budgetService,
-            IZoneDefenderAllocationService allocationService)
-        {
-            _budgetService = budgetService ?? throw new ArgumentNullException(nameof(budgetService));
-            _allocationService = allocationService ?? throw new ArgumentNullException(nameof(allocationService));
-        }
+        private readonly IAIBudgetService _budgetService = budgetService ?? throw new ArgumentNullException(nameof(budgetService));
+        private readonly IZoneDefenderAllocationService _allocationService = allocationService ?? throw new ArgumentNullException(nameof(allocationService));
 
         /// <inheritdoc />
         public float GetDefensePriority(Zone zone, AIContext context)
@@ -78,11 +72,14 @@ namespace FactionWars.AI.Services
             // Zone value normalized to 0-1
             float zoneValue = target.StrategicValue / MaxStrategicValue;
 
-            // Minimum troop requirement: need at least 10 troops to consider attack
-            float hasEnoughTroops = effectiveTroops >= 10 ? 1.0f : 0.0f;
+            // Minimum troop requirement: need at least 10 available troops to consider attack
+            float hasEnoughTroops = ourTroops >= 10 ? 1.0f : 0.0f;
 
-            // Result: min(1, winProbability) * zoneValue * hasEnoughTroops
-            return Math.Min(1f, winProbability) * zoneValue * hasEnoughTroops;
+            float opportunity = Math.Min(1f, winProbability) * zoneValue * hasEnoughTroops;
+            opportunity += GetExpansionBonus(target, context, enemyDefenders);
+            opportunity *= GetAttritionMultiplier(target);
+
+            return Math.Max(0f, Math.Min(1f, opportunity));
         }
 
         /// <inheritdoc />

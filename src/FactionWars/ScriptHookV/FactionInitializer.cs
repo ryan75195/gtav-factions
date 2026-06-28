@@ -183,7 +183,7 @@ namespace FactionWars.ScriptHookV
                     state.AddZone(zoneId);
 
                     // Allocate 5 Basic troops to each starting zone
-                    _allocationService.SetAllocation(factionId, zoneId, DefenderTier.Basic, StartingTroopsPerZone);
+                    _allocationService.SetAllocation(factionId, zoneId, DefenderRole.Grunt, StartingTroopsPerZone);
                 }
             }
 

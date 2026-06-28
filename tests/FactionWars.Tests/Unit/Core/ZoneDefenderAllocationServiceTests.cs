@@ -51,7 +51,7 @@ namespace FactionWars.Tests.Unit.Core
             var service = CreateService();
 
             Assert.Throws<ArgumentNullException>(() =>
-                service.AllocateTroops(null!, "zone-1", DefenderTier.Basic, 5));
+                service.AllocateTroops(null!, "zone-1", DefenderRole.Grunt, 5));
         }
 
         [Fact]
@@ -61,7 +61,7 @@ namespace FactionWars.Tests.Unit.Core
             var factionState = CreateFactionStateWithReserves();
 
             Assert.Throws<ArgumentNullException>(() =>
-                service.AllocateTroops(factionState, null!, DefenderTier.Basic, 5));
+                service.AllocateTroops(factionState, null!, DefenderRole.Grunt, 5));
         }
 
         [Fact]
@@ -71,7 +71,7 @@ namespace FactionWars.Tests.Unit.Core
             var factionState = CreateFactionStateWithReserves();
 
             Assert.Throws<ArgumentException>(() =>
-                service.AllocateTroops(factionState, "", DefenderTier.Basic, 5));
+                service.AllocateTroops(factionState, "", DefenderRole.Grunt, 5));
         }
 
         [Fact]
@@ -81,7 +81,7 @@ namespace FactionWars.Tests.Unit.Core
             var factionState = CreateFactionStateWithReserves();
 
             Assert.Throws<ArgumentException>(() =>
-                service.AllocateTroops(factionState, "  ", DefenderTier.Basic, 5));
+                service.AllocateTroops(factionState, "  ", DefenderRole.Grunt, 5));
         }
 
         #endregion
@@ -95,7 +95,7 @@ namespace FactionWars.Tests.Unit.Core
             var factionState = CreateFactionStateWithReserves();
 
             Assert.Throws<ArgumentOutOfRangeException>(() =>
-                service.AllocateTroops(factionState, "zone-1", DefenderTier.Basic, -1));
+                service.AllocateTroops(factionState, "zone-1", DefenderRole.Grunt, -1));
         }
 
         [Fact]
@@ -105,7 +105,7 @@ namespace FactionWars.Tests.Unit.Core
             var factionState = CreateFactionStateWithReserves();
 
             Assert.Throws<ArgumentOutOfRangeException>(() =>
-                service.AllocateTroops(factionState, "zone-1", DefenderTier.Basic, 0));
+                service.AllocateTroops(factionState, "zone-1", DefenderRole.Grunt, 0));
         }
 
         #endregion
@@ -118,7 +118,7 @@ namespace FactionWars.Tests.Unit.Core
             var service = CreateService();
             var factionState = CreateFactionStateWithReserves(basic: 10);
 
-            var result = service.AllocateTroops(factionState, "zone-1", DefenderTier.Basic, 5);
+            var result = service.AllocateTroops(factionState, "zone-1", DefenderRole.Grunt, 5);
 
             Assert.True(result);
         }
@@ -129,9 +129,9 @@ namespace FactionWars.Tests.Unit.Core
             var service = CreateService();
             var factionState = CreateFactionStateWithReserves(basic: 10);
 
-            service.AllocateTroops(factionState, "zone-1", DefenderTier.Basic, 5);
+            service.AllocateTroops(factionState, "zone-1", DefenderRole.Grunt, 5);
 
-            Assert.Equal(5, factionState.GetReserveTroops(DefenderTier.Basic));
+            Assert.Equal(5, factionState.GetReserveTroops(DefenderRole.Grunt));
         }
 
         [Fact]
@@ -140,11 +140,11 @@ namespace FactionWars.Tests.Unit.Core
             var service = CreateService();
             var factionState = CreateFactionStateWithReserves(basic: 10);
 
-            service.AllocateTroops(factionState, "zone-1", DefenderTier.Basic, 5);
+            service.AllocateTroops(factionState, "zone-1", DefenderRole.Grunt, 5);
 
             var allocation = service.GetAllocation(factionState.FactionId, "zone-1");
             Assert.NotNull(allocation);
-            Assert.Equal(5, allocation!.GetTroopCount(DefenderTier.Basic));
+            Assert.Equal(5, allocation!.GetTroopCount(DefenderRole.Grunt));
         }
 
         [Fact]
@@ -153,7 +153,7 @@ namespace FactionWars.Tests.Unit.Core
             var service = CreateService();
             var factionState = CreateFactionStateWithReserves(basic: 3);
 
-            var result = service.AllocateTroops(factionState, "zone-1", DefenderTier.Basic, 5);
+            var result = service.AllocateTroops(factionState, "zone-1", DefenderRole.Grunt, 5);
 
             Assert.False(result);
         }
@@ -164,9 +164,9 @@ namespace FactionWars.Tests.Unit.Core
             var service = CreateService();
             var factionState = CreateFactionStateWithReserves(basic: 3);
 
-            service.AllocateTroops(factionState, "zone-1", DefenderTier.Basic, 5);
+            service.AllocateTroops(factionState, "zone-1", DefenderRole.Grunt, 5);
 
-            Assert.Equal(3, factionState.GetReserveTroops(DefenderTier.Basic));
+            Assert.Equal(3, factionState.GetReserveTroops(DefenderRole.Grunt));
         }
 
         [Fact]
@@ -175,10 +175,10 @@ namespace FactionWars.Tests.Unit.Core
             var service = CreateService();
             var factionState = CreateFactionStateWithReserves(medium: 10);
 
-            var result = service.AllocateTroops(factionState, "zone-1", DefenderTier.Medium, 10);
+            var result = service.AllocateTroops(factionState, "zone-1", DefenderRole.Gunner, 10);
 
             Assert.True(result);
-            Assert.Equal(0, factionState.GetReserveTroops(DefenderTier.Medium));
+            Assert.Equal(0, factionState.GetReserveTroops(DefenderRole.Gunner));
         }
 
         [Fact]
@@ -187,15 +187,15 @@ namespace FactionWars.Tests.Unit.Core
             var service = CreateService();
             var factionState = CreateFactionStateWithReserves(basic: 10, medium: 5, heavy: 3);
 
-            service.AllocateTroops(factionState, "zone-1", DefenderTier.Basic, 3);
-            service.AllocateTroops(factionState, "zone-1", DefenderTier.Medium, 2);
-            service.AllocateTroops(factionState, "zone-1", DefenderTier.Heavy, 1);
+            service.AllocateTroops(factionState, "zone-1", DefenderRole.Grunt, 3);
+            service.AllocateTroops(factionState, "zone-1", DefenderRole.Gunner, 2);
+            service.AllocateTroops(factionState, "zone-1", DefenderRole.Rifleman, 1);
 
             var allocation = service.GetAllocation(factionState.FactionId, "zone-1");
             Assert.NotNull(allocation);
-            Assert.Equal(3, allocation!.GetTroopCount(DefenderTier.Basic));
-            Assert.Equal(2, allocation.GetTroopCount(DefenderTier.Medium));
-            Assert.Equal(1, allocation.GetTroopCount(DefenderTier.Heavy));
+            Assert.Equal(3, allocation!.GetTroopCount(DefenderRole.Grunt));
+            Assert.Equal(2, allocation.GetTroopCount(DefenderRole.Gunner));
+            Assert.Equal(1, allocation.GetTroopCount(DefenderRole.Rifleman));
         }
 
         [Fact]
@@ -204,12 +204,12 @@ namespace FactionWars.Tests.Unit.Core
             var service = CreateService();
             var factionState = CreateFactionStateWithReserves(basic: 20);
 
-            service.AllocateTroops(factionState, "zone-1", DefenderTier.Basic, 5);
-            service.AllocateTroops(factionState, "zone-1", DefenderTier.Basic, 3);
+            service.AllocateTroops(factionState, "zone-1", DefenderRole.Grunt, 5);
+            service.AllocateTroops(factionState, "zone-1", DefenderRole.Grunt, 3);
 
             var allocation = service.GetAllocation(factionState.FactionId, "zone-1");
             Assert.NotNull(allocation);
-            Assert.Equal(8, allocation!.GetTroopCount(DefenderTier.Basic));
+            Assert.Equal(8, allocation!.GetTroopCount(DefenderRole.Grunt));
         }
 
         [Fact]
@@ -218,16 +218,16 @@ namespace FactionWars.Tests.Unit.Core
             var service = CreateService();
             var factionState = CreateFactionStateWithReserves(basic: 20);
 
-            service.AllocateTroops(factionState, "zone-1", DefenderTier.Basic, 5);
-            service.AllocateTroops(factionState, "zone-2", DefenderTier.Basic, 8);
+            service.AllocateTroops(factionState, "zone-1", DefenderRole.Grunt, 5);
+            service.AllocateTroops(factionState, "zone-2", DefenderRole.Grunt, 8);
 
             var allocation1 = service.GetAllocation(factionState.FactionId, "zone-1");
             var allocation2 = service.GetAllocation(factionState.FactionId, "zone-2");
 
             Assert.NotNull(allocation1);
             Assert.NotNull(allocation2);
-            Assert.Equal(5, allocation1!.GetTroopCount(DefenderTier.Basic));
-            Assert.Equal(8, allocation2!.GetTroopCount(DefenderTier.Basic));
+            Assert.Equal(5, allocation1!.GetTroopCount(DefenderRole.Grunt));
+            Assert.Equal(8, allocation2!.GetTroopCount(DefenderRole.Grunt));
         }
 
         [Fact]
@@ -236,10 +236,10 @@ namespace FactionWars.Tests.Unit.Core
             var service = CreateService();
             var factionState = CreateFactionStateWithReserves(heavy: 5);
 
-            var result = service.AllocateTroops(factionState, "zone-1", DefenderTier.Heavy, 3);
+            var result = service.AllocateTroops(factionState, "zone-1", DefenderRole.Rifleman, 3);
 
             Assert.True(result);
-            Assert.Equal(2, factionState.GetReserveTroops(DefenderTier.Heavy));
+            Assert.Equal(2, factionState.GetReserveTroops(DefenderRole.Rifleman));
         }
 
         [Fact]
@@ -248,10 +248,10 @@ namespace FactionWars.Tests.Unit.Core
             var service = CreateService();
             var factionState = CreateFactionStateWithReserves(elite: 5);
 
-            var result = service.AllocateTroops(factionState, "zone-1", DefenderTier.Elite, 3);
+            var result = service.AllocateTroops(factionState, "zone-1", DefenderRole.Rocketeer, 3);
 
             Assert.True(result);
-            Assert.Equal(2, factionState.GetReserveTroops(DefenderTier.Elite));
+            Assert.Equal(2, factionState.GetReserveTroops(DefenderRole.Rocketeer));
         }
 
         [Fact]
@@ -260,17 +260,17 @@ namespace FactionWars.Tests.Unit.Core
             var service = CreateService();
             var factionState = CreateFactionStateWithReserves(basic: 10, medium: 5, heavy: 3, elite: 2);
 
-            service.AllocateTroops(factionState, "zone-1", DefenderTier.Basic, 3);
-            service.AllocateTroops(factionState, "zone-1", DefenderTier.Medium, 2);
-            service.AllocateTroops(factionState, "zone-1", DefenderTier.Heavy, 1);
-            service.AllocateTroops(factionState, "zone-1", DefenderTier.Elite, 1);
+            service.AllocateTroops(factionState, "zone-1", DefenderRole.Grunt, 3);
+            service.AllocateTroops(factionState, "zone-1", DefenderRole.Gunner, 2);
+            service.AllocateTroops(factionState, "zone-1", DefenderRole.Rifleman, 1);
+            service.AllocateTroops(factionState, "zone-1", DefenderRole.Rocketeer, 1);
 
             var allocation = service.GetAllocation(factionState.FactionId, "zone-1");
             Assert.NotNull(allocation);
-            Assert.Equal(3, allocation!.GetTroopCount(DefenderTier.Basic));
-            Assert.Equal(2, allocation.GetTroopCount(DefenderTier.Medium));
-            Assert.Equal(1, allocation.GetTroopCount(DefenderTier.Heavy));
-            Assert.Equal(1, allocation.GetTroopCount(DefenderTier.Elite));
+            Assert.Equal(3, allocation!.GetTroopCount(DefenderRole.Grunt));
+            Assert.Equal(2, allocation.GetTroopCount(DefenderRole.Gunner));
+            Assert.Equal(1, allocation.GetTroopCount(DefenderRole.Rifleman));
+            Assert.Equal(1, allocation.GetTroopCount(DefenderRole.Rocketeer));
         }
 
         #endregion
@@ -308,7 +308,7 @@ namespace FactionWars.Tests.Unit.Core
         {
             var service = CreateService();
             var factionState = CreateFactionStateWithReserves(basic: 10);
-            service.AllocateTroops(factionState, "zone-1", DefenderTier.Basic, 5);
+            service.AllocateTroops(factionState, "zone-1", DefenderRole.Grunt, 5);
 
             var allocation = service.GetAllocation(factionState.FactionId, "zone-1");
 
@@ -344,8 +344,8 @@ namespace FactionWars.Tests.Unit.Core
         {
             var service = CreateService();
             var factionState = CreateFactionStateWithReserves(basic: 30);
-            service.AllocateTroops(factionState, "zone-1", DefenderTier.Basic, 5);
-            service.AllocateTroops(factionState, "zone-2", DefenderTier.Basic, 10);
+            service.AllocateTroops(factionState, "zone-1", DefenderRole.Grunt, 5);
+            service.AllocateTroops(factionState, "zone-2", DefenderRole.Grunt, 10);
 
             var allocations = service.GetAllocationsForFaction(factionState.FactionId);
 
@@ -379,9 +379,9 @@ namespace FactionWars.Tests.Unit.Core
         {
             var service = CreateService();
             var factionState = CreateFactionStateWithReserves(basic: 30, medium: 10);
-            service.AllocateTroops(factionState, "zone-1", DefenderTier.Basic, 5);
-            service.AllocateTroops(factionState, "zone-2", DefenderTier.Basic, 10);
-            service.AllocateTroops(factionState, "zone-1", DefenderTier.Medium, 3);
+            service.AllocateTroops(factionState, "zone-1", DefenderRole.Grunt, 5);
+            service.AllocateTroops(factionState, "zone-2", DefenderRole.Grunt, 10);
+            service.AllocateTroops(factionState, "zone-1", DefenderRole.Gunner, 3);
 
             var total = service.GetTotalAllocatedTroops(factionState.FactionId);
 
@@ -398,7 +398,7 @@ namespace FactionWars.Tests.Unit.Core
             var service = CreateService();
 
             Assert.Throws<ArgumentNullException>(() =>
-                service.WithdrawTroops(null!, "zone-1", DefenderTier.Basic, 5));
+                service.WithdrawTroops(null!, "zone-1", DefenderRole.Grunt, 5));
         }
 
         [Fact]
@@ -408,7 +408,7 @@ namespace FactionWars.Tests.Unit.Core
             var factionState = CreateFactionStateWithReserves();
 
             Assert.Throws<ArgumentNullException>(() =>
-                service.WithdrawTroops(factionState, null!, DefenderTier.Basic, 5));
+                service.WithdrawTroops(factionState, null!, DefenderRole.Grunt, 5));
         }
 
         [Fact]
@@ -418,7 +418,7 @@ namespace FactionWars.Tests.Unit.Core
             var factionState = CreateFactionStateWithReserves();
 
             Assert.Throws<ArgumentException>(() =>
-                service.WithdrawTroops(factionState, "", DefenderTier.Basic, 5));
+                service.WithdrawTroops(factionState, "", DefenderRole.Grunt, 5));
         }
 
         [Fact]
@@ -428,7 +428,7 @@ namespace FactionWars.Tests.Unit.Core
             var factionState = CreateFactionStateWithReserves();
 
             Assert.Throws<ArgumentException>(() =>
-                service.WithdrawTroops(factionState, "  ", DefenderTier.Basic, 5));
+                service.WithdrawTroops(factionState, "  ", DefenderRole.Grunt, 5));
         }
 
         #endregion
@@ -442,7 +442,7 @@ namespace FactionWars.Tests.Unit.Core
             var factionState = CreateFactionStateWithReserves();
 
             Assert.Throws<ArgumentOutOfRangeException>(() =>
-                service.WithdrawTroops(factionState, "zone-1", DefenderTier.Basic, -1));
+                service.WithdrawTroops(factionState, "zone-1", DefenderRole.Grunt, -1));
         }
 
         [Fact]
@@ -452,7 +452,7 @@ namespace FactionWars.Tests.Unit.Core
             var factionState = CreateFactionStateWithReserves();
 
             Assert.Throws<ArgumentOutOfRangeException>(() =>
-                service.WithdrawTroops(factionState, "zone-1", DefenderTier.Basic, 0));
+                service.WithdrawTroops(factionState, "zone-1", DefenderRole.Grunt, 0));
         }
 
         #endregion
@@ -464,9 +464,9 @@ namespace FactionWars.Tests.Unit.Core
         {
             var service = CreateService();
             var factionState = CreateFactionStateWithReserves(basic: 10);
-            service.AllocateTroops(factionState, "zone-1", DefenderTier.Basic, 5);
+            service.AllocateTroops(factionState, "zone-1", DefenderRole.Grunt, 5);
 
-            var result = service.WithdrawTroops(factionState, "zone-1", DefenderTier.Basic, 3);
+            var result = service.WithdrawTroops(factionState, "zone-1", DefenderRole.Grunt, 3);
 
             Assert.True(result);
         }
@@ -476,12 +476,12 @@ namespace FactionWars.Tests.Unit.Core
         {
             var service = CreateService();
             var factionState = CreateFactionStateWithReserves(basic: 10);
-            service.AllocateTroops(factionState, "zone-1", DefenderTier.Basic, 5);
+            service.AllocateTroops(factionState, "zone-1", DefenderRole.Grunt, 5);
             // Reserve is now 5 (10 - 5 allocated)
 
-            service.WithdrawTroops(factionState, "zone-1", DefenderTier.Basic, 3);
+            service.WithdrawTroops(factionState, "zone-1", DefenderRole.Grunt, 3);
 
-            Assert.Equal(8, factionState.GetReserveTroops(DefenderTier.Basic)); // 5 + 3 withdrawn
+            Assert.Equal(8, factionState.GetReserveTroops(DefenderRole.Grunt)); // 5 + 3 withdrawn
         }
 
         [Fact]
@@ -489,13 +489,13 @@ namespace FactionWars.Tests.Unit.Core
         {
             var service = CreateService();
             var factionState = CreateFactionStateWithReserves(basic: 10);
-            service.AllocateTroops(factionState, "zone-1", DefenderTier.Basic, 5);
+            service.AllocateTroops(factionState, "zone-1", DefenderRole.Grunt, 5);
 
-            service.WithdrawTroops(factionState, "zone-1", DefenderTier.Basic, 3);
+            service.WithdrawTroops(factionState, "zone-1", DefenderRole.Grunt, 3);
 
             var allocation = service.GetAllocation(factionState.FactionId, "zone-1");
             Assert.NotNull(allocation);
-            Assert.Equal(2, allocation!.GetTroopCount(DefenderTier.Basic));
+            Assert.Equal(2, allocation!.GetTroopCount(DefenderRole.Grunt));
         }
 
         [Fact]
@@ -504,7 +504,7 @@ namespace FactionWars.Tests.Unit.Core
             var service = CreateService();
             var factionState = CreateFactionStateWithReserves();
 
-            var result = service.WithdrawTroops(factionState, "zone-1", DefenderTier.Basic, 5);
+            var result = service.WithdrawTroops(factionState, "zone-1", DefenderRole.Grunt, 5);
 
             Assert.False(result);
         }
@@ -514,9 +514,9 @@ namespace FactionWars.Tests.Unit.Core
         {
             var service = CreateService();
             var factionState = CreateFactionStateWithReserves(basic: 10);
-            service.AllocateTroops(factionState, "zone-1", DefenderTier.Basic, 3);
+            service.AllocateTroops(factionState, "zone-1", DefenderRole.Grunt, 3);
 
-            var result = service.WithdrawTroops(factionState, "zone-1", DefenderTier.Basic, 5);
+            var result = service.WithdrawTroops(factionState, "zone-1", DefenderRole.Grunt, 5);
 
             Assert.False(result);
         }
@@ -526,12 +526,12 @@ namespace FactionWars.Tests.Unit.Core
         {
             var service = CreateService();
             var factionState = CreateFactionStateWithReserves(basic: 10);
-            service.AllocateTroops(factionState, "zone-1", DefenderTier.Basic, 3);
+            service.AllocateTroops(factionState, "zone-1", DefenderRole.Grunt, 3);
             // Reserve is now 7 (10 - 3 allocated)
 
-            service.WithdrawTroops(factionState, "zone-1", DefenderTier.Basic, 5);
+            service.WithdrawTroops(factionState, "zone-1", DefenderRole.Grunt, 5);
 
-            Assert.Equal(7, factionState.GetReserveTroops(DefenderTier.Basic));
+            Assert.Equal(7, factionState.GetReserveTroops(DefenderRole.Grunt));
         }
 
         [Fact]
@@ -539,14 +539,14 @@ namespace FactionWars.Tests.Unit.Core
         {
             var service = CreateService();
             var factionState = CreateFactionStateWithReserves(medium: 10);
-            service.AllocateTroops(factionState, "zone-1", DefenderTier.Medium, 5);
+            service.AllocateTroops(factionState, "zone-1", DefenderRole.Gunner, 5);
 
-            var result = service.WithdrawTroops(factionState, "zone-1", DefenderTier.Medium, 5);
+            var result = service.WithdrawTroops(factionState, "zone-1", DefenderRole.Gunner, 5);
 
             Assert.True(result);
             var allocation = service.GetAllocation(factionState.FactionId, "zone-1");
             Assert.NotNull(allocation);
-            Assert.Equal(0, allocation!.GetTroopCount(DefenderTier.Medium));
+            Assert.Equal(0, allocation!.GetTroopCount(DefenderRole.Gunner));
         }
 
         [Fact]
@@ -554,17 +554,17 @@ namespace FactionWars.Tests.Unit.Core
         {
             var service = CreateService();
             var factionState = CreateFactionStateWithReserves(basic: 10, medium: 5, heavy: 3);
-            service.AllocateTroops(factionState, "zone-1", DefenderTier.Basic, 3);
-            service.AllocateTroops(factionState, "zone-1", DefenderTier.Medium, 2);
-            service.AllocateTroops(factionState, "zone-1", DefenderTier.Heavy, 1);
+            service.AllocateTroops(factionState, "zone-1", DefenderRole.Grunt, 3);
+            service.AllocateTroops(factionState, "zone-1", DefenderRole.Gunner, 2);
+            service.AllocateTroops(factionState, "zone-1", DefenderRole.Rifleman, 1);
 
-            service.WithdrawTroops(factionState, "zone-1", DefenderTier.Medium, 1);
+            service.WithdrawTroops(factionState, "zone-1", DefenderRole.Gunner, 1);
 
             var allocation = service.GetAllocation(factionState.FactionId, "zone-1");
             Assert.NotNull(allocation);
-            Assert.Equal(3, allocation!.GetTroopCount(DefenderTier.Basic));
-            Assert.Equal(1, allocation.GetTroopCount(DefenderTier.Medium));
-            Assert.Equal(1, allocation.GetTroopCount(DefenderTier.Heavy));
+            Assert.Equal(3, allocation!.GetTroopCount(DefenderRole.Grunt));
+            Assert.Equal(1, allocation.GetTroopCount(DefenderRole.Gunner));
+            Assert.Equal(1, allocation.GetTroopCount(DefenderRole.Rifleman));
         }
 
         [Fact]
@@ -572,9 +572,9 @@ namespace FactionWars.Tests.Unit.Core
         {
             var service = CreateService();
             var factionState = CreateFactionStateWithReserves(basic: 10);
-            service.AllocateTroops(factionState, "zone-1", DefenderTier.Basic, 5);
+            service.AllocateTroops(factionState, "zone-1", DefenderRole.Grunt, 5);
 
-            var result = service.WithdrawTroops(factionState, "zone-1", DefenderTier.Heavy, 1);
+            var result = service.WithdrawTroops(factionState, "zone-1", DefenderRole.Rifleman, 1);
 
             Assert.False(result);
         }
@@ -584,12 +584,12 @@ namespace FactionWars.Tests.Unit.Core
         {
             var service = CreateService();
             var factionState = CreateFactionStateWithReserves(heavy: 5);
-            service.AllocateTroops(factionState, "zone-1", DefenderTier.Heavy, 3);
+            service.AllocateTroops(factionState, "zone-1", DefenderRole.Rifleman, 3);
 
-            var result = service.WithdrawTroops(factionState, "zone-1", DefenderTier.Heavy, 2);
+            var result = service.WithdrawTroops(factionState, "zone-1", DefenderRole.Rifleman, 2);
 
             Assert.True(result);
-            Assert.Equal(4, factionState.GetReserveTroops(DefenderTier.Heavy)); // 2 remaining + 2 withdrawn
+            Assert.Equal(4, factionState.GetReserveTroops(DefenderRole.Rifleman)); // 2 remaining + 2 withdrawn
         }
 
         [Fact]
@@ -597,12 +597,12 @@ namespace FactionWars.Tests.Unit.Core
         {
             var service = CreateService();
             var factionState = CreateFactionStateWithReserves(elite: 5);
-            service.AllocateTroops(factionState, "zone-1", DefenderTier.Elite, 3);
+            service.AllocateTroops(factionState, "zone-1", DefenderRole.Rocketeer, 3);
 
-            var result = service.WithdrawTroops(factionState, "zone-1", DefenderTier.Elite, 2);
+            var result = service.WithdrawTroops(factionState, "zone-1", DefenderRole.Rocketeer, 2);
 
             Assert.True(result);
-            Assert.Equal(4, factionState.GetReserveTroops(DefenderTier.Elite)); // 2 remaining + 2 withdrawn
+            Assert.Equal(4, factionState.GetReserveTroops(DefenderRole.Rocketeer)); // 2 remaining + 2 withdrawn
         }
 
         [Fact]
@@ -610,10 +610,10 @@ namespace FactionWars.Tests.Unit.Core
         {
             var service = CreateService();
             var factionState = CreateFactionStateWithReserves(basic: 20);
-            service.AllocateTroops(factionState, "zone-1", DefenderTier.Basic, 5);
-            service.AllocateTroops(factionState, "zone-2", DefenderTier.Basic, 5);
+            service.AllocateTroops(factionState, "zone-1", DefenderRole.Grunt, 5);
+            service.AllocateTroops(factionState, "zone-2", DefenderRole.Grunt, 5);
 
-            service.WithdrawTroops(factionState, "zone-1", DefenderTier.Basic, 3);
+            service.WithdrawTroops(factionState, "zone-1", DefenderRole.Grunt, 3);
 
             var total = service.GetTotalAllocatedTroops(factionState.FactionId);
             Assert.Equal(7, total); // 5 - 3 + 5 = 7
@@ -633,10 +633,10 @@ namespace FactionWars.Tests.Unit.Core
         {
             // After consolidation, initialTroopCount goes to Basic tier, so we don't use it
             var state = new FactionState("test-faction", 10000);
-            state.AddReserveTroops(DefenderTier.Basic, basic);
-            state.AddReserveTroops(DefenderTier.Medium, medium);
-            state.AddReserveTroops(DefenderTier.Heavy, heavy);
-            state.AddReserveTroops(DefenderTier.Elite, elite);
+            state.AddReserveTroops(DefenderRole.Grunt, basic);
+            state.AddReserveTroops(DefenderRole.Gunner, medium);
+            state.AddReserveTroops(DefenderRole.Rifleman, heavy);
+            state.AddReserveTroops(DefenderRole.Rocketeer, elite);
             return state;
         }
 

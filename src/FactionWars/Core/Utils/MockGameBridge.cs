@@ -299,6 +299,11 @@ namespace FactionWars.Core.Utils
             }
         }
 
+        public void SetPlayerPosition(Vector3 position)
+        {
+            PlayerPosition = position;
+        }
+
         public bool SetPedModel(int pedHandle, string modelName)
         {
             if (_peds.TryGetValue(pedHandle, out var ped))
@@ -312,6 +317,11 @@ namespace FactionWars.Core.Utils
         public string GetPlayerCharacterModel() => PlayerCharacterModel;
 
         public float GetPlayerHeading() => PlayerHeading;
+
+        public void SetPlayerHeading(float heading)
+        {
+            PlayerHeading = heading;
+        }
 
         public bool IsPlayerDead() => IsPlayerDeadValue;
 
@@ -445,19 +455,59 @@ namespace FactionWars.Core.Utils
 
         public void SetPedAsFollower(int pedHandle)
         {
-            if (_peds.ContainsKey(pedHandle))
+            if (_peds.ContainsKey(pedHandle) && !_followingPeds.Contains(pedHandle))
             {
                 _followingPeds.Add(pedHandle);
             }
+        }
+
+        public bool IsPedFollowingPlayer(int pedHandle) => _followingPeds.Contains(pedHandle);
+
+        public void RemovePedFromFollowerGroup(int pedHandle)
+        {
+            _followingPeds.Remove(pedHandle);
         }
 
         public bool IsPlayerInVehicle() => IsPlayerInVehicleValue;
 
         public int GetPlayerVehicle() => PlayerVehicleHandle;
 
+        public void SetPlayerIntoVehicle(int vehicleHandle, int seatIndex)
+        {
+            if (!_vehicles.ContainsKey(vehicleHandle))
+            {
+                return;
+            }
+
+            IsPlayerInVehicleValue = true;
+            PlayerVehicleHandle = vehicleHandle;
+            _vehicles[vehicleHandle].OccupySeat(seatIndex, -1);
+        }
+
         public bool IsPedInVehicle(int pedHandle)
         {
             return _pedsInVehicles.ContainsKey(pedHandle);
+        }
+
+        public int GetPedVehicle(int pedHandle)
+        {
+            return _pedsInVehicles.TryGetValue(pedHandle, out var vehicleHandle) ? vehicleHandle : -1;
+        }
+
+        public int GetPedVehicleSeat(int pedHandle)
+        {
+            var vehicleHandle = GetPedVehicle(pedHandle);
+            if (!_vehicles.TryGetValue(vehicleHandle, out var vehicle))
+            {
+                return -1;
+            }
+
+            return vehicle.GetSeatByPed(pedHandle);
+        }
+
+        public void SetPedIntoVehicle(int pedHandle, int vehicleHandle, int seatIndex)
+        {
+            PutPedInVehicle(pedHandle, vehicleHandle, seatIndex);
         }
 
         public bool IsPedTryingToEnterVehicle(int pedHandle)
@@ -514,6 +564,25 @@ namespace FactionWars.Core.Utils
                 ped.CanSwitchWeapons = canSwitch;
             }
         }
+
+        private readonly Dictionary<int, string> _activeWeapon = new Dictionary<int, string>();
+        private readonly Dictionary<int, int> _activeWeaponSetCount = new Dictionary<int, int>();
+
+        public void SetPedActiveWeapon(int pedHandle, string weaponName)
+        {
+            _activeWeapon[pedHandle] = weaponName;
+            _activeWeaponSetCount[pedHandle] = (_activeWeaponSetCount.TryGetValue(pedHandle, out var c) ? c : 0) + 1;
+        }
+
+        public string GetPedActiveWeapon(int pedHandle) =>
+            _activeWeapon.TryGetValue(pedHandle, out var w) ? w : string.Empty;
+
+        /// <summary>
+        /// Gets the number of times SetPedActiveWeapon has been called for a ped handle.
+        /// Returns 0 if never called for that handle.
+        /// </summary>
+        public int GetActiveWeaponSetCount(int pedHandle) =>
+            _activeWeaponSetCount.TryGetValue(pedHandle, out var count) ? count : 0;
 
         /// <summary>
         /// Gets whether a ped can switch weapons (for testing purposes).
@@ -757,6 +826,55 @@ namespace FactionWars.Core.Utils
             return _combatTargetingPeds.TryGetValue(pedHandle, out var radius) ? radius : (float?)null;
         }
 
+        private readonly Dictionary<int, Vector3> _guardAreaCenter = new Dictionary<int, Vector3>();
+        private readonly Dictionary<int, float> _guardAreaRadius = new Dictionary<int, float>();
+        private readonly Dictionary<int, int> _combatPedTargets = new Dictionary<int, int>();
+
+        public void TaskGuardArea(int pedHandle, Vector3 center, float radius)
+        {
+            if (!_peds.ContainsKey(pedHandle)) return;
+
+            // Primary-task replacement: a new TASK_X wipes the previous task.
+            _wanderingPeds.Remove(pedHandle);
+            _pedsFacingPosition.Remove(pedHandle);
+            _combatTargetingPeds.Remove(pedHandle);
+            _goToEntityPeds.Remove(pedHandle);
+            _followEntityPeds.Remove(pedHandle);
+            _combatPedTargets.Remove(pedHandle);
+
+            _guardAreaCenter[pedHandle] = center;
+            _guardAreaRadius[pedHandle] = radius;
+        }
+
+        public bool IsPedGuardingArea(int pedHandle) => _guardAreaCenter.ContainsKey(pedHandle);
+
+        public Vector3 GetGuardAreaCenter(int pedHandle)
+            => _guardAreaCenter.TryGetValue(pedHandle, out var c) ? c : Vector3.Zero;
+
+        public float GetGuardAreaRadius(int pedHandle)
+            => _guardAreaRadius.TryGetValue(pedHandle, out var r) ? r : 0f;
+
+        public void TaskCombatPed(int pedHandle, int targetPedHandle)
+        {
+            if (!_peds.ContainsKey(pedHandle)) return;
+
+            // Primary-task replacement.
+            _wanderingPeds.Remove(pedHandle);
+            _pedsFacingPosition.Remove(pedHandle);
+            _combatTargetingPeds.Remove(pedHandle);
+            _goToEntityPeds.Remove(pedHandle);
+            _followEntityPeds.Remove(pedHandle);
+            _guardAreaCenter.Remove(pedHandle);
+            _guardAreaRadius.Remove(pedHandle);
+
+            _combatPedTargets[pedHandle] = targetPedHandle;
+        }
+
+        public bool IsPedCombatingPed(int pedHandle) => _combatPedTargets.ContainsKey(pedHandle);
+
+        public int GetCombatPedTarget(int pedHandle)
+            => _combatPedTargets.TryGetValue(pedHandle, out var t) ? t : -1;
+
         private readonly Dictionary<int, GoToEntityState> _goToEntityPeds = new Dictionary<int, GoToEntityState>();
 
         private class GoToEntityState
@@ -839,9 +957,10 @@ namespace FactionWars.Core.Utils
         {
             if (_peds.TryGetValue(pedHandle, out var ped))
             {
-                // In mock, set to FRIENDLY_DEFENDERS group (separate from PLAYER group)
-                // This allows independent wandering behavior while still being friendly to player
-                ped.RelationshipGroup = "FRIENDLY_DEFENDERS";
+                // Relationship group/allegiance are owned by the relationship matrix (wired once
+                // at init), so this no longer reassigns groups. A friendly combatant keeps the
+                // faction group it spawned in and simply won't attack the player.
+                ped.IsAttackingPlayer = false;
             }
         }
 
@@ -871,10 +990,9 @@ namespace FactionWars.Core.Utils
         {
             if (_peds.TryGetValue(pedHandle, out var ped))
             {
-                if (string.IsNullOrEmpty(ped.RelationshipGroup))
-                {
-                    ped.RelationshipGroup = "DEFENDER_ENEMIES";
-                }
+                // Relationship group/allegiance are owned by the relationship matrix (wired once
+                // at init), so this no longer reassigns groups. A hostile combatant keeps the
+                // faction group it spawned in and is marked as engaging the player.
                 ped.IsAttackingPlayer = true;
             }
         }
@@ -980,6 +1098,19 @@ namespace FactionWars.Core.Utils
         }
 
         public bool IsPedGoingToCoord(int pedHandle) => _goToCoordPeds.ContainsKey(pedHandle);
+
+        private readonly HashSet<int> _pedsInCombat = new HashSet<int>();
+
+        /// <summary>Test hook: marks/unmarks a ped as being in combat.</summary>
+        public void SetPedInCombat(int pedHandle, bool inCombat)
+        {
+            if (inCombat)
+                _pedsInCombat.Add(pedHandle);
+            else
+                _pedsInCombat.Remove(pedHandle);
+        }
+
+        public bool IsPedInCombat(int pedHandle) => _pedsInCombat.Contains(pedHandle);
 
         public Vector3? GetPedGoToCoordDestination(int pedHandle)
         {
@@ -1263,6 +1394,19 @@ namespace FactionWars.Core.Utils
             return -1;
         }
 
+        public float GetVehicleHeading(int vehicleHandle)
+        {
+            if (_vehicles.TryGetValue(vehicleHandle, out var state))
+                return state.Heading;
+            return 0f;
+        }
+
+        public void SetVehicleHeading(int vehicleHandle, float heading)
+        {
+            if (_vehicles.TryGetValue(vehicleHandle, out var state))
+                state.Heading = heading;
+        }
+
         /// <inheritdoc />
         public bool IsVehicleSeatTurret(int vehicleHandle, int seatIndex)
         {
@@ -1376,6 +1520,17 @@ namespace FactionWars.Core.Utils
 
         public bool IsControlJustPressed(int control) => _justPressedControls.Contains(control);
 
+        /// <summary>
+        /// Records each DisableControlThisFrame call so tests can assert which
+        /// controls were suppressed. Call ClearDisabledControls() between ticks.
+        /// </summary>
+        public List<int> DisabledControls { get; } = new List<int>();
+
+        public void DisableControlThisFrame(int control) => DisabledControls.Add(control);
+
+        /// <summary>Clears recorded DisableControlThisFrame calls (for testing).</summary>
+        public void ClearDisabledControls() => DisabledControls.Clear();
+
         private class PedState
         {
             public string ModelName { get; set; } = string.Empty;
@@ -1409,6 +1564,7 @@ namespace FactionWars.Core.Utils
 
             public string ModelName { get; }
             public Vector3 Position { get; set; }
+            public float Heading { get; set; }
             public int VehicleClass { get; set; } = 0; // Default to Compacts
             public HashSet<int> TurretSeats { get; } = new HashSet<int>();
 
@@ -1456,6 +1612,19 @@ namespace FactionWars.Core.Utils
                 {
                     _occupiedSeats.Remove(seatToRemove);
                 }
+            }
+
+            public int GetSeatByPed(int pedHandle)
+            {
+                foreach (var kvp in _occupiedSeats)
+                {
+                    if (kvp.Value == pedHandle)
+                    {
+                        return kvp.Key;
+                    }
+                }
+
+                return -1;
             }
         }
     }

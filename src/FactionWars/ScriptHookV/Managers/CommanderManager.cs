@@ -173,7 +173,9 @@ namespace FactionWars.ScriptHookV.Managers
             if (!pedHandle.IsValid) return;
 
             ConfigureCommander(pedHandle.Handle, zone);
-            _pedBlipService.CreateBlipForPed(pedHandle.Handle, BlipColor.Blue);
+            // Distinct Purple so the commander stands out from the faction-coloured property
+            // defenders (which now wear the player faction's colour and would otherwise blend in).
+            _pedBlipService.CreateBlipForPed(pedHandle.Handle, BlipColor.Purple);
             _commanderByZone[zone.Id] = pedHandle.Handle;
         }
 

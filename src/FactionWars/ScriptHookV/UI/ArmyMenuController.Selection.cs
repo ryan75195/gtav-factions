@@ -44,27 +44,27 @@ namespace FactionWars.ScriptHookV.UI
                     break;
 
                 case PurchaseBasicItemId:
-                    PurchaseTroop(factionId, DefenderTier.Basic);
+                    PurchaseTroop(factionId, DefenderRole.Grunt);
                     break;
 
                 case PurchaseMediumItemId:
-                    PurchaseTroop(factionId, DefenderTier.Medium);
+                    PurchaseTroop(factionId, DefenderRole.Gunner);
                     break;
 
                 case PurchaseHeavyItemId:
-                    PurchaseTroop(factionId, DefenderTier.Heavy);
+                    PurchaseTroop(factionId, DefenderRole.Rifleman);
                     break;
 
                 case RecruitBasicItemId:
-                    RecruitFollowerIfFactionSelected(factionId, DefenderTier.Basic);
+                    RecruitFollowerIfFactionSelected(factionId, DefenderRole.Grunt);
                     break;
 
                 case RecruitMediumItemId:
-                    RecruitFollowerIfFactionSelected(factionId, DefenderTier.Medium);
+                    RecruitFollowerIfFactionSelected(factionId, DefenderRole.Gunner);
                     break;
 
                 case RecruitHeavyItemId:
-                    RecruitFollowerIfFactionSelected(factionId, DefenderTier.Heavy);
+                    RecruitFollowerIfFactionSelected(factionId, DefenderRole.Rifleman);
                     break;
 
                 case ManageFollowersItemId:
@@ -74,7 +74,7 @@ namespace FactionWars.ScriptHookV.UI
             }
         }
 
-        private void PurchaseTroop(string? factionId, DefenderTier tier)
+        private void PurchaseTroop(string? factionId, DefenderRole tier)
         {
             if (factionId == null)
                 return;
@@ -83,7 +83,7 @@ namespace FactionWars.ScriptHookV.UI
             ShowArmyMenu();
         }
 
-        private void RecruitFollowerIfFactionSelected(string? factionId, DefenderTier tier)
+        private void RecruitFollowerIfFactionSelected(string? factionId, DefenderRole tier)
         {
             if (factionId != null)
                 RecruitFollower(factionId, tier);
@@ -137,7 +137,7 @@ namespace FactionWars.ScriptHookV.UI
         /// Recruits a follower of the specified tier.
         /// Uses FollowerManager if available, which handles both domain and game world spawning.
         /// </summary>
-        private void RecruitFollower(string factionId, DefenderTier tier)
+        private void RecruitFollower(string factionId, DefenderRole tier)
         {
             // Use FollowerManager if available (handles both domain and game world spawning)
             if (_followerManager != null)

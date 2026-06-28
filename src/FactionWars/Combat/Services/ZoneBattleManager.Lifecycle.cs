@@ -111,7 +111,7 @@ namespace FactionWars.Combat.Services
         }
 
         /// <inheritdoc />
-        public void ReportTroopKilled(string zoneId, string factionId, DefenderTier tier)
+        public void ReportTroopKilled(string zoneId, string factionId, DefenderRole tier)
         {
             if (string.IsNullOrEmpty(zoneId) || string.IsNullOrEmpty(factionId))
                 return;

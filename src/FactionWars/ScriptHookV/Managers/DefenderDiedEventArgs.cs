@@ -10,9 +10,9 @@ namespace FactionWars.ScriptHookV.Managers
     {
         public string ZoneId { get; }
         public int PedHandle { get; }
-        public DefenderTier Tier { get; }
+        public DefenderRole Tier { get; }
 
-        public DefenderDiedEventArgs(string zoneId, int pedHandle, DefenderTier tier)
+        public DefenderDiedEventArgs(string zoneId, int pedHandle, DefenderRole tier)
         {
             ZoneId = zoneId;
             PedHandle = pedHandle;

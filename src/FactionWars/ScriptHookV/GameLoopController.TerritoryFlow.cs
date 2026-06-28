@@ -71,6 +71,10 @@ namespace FactionWars.ScriptHookV
             _aiController?.SetPlayerFactionId(newFactionId);
             _zoneBattleManager?.SetPlayerFaction(newFactionId);
 
+            // Re-wire the relationship matrix for the new player faction: the faction that was the
+            // player's is no longer a player-companion, and the newly-controlled one now is.
+            ApplyRelationshipMatrix(newFactionId);
+
             // Sync player state to new faction (clear weapons, set cash to faction capital)
             SyncPlayerToFactionState(newFactionId);
             RequestOwnedTerritoryPlacement(newFactionId, "character-switch");
