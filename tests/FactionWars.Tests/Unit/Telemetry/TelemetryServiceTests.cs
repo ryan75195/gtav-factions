@@ -801,7 +801,7 @@ namespace FactionWars.Tests.Unit.Telemetry
             var participants = new List<BattleParticipant>
             {
                 BattleParticipant.ForAi("franklin", BattleRole.Defender,
-                    new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 5 } }),
+                    new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 5 } }),
                 BattleParticipant.ForPlayer("michael", BattleRole.Attacker, () => 1)
             };
 
