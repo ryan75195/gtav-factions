@@ -12,16 +12,22 @@ namespace FactionWars.ScriptHookV
         {
             try
             {
+                FileLogger.Debug($"HasClearLineOfSight: checking {fromPedHandle}->{toPedHandle}");
+
                 var from = Entity.FromHandle(fromPedHandle) as Ped;
                 var to = Entity.FromHandle(toPedHandle) as Ped;
-                if (from == null || !from.Exists() || to == null || !to.Exists())
+                if (from == null || !from.Exists() || from.IsDead ||
+                    to == null || !to.Exists() || to.IsDead)
                 {
+                    FileLogger.Debug($"HasClearLineOfSight: {fromPedHandle}->{toPedHandle} = false (invalid/dead handle)");
                     return false;
                 }
 
                 // HAS_ENTITY_CLEAR_LOS_TO_ENTITY: trace flag 17 = world geometry + vehicles + objects.
-                return Function.Call<bool>(
+                var result = Function.Call<bool>(
                     Hash.HAS_ENTITY_CLEAR_LOS_TO_ENTITY, from.Handle, to.Handle, 17);
+                FileLogger.Debug($"HasClearLineOfSight: {fromPedHandle}->{toPedHandle} = {result}");
+                return result;
             }
             catch (Exception ex)
             {
