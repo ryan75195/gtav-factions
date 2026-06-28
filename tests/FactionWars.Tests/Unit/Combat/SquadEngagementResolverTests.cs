@@ -1,3 +1,4 @@
+using FactionWars.Combat.Interfaces;
 using FactionWars.Combat.Models;
 using FactionWars.Combat.Services;
 using FactionWars.Core.Models;
@@ -8,7 +9,7 @@ namespace FactionWars.Tests.Unit.Combat
     public class SquadEngagementResolverTests
     {
         // Grunt range = 18; hysteresis band = 18 * 1.3 = 23.4; LOS grace = 2.
-        private readonly SquadEngagementResolver _resolver =
+        private readonly ISquadEngagementResolver _resolver =
             new SquadEngagementResolver(new EngageRangeProvider());
 
         private EngageDecision Resolve(float dist, bool los, EngagePhase phase, int losMisses)
@@ -20,6 +21,7 @@ namespace FactionWars.Tests.Unit.Combat
             var d = Resolve(40f, true, EngagePhase.Advance, 0);
             Assert.Equal(EngagePhase.Advance, d.Phase);
             Assert.Equal(18f, d.EngageRange);
+            Assert.Equal(0, d.ConsecutiveLosMisses); // LOS present -> counter stays cleared
         }
 
         [Fact]
@@ -35,6 +37,7 @@ namespace FactionWars.Tests.Unit.Combat
         {
             var d = Resolve(15f, false, EngagePhase.Advance, 0);
             Assert.Equal(EngagePhase.Advance, d.Phase);
+            Assert.Equal(1, d.ConsecutiveLosMisses); // miss counter increments even while advancing
         }
 
         [Fact]
