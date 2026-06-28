@@ -129,7 +129,7 @@ namespace FactionWars.ScriptHookV.Persistence
                 state.Followers.Add(new SavedFollowerState
                 {
                     FactionId = follower.FactionId,
-                    Tier = follower.Tier,
+                    Role = follower.Tier,
                     Position = new PlayerPosition
                     {
                         X = followerPos.X,

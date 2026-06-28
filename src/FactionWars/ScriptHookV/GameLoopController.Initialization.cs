@@ -60,7 +60,6 @@ namespace FactionWars.ScriptHookV
             InitializeMenuControllers(allocationService);
 
             InitializeStateTelemetryAndSession();
-
             LogInitializationComplete();
         }
 
@@ -134,7 +133,7 @@ namespace FactionWars.ScriptHookV
                 GameBridge = _gameBridge,
                 FollowerService = _followerService,
                 PedSpawningService = spawnServices.PedSpawning,
-                DefenderTierService = spawnServices.DefenderTier,
+                DefenderRoleService = spawnServices.DefenderRole,
                 PedBlipService = spawnServices.PedBlip,
                 SeatPriorityService = seatPriorityService
             });
@@ -150,9 +149,9 @@ namespace FactionWars.ScriptHookV
             _zoneBattleManager.TroopKilled += OnZoneBattleTroopKilled;
             _zoneBattleManager.BattleStarted += OnZoneBattleStarted;
             _policeSuppressionController = new PoliceSuppressionController(_gameBridge, _zoneBattleManager);
-
             var allocationService = _container.Resolve<IZoneDefenderAllocationService>();
             _allocationService = allocationService;
+            _sharedSniperDeployment = new SniperDeploymentService(new PerchResolver(), _gameBridge);
             _friendlyDefenderManager = new FriendlyDefenderManager(
                 new FriendlyDefenderManagerDependencies
                 {
@@ -160,9 +159,10 @@ namespace FactionWars.ScriptHookV
                     AllocationService = allocationService,
                     PedSpawningService = spawnServices.PedSpawning,
                     PedDespawnService = spawnServices.PedDespawn,
-                    DefenderTierService = spawnServices.DefenderTier,
+                    DefenderRoleService = spawnServices.DefenderRole,
                     PedBlipService = spawnServices.PedBlip,
-                    ZoneService = _zoneService
+                    ZoneService = _zoneService,
+                    SniperDeployment = _sharedSniperDeployment
                 },
                 CurrentPlayerFactionId ?? "");
 
@@ -231,11 +231,12 @@ namespace FactionWars.ScriptHookV
                 AllocationService = allocationService,
                 PedSpawningService = spawnServices.PedSpawning,
                 PedDespawnService = spawnServices.PedDespawn,
-                DefenderTierService = spawnServices.DefenderTier,
+                DefenderRoleService = spawnServices.DefenderRole,
                 PedBlipService = spawnServices.PedBlip,
                 ZoneService = zoneService,
                 ZoneBattleManager = zoneBattleManager,
-                CurrentPlayerFactionIdAccessor = () => CurrentPlayerFactionId
+                CurrentPlayerFactionIdAccessor = () => CurrentPlayerFactionId,
+                SniperDeployment = _sharedSniperDeployment
             });
 
             _battleAttackerManager = new BattleAttackerManager(
@@ -245,7 +246,7 @@ namespace FactionWars.ScriptHookV
                     ZoneBattleManager = zoneBattleManager,
                     PedSpawningService = spawnServices.PedSpawning,
                     PedDespawnService = spawnServices.PedDespawn,
-                    DefenderTierService = spawnServices.DefenderTier,
+                    DefenderRoleService = spawnServices.DefenderRole,
                     PedBlipService = spawnServices.PedBlip,
                     ZoneService = zoneService,
                     FactionService = _factionService

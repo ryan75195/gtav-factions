@@ -183,13 +183,13 @@ namespace FactionWars.Tests.Unit.AI
                 attackerFactionId: "franklin",
                 defenderFactionId: "michael",
                 zoneId: "vinewood",
-                attackerTroops: new Dictionary<FactionWars.Core.Models.DefenderTier, int>
+                attackerTroops: new Dictionary<FactionWars.Core.Models.DefenderRole, int>
                 {
-                    { FactionWars.Core.Models.DefenderTier.Basic, 5 }
+                    { FactionWars.Core.Models.DefenderRole.Grunt, 5 }
                 },
-                defenderTroops: new Dictionary<FactionWars.Core.Models.DefenderTier, int>
+                defenderTroops: new Dictionary<FactionWars.Core.Models.DefenderRole, int>
                 {
-                    { FactionWars.Core.Models.DefenderTier.Basic, 3 }
+                    { FactionWars.Core.Models.DefenderRole.Grunt, 3 }
                 },
                 playerFactionId: null);
 
@@ -201,8 +201,8 @@ namespace FactionWars.Tests.Unit.AI
                     "vinewood",
                     It.IsAny<string>(),
                     It.IsAny<string>(),
-                    It.IsAny<Dictionary<FactionWars.Core.Models.DefenderTier, int>>(),
-                    It.IsAny<Dictionary<FactionWars.Core.Models.DefenderTier, int>>()))
+                    It.IsAny<Dictionary<FactionWars.Core.Models.DefenderRole, int>>(),
+                    It.IsAny<Dictionary<FactionWars.Core.Models.DefenderRole, int>>()))
                 .Throws(new System.InvalidOperationException("A battle already exists in zone 'vinewood'."));
 
             var controller = CreateController();
@@ -219,8 +219,8 @@ namespace FactionWars.Tests.Unit.AI
                     "vinewood",
                     It.IsAny<string>(),
                     It.IsAny<string>(),
-                    It.IsAny<Dictionary<FactionWars.Core.Models.DefenderTier, int>>(),
-                    It.IsAny<Dictionary<FactionWars.Core.Models.DefenderTier, int>>()),
+                    It.IsAny<Dictionary<FactionWars.Core.Models.DefenderRole, int>>(),
+                    It.IsAny<Dictionary<FactionWars.Core.Models.DefenderRole, int>>()),
                 Times.Never);
         }
 
@@ -309,7 +309,7 @@ namespace FactionWars.Tests.Unit.AI
             var faction = new Faction("michael", "Michael", color: new FactionColor(0, 100, 255));
             var factionState = new FactionState("michael", 100000, 0);
             factionState.AddZone("richman"); // Only 1 zone
-            factionState.AddReserveTroops(FactionWars.Core.Models.DefenderTier.Basic, 100);
+            factionState.AddReserveTroops(FactionWars.Core.Models.DefenderRole.Grunt, 100);
 
             var zone = new Zone("richman", "Richman", new FactionWars.Core.Interfaces.Vector3(-1600f, 200f, 30f), 250f, 6);
             zone.OwnerFactionId = "michael";
@@ -345,7 +345,7 @@ namespace FactionWars.Tests.Unit.AI
             _allocationServiceMock.Setup(a => a.AllocateTroops(
                     factionState,
                     "richman",
-                    FactionWars.Core.Models.DefenderTier.Basic,
+                    FactionWars.Core.Models.DefenderRole.Grunt,
                     80)) // 80% of 100 = 80
                 .Returns(true);
 
@@ -359,7 +359,7 @@ namespace FactionWars.Tests.Unit.AI
             _allocationServiceMock.Verify(a => a.AllocateTroops(
                 factionState,
                 "richman",
-                FactionWars.Core.Models.DefenderTier.Basic,
+                FactionWars.Core.Models.DefenderRole.Grunt,
                 80), Times.Once);
         }
 
@@ -371,7 +371,7 @@ namespace FactionWars.Tests.Unit.AI
             var factionState = new FactionState("michael", 100000, 0);
             factionState.AddZone("richman");
             factionState.AddZone("vinewood"); // 2 zones
-            factionState.AddReserveTroops(FactionWars.Core.Models.DefenderTier.Basic, 100);
+            factionState.AddReserveTroops(FactionWars.Core.Models.DefenderRole.Grunt, 100);
 
             var richman = new Zone("richman", "Richman", new FactionWars.Core.Interfaces.Vector3(-1600f, 200f, 30f), 250f, 6);
             richman.OwnerFactionId = "michael";
@@ -407,7 +407,7 @@ namespace FactionWars.Tests.Unit.AI
             _allocationServiceMock.Setup(a => a.AllocateTroops(
                     factionState,
                     "richman",
-                    FactionWars.Core.Models.DefenderTier.Basic,
+                    FactionWars.Core.Models.DefenderRole.Grunt,
                     50)) // 50% of 100 = 50
                 .Returns(true);
 
@@ -421,7 +421,7 @@ namespace FactionWars.Tests.Unit.AI
             _allocationServiceMock.Verify(a => a.AllocateTroops(
                 factionState,
                 "richman",
-                FactionWars.Core.Models.DefenderTier.Basic,
+                FactionWars.Core.Models.DefenderRole.Grunt,
                 50), Times.Once);
         }
 
@@ -434,7 +434,7 @@ namespace FactionWars.Tests.Unit.AI
             factionState.AddZone("richman");
             factionState.AddZone("vinewood");
             factionState.AddZone("rockford"); // 3 zones
-            factionState.AddReserveTroops(FactionWars.Core.Models.DefenderTier.Basic, 100);
+            factionState.AddReserveTroops(FactionWars.Core.Models.DefenderRole.Grunt, 100);
 
             var richman = new Zone("richman", "Richman", new FactionWars.Core.Interfaces.Vector3(-1600f, 200f, 30f), 250f, 6);
             richman.OwnerFactionId = "michael";
@@ -468,7 +468,7 @@ namespace FactionWars.Tests.Unit.AI
             _allocationServiceMock.Setup(a => a.AllocateTroops(
                     factionState,
                     "richman",
-                    FactionWars.Core.Models.DefenderTier.Basic,
+                    FactionWars.Core.Models.DefenderRole.Grunt,
                     30)) // 30% of 100 = 30
                 .Returns(true);
 
@@ -482,7 +482,7 @@ namespace FactionWars.Tests.Unit.AI
             _allocationServiceMock.Verify(a => a.AllocateTroops(
                 factionState,
                 "richman",
-                FactionWars.Core.Models.DefenderTier.Basic,
+                FactionWars.Core.Models.DefenderRole.Grunt,
                 30), Times.Once);
         }
 
@@ -494,9 +494,9 @@ namespace FactionWars.Tests.Unit.AI
             var factionState = new FactionState("michael", 100000, 0);
             factionState.AddZone("richman");
             factionState.AddZone("vinewood"); // 2 zones = 50%
-            factionState.AddReserveTroops(FactionWars.Core.Models.DefenderTier.Basic, 100);
-            factionState.AddReserveTroops(FactionWars.Core.Models.DefenderTier.Medium, 50);
-            factionState.AddReserveTroops(FactionWars.Core.Models.DefenderTier.Heavy, 20);
+            factionState.AddReserveTroops(FactionWars.Core.Models.DefenderRole.Grunt, 100);
+            factionState.AddReserveTroops(FactionWars.Core.Models.DefenderRole.Gunner, 50);
+            factionState.AddReserveTroops(FactionWars.Core.Models.DefenderRole.Rifleman, 20);
 
             var richman = new Zone("richman", "Richman", new FactionWars.Core.Interfaces.Vector3(-1600f, 200f, 30f), 250f, 6);
             richman.OwnerFactionId = "michael";
@@ -529,7 +529,7 @@ namespace FactionWars.Tests.Unit.AI
 
             // Setup allocation service to accept all tiers
             _allocationServiceMock.Setup(a => a.AllocateTroops(
-                    factionState, "richman", It.IsAny<FactionWars.Core.Models.DefenderTier>(), It.IsAny<int>()))
+                    factionState, "richman", It.IsAny<FactionWars.Core.Models.DefenderRole>(), It.IsAny<int>()))
                 .Returns(true);
 
             var controller = CreateController();
@@ -540,11 +540,11 @@ namespace FactionWars.Tests.Unit.AI
 
             // Assert - should allocate 50% of each tier
             _allocationServiceMock.Verify(a => a.AllocateTroops(
-                factionState, "richman", FactionWars.Core.Models.DefenderTier.Basic, 50), Times.Once);
+                factionState, "richman", FactionWars.Core.Models.DefenderRole.Grunt, 50), Times.Once);
             _allocationServiceMock.Verify(a => a.AllocateTroops(
-                factionState, "richman", FactionWars.Core.Models.DefenderTier.Medium, 25), Times.Once);
+                factionState, "richman", FactionWars.Core.Models.DefenderRole.Gunner, 25), Times.Once);
             _allocationServiceMock.Verify(a => a.AllocateTroops(
-                factionState, "richman", FactionWars.Core.Models.DefenderTier.Heavy, 10), Times.Once);
+                factionState, "richman", FactionWars.Core.Models.DefenderRole.Rifleman, 10), Times.Once);
         }
 
         [Fact]
@@ -595,7 +595,7 @@ namespace FactionWars.Tests.Unit.AI
             _allocationServiceMock.Verify(a => a.AllocateTroops(
                 It.IsAny<FactionState>(),
                 It.IsAny<string>(),
-                It.IsAny<FactionWars.Core.Models.DefenderTier>(),
+                It.IsAny<FactionWars.Core.Models.DefenderRole>(),
                 It.IsAny<int>()), Times.Never);
         }
 
@@ -606,7 +606,7 @@ namespace FactionWars.Tests.Unit.AI
             var battle = CreateBattleForZone("richman", "michael");
             _zoneBattleManagerMock.Setup(b => b.GetBattleForZone("richman")).Returns(battle);
             _allocationServiceMock.Setup(a => a.AllocateTroops(
-                    factionState, "richman", DefenderTier.Basic, It.IsAny<int>()))
+                    factionState, "richman", DefenderRole.Grunt, It.IsAny<int>()))
                 .Returns(true);
 
             var controller = CreateController(new AIConfig
@@ -619,9 +619,9 @@ namespace FactionWars.Tests.Unit.AI
             controller.Update(90f);
 
             _allocationServiceMock.Verify(a => a.AllocateTroops(
-                factionState, "richman", DefenderTier.Basic, 50), Times.Once);
+                factionState, "richman", DefenderRole.Grunt, 50), Times.Once);
             _allocationServiceMock.Verify(a => a.AllocateTroops(
-                factionState, "richman", DefenderTier.Basic, 25), Times.Once);
+                factionState, "richman", DefenderRole.Grunt, 25), Times.Once);
         }
 
         [Fact]
@@ -631,7 +631,7 @@ namespace FactionWars.Tests.Unit.AI
             var battle = CreateBattleForZone("richman", "michael");
             _zoneBattleManagerMock.Setup(b => b.GetBattleForZone("richman")).Returns(battle);
             _allocationServiceMock.Setup(a => a.AllocateTroops(
-                    factionState, "richman", DefenderTier.Basic, It.IsAny<int>()))
+                    factionState, "richman", DefenderRole.Grunt, It.IsAny<int>()))
                 .Returns(true);
 
             var controller = CreateController(new AIConfig
@@ -645,7 +645,7 @@ namespace FactionWars.Tests.Unit.AI
             controller.Update(90f);
 
             _allocationServiceMock.Verify(a => a.AllocateTroops(
-                factionState, "richman", DefenderTier.Basic, 50), Times.Exactly(2));
+                factionState, "richman", DefenderRole.Grunt, 50), Times.Exactly(2));
         }
 
         [Fact]
@@ -654,7 +654,7 @@ namespace FactionWars.Tests.Unit.AI
             var factionState = SetupDefendScenario(zoneCount: 2, reserveBasic: 100);
             _zoneBattleManagerMock.Setup(b => b.GetBattleForZone("richman")).Returns((ZoneBattle?)null);
             _allocationServiceMock.Setup(a => a.AllocateTroops(
-                    factionState, "richman", DefenderTier.Basic, It.IsAny<int>()))
+                    factionState, "richman", DefenderRole.Grunt, It.IsAny<int>()))
                 .Returns(true);
 
             var controller = CreateController(new AIConfig
@@ -667,7 +667,7 @@ namespace FactionWars.Tests.Unit.AI
             controller.Update(90f);
 
             _allocationServiceMock.Verify(a => a.AllocateTroops(
-                factionState, "richman", DefenderTier.Basic, 50), Times.Exactly(2));
+                factionState, "richman", DefenderRole.Grunt, 50), Times.Exactly(2));
         }
 
         private FactionState SetupDefendScenario(int zoneCount, int reserveBasic)
@@ -678,7 +678,7 @@ namespace FactionWars.Tests.Unit.AI
             {
                 factionState.AddZone("zone-" + i);
             }
-            factionState.AddReserveTroops(DefenderTier.Basic, reserveBasic);
+            factionState.AddReserveTroops(DefenderRole.Grunt, reserveBasic);
 
             var richman = new Zone("richman", "Richman", new Vector3(-1600f, 200f, 30f), 250f, 6)
             {
@@ -707,8 +707,8 @@ namespace FactionWars.Tests.Unit.AI
                 "trevor",
                 defenderFactionId,
                 zoneId,
-                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 10 } },
-                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 10 } });
+                new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 10 } },
+                new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 10 } });
 
         #endregion
 
@@ -766,13 +766,13 @@ namespace FactionWars.Tests.Unit.AI
                 attackerFactionId: "trevor",
                 defenderFactionId: "michael",
                 zoneId: "vinewood",
-                attackerTroops: new Dictionary<FactionWars.Core.Models.DefenderTier, int>
+                attackerTroops: new Dictionary<FactionWars.Core.Models.DefenderRole, int>
                 {
-                    { FactionWars.Core.Models.DefenderTier.Basic, 20 }
+                    { FactionWars.Core.Models.DefenderRole.Grunt, 20 }
                 },
-                defenderTroops: new Dictionary<FactionWars.Core.Models.DefenderTier, int>
+                defenderTroops: new Dictionary<FactionWars.Core.Models.DefenderRole, int>
                 {
-                    { FactionWars.Core.Models.DefenderTier.Basic, 5 }
+                    { FactionWars.Core.Models.DefenderRole.Grunt, 5 }
                 },
                 playerFactionId: null);
 
@@ -781,8 +781,8 @@ namespace FactionWars.Tests.Unit.AI
                     "vinewood",
                     "trevor",
                     "michael",
-                    It.IsAny<Dictionary<FactionWars.Core.Models.DefenderTier, int>>(),
-                    It.IsAny<Dictionary<FactionWars.Core.Models.DefenderTier, int>>()))
+                    It.IsAny<Dictionary<FactionWars.Core.Models.DefenderRole, int>>(),
+                    It.IsAny<Dictionary<FactionWars.Core.Models.DefenderRole, int>>()))
                 .Returns(battle);
 
             var controller = CreateController();
@@ -847,11 +847,11 @@ namespace FactionWars.Tests.Unit.AI
                 attackerFactionId: "trevor",
                 defenderFactionId: "michael",
                 zoneId: "vinewood",
-                attackerTroops: new Dictionary<FactionWars.Core.Models.DefenderTier, int>
+                attackerTroops: new Dictionary<FactionWars.Core.Models.DefenderRole, int>
                 {
-                    { FactionWars.Core.Models.DefenderTier.Basic, 50 }
+                    { FactionWars.Core.Models.DefenderRole.Grunt, 50 }
                 },
-                defenderTroops: new Dictionary<FactionWars.Core.Models.DefenderTier, int>(),
+                defenderTroops: new Dictionary<FactionWars.Core.Models.DefenderRole, int>(),
                 playerFactionId: null);
 
             _zoneBattleManagerMock.Setup(m => m.GetBattleForZone("vinewood")).Returns((FactionWars.Combat.Models.ZoneBattle?)null);
@@ -859,8 +859,8 @@ namespace FactionWars.Tests.Unit.AI
                     "vinewood",
                     "trevor",
                     "michael",
-                    It.IsAny<Dictionary<FactionWars.Core.Models.DefenderTier, int>>(),
-                    It.IsAny<Dictionary<FactionWars.Core.Models.DefenderTier, int>>()))
+                    It.IsAny<Dictionary<FactionWars.Core.Models.DefenderRole, int>>(),
+                    It.IsAny<Dictionary<FactionWars.Core.Models.DefenderRole, int>>()))
                 .Returns(battle);
 
             var controller = CreateController();
@@ -875,8 +875,8 @@ namespace FactionWars.Tests.Unit.AI
                 "vinewood",
                 "trevor",
                 "michael",
-                It.IsAny<Dictionary<FactionWars.Core.Models.DefenderTier, int>>(),
-                It.IsAny<Dictionary<FactionWars.Core.Models.DefenderTier, int>>()), Times.Once,
+                It.IsAny<Dictionary<FactionWars.Core.Models.DefenderRole, int>>(),
+                It.IsAny<Dictionary<FactionWars.Core.Models.DefenderRole, int>>()), Times.Once,
                 "Attack should execute with $0 cash - deployment is free");
         }
 

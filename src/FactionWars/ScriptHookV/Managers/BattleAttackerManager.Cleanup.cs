@@ -8,7 +8,7 @@ namespace FactionWars.ScriptHookV.Managers
 {
     public partial class BattleAttackerManager
     {
-        private void HandleAttackerDeath(string zoneId, int pedHandle, DefenderTier tier)
+        private void HandleAttackerDeath(string zoneId, int pedHandle, DefenderRole tier)
         {
             FileLogger.Combat($"BattleAttackerManager: Attacker died in {zoneId}, tier={tier}");
 

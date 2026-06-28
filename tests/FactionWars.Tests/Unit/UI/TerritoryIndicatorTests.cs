@@ -400,9 +400,9 @@ namespace FactionWars.Tests.Unit.UI
             zone.IsContested = true;
 
             var defender = BattleParticipant.ForAi("michael", BattleRole.Defender,
-                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 5 } });
+                new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 5 } });
             var aiAttacker = BattleParticipant.ForAi("trevor", BattleRole.Attacker,
-                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 2 } });
+                new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 2 } });
             var playerAttacker = BattleParticipant.ForPlayer("player_faction", BattleRole.Attacker, () => 4);
             var battle = new ZoneBattle("zone_1",
                 new List<BattleParticipant> { defender, aiAttacker, playerAttacker },

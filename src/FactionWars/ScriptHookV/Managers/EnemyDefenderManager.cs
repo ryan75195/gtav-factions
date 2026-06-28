@@ -30,14 +30,15 @@ namespace FactionWars.ScriptHookV.Managers
         private readonly IZoneDefenderAllocationService _allocationService;
         private readonly IPedSpawningService _pedSpawningService;
         private readonly IPedDespawnService _pedDespawnService;
-        private readonly IDefenderTierService _defenderTierService;
+        private readonly IDefenderRoleService _defenderRoleService;
         private readonly IPedBlipService _pedBlipService;
         private readonly IZoneService _zoneService;
         private readonly IZoneBattleManager? _zoneBattleManager;
         private readonly IZoneCombatantSpawner _spawner;
         private readonly Func<string?> _playerFactionIdAccessor;
+        private readonly ISniperDeploymentService _sniperDeployment;
 
-        private readonly Dictionary<string, Dictionary<int, DefenderTier>> _spawnedPedTierByZone;
+        private readonly Dictionary<string, Dictionary<int, DefenderRole>> _spawnedPedTierByZone;
         private readonly Dictionary<int, int> _corpseDeathTimes; // pedHandle -> game time when died
         private string? _currentEnemyZoneId;
         private int _lastLeashCheckMs = 0;
@@ -61,15 +62,17 @@ namespace FactionWars.ScriptHookV.Managers
             _allocationService = dependencies.AllocationService ?? throw new ArgumentNullException(nameof(dependencies.AllocationService));
             _pedSpawningService = dependencies.PedSpawningService ?? throw new ArgumentNullException(nameof(dependencies.PedSpawningService));
             _pedDespawnService = dependencies.PedDespawnService ?? throw new ArgumentNullException(nameof(dependencies.PedDespawnService));
-            _defenderTierService = dependencies.DefenderTierService ?? throw new ArgumentNullException(nameof(dependencies.DefenderTierService));
+            _defenderRoleService = dependencies.DefenderRoleService ?? throw new ArgumentNullException(nameof(dependencies.DefenderRoleService));
             _pedBlipService = dependencies.PedBlipService ?? throw new ArgumentNullException(nameof(dependencies.PedBlipService));
             _zoneService = dependencies.ZoneService ?? throw new ArgumentNullException(nameof(dependencies.ZoneService));
             _zoneBattleManager = dependencies.ZoneBattleManager;
             _spawner = dependencies.Spawner
                 ?? new ZoneCombatantSpawner(new AllegianceResolver(), _pedSpawningService, _pedBlipService, _gameBridge);
             _playerFactionIdAccessor = dependencies.CurrentPlayerFactionIdAccessor ?? (() => null);
+            _sniperDeployment = dependencies.SniperDeployment
+                ?? new SniperDeploymentService(new PerchResolver(), _gameBridge);
 
-            _spawnedPedTierByZone = new Dictionary<string, Dictionary<int, DefenderTier>>();
+            _spawnedPedTierByZone = new Dictionary<string, Dictionary<int, DefenderRole>>();
             _corpseDeathTimes = new Dictionary<int, int>();
         }
 
@@ -80,7 +83,7 @@ namespace FactionWars.ScriptHookV.Managers
                 AllocationService = (IZoneDefenderAllocationService?)dependencies[1],
                 PedSpawningService = (IPedSpawningService?)dependencies[2],
                 PedDespawnService = (IPedDespawnService?)dependencies[3],
-                DefenderTierService = (IDefenderTierService?)dependencies[4],
+                DefenderRoleService = (IDefenderRoleService?)dependencies[4],
                 PedBlipService = (IPedBlipService?)dependencies[5],
                 ZoneService = (IZoneService?)dependencies[6],
                 ZoneBattleManager = dependencies.Length > 7 ? (IZoneBattleManager?)dependencies[7] : null,
@@ -117,20 +120,20 @@ namespace FactionWars.ScriptHookV.Managers
             // Initialize tracking for this zone
             if (!_spawnedPedTierByZone.ContainsKey(zone.Id))
             {
-                _spawnedPedTierByZone[zone.Id] = new Dictionary<int, DefenderTier>();
+                _spawnedPedTierByZone[zone.Id] = new Dictionary<int, DefenderRole>();
             }
 
             var playerFactionId = _playerFactionIdAccessor() ?? string.Empty;
             var totalSpawned = 0;
             var random = new Random();
 
-            foreach (DefenderTier tier in new[] { DefenderTier.Elite, DefenderTier.Heavy, DefenderTier.Medium, DefenderTier.Basic })
+            foreach (DefenderRole tier in new[] { DefenderRole.Rocketeer, DefenderRole.Sniper, DefenderRole.Rifleman, DefenderRole.Gunner, DefenderRole.Grunt })
             {
                 var count = allocation.GetTroopCount(tier);
                 if (count <= 0) continue;
 
                 var model = FactionPedModels.GetModel(enemyFactionId, tier);
-                var tierConfig = _defenderTierService.GetTierConfig(tier);
+                var roleConfig = _defenderRoleService.GetRoleConfig(tier);
 
                 for (int i = 0; i < count && totalSpawned < MaxSpawnedDefenders; i++)
                 {
@@ -142,7 +145,7 @@ namespace FactionWars.ScriptHookV.Managers
                     if (!pedHandle.IsValid) continue;
 
                     // Tier-specific combat loadout + zone patrol/seek tasking.
-                    ConfigureEnemyDefender(pedHandle.Handle, tierConfig, zone.Center, zone.Radius);
+                    ConfigureEnemyDefender(pedHandle.Handle, roleConfig, zone.Center, zone.Radius);
 
                     // Track ped with its tier
                     _spawnedPedTierByZone[zone.Id][pedHandle.Handle] = tier;
@@ -234,7 +237,7 @@ namespace FactionWars.ScriptHookV.Managers
         /// <summary>
         /// Gets the number of spawned defenders of a specific tier in a zone.
         /// </summary>
-        public int GetSpawnedCountByTier(string zoneId, DefenderTier tier)
+        public int GetSpawnedCountByTier(string zoneId, DefenderRole tier)
         {
             if (!_spawnedPedTierByZone.TryGetValue(zoneId, out var pedTiers))
                 return 0;

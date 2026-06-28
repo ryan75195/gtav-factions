@@ -306,7 +306,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             {
                 var allocation = _allocationService.GetAllocation(CharacterModelFactionDetector.MichaelFactionId, zoneId);
                 Assert.NotNull(allocation);
-                Assert.Equal(5, allocation!.GetTroopCount(FactionWars.Core.Models.DefenderTier.Basic));
+                Assert.Equal(5, allocation!.GetTroopCount(FactionWars.Core.Models.DefenderRole.Grunt));
             }
 
             var trevorState = _factionRepository.GetState(CharacterModelFactionDetector.TrevorFactionId)!;
@@ -314,7 +314,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             {
                 var allocation = _allocationService.GetAllocation(CharacterModelFactionDetector.TrevorFactionId, zoneId);
                 Assert.NotNull(allocation);
-                Assert.Equal(5, allocation!.GetTroopCount(FactionWars.Core.Models.DefenderTier.Basic));
+                Assert.Equal(5, allocation!.GetTroopCount(FactionWars.Core.Models.DefenderRole.Grunt));
             }
 
             var franklinState = _factionRepository.GetState(CharacterModelFactionDetector.FranklinFactionId)!;
@@ -322,7 +322,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             {
                 var allocation = _allocationService.GetAllocation(CharacterModelFactionDetector.FranklinFactionId, zoneId);
                 Assert.NotNull(allocation);
-                Assert.Equal(5, allocation!.GetTroopCount(FactionWars.Core.Models.DefenderTier.Basic));
+                Assert.Equal(5, allocation!.GetTroopCount(FactionWars.Core.Models.DefenderRole.Grunt));
             }
         }
 

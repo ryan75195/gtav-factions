@@ -21,7 +21,7 @@ namespace FactionWars.Tests.Unit.AI.Services
         private readonly Mock<IFactionService> _mockFactionService;
         private readonly Mock<IZoneDefenderAllocationService> _mockAllocationService;
         private readonly Mock<IVehicleThreatService> _mockVehicleThreatService;
-        private readonly IDefenderTierService _tierService;
+        private readonly IDefenderRoleService _tierService;
         private readonly AntiVehicleResponseService _service;
 
         private const int EliteCost = 2000;
@@ -31,7 +31,7 @@ namespace FactionWars.Tests.Unit.AI.Services
             _mockFactionService = new Mock<IFactionService>();
             _mockAllocationService = new Mock<IZoneDefenderAllocationService>();
             _mockVehicleThreatService = new Mock<IVehicleThreatService>();
-            _tierService = new DefenderTierService();
+            _tierService = new DefenderRoleService();
 
             _service = new AntiVehicleResponseService(
                 _mockFactionService.Object,
@@ -75,7 +75,7 @@ namespace FactionWars.Tests.Unit.AI.Services
         {
             // Arrange
             var factionState = new FactionState("faction1", initialCash: 10000);
-            factionState.AddReserveTroops(DefenderTier.Elite, 5);
+            factionState.AddReserveTroops(DefenderRole.Rocketeer, 5);
             _mockFactionService.Setup(f => f.GetFactionState("faction1")).Returns(factionState);
             _mockVehicleThreatService.Setup(v => v.GetRequiredRpgCount(VehicleThreatLevel.None)).Returns(0);
 
@@ -85,7 +85,7 @@ namespace FactionWars.Tests.Unit.AI.Services
             // Assert
             Assert.Equal(0, result);
             _mockAllocationService.Verify(
-                a => a.AllocateTroops(It.IsAny<FactionState>(), It.IsAny<string>(), It.IsAny<DefenderTier>(), It.IsAny<int>()),
+                a => a.AllocateTroops(It.IsAny<FactionState>(), It.IsAny<string>(), It.IsAny<DefenderRole>(), It.IsAny<int>()),
                 Times.Never);
         }
 
@@ -94,7 +94,7 @@ namespace FactionWars.Tests.Unit.AI.Services
         {
             // Arrange
             var factionState = new FactionState("faction1", initialCash: 10000);
-            factionState.AddReserveTroops(DefenderTier.Elite, 5);
+            factionState.AddReserveTroops(DefenderRole.Rocketeer, 5);
             _mockFactionService.Setup(f => f.GetFactionState("faction1")).Returns(factionState);
             _mockVehicleThreatService.Setup(v => v.GetRequiredRpgCount(VehicleThreatLevel.None)).Returns(0);
 
@@ -103,7 +103,7 @@ namespace FactionWars.Tests.Unit.AI.Services
 
             // Assert
             _mockFactionService.Verify(f => f.SpendCash(It.IsAny<string>(), It.IsAny<int>()), Times.Never);
-            _mockFactionService.Verify(f => f.AddReserveTroops(It.IsAny<string>(), It.IsAny<DefenderTier>(), It.IsAny<int>()), Times.Never);
+            _mockFactionService.Verify(f => f.AddReserveTroops(It.IsAny<string>(), It.IsAny<DefenderRole>(), It.IsAny<int>()), Times.Never);
         }
 
         #endregion
@@ -115,17 +115,17 @@ namespace FactionWars.Tests.Unit.AI.Services
         {
             // Arrange
             var factionState = new FactionState("faction1", initialCash: 10000);
-            factionState.AddReserveTroops(DefenderTier.Elite, 3);
+            factionState.AddReserveTroops(DefenderRole.Rocketeer, 3);
             _mockFactionService.Setup(f => f.GetFactionState("faction1")).Returns(factionState);
             _mockVehicleThreatService.Setup(v => v.GetRequiredRpgCount(VehicleThreatLevel.Light)).Returns(1);
-            _mockAllocationService.Setup(a => a.AllocateTroops(factionState, "zone1", DefenderTier.Elite, 1)).Returns(true);
+            _mockAllocationService.Setup(a => a.AllocateTroops(factionState, "zone1", DefenderRole.Rocketeer, 1)).Returns(true);
 
             // Act
             var result = _service.RespondToVehicleThreat("faction1", "zone1", VehicleThreatLevel.Light);
 
             // Assert
             Assert.Equal(1, result);
-            _mockAllocationService.Verify(a => a.AllocateTroops(factionState, "zone1", DefenderTier.Elite, 1), Times.Once);
+            _mockAllocationService.Verify(a => a.AllocateTroops(factionState, "zone1", DefenderRole.Rocketeer, 1), Times.Once);
         }
 
         [Fact]
@@ -133,10 +133,10 @@ namespace FactionWars.Tests.Unit.AI.Services
         {
             // Arrange
             var factionState = new FactionState("faction1", initialCash: 10000);
-            factionState.AddReserveTroops(DefenderTier.Elite, 3);
+            factionState.AddReserveTroops(DefenderRole.Rocketeer, 3);
             _mockFactionService.Setup(f => f.GetFactionState("faction1")).Returns(factionState);
             _mockVehicleThreatService.Setup(v => v.GetRequiredRpgCount(VehicleThreatLevel.Light)).Returns(1);
-            _mockAllocationService.Setup(a => a.AllocateTroops(factionState, "zone1", DefenderTier.Elite, 1)).Returns(true);
+            _mockAllocationService.Setup(a => a.AllocateTroops(factionState, "zone1", DefenderRole.Rocketeer, 1)).Returns(true);
 
             // Act
             _service.RespondToVehicleThreat("faction1", "zone1", VehicleThreatLevel.Light);
@@ -154,17 +154,17 @@ namespace FactionWars.Tests.Unit.AI.Services
         {
             // Arrange
             var factionState = new FactionState("faction1", initialCash: 10000);
-            factionState.AddReserveTroops(DefenderTier.Elite, 5);
+            factionState.AddReserveTroops(DefenderRole.Rocketeer, 5);
             _mockFactionService.Setup(f => f.GetFactionState("faction1")).Returns(factionState);
             _mockVehicleThreatService.Setup(v => v.GetRequiredRpgCount(VehicleThreatLevel.Heavy)).Returns(2);
-            _mockAllocationService.Setup(a => a.AllocateTroops(factionState, "zone1", DefenderTier.Elite, 2)).Returns(true);
+            _mockAllocationService.Setup(a => a.AllocateTroops(factionState, "zone1", DefenderRole.Rocketeer, 2)).Returns(true);
 
             // Act
             var result = _service.RespondToVehicleThreat("faction1", "zone1", VehicleThreatLevel.Heavy);
 
             // Assert
             Assert.Equal(2, result);
-            _mockAllocationService.Verify(a => a.AllocateTroops(factionState, "zone1", DefenderTier.Elite, 2), Times.Once);
+            _mockAllocationService.Verify(a => a.AllocateTroops(factionState, "zone1", DefenderRole.Rocketeer, 2), Times.Once);
         }
 
         [Fact]
@@ -172,17 +172,17 @@ namespace FactionWars.Tests.Unit.AI.Services
         {
             // Arrange - only 1 Elite in reserve, but need 2 for Heavy threat
             var factionState = new FactionState("faction1", initialCash: 0);
-            factionState.AddReserveTroops(DefenderTier.Elite, 1);
+            factionState.AddReserveTroops(DefenderRole.Rocketeer, 1);
             _mockFactionService.Setup(f => f.GetFactionState("faction1")).Returns(factionState);
             _mockVehicleThreatService.Setup(v => v.GetRequiredRpgCount(VehicleThreatLevel.Heavy)).Returns(2);
-            _mockAllocationService.Setup(a => a.AllocateTroops(factionState, "zone1", DefenderTier.Elite, 1)).Returns(true);
+            _mockAllocationService.Setup(a => a.AllocateTroops(factionState, "zone1", DefenderRole.Rocketeer, 1)).Returns(true);
 
             // Act
             var result = _service.RespondToVehicleThreat("faction1", "zone1", VehicleThreatLevel.Heavy);
 
             // Assert - can only deploy 1 since that's all available and no cash for emergency
             Assert.Equal(1, result);
-            _mockAllocationService.Verify(a => a.AllocateTroops(factionState, "zone1", DefenderTier.Elite, 1), Times.Once);
+            _mockAllocationService.Verify(a => a.AllocateTroops(factionState, "zone1", DefenderRole.Rocketeer, 1), Times.Once);
         }
 
         #endregion
@@ -197,8 +197,8 @@ namespace FactionWars.Tests.Unit.AI.Services
             _mockFactionService.Setup(f => f.GetFactionState("faction1")).Returns(factionState);
             _mockVehicleThreatService.Setup(v => v.GetRequiredRpgCount(VehicleThreatLevel.Light)).Returns(1);
             _mockFactionService.Setup(f => f.SpendCash("faction1", EliteCost)).Returns(true);
-            _mockFactionService.Setup(f => f.AddReserveTroops("faction1", DefenderTier.Elite, 1)).Returns(true);
-            _mockAllocationService.Setup(a => a.AllocateTroops(It.IsAny<FactionState>(), "zone1", DefenderTier.Elite, 1)).Returns(true);
+            _mockFactionService.Setup(f => f.AddReserveTroops("faction1", DefenderRole.Rocketeer, 1)).Returns(true);
+            _mockAllocationService.Setup(a => a.AllocateTroops(It.IsAny<FactionState>(), "zone1", DefenderRole.Rocketeer, 1)).Returns(true);
 
             // Act
             var result = _service.RespondToVehicleThreat("faction1", "zone1", VehicleThreatLevel.Light);
@@ -206,8 +206,8 @@ namespace FactionWars.Tests.Unit.AI.Services
             // Assert
             Assert.Equal(1, result);
             _mockFactionService.Verify(f => f.SpendCash("faction1", EliteCost), Times.Once);
-            _mockFactionService.Verify(f => f.AddReserveTroops("faction1", DefenderTier.Elite, 1), Times.Once);
-            _mockAllocationService.Verify(a => a.AllocateTroops(It.IsAny<FactionState>(), "zone1", DefenderTier.Elite, 1), Times.Once);
+            _mockFactionService.Verify(f => f.AddReserveTroops("faction1", DefenderRole.Rocketeer, 1), Times.Once);
+            _mockAllocationService.Verify(a => a.AllocateTroops(It.IsAny<FactionState>(), "zone1", DefenderRole.Rocketeer, 1), Times.Once);
         }
 
         [Fact]
@@ -219,8 +219,8 @@ namespace FactionWars.Tests.Unit.AI.Services
             _mockVehicleThreatService.Setup(v => v.GetRequiredRpgCount(VehicleThreatLevel.Heavy)).Returns(2);
             // Service purchases one Elite at a time to maximize what can be afforded
             _mockFactionService.Setup(f => f.SpendCash("faction1", EliteCost)).Returns(true);
-            _mockFactionService.Setup(f => f.AddReserveTroops("faction1", DefenderTier.Elite, 1)).Returns(true);
-            _mockAllocationService.Setup(a => a.AllocateTroops(It.IsAny<FactionState>(), "zone1", DefenderTier.Elite, 2)).Returns(true);
+            _mockFactionService.Setup(f => f.AddReserveTroops("faction1", DefenderRole.Rocketeer, 1)).Returns(true);
+            _mockAllocationService.Setup(a => a.AllocateTroops(It.IsAny<FactionState>(), "zone1", DefenderRole.Rocketeer, 2)).Returns(true);
 
             // Act
             var result = _service.RespondToVehicleThreat("faction1", "zone1", VehicleThreatLevel.Heavy);
@@ -229,8 +229,8 @@ namespace FactionWars.Tests.Unit.AI.Services
             Assert.Equal(2, result);
             // Should spend $2000 twice (once per Elite)
             _mockFactionService.Verify(f => f.SpendCash("faction1", EliteCost), Times.Exactly(2));
-            _mockFactionService.Verify(f => f.AddReserveTroops("faction1", DefenderTier.Elite, 1), Times.Exactly(2));
-            _mockAllocationService.Verify(a => a.AllocateTroops(It.IsAny<FactionState>(), "zone1", DefenderTier.Elite, 2), Times.Once);
+            _mockFactionService.Verify(f => f.AddReserveTroops("faction1", DefenderRole.Rocketeer, 1), Times.Exactly(2));
+            _mockAllocationService.Verify(a => a.AllocateTroops(It.IsAny<FactionState>(), "zone1", DefenderRole.Rocketeer, 2), Times.Once);
         }
 
         [Fact]
@@ -244,8 +244,8 @@ namespace FactionWars.Tests.Unit.AI.Services
             _mockFactionService.Setup(f => f.SpendCash("faction1", EliteCost))
                 .Callback(() => factionState.SpendCash(EliteCost))
                 .Returns(true);
-            _mockFactionService.Setup(f => f.AddReserveTroops("faction1", DefenderTier.Elite, 1)).Returns(true);
-            _mockAllocationService.Setup(a => a.AllocateTroops(It.IsAny<FactionState>(), "zone1", DefenderTier.Elite, 1)).Returns(true);
+            _mockFactionService.Setup(f => f.AddReserveTroops("faction1", DefenderRole.Rocketeer, 1)).Returns(true);
+            _mockAllocationService.Setup(a => a.AllocateTroops(It.IsAny<FactionState>(), "zone1", DefenderRole.Rocketeer, 1)).Returns(true);
 
             // Act
             var result = _service.RespondToVehicleThreat("faction1", "zone1", VehicleThreatLevel.Heavy);
@@ -253,7 +253,7 @@ namespace FactionWars.Tests.Unit.AI.Services
             // Assert - can only afford 1 Elite even though 2 required (CanAfford on state checks real cash)
             Assert.Equal(1, result);
             _mockFactionService.Verify(f => f.SpendCash("faction1", EliteCost), Times.Once);
-            _mockFactionService.Verify(f => f.AddReserveTroops("faction1", DefenderTier.Elite, 1), Times.Once);
+            _mockFactionService.Verify(f => f.AddReserveTroops("faction1", DefenderRole.Rocketeer, 1), Times.Once);
         }
 
         #endregion
@@ -265,12 +265,12 @@ namespace FactionWars.Tests.Unit.AI.Services
         {
             // Arrange - 1 Elite in reserve, need 2, has cash for 1 more
             var factionState = new FactionState("faction1", initialCash: 2000);
-            factionState.AddReserveTroops(DefenderTier.Elite, 1);
+            factionState.AddReserveTroops(DefenderRole.Rocketeer, 1);
             _mockFactionService.Setup(f => f.GetFactionState("faction1")).Returns(factionState);
             _mockVehicleThreatService.Setup(v => v.GetRequiredRpgCount(VehicleThreatLevel.Heavy)).Returns(2);
             _mockFactionService.Setup(f => f.SpendCash("faction1", EliteCost)).Returns(true);
-            _mockFactionService.Setup(f => f.AddReserveTroops("faction1", DefenderTier.Elite, 1)).Returns(true);
-            _mockAllocationService.Setup(a => a.AllocateTroops(It.IsAny<FactionState>(), "zone1", DefenderTier.Elite, 2)).Returns(true);
+            _mockFactionService.Setup(f => f.AddReserveTroops("faction1", DefenderRole.Rocketeer, 1)).Returns(true);
+            _mockAllocationService.Setup(a => a.AllocateTroops(It.IsAny<FactionState>(), "zone1", DefenderRole.Rocketeer, 2)).Returns(true);
 
             // Act
             var result = _service.RespondToVehicleThreat("faction1", "zone1", VehicleThreatLevel.Heavy);
@@ -278,8 +278,8 @@ namespace FactionWars.Tests.Unit.AI.Services
             // Assert - 1 from reserve + 1 purchased = 2 deployed
             Assert.Equal(2, result);
             _mockFactionService.Verify(f => f.SpendCash("faction1", EliteCost), Times.Once);
-            _mockFactionService.Verify(f => f.AddReserveTroops("faction1", DefenderTier.Elite, 1), Times.Once);
-            _mockAllocationService.Verify(a => a.AllocateTroops(It.IsAny<FactionState>(), "zone1", DefenderTier.Elite, 2), Times.Once);
+            _mockFactionService.Verify(f => f.AddReserveTroops("faction1", DefenderRole.Rocketeer, 1), Times.Once);
+            _mockAllocationService.Verify(a => a.AllocateTroops(It.IsAny<FactionState>(), "zone1", DefenderRole.Rocketeer, 2), Times.Once);
         }
 
         #endregion
@@ -300,7 +300,7 @@ namespace FactionWars.Tests.Unit.AI.Services
             // Assert
             Assert.Equal(0, result);
             _mockAllocationService.Verify(
-                a => a.AllocateTroops(It.IsAny<FactionState>(), It.IsAny<string>(), It.IsAny<DefenderTier>(), It.IsAny<int>()),
+                a => a.AllocateTroops(It.IsAny<FactionState>(), It.IsAny<string>(), It.IsAny<DefenderRole>(), It.IsAny<int>()),
                 Times.Never);
         }
 
@@ -364,7 +364,7 @@ namespace FactionWars.Tests.Unit.AI.Services
         {
             // Arrange
             var factionState = new FactionState("faction1", initialCash: 10000);
-            factionState.AddReserveTroops(DefenderTier.Elite, 5);
+            factionState.AddReserveTroops(DefenderRole.Rocketeer, 5);
             _mockFactionService.Setup(f => f.GetFactionState("faction1")).Returns(factionState);
             _mockVehicleThreatService.Setup(v => v.GetRequiredRpgCount(VehicleThreatLevel.Light)).Returns(1);
 
@@ -380,7 +380,7 @@ namespace FactionWars.Tests.Unit.AI.Services
         {
             // Arrange
             var factionState = new FactionState("faction1", initialCash: 10000);
-            factionState.AddReserveTroops(DefenderTier.Elite, 5);
+            factionState.AddReserveTroops(DefenderRole.Rocketeer, 5);
             _mockFactionService.Setup(f => f.GetFactionState("faction1")).Returns(factionState);
             _mockVehicleThreatService.Setup(v => v.GetRequiredRpgCount(VehicleThreatLevel.Light)).Returns(1);
 
@@ -400,10 +400,10 @@ namespace FactionWars.Tests.Unit.AI.Services
         {
             // Arrange - allocation service fails for some reason
             var factionState = new FactionState("faction1", initialCash: 10000);
-            factionState.AddReserveTroops(DefenderTier.Elite, 5);
+            factionState.AddReserveTroops(DefenderRole.Rocketeer, 5);
             _mockFactionService.Setup(f => f.GetFactionState("faction1")).Returns(factionState);
             _mockVehicleThreatService.Setup(v => v.GetRequiredRpgCount(VehicleThreatLevel.Light)).Returns(1);
-            _mockAllocationService.Setup(a => a.AllocateTroops(factionState, "zone1", DefenderTier.Elite, 1)).Returns(false);
+            _mockAllocationService.Setup(a => a.AllocateTroops(factionState, "zone1", DefenderRole.Rocketeer, 1)).Returns(false);
 
             // Act
             var result = _service.RespondToVehicleThreat("faction1", "zone1", VehicleThreatLevel.Light);
@@ -424,10 +424,10 @@ namespace FactionWars.Tests.Unit.AI.Services
         {
             // Arrange
             var factionState = new FactionState("faction1", initialCash: 10000);
-            factionState.AddReserveTroops(DefenderTier.Elite, 5);
+            factionState.AddReserveTroops(DefenderRole.Rocketeer, 5);
             _mockFactionService.Setup(f => f.GetFactionState("faction1")).Returns(factionState);
             _mockVehicleThreatService.Setup(v => v.GetRequiredRpgCount(threatLevel)).Returns(expectedRpgCount);
-            _mockAllocationService.Setup(a => a.AllocateTroops(It.IsAny<FactionState>(), It.IsAny<string>(), DefenderTier.Elite, It.IsAny<int>())).Returns(true);
+            _mockAllocationService.Setup(a => a.AllocateTroops(It.IsAny<FactionState>(), It.IsAny<string>(), DefenderRole.Rocketeer, It.IsAny<int>())).Returns(true);
 
             // Act
             var result = _service.RespondToVehicleThreat("faction1", "zone1", threatLevel);
@@ -444,13 +444,13 @@ namespace FactionWars.Tests.Unit.AI.Services
         [Fact]
         public void RespondToVehicleThreat_EmergencyPurchase_UsesCorrectEliteCostFromTierService()
         {
-            // Arrange - verify it uses the cost from DefenderTierService ($2000 for Elite)
+            // Arrange - verify it uses the cost from DefenderRoleService ($2000 for Elite)
             var factionState = new FactionState("faction1", initialCash: 2000);
             _mockFactionService.Setup(f => f.GetFactionState("faction1")).Returns(factionState);
             _mockVehicleThreatService.Setup(v => v.GetRequiredRpgCount(VehicleThreatLevel.Light)).Returns(1);
             _mockFactionService.Setup(f => f.SpendCash("faction1", 2000)).Returns(true);
-            _mockFactionService.Setup(f => f.AddReserveTroops("faction1", DefenderTier.Elite, 1)).Returns(true);
-            _mockAllocationService.Setup(a => a.AllocateTroops(It.IsAny<FactionState>(), "zone1", DefenderTier.Elite, 1)).Returns(true);
+            _mockFactionService.Setup(f => f.AddReserveTroops("faction1", DefenderRole.Rocketeer, 1)).Returns(true);
+            _mockAllocationService.Setup(a => a.AllocateTroops(It.IsAny<FactionState>(), "zone1", DefenderRole.Rocketeer, 1)).Returns(true);
 
             // Act
             _service.RespondToVehicleThreat("faction1", "zone1", VehicleThreatLevel.Light);

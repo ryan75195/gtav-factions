@@ -7,22 +7,22 @@ namespace FactionWars.ScriptHookV.Managers
 {
     public partial class FollowerManager
     {
-        private void ConfigureFollowerCombat(int pedHandle, DefenderTierConfig tierConfig)
+        private void ConfigureFollowerCombat(int pedHandle, DefenderRoleConfig roleConfig)
         {
             // Give pistol first as secondary weapon for drive-by shooting from vehicles
             _gameBridge.GivePedWeapon(pedHandle, "weapon_pistol");
 
             // Give tier-appropriate weapon last so it becomes the equipped/primary weapon
-            _gameBridge.GivePedWeapon(pedHandle, tierConfig.Weapon);
+            _gameBridge.GivePedWeapon(pedHandle, roleConfig.Weapon);
 
             // Set shooting accuracy
-            _gameBridge.SetPedAccuracy(pedHandle, tierConfig.Accuracy);
+            _gameBridge.SetPedAccuracy(pedHandle, roleConfig.Accuracy);
 
             // Set armor based on tier
-            _gameBridge.SetPedArmor(pedHandle, tierConfig.Armor);
+            _gameBridge.SetPedArmor(pedHandle, roleConfig.Armor);
 
             // Set health based on tier
-            _gameBridge.SetPedHealth(pedHandle, tierConfig.Health);
+            _gameBridge.SetPedHealth(pedHandle, roleConfig.Health);
             _gameBridge.SetPedCriticalHitsEnabled(pedHandle, false);
             _gameBridge.SetPedRagdollEnabled(pedHandle, false);
 
@@ -30,7 +30,7 @@ namespace FactionWars.ScriptHookV.Managers
             _gameBridge.SetPedCombatAttributes(pedHandle, canUseCover: true, willFightArmedPeds: true);
 
             // Elite tier uses RPG - prevent AI from switching to pistol (AI prefers pistol to avoid self-damage)
-            if (tierConfig.Tier == DefenderTier.Elite)
+            if (roleConfig.Role == DefenderRole.Rocketeer)
             {
                 _gameBridge.SetPedCanSwitchWeapons(pedHandle, false);
             }

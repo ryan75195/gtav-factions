@@ -24,7 +24,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         private Mock<IZoneBattleManager> _zoneBattleManagerMock = null!;
         private Mock<IPedSpawningService> _pedSpawningServiceMock = null!;
         private Mock<IPedDespawnService> _pedDespawnServiceMock = null!;
-        private Mock<IDefenderTierService> _defenderTierServiceMock = null!;
+        private Mock<IDefenderRoleService> _defenderRoleServiceMock = null!;
         private Mock<IPedBlipService> _pedBlipServiceMock = null!;
         private Mock<IZoneService> _zoneServiceMock = null!;
         private Mock<IFactionService> _factionServiceMock = null!;
@@ -40,7 +40,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             _zoneBattleManagerMock = new Mock<IZoneBattleManager>();
             _pedSpawningServiceMock = new Mock<IPedSpawningService>();
             _pedDespawnServiceMock = new Mock<IPedDespawnService>();
-            _defenderTierServiceMock = new Mock<IDefenderTierService>();
+            _defenderRoleServiceMock = new Mock<IDefenderRoleService>();
             _pedBlipServiceMock = new Mock<IPedBlipService>();
             _zoneServiceMock = new Mock<IZoneService>();
             _factionServiceMock = new Mock<IFactionService>();
@@ -53,8 +53,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
                     return new PedHandle(handle, factionId, position, model, zoneId);
                 });
 
-            _defenderTierServiceMock.Setup(d => d.GetTierConfig(It.IsAny<DefenderTier>()))
-                .Returns(new DefenderTierConfig(DefenderTier.Basic, 200, 100, 0, "weapon_pistol", 0.5f, 1.0f));
+            _defenderRoleServiceMock.Setup(d => d.GetRoleConfig(It.IsAny<DefenderRole>()))
+                .Returns(new DefenderRoleConfig(DefenderRole.Grunt, 200, 100, 0, "weapon_pistol", 0.5f, 1.0f));
 
             _pedBlipServiceMock.Setup(p => p.CreateBlipForPed(It.IsAny<int>(), It.IsAny<BlipColor>()))
                 .Returns(1);
@@ -64,7 +64,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
                 _zoneBattleManagerMock.Object,
                 _pedSpawningServiceMock.Object,
                 _pedDespawnServiceMock.Object,
-                _defenderTierServiceMock.Object,
+                _defenderRoleServiceMock.Object,
                 _pedBlipServiceMock.Object,
                 _zoneServiceMock.Object,
                 _factionServiceMock.Object,
@@ -81,8 +81,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
                 EnemyFactionId,
                 PlayerFactionId,
                 TestZoneId,
-                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 2 } },
-                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 1 } });
+                new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 2 } },
+                new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 1 } });
             _zoneBattleManagerMock.Setup(b => b.GetBattleForZone(TestZoneId)).Returns(battle);
 
             _manager.OnPlayerZoneEntered(zone);

@@ -26,7 +26,7 @@ namespace FactionWars.Tests.Integration.ScriptHookV
         private readonly InMemoryPedPool _pedPool;
         private readonly IPedSpawningService _pedSpawningService;
         private readonly IFollowerService _followerService;
-        private readonly IDefenderTierService _defenderTierService;
+        private readonly IDefenderRoleService _defenderRoleService;
         private readonly IPedBlipService _pedBlipService;
         private readonly IVehicleSeatPriorityService _seatPriorityService;
         private readonly FollowerManager _followerManager;
@@ -42,7 +42,7 @@ namespace FactionWars.Tests.Integration.ScriptHookV
             _pedPool = new InMemoryPedPool(30);
             _pedSpawningService = new PedSpawningService(_gameBridge, _pedPool);
             _followerService = new FollowerService(maxFollowers: 6);
-            _defenderTierService = new DefenderTierService();
+            _defenderRoleService = new DefenderRoleService();
             _pedBlipService = new PedBlipService(_gameBridge);
             _seatPriorityService = new VehicleSeatPriorityService(_gameBridge);
 
@@ -50,7 +50,7 @@ namespace FactionWars.Tests.Integration.ScriptHookV
                 _gameBridge,
                 _followerService,
                 _pedSpawningService,
-                _defenderTierService,
+                _defenderRoleService,
                 _pedBlipService,
                 _seatPriorityService);
         }
@@ -61,7 +61,7 @@ namespace FactionWars.Tests.Integration.ScriptHookV
         public void RecruitFollower_SetsUpPedToFollowPlayer()
         {
             // Act
-            var result = _followerManager.RecruitFollower(MichaelFactionId, DefenderTier.Basic);
+            var result = _followerManager.RecruitFollower(MichaelFactionId, DefenderRole.Grunt);
 
             // Assert
             Assert.True(result.Success);
@@ -76,9 +76,9 @@ namespace FactionWars.Tests.Integration.ScriptHookV
         public void RecruitFollower_MultipleFollowers_AllFollowPlayer()
         {
             // Act
-            var result1 = _followerManager.RecruitFollower(MichaelFactionId, DefenderTier.Basic);
-            var result2 = _followerManager.RecruitFollower(MichaelFactionId, DefenderTier.Medium);
-            var result3 = _followerManager.RecruitFollower(MichaelFactionId, DefenderTier.Heavy);
+            var result1 = _followerManager.RecruitFollower(MichaelFactionId, DefenderRole.Grunt);
+            var result2 = _followerManager.RecruitFollower(MichaelFactionId, DefenderRole.Gunner);
+            var result3 = _followerManager.RecruitFollower(MichaelFactionId, DefenderRole.Rifleman);
 
             // Assert
             Assert.True(result1.Success);
@@ -99,7 +99,7 @@ namespace FactionWars.Tests.Integration.ScriptHookV
         public void RecruitFollower_BasicTier_ConfiguredWithCorrectWeapon()
         {
             // Act
-            var result = _followerManager.RecruitFollower(MichaelFactionId, DefenderTier.Basic);
+            var result = _followerManager.RecruitFollower(MichaelFactionId, DefenderRole.Grunt);
 
             // Assert
             Assert.True(result.Success);
@@ -114,7 +114,7 @@ namespace FactionWars.Tests.Integration.ScriptHookV
         public void RecruitFollower_MediumTier_ConfiguredWithCorrectWeapon()
         {
             // Act
-            var result = _followerManager.RecruitFollower(MichaelFactionId, DefenderTier.Medium);
+            var result = _followerManager.RecruitFollower(MichaelFactionId, DefenderRole.Gunner);
 
             // Assert
             Assert.True(result.Success);
@@ -129,7 +129,7 @@ namespace FactionWars.Tests.Integration.ScriptHookV
         public void RecruitFollower_HeavyTier_ConfiguredWithCorrectWeapon()
         {
             // Act
-            var result = _followerManager.RecruitFollower(MichaelFactionId, DefenderTier.Heavy);
+            var result = _followerManager.RecruitFollower(MichaelFactionId, DefenderRole.Rifleman);
 
             // Assert
             Assert.True(result.Success);
@@ -144,9 +144,9 @@ namespace FactionWars.Tests.Integration.ScriptHookV
         public void RecruitFollower_ConfiguresAccuracyBasedOnTier()
         {
             // Act
-            var basicResult = _followerManager.RecruitFollower(MichaelFactionId, DefenderTier.Basic);
-            var mediumResult = _followerManager.RecruitFollower(MichaelFactionId, DefenderTier.Medium);
-            var heavyResult = _followerManager.RecruitFollower(MichaelFactionId, DefenderTier.Heavy);
+            var basicResult = _followerManager.RecruitFollower(MichaelFactionId, DefenderRole.Grunt);
+            var mediumResult = _followerManager.RecruitFollower(MichaelFactionId, DefenderRole.Gunner);
+            var heavyResult = _followerManager.RecruitFollower(MichaelFactionId, DefenderRole.Rifleman);
 
             // Assert
             Assert.Equal(0.3f, _gameBridge.GetPedAccuracy(basicResult.Follower!.PedHandle), 0.01);
@@ -158,11 +158,11 @@ namespace FactionWars.Tests.Integration.ScriptHookV
         public void RecruitFollower_ConfiguresArmorBasedOnTier()
         {
             // Act
-            var basicResult = _followerManager.RecruitFollower(MichaelFactionId, DefenderTier.Basic);
-            var mediumResult = _followerManager.RecruitFollower(MichaelFactionId, DefenderTier.Medium);
-            var heavyResult = _followerManager.RecruitFollower(MichaelFactionId, DefenderTier.Heavy);
+            var basicResult = _followerManager.RecruitFollower(MichaelFactionId, DefenderRole.Grunt);
+            var mediumResult = _followerManager.RecruitFollower(MichaelFactionId, DefenderRole.Gunner);
+            var heavyResult = _followerManager.RecruitFollower(MichaelFactionId, DefenderRole.Rifleman);
 
-            // Assert - armor values match DefenderTierService config
+            // Assert - armor values match DefenderRoleService config
             Assert.Equal(50, _gameBridge.GetPedArmor(basicResult.Follower!.PedHandle));
             Assert.Equal(100, _gameBridge.GetPedArmor(mediumResult.Follower!.PedHandle));
             Assert.Equal(200, _gameBridge.GetPedArmor(heavyResult.Follower!.PedHandle));
@@ -172,11 +172,11 @@ namespace FactionWars.Tests.Integration.ScriptHookV
         public void RecruitFollower_ConfiguresHealthBasedOnTier()
         {
             // Act
-            var basicResult = _followerManager.RecruitFollower(MichaelFactionId, DefenderTier.Basic);
-            var mediumResult = _followerManager.RecruitFollower(MichaelFactionId, DefenderTier.Medium);
-            var heavyResult = _followerManager.RecruitFollower(MichaelFactionId, DefenderTier.Heavy);
+            var basicResult = _followerManager.RecruitFollower(MichaelFactionId, DefenderRole.Grunt);
+            var mediumResult = _followerManager.RecruitFollower(MichaelFactionId, DefenderRole.Gunner);
+            var heavyResult = _followerManager.RecruitFollower(MichaelFactionId, DefenderRole.Rifleman);
 
-            // Assert - health values match DefenderTierService config
+            // Assert - health values match DefenderRoleService config
             Assert.Equal(200, _gameBridge.GetPedHealth(basicResult.Follower!.PedHandle));
             Assert.Equal(350, _gameBridge.GetPedHealth(mediumResult.Follower!.PedHandle));
             Assert.Equal(500, _gameBridge.GetPedHealth(heavyResult.Follower!.PedHandle));
@@ -186,7 +186,7 @@ namespace FactionWars.Tests.Integration.ScriptHookV
         public void RecruitFollower_ConfiguresCombatBehavior()
         {
             // Act
-            var result = _followerManager.RecruitFollower(MichaelFactionId, DefenderTier.Basic);
+            var result = _followerManager.RecruitFollower(MichaelFactionId, DefenderRole.Grunt);
 
             // Assert
             Assert.True(result.Success);
@@ -205,7 +205,7 @@ namespace FactionWars.Tests.Integration.ScriptHookV
         public void Update_PlayerEntersVehicle_FollowersOrderedToEnter()
         {
             // Arrange: Recruit a follower
-            var result = _followerManager.RecruitFollower(MichaelFactionId, DefenderTier.Basic);
+            var result = _followerManager.RecruitFollower(MichaelFactionId, DefenderRole.Grunt);
             Assert.True(result.Success);
             var pedHandle = result.Follower!.PedHandle;
 
@@ -224,7 +224,7 @@ namespace FactionWars.Tests.Integration.ScriptHookV
         public void Update_PlayerExitsVehicle_ExposesFollowerAsOnFootBodyguard()
         {
             // Arrange: Recruit a follower and put both player and follower in vehicle
-            var result = _followerManager.RecruitFollower(MichaelFactionId, DefenderTier.Basic);
+            var result = _followerManager.RecruitFollower(MichaelFactionId, DefenderRole.Grunt);
             Assert.True(result.Success);
             var pedHandle = result.Follower!.PedHandle;
 
@@ -249,8 +249,8 @@ namespace FactionWars.Tests.Integration.ScriptHookV
         public void Update_MultipleFollowers_AllEnterVehicleWithPlayer()
         {
             // Arrange: Recruit multiple followers
-            var result1 = _followerManager.RecruitFollower(MichaelFactionId, DefenderTier.Basic);
-            var result2 = _followerManager.RecruitFollower(MichaelFactionId, DefenderTier.Medium);
+            var result1 = _followerManager.RecruitFollower(MichaelFactionId, DefenderRole.Grunt);
+            var result2 = _followerManager.RecruitFollower(MichaelFactionId, DefenderRole.Gunner);
             Assert.True(result1.Success);
             Assert.True(result2.Success);
 
@@ -270,7 +270,7 @@ namespace FactionWars.Tests.Integration.ScriptHookV
             var followers = new FollowerRecruitResult[4];
             for (int i = 0; i < 4; i++)
             {
-                followers[i] = _followerManager.RecruitFollower(MichaelFactionId, DefenderTier.Basic);
+                followers[i] = _followerManager.RecruitFollower(MichaelFactionId, DefenderRole.Grunt);
                 Assert.True(followers[i].Success);
             }
 
@@ -302,7 +302,7 @@ namespace FactionWars.Tests.Integration.ScriptHookV
             Follower? diedFollower = null;
             _followerManager.FollowerDied += (sender, follower) => diedFollower = follower;
 
-            var result = _followerManager.RecruitFollower(MichaelFactionId, DefenderTier.Basic);
+            var result = _followerManager.RecruitFollower(MichaelFactionId, DefenderRole.Grunt);
             Assert.True(result.Success);
             var pedHandle = result.Follower!.PedHandle;
 
@@ -319,7 +319,7 @@ namespace FactionWars.Tests.Integration.ScriptHookV
         public void Update_FollowerDies_RemovedFromService()
         {
             // Arrange
-            var result = _followerManager.RecruitFollower(MichaelFactionId, DefenderTier.Basic);
+            var result = _followerManager.RecruitFollower(MichaelFactionId, DefenderRole.Grunt);
             Assert.True(result.Success);
             var followerId = result.Follower!.Id;
             var pedHandle = result.Follower.PedHandle;
@@ -338,7 +338,7 @@ namespace FactionWars.Tests.Integration.ScriptHookV
         public void Update_FollowerDies_PedDeletedFromGame()
         {
             // Arrange
-            var result = _followerManager.RecruitFollower(MichaelFactionId, DefenderTier.Basic);
+            var result = _followerManager.RecruitFollower(MichaelFactionId, DefenderRole.Grunt);
             Assert.True(result.Success);
             var pedHandle = result.Follower!.PedHandle;
 
@@ -361,7 +361,7 @@ namespace FactionWars.Tests.Integration.ScriptHookV
         {
             // Step 1: Recruit a heavy-tier follower
             _gameBridge.PlayerMoney = 10000;
-            var result = _followerManager.RecruitFollower(MichaelFactionId, DefenderTier.Heavy);
+            var result = _followerManager.RecruitFollower(MichaelFactionId, DefenderRole.Rifleman);
 
             Assert.True(result.Success);
             Assert.NotNull(result.Follower);
@@ -406,9 +406,9 @@ namespace FactionWars.Tests.Integration.ScriptHookV
         public void FullFlow_DismissAllFollowers_OnCharacterSwitch()
         {
             // Arrange: Recruit multiple followers for Michael
-            var result1 = _followerManager.RecruitFollower(MichaelFactionId, DefenderTier.Basic);
-            var result2 = _followerManager.RecruitFollower(MichaelFactionId, DefenderTier.Medium);
-            var result3 = _followerManager.RecruitFollower(MichaelFactionId, DefenderTier.Heavy);
+            var result1 = _followerManager.RecruitFollower(MichaelFactionId, DefenderRole.Grunt);
+            var result2 = _followerManager.RecruitFollower(MichaelFactionId, DefenderRole.Gunner);
+            var result3 = _followerManager.RecruitFollower(MichaelFactionId, DefenderRole.Rifleman);
 
             Assert.True(result1.Success);
             Assert.True(result2.Success);

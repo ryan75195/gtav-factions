@@ -14,7 +14,7 @@ namespace FactionWars.ScriptHookV.Managers
     {
         public void Update()
         {
-            var newlyDeadPeds = new List<(string zoneId, int pedHandle, DefenderTier tier)>();
+            var newlyDeadPeds = new List<(string zoneId, int pedHandle, DefenderRole tier)>();
             var streamedOutPeds = new List<(string zoneId, int pedHandle)>();
             var currentGameTime = _gameBridge.GetGameTime();
 
@@ -148,7 +148,7 @@ namespace FactionWars.ScriptHookV.Managers
         /// replacement spawning, and territory loss detection.
         /// Corpse cleanup is delayed for immersion.
         /// </summary>
-        private void HandleDefenderDeath(string zoneId, int pedHandle, DefenderTier tier)
+        private void HandleDefenderDeath(string zoneId, int pedHandle, DefenderRole tier)
         {
             // Track death time for corpse cleanup (don't despawn yet - leave corpse visible)
             _corpseDeathTimes[pedHandle] = _gameBridge.GetGameTime();

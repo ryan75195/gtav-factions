@@ -13,11 +13,12 @@ namespace FactionWars.ScriptHookV.Models
         public IZoneDefenderAllocationService? AllocationService { get; set; }
         public IPedSpawningService? PedSpawningService { get; set; }
         public IPedDespawnService? PedDespawnService { get; set; }
-        public IDefenderTierService? DefenderTierService { get; set; }
+        public IDefenderRoleService? DefenderRoleService { get; set; }
         public IPedBlipService? PedBlipService { get; set; }
         public IZoneService? ZoneService { get; set; }
         public IZoneBattleManager? ZoneBattleManager { get; set; }
         public IZoneCombatantSpawner? Spawner { get; set; }
         public Func<string?>? CurrentPlayerFactionIdAccessor { get; set; }
+        public ISniperDeploymentService? SniperDeployment { get; set; }
     }
 }

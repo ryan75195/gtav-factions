@@ -25,7 +25,7 @@ namespace FactionWars.Combat.Services
             float attackerChance = attackerStrength / totalStrength;
             bool attackerGetsKill = _random.NextDouble() < attackerChance;
 
-            DefenderTier victimTier;
+            DefenderRole victimTier;
             string victimSide;
 
             if (attackerGetsKill)
@@ -141,31 +141,31 @@ namespace FactionWars.Combat.Services
             return BattleOutcome.Draw;
         }
 
-        private float CalculateStrength(Dictionary<DefenderTier, int> troops)
+        private float CalculateStrength(Dictionary<DefenderRole, int> troops)
         {
             float strength = 0;
-            if (troops.TryGetValue(DefenderTier.Basic, out int basic))
+            if (troops.TryGetValue(DefenderRole.Grunt, out int basic))
                 strength += basic * BasicStrength;
-            if (troops.TryGetValue(DefenderTier.Medium, out int medium))
+            if (troops.TryGetValue(DefenderRole.Gunner, out int medium))
                 strength += medium * MediumStrength;
-            if (troops.TryGetValue(DefenderTier.Heavy, out int heavy))
+            if (troops.TryGetValue(DefenderRole.Rifleman, out int heavy))
                 strength += heavy * HeavyStrength;
             return strength;
         }
 
-        private DefenderTier SelectVictimTier(Dictionary<DefenderTier, int> troops)
+        private DefenderRole SelectVictimTier(Dictionary<DefenderRole, int> troops)
         {
             // Weighted selection - Basic troops more likely to die
-            var weighted = new List<(DefenderTier tier, int weight)>();
+            var weighted = new List<(DefenderRole tier, int weight)>();
 
-            if (troops.TryGetValue(DefenderTier.Basic, out int basic) && basic > 0)
-                weighted.Add((DefenderTier.Basic, basic * BasicDeathWeight));
-            if (troops.TryGetValue(DefenderTier.Medium, out int medium) && medium > 0)
-                weighted.Add((DefenderTier.Medium, medium * MediumDeathWeight));
-            if (troops.TryGetValue(DefenderTier.Heavy, out int heavy) && heavy > 0)
-                weighted.Add((DefenderTier.Heavy, heavy * HeavyDeathWeight));
+            if (troops.TryGetValue(DefenderRole.Grunt, out int basic) && basic > 0)
+                weighted.Add((DefenderRole.Grunt, basic * BasicDeathWeight));
+            if (troops.TryGetValue(DefenderRole.Gunner, out int medium) && medium > 0)
+                weighted.Add((DefenderRole.Gunner, medium * MediumDeathWeight));
+            if (troops.TryGetValue(DefenderRole.Rifleman, out int heavy) && heavy > 0)
+                weighted.Add((DefenderRole.Rifleman, heavy * HeavyDeathWeight));
 
-            if (weighted.Count == 0) return DefenderTier.Basic;
+            if (weighted.Count == 0) return DefenderRole.Grunt;
 
             int totalWeight = weighted.Sum(w => w.weight);
             int roll = _random.Next(totalWeight);

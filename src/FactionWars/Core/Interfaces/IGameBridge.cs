@@ -434,6 +434,13 @@ namespace FactionWars.Core.Interfaces
         void SetPedCanSwitchWeapons(int pedHandle, bool canSwitch);
 
         /// <summary>
+        /// Forces the ped's currently-equipped weapon to the named weapon
+        /// (the ped must already own it). Used to swap a sniper between rifle
+        /// and sidearm.
+        /// </summary>
+        void SetPedActiveWeapon(int pedHandle, string weaponName);
+
+        /// <summary>
         /// Sets a ped's shooting accuracy.
         /// </summary>
         /// <param name="pedHandle">Handle of the ped.</param>

@@ -60,6 +60,7 @@ namespace FactionWars.ScriptHookV
         private FriendlyDefenderManager? _friendlyDefenderManager;
         private DefenderRallyController? _defenderRallyController;
         private EnemyDefenderManager? _enemyDefenderManager;
+        private ISniperDeploymentService? _sharedSniperDeployment;
         private BattleAttackerManager? _battleAttackerManager;
         private PoliceSuppressionController? _policeSuppressionController;
         private CommanderManager? _commanderManager;

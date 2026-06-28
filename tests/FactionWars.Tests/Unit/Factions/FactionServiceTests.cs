@@ -1106,11 +1106,11 @@ namespace FactionWars.Tests.Unit.Factions
             _repository.Add(faction);
             _repository.SetState(new FactionState("michael", initialCash: 1000));
 
-            var result = _service.AddReserveTroops("michael", DefenderTier.Heavy, 3);
+            var result = _service.AddReserveTroops("michael", DefenderRole.Rifleman, 3);
 
             var state = _service.GetFactionState("michael");
             Assert.True(result);
-            Assert.Equal(3, state!.GetReserveTroops(DefenderTier.Heavy));
+            Assert.Equal(3, state!.GetReserveTroops(DefenderRole.Rifleman));
         }
 
         #region Helper Methods

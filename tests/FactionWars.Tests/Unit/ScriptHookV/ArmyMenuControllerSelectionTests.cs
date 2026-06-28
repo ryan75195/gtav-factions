@@ -23,7 +23,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
         private readonly Mock<IFactionService> _factionServiceMock;
         private readonly Mock<ITroopPurchaseService> _purchaseServiceMock;
         private readonly Mock<IFollowerService> _followerServiceMock;
-        private readonly Mock<IDefenderTierService> _tierServiceMock;
+        private readonly Mock<IDefenderRoleService> _tierServiceMock;
         private readonly Mock<IPlayerContext> _playerContextMock;
         private readonly ArmyMenuController _controller;
 
@@ -37,7 +37,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             _factionServiceMock = new Mock<IFactionService>();
             _purchaseServiceMock = new Mock<ITroopPurchaseService>();
             _followerServiceMock = new Mock<IFollowerService>();
-            _tierServiceMock = new Mock<IDefenderTierService>();
+            _tierServiceMock = new Mock<IDefenderRoleService>();
             _playerContextMock = new Mock<IPlayerContext>();
 
             // Setup default player faction
@@ -49,22 +49,22 @@ namespace FactionWars.Tests.Unit.ScriptHookV
 
             // Setup default faction state with reserves
             var factionState = new FactionState(PlayerFactionId, 10000, 50);
-            factionState.AddReserveTroops(DefenderTier.Basic, 20);
-            factionState.AddReserveTroops(DefenderTier.Medium, 15);
-            factionState.AddReserveTroops(DefenderTier.Heavy, 10);
+            factionState.AddReserveTroops(DefenderRole.Grunt, 20);
+            factionState.AddReserveTroops(DefenderRole.Gunner, 15);
+            factionState.AddReserveTroops(DefenderRole.Rifleman, 10);
             _factionServiceMock.Setup(f => f.GetFactionState(PlayerFactionId)).Returns(factionState);
 
             // Setup tier costs
-            _tierServiceMock.Setup(t => t.GetCost(DefenderTier.Basic)).Returns(200);
-            _tierServiceMock.Setup(t => t.GetCost(DefenderTier.Medium)).Returns(500);
-            _tierServiceMock.Setup(t => t.GetCost(DefenderTier.Heavy)).Returns(1000);
+            _tierServiceMock.Setup(t => t.GetCost(DefenderRole.Grunt)).Returns(200);
+            _tierServiceMock.Setup(t => t.GetCost(DefenderRole.Gunner)).Returns(500);
+            _tierServiceMock.Setup(t => t.GetCost(DefenderRole.Rifleman)).Returns(1000);
 
             // Setup player money and affordability
             _purchaseServiceMock.Setup(p => p.GetPlayerMoney()).Returns(PlayerMoney);
-            _purchaseServiceMock.Setup(p => p.GetTroopCost(DefenderTier.Basic)).Returns(200);
-            _purchaseServiceMock.Setup(p => p.GetTroopCost(DefenderTier.Medium)).Returns(500);
-            _purchaseServiceMock.Setup(p => p.GetTroopCost(DefenderTier.Heavy)).Returns(1000);
-            _purchaseServiceMock.Setup(p => p.CanAfford(It.IsAny<DefenderTier>(), 1)).Returns(true);
+            _purchaseServiceMock.Setup(p => p.GetTroopCost(DefenderRole.Grunt)).Returns(200);
+            _purchaseServiceMock.Setup(p => p.GetTroopCost(DefenderRole.Gunner)).Returns(500);
+            _purchaseServiceMock.Setup(p => p.GetTroopCost(DefenderRole.Rifleman)).Returns(1000);
+            _purchaseServiceMock.Setup(p => p.CanAfford(It.IsAny<DefenderRole>(), 1)).Returns(true);
 
             // Setup follower service
             _followerServiceMock.Setup(f => f.GetFollowerCount(PlayerFactionId)).Returns(0);
@@ -72,11 +72,11 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             _followerServiceMock.Setup(f => f.GetFollowers(PlayerFactionId)).Returns(Array.Empty<Follower>());
 
             // Setup successful purchase/recruit results
-            _purchaseServiceMock.Setup(p => p.PurchaseTroops(PlayerFactionId, It.IsAny<DefenderTier>(), 1))
-                .Returns((string fId, DefenderTier tier, int count) =>
+            _purchaseServiceMock.Setup(p => p.PurchaseTroops(PlayerFactionId, It.IsAny<DefenderRole>(), 1))
+                .Returns((string fId, DefenderRole tier, int count) =>
                     TroopPurchaseResult.Successful(tier, count, _purchaseServiceMock.Object.GetTroopCost(tier)));
-            _followerServiceMock.Setup(f => f.Recruit(PlayerFactionId, It.IsAny<DefenderTier>()))
-                .Returns((string fId, DefenderTier tier) =>
+            _followerServiceMock.Setup(f => f.Recruit(PlayerFactionId, It.IsAny<DefenderRole>()))
+                .Returns((string fId, DefenderRole tier) =>
                     FollowerRecruitResult.Succeeded(new Follower(fId, tier)));
 
             _controller = new ArmyMenuController(

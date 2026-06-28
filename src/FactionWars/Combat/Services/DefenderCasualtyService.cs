@@ -38,7 +38,7 @@ namespace FactionWars.Combat.Services
         /// <inheritdoc />
         public CasualtyResult ProcessCasualties()
         {
-            var casualtiesByTier = new Dictionary<DefenderTier, int>();
+            var casualtiesByTier = new Dictionary<DefenderRole, int>();
             var pedsToProcess = _pedPool.GetAll().ToList();
             var deadDefenders = new List<PedHandle>();
 
@@ -57,7 +57,7 @@ namespace FactionWars.Combat.Services
             // Process each dead defender
             foreach (var ped in deadDefenders)
             {
-                var tier = ped.DefenderTier!.Value;
+                var tier = ped.DefenderRole!.Value;
 
                 // Track casualty by tier
                 if (!casualtiesByTier.ContainsKey(tier))
@@ -82,7 +82,7 @@ namespace FactionWars.Combat.Services
         {
             return ped != null
                 && ped.IsValid
-                && ped.DefenderTier.HasValue
+                && ped.DefenderRole.HasValue
                 && !string.IsNullOrEmpty(ped.FactionId)
                 && !string.IsNullOrEmpty(ped.ZoneId);
         }
@@ -90,7 +90,7 @@ namespace FactionWars.Combat.Services
         /// <summary>
         /// Deducts one troop from the zone allocation for the given faction and tier.
         /// </summary>
-        private void DeductFromAllocation(string factionId, string zoneId, DefenderTier tier)
+        private void DeductFromAllocation(string factionId, string zoneId, DefenderRole tier)
         {
             var allocation = _allocationRepository.Get(factionId, zoneId);
             if (allocation == null)

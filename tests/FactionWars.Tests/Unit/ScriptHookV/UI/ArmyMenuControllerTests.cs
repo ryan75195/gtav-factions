@@ -24,7 +24,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
         private readonly Mock<IFactionService> _factionServiceMock;
         private readonly Mock<ITroopPurchaseService> _purchaseServiceMock;
         private readonly Mock<IFollowerService> _followerServiceMock;
-        private readonly Mock<IDefenderTierService> _tierServiceMock;
+        private readonly Mock<IDefenderRoleService> _tierServiceMock;
         private readonly Mock<IPlayerContext> _playerContextMock;
         private readonly ArmyMenuController _controller;
 
@@ -38,7 +38,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
             _factionServiceMock = new Mock<IFactionService>();
             _purchaseServiceMock = new Mock<ITroopPurchaseService>();
             _followerServiceMock = new Mock<IFollowerService>();
-            _tierServiceMock = new Mock<IDefenderTierService>();
+            _tierServiceMock = new Mock<IDefenderRoleService>();
             _playerContextMock = new Mock<IPlayerContext>();
 
             // Setup default player faction
@@ -51,21 +51,21 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
             // Setup default faction state with reserves
             // After consolidation, initialTroopCount goes to Basic tier, so we use reserve pool only
             var factionState = new FactionState(PlayerFactionId, 10000);
-            factionState.AddReserveTroops(DefenderTier.Basic, 20);
-            factionState.AddReserveTroops(DefenderTier.Medium, 15);
-            factionState.AddReserveTroops(DefenderTier.Heavy, 10);
+            factionState.AddReserveTroops(DefenderRole.Grunt, 20);
+            factionState.AddReserveTroops(DefenderRole.Gunner, 15);
+            factionState.AddReserveTroops(DefenderRole.Rifleman, 10);
             _factionServiceMock.Setup(f => f.GetFactionState(PlayerFactionId)).Returns(factionState);
 
             // Setup tier costs
-            _tierServiceMock.Setup(t => t.GetCost(DefenderTier.Basic)).Returns(200);
-            _tierServiceMock.Setup(t => t.GetCost(DefenderTier.Medium)).Returns(500);
-            _tierServiceMock.Setup(t => t.GetCost(DefenderTier.Heavy)).Returns(1000);
+            _tierServiceMock.Setup(t => t.GetCost(DefenderRole.Grunt)).Returns(200);
+            _tierServiceMock.Setup(t => t.GetCost(DefenderRole.Gunner)).Returns(500);
+            _tierServiceMock.Setup(t => t.GetCost(DefenderRole.Rifleman)).Returns(1000);
 
             // Setup player money
             _purchaseServiceMock.Setup(p => p.GetPlayerMoney()).Returns(PlayerMoney);
-            _purchaseServiceMock.Setup(p => p.GetTroopCost(DefenderTier.Basic)).Returns(200);
-            _purchaseServiceMock.Setup(p => p.GetTroopCost(DefenderTier.Medium)).Returns(500);
-            _purchaseServiceMock.Setup(p => p.GetTroopCost(DefenderTier.Heavy)).Returns(1000);
+            _purchaseServiceMock.Setup(p => p.GetTroopCost(DefenderRole.Grunt)).Returns(200);
+            _purchaseServiceMock.Setup(p => p.GetTroopCost(DefenderRole.Gunner)).Returns(500);
+            _purchaseServiceMock.Setup(p => p.GetTroopCost(DefenderRole.Rifleman)).Returns(1000);
 
             // Setup follower service
             _followerServiceMock.Setup(f => f.GetFollowerCount(PlayerFactionId)).Returns(0);
@@ -286,9 +286,9 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
         public void Show_PurchaseOptionsShouldBeEnabledWhenCanAfford()
         {
             // Arrange
-            _purchaseServiceMock.Setup(p => p.CanAfford(DefenderTier.Basic, 1)).Returns(true);
-            _purchaseServiceMock.Setup(p => p.CanAfford(DefenderTier.Medium, 1)).Returns(true);
-            _purchaseServiceMock.Setup(p => p.CanAfford(DefenderTier.Heavy, 1)).Returns(true);
+            _purchaseServiceMock.Setup(p => p.CanAfford(DefenderRole.Grunt, 1)).Returns(true);
+            _purchaseServiceMock.Setup(p => p.CanAfford(DefenderRole.Gunner, 1)).Returns(true);
+            _purchaseServiceMock.Setup(p => p.CanAfford(DefenderRole.Rifleman, 1)).Returns(true);
 
             // Act
             _controller.Show();
@@ -308,9 +308,9 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
         public void Show_PurchaseOptionsShouldBeDisabledWhenCannotAfford()
         {
             // Arrange
-            _purchaseServiceMock.Setup(p => p.CanAfford(DefenderTier.Basic, 1)).Returns(false);
-            _purchaseServiceMock.Setup(p => p.CanAfford(DefenderTier.Medium, 1)).Returns(false);
-            _purchaseServiceMock.Setup(p => p.CanAfford(DefenderTier.Heavy, 1)).Returns(false);
+            _purchaseServiceMock.Setup(p => p.CanAfford(DefenderRole.Grunt, 1)).Returns(false);
+            _purchaseServiceMock.Setup(p => p.CanAfford(DefenderRole.Gunner, 1)).Returns(false);
+            _purchaseServiceMock.Setup(p => p.CanAfford(DefenderRole.Rifleman, 1)).Returns(false);
 
             // Act
             _controller.Show();
@@ -334,57 +334,57 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
         public void OnPurchaseBasic_ShouldCallPurchaseService()
         {
             // Arrange
-            _purchaseServiceMock.Setup(p => p.CanAfford(DefenderTier.Basic, 1)).Returns(true);
-            _purchaseServiceMock.Setup(p => p.PurchaseTroops(PlayerFactionId, DefenderTier.Basic, 1))
-                .Returns(TroopPurchaseResult.Successful(DefenderTier.Basic, 1, 200));
+            _purchaseServiceMock.Setup(p => p.CanAfford(DefenderRole.Grunt, 1)).Returns(true);
+            _purchaseServiceMock.Setup(p => p.PurchaseTroops(PlayerFactionId, DefenderRole.Grunt, 1))
+                .Returns(TroopPurchaseResult.Successful(DefenderRole.Grunt, 1, 200));
             _controller.Show();
 
             // Act
             _menuProvider.SimulateItemSelection(ArmyMenuController.PurchaseBasicItemId);
 
             // Assert
-            _purchaseServiceMock.Verify(p => p.PurchaseTroops(PlayerFactionId, DefenderTier.Basic, 1), Times.Once);
+            _purchaseServiceMock.Verify(p => p.PurchaseTroops(PlayerFactionId, DefenderRole.Grunt, 1), Times.Once);
         }
 
         [Fact]
         public void OnPurchaseMedium_ShouldCallPurchaseService()
         {
             // Arrange
-            _purchaseServiceMock.Setup(p => p.CanAfford(DefenderTier.Medium, 1)).Returns(true);
-            _purchaseServiceMock.Setup(p => p.PurchaseTroops(PlayerFactionId, DefenderTier.Medium, 1))
-                .Returns(TroopPurchaseResult.Successful(DefenderTier.Medium, 1, 500));
+            _purchaseServiceMock.Setup(p => p.CanAfford(DefenderRole.Gunner, 1)).Returns(true);
+            _purchaseServiceMock.Setup(p => p.PurchaseTroops(PlayerFactionId, DefenderRole.Gunner, 1))
+                .Returns(TroopPurchaseResult.Successful(DefenderRole.Gunner, 1, 500));
             _controller.Show();
 
             // Act
             _menuProvider.SimulateItemSelection(ArmyMenuController.PurchaseMediumItemId);
 
             // Assert
-            _purchaseServiceMock.Verify(p => p.PurchaseTroops(PlayerFactionId, DefenderTier.Medium, 1), Times.Once);
+            _purchaseServiceMock.Verify(p => p.PurchaseTroops(PlayerFactionId, DefenderRole.Gunner, 1), Times.Once);
         }
 
         [Fact]
         public void OnPurchaseHeavy_ShouldCallPurchaseService()
         {
             // Arrange
-            _purchaseServiceMock.Setup(p => p.CanAfford(DefenderTier.Heavy, 1)).Returns(true);
-            _purchaseServiceMock.Setup(p => p.PurchaseTroops(PlayerFactionId, DefenderTier.Heavy, 1))
-                .Returns(TroopPurchaseResult.Successful(DefenderTier.Heavy, 1, 1000));
+            _purchaseServiceMock.Setup(p => p.CanAfford(DefenderRole.Rifleman, 1)).Returns(true);
+            _purchaseServiceMock.Setup(p => p.PurchaseTroops(PlayerFactionId, DefenderRole.Rifleman, 1))
+                .Returns(TroopPurchaseResult.Successful(DefenderRole.Rifleman, 1, 1000));
             _controller.Show();
 
             // Act
             _menuProvider.SimulateItemSelection(ArmyMenuController.PurchaseHeavyItemId);
 
             // Assert
-            _purchaseServiceMock.Verify(p => p.PurchaseTroops(PlayerFactionId, DefenderTier.Heavy, 1), Times.Once);
+            _purchaseServiceMock.Verify(p => p.PurchaseTroops(PlayerFactionId, DefenderRole.Rifleman, 1), Times.Once);
         }
 
         [Fact]
         public void OnPurchase_ShouldRefreshMenuAfterPurchase()
         {
             // Arrange
-            _purchaseServiceMock.Setup(p => p.CanAfford(DefenderTier.Basic, 1)).Returns(true);
-            _purchaseServiceMock.Setup(p => p.PurchaseTroops(PlayerFactionId, DefenderTier.Basic, 1))
-                .Returns(TroopPurchaseResult.Successful(DefenderTier.Basic, 1, 200));
+            _purchaseServiceMock.Setup(p => p.CanAfford(DefenderRole.Grunt, 1)).Returns(true);
+            _purchaseServiceMock.Setup(p => p.PurchaseTroops(PlayerFactionId, DefenderRole.Grunt, 1))
+                .Returns(TroopPurchaseResult.Successful(DefenderRole.Grunt, 1, 200));
             _controller.Show();
 
             // Act
@@ -444,7 +444,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
             // Arrange
             _followerServiceMock.Setup(f => f.GetFollowerCount(PlayerFactionId)).Returns(3);
             _followerServiceMock.Setup(f => f.GetMaxFollowers()).Returns(6);
-            _purchaseServiceMock.Setup(p => p.CanAfford(It.IsAny<DefenderTier>(), 1)).Returns(true);
+            _purchaseServiceMock.Setup(p => p.CanAfford(It.IsAny<DefenderRole>(), 1)).Returns(true);
 
             // Act
             _controller.Show();
@@ -482,7 +482,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
             // Arrange
             _followerServiceMock.Setup(f => f.GetFollowerCount(PlayerFactionId)).Returns(0);
             _followerServiceMock.Setup(f => f.GetMaxFollowers()).Returns(6);
-            _purchaseServiceMock.Setup(p => p.CanAfford(It.IsAny<DefenderTier>(), 1)).Returns(false);
+            _purchaseServiceMock.Setup(p => p.CanAfford(It.IsAny<DefenderRole>(), 1)).Returns(false);
 
             // Act
             _controller.Show();
@@ -502,18 +502,18 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
         {
             // Arrange
             _followerServiceMock.Setup(f => f.GetFollowerCount(PlayerFactionId)).Returns(0);
-            _purchaseServiceMock.Setup(p => p.CanAfford(DefenderTier.Basic, 1)).Returns(true);
-            _purchaseServiceMock.Setup(p => p.PurchaseTroops(PlayerFactionId, DefenderTier.Basic, 1))
-                .Returns(TroopPurchaseResult.Successful(DefenderTier.Basic, 1, 200));
-            _followerServiceMock.Setup(f => f.Recruit(PlayerFactionId, DefenderTier.Basic))
-                .Returns(FollowerRecruitResult.Succeeded(new Follower(PlayerFactionId, DefenderTier.Basic)));
+            _purchaseServiceMock.Setup(p => p.CanAfford(DefenderRole.Grunt, 1)).Returns(true);
+            _purchaseServiceMock.Setup(p => p.PurchaseTroops(PlayerFactionId, DefenderRole.Grunt, 1))
+                .Returns(TroopPurchaseResult.Successful(DefenderRole.Grunt, 1, 200));
+            _followerServiceMock.Setup(f => f.Recruit(PlayerFactionId, DefenderRole.Grunt))
+                .Returns(FollowerRecruitResult.Succeeded(new Follower(PlayerFactionId, DefenderRole.Grunt)));
             _controller.Show();
 
             // Act
             _menuProvider.SimulateItemSelection(ArmyMenuController.RecruitBasicItemId);
 
             // Assert
-            _followerServiceMock.Verify(f => f.Recruit(PlayerFactionId, DefenderTier.Basic), Times.Once);
+            _followerServiceMock.Verify(f => f.Recruit(PlayerFactionId, DefenderRole.Grunt), Times.Once);
         }
 
         [Fact]
@@ -521,18 +521,18 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
         {
             // Arrange
             _followerServiceMock.Setup(f => f.GetFollowerCount(PlayerFactionId)).Returns(0);
-            _purchaseServiceMock.Setup(p => p.CanAfford(DefenderTier.Medium, 1)).Returns(true);
-            _purchaseServiceMock.Setup(p => p.PurchaseTroops(PlayerFactionId, DefenderTier.Medium, 1))
-                .Returns(TroopPurchaseResult.Successful(DefenderTier.Medium, 1, 500));
-            _followerServiceMock.Setup(f => f.Recruit(PlayerFactionId, DefenderTier.Medium))
-                .Returns(FollowerRecruitResult.Succeeded(new Follower(PlayerFactionId, DefenderTier.Medium)));
+            _purchaseServiceMock.Setup(p => p.CanAfford(DefenderRole.Gunner, 1)).Returns(true);
+            _purchaseServiceMock.Setup(p => p.PurchaseTroops(PlayerFactionId, DefenderRole.Gunner, 1))
+                .Returns(TroopPurchaseResult.Successful(DefenderRole.Gunner, 1, 500));
+            _followerServiceMock.Setup(f => f.Recruit(PlayerFactionId, DefenderRole.Gunner))
+                .Returns(FollowerRecruitResult.Succeeded(new Follower(PlayerFactionId, DefenderRole.Gunner)));
             _controller.Show();
 
             // Act
             _menuProvider.SimulateItemSelection(ArmyMenuController.RecruitMediumItemId);
 
             // Assert
-            _followerServiceMock.Verify(f => f.Recruit(PlayerFactionId, DefenderTier.Medium), Times.Once);
+            _followerServiceMock.Verify(f => f.Recruit(PlayerFactionId, DefenderRole.Gunner), Times.Once);
         }
 
         [Fact]
@@ -540,18 +540,18 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
         {
             // Arrange
             _followerServiceMock.Setup(f => f.GetFollowerCount(PlayerFactionId)).Returns(0);
-            _purchaseServiceMock.Setup(p => p.CanAfford(DefenderTier.Heavy, 1)).Returns(true);
-            _purchaseServiceMock.Setup(p => p.PurchaseTroops(PlayerFactionId, DefenderTier.Heavy, 1))
-                .Returns(TroopPurchaseResult.Successful(DefenderTier.Heavy, 1, 1000));
-            _followerServiceMock.Setup(f => f.Recruit(PlayerFactionId, DefenderTier.Heavy))
-                .Returns(FollowerRecruitResult.Succeeded(new Follower(PlayerFactionId, DefenderTier.Heavy)));
+            _purchaseServiceMock.Setup(p => p.CanAfford(DefenderRole.Rifleman, 1)).Returns(true);
+            _purchaseServiceMock.Setup(p => p.PurchaseTroops(PlayerFactionId, DefenderRole.Rifleman, 1))
+                .Returns(TroopPurchaseResult.Successful(DefenderRole.Rifleman, 1, 1000));
+            _followerServiceMock.Setup(f => f.Recruit(PlayerFactionId, DefenderRole.Rifleman))
+                .Returns(FollowerRecruitResult.Succeeded(new Follower(PlayerFactionId, DefenderRole.Rifleman)));
             _controller.Show();
 
             // Act
             _menuProvider.SimulateItemSelection(ArmyMenuController.RecruitHeavyItemId);
 
             // Assert
-            _followerServiceMock.Verify(f => f.Recruit(PlayerFactionId, DefenderTier.Heavy), Times.Once);
+            _followerServiceMock.Verify(f => f.Recruit(PlayerFactionId, DefenderRole.Rifleman), Times.Once);
         }
 
         [Fact]
@@ -559,11 +559,11 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
         {
             // Arrange
             _followerServiceMock.Setup(f => f.GetFollowerCount(PlayerFactionId)).Returns(0);
-            _purchaseServiceMock.Setup(p => p.CanAfford(DefenderTier.Basic, 1)).Returns(true);
-            _purchaseServiceMock.Setup(p => p.PurchaseTroops(PlayerFactionId, DefenderTier.Basic, 1))
-                .Returns(TroopPurchaseResult.Successful(DefenderTier.Basic, 1, 200));
-            _followerServiceMock.Setup(f => f.Recruit(PlayerFactionId, DefenderTier.Basic))
-                .Returns(FollowerRecruitResult.Succeeded(new Follower(PlayerFactionId, DefenderTier.Basic)));
+            _purchaseServiceMock.Setup(p => p.CanAfford(DefenderRole.Grunt, 1)).Returns(true);
+            _purchaseServiceMock.Setup(p => p.PurchaseTroops(PlayerFactionId, DefenderRole.Grunt, 1))
+                .Returns(TroopPurchaseResult.Successful(DefenderRole.Grunt, 1, 200));
+            _followerServiceMock.Setup(f => f.Recruit(PlayerFactionId, DefenderRole.Grunt))
+                .Returns(FollowerRecruitResult.Succeeded(new Follower(PlayerFactionId, DefenderRole.Grunt)));
             _controller.Show();
 
             // Act
@@ -572,7 +572,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
             // Assert - PurchaseTroops should be called to handle money deduction
             // Note: The actual money deduction is handled through the game bridge
             // For followers, we use the same cost as troops
-            _purchaseServiceMock.Verify(p => p.PurchaseTroops(PlayerFactionId, DefenderTier.Basic, 1), Times.Once);
+            _purchaseServiceMock.Verify(p => p.PurchaseTroops(PlayerFactionId, DefenderRole.Grunt, 1), Times.Once);
         }
 
         #endregion
@@ -597,7 +597,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
         public void OnManageFollowers_ShouldShowFollowerListMenu()
         {
             // Arrange
-            var follower = new Follower(PlayerFactionId, DefenderTier.Basic);
+            var follower = new Follower(PlayerFactionId, DefenderRole.Grunt);
             _followerServiceMock.Setup(f => f.GetFollowers(PlayerFactionId))
                 .Returns(new[] { follower });
             _followerServiceMock.Setup(f => f.GetFollowerCount(PlayerFactionId)).Returns(1);
@@ -615,8 +615,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
         public void FollowerListMenu_ShouldListAllFollowers()
         {
             // Arrange
-            var follower1 = new Follower(PlayerFactionId, DefenderTier.Basic);
-            var follower2 = new Follower(PlayerFactionId, DefenderTier.Heavy);
+            var follower1 = new Follower(PlayerFactionId, DefenderRole.Grunt);
+            var follower2 = new Follower(PlayerFactionId, DefenderRole.Rifleman);
             _followerServiceMock.Setup(f => f.GetFollowers(PlayerFactionId))
                 .Returns(new[] { follower1, follower2 });
             _followerServiceMock.Setup(f => f.GetFollowerCount(PlayerFactionId)).Returns(2);
@@ -694,7 +694,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
         public void OnFollowerSelected_ShouldShowFollowerDetailMenu()
         {
             // Arrange
-            var follower = new Follower(PlayerFactionId, DefenderTier.Medium);
+            var follower = new Follower(PlayerFactionId, DefenderRole.Gunner);
             _followerServiceMock.Setup(f => f.GetFollowers(PlayerFactionId))
                 .Returns(new[] { follower });
             _followerServiceMock.Setup(f => f.GetFollowerById(follower.Id))
@@ -715,7 +715,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
         public void FollowerDetailMenu_ShouldShowFollowerTier()
         {
             // Arrange
-            var follower = new Follower(PlayerFactionId, DefenderTier.Heavy);
+            var follower = new Follower(PlayerFactionId, DefenderRole.Rifleman);
             _followerServiceMock.Setup(f => f.GetFollowers(PlayerFactionId))
                 .Returns(new[] { follower });
             _followerServiceMock.Setup(f => f.GetFollowerById(follower.Id))
@@ -730,14 +730,14 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
             // Assert
             var menu = _menuProvider.GetCurrentMenuDefinition();
             Assert.NotNull(menu);
-            Assert.Contains("Heavy", menu!.Title);
+            Assert.Contains("Rifleman", menu!.Title);
         }
 
         [Fact]
         public void FollowerDetailMenu_ShouldHaveDismissOption()
         {
             // Arrange
-            var follower = new Follower(PlayerFactionId, DefenderTier.Basic);
+            var follower = new Follower(PlayerFactionId, DefenderRole.Grunt);
             _followerServiceMock.Setup(f => f.GetFollowers(PlayerFactionId))
                 .Returns(new[] { follower });
             _followerServiceMock.Setup(f => f.GetFollowerById(follower.Id))
@@ -757,7 +757,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
         public void OnDismissFollower_ShouldCallFollowerService()
         {
             // Arrange
-            var follower = new Follower(PlayerFactionId, DefenderTier.Basic);
+            var follower = new Follower(PlayerFactionId, DefenderRole.Grunt);
             _followerServiceMock.Setup(f => f.GetFollowers(PlayerFactionId))
                 .Returns(new[] { follower });
             _followerServiceMock.Setup(f => f.GetFollowerById(follower.Id))
@@ -779,7 +779,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
         public void OnDismissFollower_ShouldReturnToFollowerList()
         {
             // Arrange
-            var follower = new Follower(PlayerFactionId, DefenderTier.Basic);
+            var follower = new Follower(PlayerFactionId, DefenderRole.Grunt);
             _followerServiceMock.Setup(f => f.GetFollowers(PlayerFactionId))
                 .Returns(new[] { follower });
             _followerServiceMock.Setup(f => f.GetFollowerById(follower.Id))

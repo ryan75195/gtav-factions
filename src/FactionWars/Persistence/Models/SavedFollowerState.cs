@@ -6,7 +6,7 @@ namespace FactionWars.Persistence.Models
     {
         public string FactionId { get; set; } = string.Empty;
 
-        public DefenderTier Tier { get; set; }
+        public DefenderRole Role { get; set; }
 
         public PlayerPosition Position { get; set; } = new PlayerPosition();
 

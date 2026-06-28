@@ -27,7 +27,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             // Default: all zones return an empty defender dictionary so SpawnDefenderInZone
             // can safely iterate the previous result before overriding it.
             _defenders.Setup(d => d.GetDefendersInZone(It.IsAny<string>()))
-                      .Returns(new Dictionary<int, DefenderTier>());
+                      .Returns(new Dictionary<int, DefenderRole>());
         }
 
         private DefenderRallyController BuildSut()
@@ -65,10 +65,10 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
 
         private void SetCurrentZone(Zone? zone) => _territory.Setup(t => t.CurrentZone).Returns(zone);
 
-        private int SpawnDefenderInZone(string zoneId, DefenderTier tier = DefenderTier.Basic)
+        private int SpawnDefenderInZone(string zoneId, DefenderRole tier = DefenderRole.Grunt)
         {
             int handle = _bridge.CreatePed("a_m_y_business_01", new Vector3(0, 0, 0));
-            var current = new Dictionary<int, DefenderTier>();
+            var current = new Dictionary<int, DefenderRole>();
             // Preserve existing defenders if the test added more.
             var prev = _defenders.Object.GetDefendersInZone(zoneId);
             foreach (var kv in prev) current[kv.Key] = kv.Value;
@@ -265,7 +265,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             sut.Update();
 
             // Re-arm: spawn another defender and verify a fresh false -> true rally fires.
-            int defender2 = SpawnDefenderInZone(zone.Id, DefenderTier.Basic);
+            int defender2 = SpawnDefenderInZone(zone.Id, DefenderRole.Grunt);
             _bridge.WantedLevel = 1;
             sut.Update(); // false -> true: rallies the new defender.
             Assert.True(_bridge.IsPedFollowingEntity(defender2));
@@ -282,9 +282,9 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
 
             int otherZoneDefender = _bridge.CreatePed("a_m_y_business_01", new Vector3(0, 0, 0));
             _defenders.Setup(d => d.GetDefendersInZone("vinewood_hills"))
-                .Returns(new Dictionary<int, DefenderTier>()); // No defenders in current zone.
+                .Returns(new Dictionary<int, DefenderRole>()); // No defenders in current zone.
             _defenders.Setup(d => d.GetDefendersInZone("other_zone"))
-                .Returns(new Dictionary<int, DefenderTier> { [otherZoneDefender] = DefenderTier.Basic });
+                .Returns(new Dictionary<int, DefenderRole> { [otherZoneDefender] = DefenderRole.Grunt });
 
             _bridge.WantedLevel = 3;
 

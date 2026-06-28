@@ -62,7 +62,7 @@ namespace FactionWars.Tests.Unit.Combat
             // Arrange
             var peds = new[]
             {
-                CreatePedHandle(1, "faction1", "zone1", DefenderTier.Basic)
+                CreatePedHandle(1, "faction1", "zone1", DefenderRole.Grunt)
             };
             _pedPoolMock.Setup(p => p.GetAll()).Returns(peds);
             _gameBridgeMock.Setup(g => g.IsPedAlive(1)).Returns(true);
@@ -79,13 +79,13 @@ namespace FactionWars.Tests.Unit.Combat
         public void ProcessCasualties_WithDeadBasicDefender_ShouldDeductFromAllocation()
         {
             // Arrange
-            var ped = CreatePedHandle(1, "faction1", "zone1", DefenderTier.Basic);
+            var ped = CreatePedHandle(1, "faction1", "zone1", DefenderRole.Grunt);
             var peds = new[] { ped };
             _pedPoolMock.Setup(p => p.GetAll()).Returns(peds);
             _gameBridgeMock.Setup(g => g.IsPedAlive(1)).Returns(false);
 
             var allocation = new ZoneDefenderAllocation("faction1", "zone1");
-            allocation.AddTroops(DefenderTier.Basic, 5);
+            allocation.AddTroops(DefenderRole.Grunt, 5);
             _allocationRepositoryMock.Setup(r => r.Get("faction1", "zone1")).Returns(allocation);
 
             // Act
@@ -93,7 +93,7 @@ namespace FactionWars.Tests.Unit.Combat
 
             // Assert
             Assert.Equal(1, result.TotalCasualties);
-            Assert.Equal(4, allocation.GetTroopCount(DefenderTier.Basic));
+            Assert.Equal(4, allocation.GetTroopCount(DefenderRole.Grunt));
             _allocationRepositoryMock.Verify(r => r.Update(allocation), Times.Once);
         }
 
@@ -101,13 +101,13 @@ namespace FactionWars.Tests.Unit.Combat
         public void ProcessCasualties_WithDeadMediumDefender_ShouldDeductFromAllocation()
         {
             // Arrange
-            var ped = CreatePedHandle(1, "faction1", "zone1", DefenderTier.Medium);
+            var ped = CreatePedHandle(1, "faction1", "zone1", DefenderRole.Gunner);
             var peds = new[] { ped };
             _pedPoolMock.Setup(p => p.GetAll()).Returns(peds);
             _gameBridgeMock.Setup(g => g.IsPedAlive(1)).Returns(false);
 
             var allocation = new ZoneDefenderAllocation("faction1", "zone1");
-            allocation.AddTroops(DefenderTier.Medium, 3);
+            allocation.AddTroops(DefenderRole.Gunner, 3);
             _allocationRepositoryMock.Setup(r => r.Get("faction1", "zone1")).Returns(allocation);
 
             // Act
@@ -115,20 +115,20 @@ namespace FactionWars.Tests.Unit.Combat
 
             // Assert
             Assert.Equal(1, result.TotalCasualties);
-            Assert.Equal(2, allocation.GetTroopCount(DefenderTier.Medium));
+            Assert.Equal(2, allocation.GetTroopCount(DefenderRole.Gunner));
         }
 
         [Fact]
         public void ProcessCasualties_WithDeadHeavyDefender_ShouldDeductFromAllocation()
         {
             // Arrange
-            var ped = CreatePedHandle(1, "faction1", "zone1", DefenderTier.Heavy);
+            var ped = CreatePedHandle(1, "faction1", "zone1", DefenderRole.Rifleman);
             var peds = new[] { ped };
             _pedPoolMock.Setup(p => p.GetAll()).Returns(peds);
             _gameBridgeMock.Setup(g => g.IsPedAlive(1)).Returns(false);
 
             var allocation = new ZoneDefenderAllocation("faction1", "zone1");
-            allocation.AddTroops(DefenderTier.Heavy, 2);
+            allocation.AddTroops(DefenderRole.Rifleman, 2);
             _allocationRepositoryMock.Setup(r => r.Get("faction1", "zone1")).Returns(allocation);
 
             // Act
@@ -136,7 +136,7 @@ namespace FactionWars.Tests.Unit.Combat
 
             // Assert
             Assert.Equal(1, result.TotalCasualties);
-            Assert.Equal(1, allocation.GetTroopCount(DefenderTier.Heavy));
+            Assert.Equal(1, allocation.GetTroopCount(DefenderRole.Rifleman));
         }
 
         [Fact]
@@ -145,16 +145,16 @@ namespace FactionWars.Tests.Unit.Combat
             // Arrange
             var peds = new[]
             {
-                CreatePedHandle(1, "faction1", "zone1", DefenderTier.Basic),
-                CreatePedHandle(2, "faction1", "zone1", DefenderTier.Basic),
-                CreatePedHandle(3, "faction1", "zone1", DefenderTier.Medium)
+                CreatePedHandle(1, "faction1", "zone1", DefenderRole.Grunt),
+                CreatePedHandle(2, "faction1", "zone1", DefenderRole.Grunt),
+                CreatePedHandle(3, "faction1", "zone1", DefenderRole.Gunner)
             };
             _pedPoolMock.Setup(p => p.GetAll()).Returns(peds);
             _gameBridgeMock.Setup(g => g.IsPedAlive(It.IsAny<int>())).Returns(false);
 
             var allocation = new ZoneDefenderAllocation("faction1", "zone1");
-            allocation.AddTroops(DefenderTier.Basic, 5);
-            allocation.AddTroops(DefenderTier.Medium, 3);
+            allocation.AddTroops(DefenderRole.Grunt, 5);
+            allocation.AddTroops(DefenderRole.Gunner, 3);
             _allocationRepositoryMock.Setup(r => r.Get("faction1", "zone1")).Returns(allocation);
 
             // Act
@@ -162,15 +162,15 @@ namespace FactionWars.Tests.Unit.Combat
 
             // Assert
             Assert.Equal(3, result.TotalCasualties);
-            Assert.Equal(3, allocation.GetTroopCount(DefenderTier.Basic)); // 5 - 2
-            Assert.Equal(2, allocation.GetTroopCount(DefenderTier.Medium)); // 3 - 1
+            Assert.Equal(3, allocation.GetTroopCount(DefenderRole.Grunt)); // 5 - 2
+            Assert.Equal(2, allocation.GetTroopCount(DefenderRole.Gunner)); // 3 - 1
         }
 
         [Fact]
         public void ProcessCasualties_WithNoAllocation_ShouldNotThrow()
         {
             // Arrange
-            var ped = CreatePedHandle(1, "faction1", "zone1", DefenderTier.Basic);
+            var ped = CreatePedHandle(1, "faction1", "zone1", DefenderRole.Grunt);
             var peds = new[] { ped };
             _pedPoolMock.Setup(p => p.GetAll()).Returns(peds);
             _gameBridgeMock.Setup(g => g.IsPedAlive(1)).Returns(false);
@@ -205,13 +205,13 @@ namespace FactionWars.Tests.Unit.Combat
         public void ProcessCasualties_ShouldRemoveDeadPedsFromPool()
         {
             // Arrange
-            var ped = CreatePedHandle(1, "faction1", "zone1", DefenderTier.Basic);
+            var ped = CreatePedHandle(1, "faction1", "zone1", DefenderRole.Grunt);
             var peds = new[] { ped };
             _pedPoolMock.Setup(p => p.GetAll()).Returns(peds);
             _gameBridgeMock.Setup(g => g.IsPedAlive(1)).Returns(false);
 
             var allocation = new ZoneDefenderAllocation("faction1", "zone1");
-            allocation.AddTroops(DefenderTier.Basic, 5);
+            allocation.AddTroops(DefenderRole.Grunt, 5);
             _allocationRepositoryMock.Setup(r => r.Get("faction1", "zone1")).Returns(allocation);
 
             // Act
@@ -228,16 +228,16 @@ namespace FactionWars.Tests.Unit.Combat
             // Arrange
             var peds = new[]
             {
-                CreatePedHandle(1, "faction1", "zone1", DefenderTier.Basic),
-                CreatePedHandle(2, "faction1", "zone1", DefenderTier.Basic),
-                CreatePedHandle(3, "faction1", "zone1", DefenderTier.Heavy)
+                CreatePedHandle(1, "faction1", "zone1", DefenderRole.Grunt),
+                CreatePedHandle(2, "faction1", "zone1", DefenderRole.Grunt),
+                CreatePedHandle(3, "faction1", "zone1", DefenderRole.Rifleman)
             };
             _pedPoolMock.Setup(p => p.GetAll()).Returns(peds);
             _gameBridgeMock.Setup(g => g.IsPedAlive(It.IsAny<int>())).Returns(false);
 
             var allocation = new ZoneDefenderAllocation("faction1", "zone1");
-            allocation.AddTroops(DefenderTier.Basic, 5);
-            allocation.AddTroops(DefenderTier.Heavy, 2);
+            allocation.AddTroops(DefenderRole.Grunt, 5);
+            allocation.AddTroops(DefenderRole.Rifleman, 2);
             _allocationRepositoryMock.Setup(r => r.Get("faction1", "zone1")).Returns(allocation);
 
             // Act
@@ -245,8 +245,8 @@ namespace FactionWars.Tests.Unit.Combat
 
             // Assert
             Assert.Equal(3, result.TotalCasualties);
-            Assert.Equal(2, result.CasualtiesByTier[DefenderTier.Basic]);
-            Assert.Equal(1, result.CasualtiesByTier[DefenderTier.Heavy]);
+            Assert.Equal(2, result.CasualtiesByTier[DefenderRole.Grunt]);
+            Assert.Equal(1, result.CasualtiesByTier[DefenderRole.Rifleman]);
         }
 
         [Fact]
@@ -255,16 +255,16 @@ namespace FactionWars.Tests.Unit.Combat
             // Arrange
             var peds = new[]
             {
-                CreatePedHandle(1, "faction1", "zone1", DefenderTier.Basic),
-                CreatePedHandle(2, "faction1", "zone2", DefenderTier.Basic)
+                CreatePedHandle(1, "faction1", "zone1", DefenderRole.Grunt),
+                CreatePedHandle(2, "faction1", "zone2", DefenderRole.Grunt)
             };
             _pedPoolMock.Setup(p => p.GetAll()).Returns(peds);
             _gameBridgeMock.Setup(g => g.IsPedAlive(It.IsAny<int>())).Returns(false);
 
             var allocation1 = new ZoneDefenderAllocation("faction1", "zone1");
-            allocation1.AddTroops(DefenderTier.Basic, 5);
+            allocation1.AddTroops(DefenderRole.Grunt, 5);
             var allocation2 = new ZoneDefenderAllocation("faction1", "zone2");
-            allocation2.AddTroops(DefenderTier.Basic, 3);
+            allocation2.AddTroops(DefenderRole.Grunt, 3);
 
             _allocationRepositoryMock.Setup(r => r.Get("faction1", "zone1")).Returns(allocation1);
             _allocationRepositoryMock.Setup(r => r.Get("faction1", "zone2")).Returns(allocation2);
@@ -274,15 +274,15 @@ namespace FactionWars.Tests.Unit.Combat
 
             // Assert
             Assert.Equal(2, result.TotalCasualties);
-            Assert.Equal(4, allocation1.GetTroopCount(DefenderTier.Basic));
-            Assert.Equal(2, allocation2.GetTroopCount(DefenderTier.Basic));
+            Assert.Equal(4, allocation1.GetTroopCount(DefenderRole.Grunt));
+            Assert.Equal(2, allocation2.GetTroopCount(DefenderRole.Grunt));
         }
 
         [Fact]
         public void ProcessCasualties_WithAllocationAtZero_ShouldNotGoNegative()
         {
             // Arrange
-            var ped = CreatePedHandle(1, "faction1", "zone1", DefenderTier.Basic);
+            var ped = CreatePedHandle(1, "faction1", "zone1", DefenderRole.Grunt);
             var peds = new[] { ped };
             _pedPoolMock.Setup(p => p.GetAll()).Returns(peds);
             _gameBridgeMock.Setup(g => g.IsPedAlive(1)).Returns(false);
@@ -296,14 +296,14 @@ namespace FactionWars.Tests.Unit.Combat
 
             // Assert - should still process but allocation stays at 0
             Assert.Equal(1, result.TotalCasualties);
-            Assert.Equal(0, allocation.GetTroopCount(DefenderTier.Basic));
+            Assert.Equal(0, allocation.GetTroopCount(DefenderRole.Grunt));
         }
 
         [Fact]
         public void ProcessCasualties_WithNullFactionId_ShouldSkip()
         {
             // Arrange - ped without a faction ID
-            var ped = new PedHandle(1, null, default, "model", "zone1", DefenderTier.Basic);
+            var ped = new PedHandle(1, null, default, "model", "zone1", DefenderRole.Grunt);
             var peds = new[] { ped };
             _pedPoolMock.Setup(p => p.GetAll()).Returns(peds);
             _gameBridgeMock.Setup(g => g.IsPedAlive(1)).Returns(false);
@@ -319,7 +319,7 @@ namespace FactionWars.Tests.Unit.Combat
         public void ProcessCasualties_WithNullZoneId_ShouldSkip()
         {
             // Arrange - ped without a zone ID
-            var ped = new PedHandle(1, "faction1", default, "model", null, DefenderTier.Basic);
+            var ped = new PedHandle(1, "faction1", default, "model", null, DefenderRole.Grunt);
             var peds = new[] { ped };
             _pedPoolMock.Setup(p => p.GetAll()).Returns(peds);
             _gameBridgeMock.Setup(g => g.IsPedAlive(1)).Returns(false);
@@ -331,7 +331,7 @@ namespace FactionWars.Tests.Unit.Combat
             Assert.Equal(0, result.TotalCasualties);
         }
 
-        private static PedHandle CreatePedHandle(int handle, string factionId, string zoneId, DefenderTier tier)
+        private static PedHandle CreatePedHandle(int handle, string factionId, string zoneId, DefenderRole tier)
         {
             return new PedHandle(handle, factionId, default, "model", zoneId, tier);
         }

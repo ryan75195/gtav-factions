@@ -68,7 +68,7 @@ namespace FactionWars.Factions.Services
         }
 
         /// <inheritdoc />
-        public bool AddReserveTroops(string factionId, DefenderTier tier, int count)
+        public bool AddReserveTroops(string factionId, DefenderRole tier, int count)
         {
             if (factionId == null)
                 throw new ArgumentNullException(nameof(factionId));

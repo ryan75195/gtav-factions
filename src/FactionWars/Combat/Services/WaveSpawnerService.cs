@@ -16,11 +16,11 @@ namespace FactionWars.Combat.Services
         /// <summary>
         /// The wave spawn order: Heavy first (strongest), then Medium, then Basic.
         /// </summary>
-        private static readonly IReadOnlyList<DefenderTier> WaveOrder = new List<DefenderTier>
+        private static readonly IReadOnlyList<DefenderRole> WaveOrder = new List<DefenderRole>
         {
-            DefenderTier.Heavy,
-            DefenderTier.Medium,
-            DefenderTier.Basic
+            DefenderRole.Rifleman,
+            DefenderRole.Gunner,
+            DefenderRole.Grunt
         }.AsReadOnly();
 
         /// <inheritdoc />
@@ -30,13 +30,13 @@ namespace FactionWars.Combat.Services
                 throw new ArgumentNullException(nameof(plan));
 
             return new WaveState(
-                basicPeds: plan.GetPedCount(DefenderTier.Basic),
-                mediumPeds: plan.GetPedCount(DefenderTier.Medium),
-                heavyPeds: plan.GetPedCount(DefenderTier.Heavy));
+                basicPeds: plan.GetPedCount(DefenderRole.Grunt),
+                mediumPeds: plan.GetPedCount(DefenderRole.Gunner),
+                heavyPeds: plan.GetPedCount(DefenderRole.Rifleman));
         }
 
         /// <inheritdoc />
-        public DefenderTier? GetNextWaveTier(WaveState state)
+        public DefenderRole? GetNextWaveTier(WaveState state)
         {
             if (state == null)
                 throw new ArgumentNullException(nameof(state));
@@ -55,7 +55,7 @@ namespace FactionWars.Combat.Services
         }
 
         /// <inheritdoc />
-        public int GetSpawnCountForWave(WaveState state, DefenderTier tier, int maxToSpawn)
+        public int GetSpawnCountForWave(WaveState state, DefenderRole tier, int maxToSpawn)
         {
             if (state == null)
                 throw new ArgumentNullException(nameof(state));
@@ -68,7 +68,7 @@ namespace FactionWars.Combat.Services
         }
 
         /// <inheritdoc />
-        public IReadOnlyList<DefenderTier> GetWaveOrder()
+        public IReadOnlyList<DefenderRole> GetWaveOrder()
         {
             return WaveOrder;
         }

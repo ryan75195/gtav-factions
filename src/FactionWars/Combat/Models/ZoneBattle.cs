@@ -27,10 +27,10 @@ namespace FactionWars.Combat.Models
         public int InitialDefenderTroops { get; }
 
         /// <summary>Maps ped handles to their tier for spawned attackers.</summary>
-        public Dictionary<int, DefenderTier> SpawnedAttackers { get; }
+        public Dictionary<int, DefenderRole> SpawnedAttackers { get; }
 
         /// <summary>Maps ped handles to their tier for spawned defenders.</summary>
-        public Dictionary<int, DefenderTier> SpawnedDefenders { get; }
+        public Dictionary<int, DefenderRole> SpawnedDefenders { get; }
 
         /// <summary>
         /// Whether the player is currently present in this zone.
@@ -81,10 +81,10 @@ namespace FactionWars.Combat.Models
         /// the single attacker. Mutable — callers that mutate it (existing
         /// behaviour) mutate the participant's storage directly.
         /// </summary>
-        public Dictionary<DefenderTier, int> AttackerTroops => Attackers[0].Troops;
+        public Dictionary<DefenderRole, int> AttackerTroops => Attackers[0].Troops;
 
         /// <summary>Defender troop counts by tier. Same backward-compat shape.</summary>
-        public Dictionary<DefenderTier, int> DefenderTroops => Defender.Troops;
+        public Dictionary<DefenderRole, int> DefenderTroops => Defender.Troops;
 
         /// <summary>Sum of all attackers' troop counts.</summary>
         public int TotalAttackerTroops
@@ -115,8 +115,8 @@ namespace FactionWars.Combat.Models
             string attackerFactionId,
             string defenderFactionId,
             string zoneId,
-            Dictionary<DefenderTier, int> attackerTroops,
-            Dictionary<DefenderTier, int> defenderTroops,
+            Dictionary<DefenderRole, int> attackerTroops,
+            Dictionary<DefenderRole, int> defenderTroops,
             string? playerFactionId = null)
         {
             if (attackerFactionId == null) throw new ArgumentNullException(nameof(attackerFactionId));
@@ -132,8 +132,8 @@ namespace FactionWars.Combat.Models
             ElapsedTime = 0f;
             TimeUntilNextKill = 0f;
             KillInterval = 0f;
-            SpawnedAttackers = new Dictionary<int, DefenderTier>();
-            SpawnedDefenders = new Dictionary<int, DefenderTier>();
+            SpawnedAttackers = new Dictionary<int, DefenderRole>();
+            SpawnedDefenders = new Dictionary<int, DefenderRole>();
 
             _participants = new List<BattleParticipant>
             {
@@ -177,8 +177,8 @@ namespace FactionWars.Combat.Models
             ElapsedTime = 0f;
             TimeUntilNextKill = 0f;
             KillInterval = 0f;
-            SpawnedAttackers = new Dictionary<int, DefenderTier>();
-            SpawnedDefenders = new Dictionary<int, DefenderTier>();
+            SpawnedAttackers = new Dictionary<int, DefenderRole>();
+            SpawnedDefenders = new Dictionary<int, DefenderRole>();
 
             // Defensive copy. Order is normalized: Defender first, then Attackers in caller order.
             _participants = new List<BattleParticipant>(participants.Count);
@@ -206,11 +206,11 @@ namespace FactionWars.Combat.Models
             TimeUntilNextKill = interval;
         }
 
-        public bool RemoveAttackerTroop(DefenderTier tier) => Attackers[0].RemoveTroop(tier);
-        public bool RemoveDefenderTroop(DefenderTier tier) => Defender.RemoveTroop(tier);
+        public bool RemoveAttackerTroop(DefenderRole tier) => Attackers[0].RemoveTroop(tier);
+        public bool RemoveDefenderTroop(DefenderRole tier) => Defender.RemoveTroop(tier);
 
-        public void AddAttackerTroops(DefenderTier tier, int count) => Attackers[0].AddTroops(tier, count);
-        public void AddDefenderTroops(DefenderTier tier, int count) => Defender.AddTroops(tier, count);
+        public void AddAttackerTroops(DefenderRole tier, int count) => Attackers[0].AddTroops(tier, count);
+        public void AddDefenderTroops(DefenderRole tier, int count) => Defender.AddTroops(tier, count);
 
         /// <summary>
         /// Adds a new participant to this battle. Used by the manager's
@@ -256,12 +256,12 @@ namespace FactionWars.Combat.Models
             return true;
         }
 
-        public void RegisterSpawnedAttacker(int pedHandle, DefenderTier tier)
+        public void RegisterSpawnedAttacker(int pedHandle, DefenderRole tier)
         {
             SpawnedAttackers[pedHandle] = tier;
         }
 
-        public void RegisterSpawnedDefender(int pedHandle, DefenderTier tier)
+        public void RegisterSpawnedDefender(int pedHandle, DefenderRole tier)
         {
             SpawnedDefenders[pedHandle] = tier;
         }
@@ -269,11 +269,11 @@ namespace FactionWars.Combat.Models
         public bool UnregisterSpawnedAttacker(int pedHandle) => SpawnedAttackers.Remove(pedHandle);
         public bool UnregisterSpawnedDefender(int pedHandle) => SpawnedDefenders.Remove(pedHandle);
 
-        public DefenderTier? GetSpawnedAttackerTier(int pedHandle)
-            => SpawnedAttackers.TryGetValue(pedHandle, out var tier) ? tier : (DefenderTier?)null;
+        public DefenderRole? GetSpawnedAttackerTier(int pedHandle)
+            => SpawnedAttackers.TryGetValue(pedHandle, out var tier) ? tier : (DefenderRole?)null;
 
-        public DefenderTier? GetSpawnedDefenderTier(int pedHandle)
-            => SpawnedDefenders.TryGetValue(pedHandle, out var tier) ? tier : (DefenderTier?)null;
+        public DefenderRole? GetSpawnedDefenderRole(int pedHandle)
+            => SpawnedDefenders.TryGetValue(pedHandle, out var tier) ? tier : (DefenderRole?)null;
 
         public void ClearSpawnedPeds()
         {
@@ -281,10 +281,10 @@ namespace FactionWars.Combat.Models
             SpawnedDefenders.Clear();
         }
 
-        public int GetSpawnedAttackerCountByTier(DefenderTier tier)
+        public int GetSpawnedAttackerCountByTier(DefenderRole tier)
             => SpawnedAttackers.Values.Count(t => t == tier);
 
-        public int GetSpawnedDefenderCountByTier(DefenderTier tier)
+        public int GetSpawnedDefenderCountByTier(DefenderRole tier)
             => SpawnedDefenders.Values.Count(t => t == tier);
     }
 }

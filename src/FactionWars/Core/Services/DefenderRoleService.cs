@@ -6,25 +6,25 @@ using FactionWars.Core.Models;
 namespace FactionWars.Core.Services
 {
     /// <summary>
-    /// Default implementation of IDefenderTierService.
+    /// Default implementation of IDefenderRoleService.
     /// Provides defender tier configurations with costs, stats, and combat modifiers.
     /// </summary>
-    public class DefenderTierService : IDefenderTierService
+    public class DefenderRoleService : IDefenderRoleService
     {
-        private readonly Dictionary<DefenderTier, DefenderTierConfig> _configs;
-        private readonly IReadOnlyList<DefenderTierConfig> _allConfigs;
+        private readonly Dictionary<DefenderRole, DefenderRoleConfig> _configs;
+        private readonly IReadOnlyList<DefenderRoleConfig> _allConfigs;
 
         /// <summary>
-        /// Creates a new DefenderTierService with default tier configurations.
+        /// Creates a new DefenderRoleService with default tier configurations.
         /// </summary>
-        public DefenderTierService()
+        public DefenderRoleService()
         {
-            _configs = new Dictionary<DefenderTier, DefenderTierConfig>
+            _configs = new Dictionary<DefenderRole, DefenderRoleConfig>
             {
                 {
-                    DefenderTier.Basic,
-                    new DefenderTierConfig(
-                        tier: DefenderTier.Basic,
+                    DefenderRole.Grunt,
+                    new DefenderRoleConfig(
+                        role: DefenderRole.Grunt,
                         cost: 200,
                         health: 200,
                         armor: 50,
@@ -34,9 +34,9 @@ namespace FactionWars.Core.Services
                         ragdollEnabled: true)
                 },
                 {
-                    DefenderTier.Medium,
-                    new DefenderTierConfig(
-                        tier: DefenderTier.Medium,
+                    DefenderRole.Gunner,
+                    new DefenderRoleConfig(
+                        role: DefenderRole.Gunner,
                         cost: 500,
                         health: 350,
                         armor: 100,
@@ -46,9 +46,9 @@ namespace FactionWars.Core.Services
                         ragdollEnabled: true)
                 },
                 {
-                    DefenderTier.Heavy,
-                    new DefenderTierConfig(
-                        tier: DefenderTier.Heavy,
+                    DefenderRole.Rifleman,
+                    new DefenderRoleConfig(
+                        role: DefenderRole.Rifleman,
                         cost: 1000,
                         health: 500,
                         armor: 200,
@@ -58,9 +58,9 @@ namespace FactionWars.Core.Services
                         ragdollEnabled: false)
                 },
                 {
-                    DefenderTier.Elite,
-                    new DefenderTierConfig(
-                        tier: DefenderTier.Elite,
+                    DefenderRole.Rocketeer,
+                    new DefenderRoleConfig(
+                        role: DefenderRole.Rocketeer,
                         cost: 2000,
                         health: 650,
                         armor: 200,
@@ -68,38 +68,50 @@ namespace FactionWars.Core.Services
                         accuracy: 0.8f,
                         combatModifier: 2.5f,
                         ragdollEnabled: false)
+                },
+                {
+                    DefenderRole.Sniper,
+                    new DefenderRoleConfig(
+                        role: DefenderRole.Sniper,
+                        cost: 1500,
+                        health: 275,
+                        armor: 50,
+                        weapon: "WEAPON_SNIPERRIFLE",
+                        accuracy: 0.8f,
+                        combatModifier: 2.2f,
+                        ragdollEnabled: false)
                 }
             };
 
-            _allConfigs = new List<DefenderTierConfig>(_configs.Values).AsReadOnly();
+            _allConfigs = new List<DefenderRoleConfig>(_configs.Values).AsReadOnly();
         }
 
         /// <inheritdoc />
-        public DefenderTierConfig GetTierConfig(DefenderTier tier)
+        public DefenderRoleConfig GetRoleConfig(DefenderRole tier)
         {
             return _configs[tier];
         }
 
         /// <inheritdoc />
-        public IReadOnlyList<DefenderTierConfig> GetAllTierConfigs()
+        public IReadOnlyList<DefenderRoleConfig> GetAllRoleConfigs()
         {
             return _allConfigs;
         }
 
         /// <inheritdoc />
-        public int GetCost(DefenderTier tier)
+        public int GetCost(DefenderRole tier)
         {
             return _configs[tier].Cost;
         }
 
         /// <inheritdoc />
-        public float GetCombatModifier(DefenderTier tier)
+        public float GetCombatModifier(DefenderRole tier)
         {
             return _configs[tier].CombatModifier;
         }
 
         /// <inheritdoc />
-        public int CalculateTotalCost(Dictionary<DefenderTier, int> troopsByTier)
+        public int CalculateTotalCost(Dictionary<DefenderRole, int> troopsByTier)
         {
             if (troopsByTier == null)
                 throw new ArgumentNullException(nameof(troopsByTier));
@@ -113,7 +125,7 @@ namespace FactionWars.Core.Services
         }
 
         /// <inheritdoc />
-        public float CalculateTotalStrength(Dictionary<DefenderTier, int> troopsByTier)
+        public float CalculateTotalStrength(Dictionary<DefenderRole, int> troopsByTier)
         {
             if (troopsByTier == null)
                 throw new ArgumentNullException(nameof(troopsByTier));

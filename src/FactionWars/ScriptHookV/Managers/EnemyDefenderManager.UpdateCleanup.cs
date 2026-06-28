@@ -52,7 +52,7 @@ namespace FactionWars.ScriptHookV.Managers
         /// Handles the death of an enemy defender.
         /// Tracks corpse for delayed cleanup, removes blip, decrements allocation, spawns replacement.
         /// </summary>
-        private void HandleDefenderDeath(string zoneId, int pedHandle, DefenderTier tier, string enemyFactionId)
+        private void HandleDefenderDeath(string zoneId, int pedHandle, DefenderRole tier, string enemyFactionId)
         {
             FileLogger.Combat($"EnemyDefenderManager: Defender died in {zoneId}, tier={tier}");
 

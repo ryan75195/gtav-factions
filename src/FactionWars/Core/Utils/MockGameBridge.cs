@@ -565,6 +565,25 @@ namespace FactionWars.Core.Utils
             }
         }
 
+        private readonly Dictionary<int, string> _activeWeapon = new Dictionary<int, string>();
+        private readonly Dictionary<int, int> _activeWeaponSetCount = new Dictionary<int, int>();
+
+        public void SetPedActiveWeapon(int pedHandle, string weaponName)
+        {
+            _activeWeapon[pedHandle] = weaponName;
+            _activeWeaponSetCount[pedHandle] = (_activeWeaponSetCount.TryGetValue(pedHandle, out var c) ? c : 0) + 1;
+        }
+
+        public string GetPedActiveWeapon(int pedHandle) =>
+            _activeWeapon.TryGetValue(pedHandle, out var w) ? w : string.Empty;
+
+        /// <summary>
+        /// Gets the number of times SetPedActiveWeapon has been called for a ped handle.
+        /// Returns 0 if never called for that handle.
+        /// </summary>
+        public int GetActiveWeaponSetCount(int pedHandle) =>
+            _activeWeaponSetCount.TryGetValue(pedHandle, out var count) ? count : 0;
+
         /// <summary>
         /// Gets whether a ped can switch weapons (for testing purposes).
         /// </summary>

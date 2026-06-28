@@ -18,8 +18,8 @@ namespace FactionWars.Tests.Unit.Combat
             string? attackerFactionId = null,
             string? defenderFactionId = null,
             string? zoneId = null,
-            Dictionary<DefenderTier, int>? attackerTroops = null,
-            Dictionary<DefenderTier, int>? defenderTroops = null,
+            Dictionary<DefenderRole, int>? attackerTroops = null,
+            Dictionary<DefenderRole, int>? defenderTroops = null,
             string? playerFactionId = null)
         {
             return new ZoneBattle(
@@ -31,13 +31,13 @@ namespace FactionWars.Tests.Unit.Combat
                 playerFactionId: playerFactionId);
         }
 
-        private Dictionary<DefenderTier, int> CreateDefaultTroops(int basic, int medium, int heavy)
+        private Dictionary<DefenderRole, int> CreateDefaultTroops(int basic, int medium, int heavy)
         {
-            return new Dictionary<DefenderTier, int>
+            return new Dictionary<DefenderRole, int>
             {
-                { DefenderTier.Basic, basic },
-                { DefenderTier.Medium, medium },
-                { DefenderTier.Heavy, heavy }
+                { DefenderRole.Grunt, basic },
+                { DefenderRole.Gunner, medium },
+                { DefenderRole.Rifleman, heavy }
             };
         }
 
@@ -92,12 +92,12 @@ namespace FactionWars.Tests.Unit.Combat
             var battle = CreateBattle(attackerTroops: attackerTroops, defenderTroops: defenderTroops);
 
             // Modify original dictionaries
-            attackerTroops[DefenderTier.Basic] = 100;
-            defenderTroops[DefenderTier.Basic] = 100;
+            attackerTroops[DefenderRole.Grunt] = 100;
+            defenderTroops[DefenderRole.Grunt] = 100;
 
             // Assert - Battle troops should be unchanged
-            Assert.Equal(5, battle.AttackerTroops[DefenderTier.Basic]);
-            Assert.Equal(4, battle.DefenderTroops[DefenderTier.Basic]);
+            Assert.Equal(5, battle.AttackerTroops[DefenderRole.Grunt]);
+            Assert.Equal(4, battle.DefenderTroops[DefenderRole.Grunt]);
         }
 
         [Fact]
@@ -211,8 +211,8 @@ namespace FactionWars.Tests.Unit.Combat
             var battle = CreateBattle(attackerTroops: attackerTroops, defenderTroops: defenderTroops);
 
             // Act
-            battle.RemoveAttackerTroop(DefenderTier.Basic);
-            battle.RemoveDefenderTroop(DefenderTier.Basic);
+            battle.RemoveAttackerTroop(DefenderRole.Grunt);
+            battle.RemoveDefenderTroop(DefenderRole.Grunt);
 
             // Assert - initial counts unchanged
             Assert.Equal(8, battle.InitialAttackerTroops);
@@ -251,9 +251,9 @@ namespace FactionWars.Tests.Unit.Combat
         {
             // Arrange
             var battle = CreateBattle();
-            battle.SpawnedAttackers[101] = DefenderTier.Basic;
-            battle.SpawnedAttackers[102] = DefenderTier.Medium;
-            battle.SpawnedAttackers[103] = DefenderTier.Heavy;
+            battle.SpawnedAttackers[101] = DefenderRole.Grunt;
+            battle.SpawnedAttackers[102] = DefenderRole.Gunner;
+            battle.SpawnedAttackers[103] = DefenderRole.Rifleman;
 
             // Assert
             Assert.Equal(3, battle.TotalSpawnedAttackers);
@@ -264,8 +264,8 @@ namespace FactionWars.Tests.Unit.Combat
         {
             // Arrange
             var battle = CreateBattle();
-            battle.SpawnedDefenders[201] = DefenderTier.Basic;
-            battle.SpawnedDefenders[202] = DefenderTier.Basic;
+            battle.SpawnedDefenders[201] = DefenderRole.Grunt;
+            battle.SpawnedDefenders[202] = DefenderRole.Grunt;
 
             // Assert
             Assert.Equal(2, battle.TotalSpawnedDefenders);
@@ -417,11 +417,11 @@ namespace FactionWars.Tests.Unit.Combat
             var battle = CreateBattle(attackerTroops: CreateDefaultTroops(5, 2, 1));
 
             // Act
-            var result = battle.RemoveAttackerTroop(DefenderTier.Basic);
+            var result = battle.RemoveAttackerTroop(DefenderRole.Grunt);
 
             // Assert
             Assert.True(result);
-            Assert.Equal(4, battle.AttackerTroops[DefenderTier.Basic]);
+            Assert.Equal(4, battle.AttackerTroops[DefenderRole.Grunt]);
         }
 
         [Fact]
@@ -431,7 +431,7 @@ namespace FactionWars.Tests.Unit.Combat
             var battle = CreateBattle(attackerTroops: CreateDefaultTroops(0, 2, 1));
 
             // Act
-            var result = battle.RemoveAttackerTroop(DefenderTier.Basic);
+            var result = battle.RemoveAttackerTroop(DefenderRole.Grunt);
 
             // Assert
             Assert.False(result);
@@ -444,11 +444,11 @@ namespace FactionWars.Tests.Unit.Combat
             var battle = CreateBattle(defenderTroops: CreateDefaultTroops(4, 2, 1));
 
             // Act
-            var result = battle.RemoveDefenderTroop(DefenderTier.Medium);
+            var result = battle.RemoveDefenderTroop(DefenderRole.Gunner);
 
             // Assert
             Assert.True(result);
-            Assert.Equal(1, battle.DefenderTroops[DefenderTier.Medium]);
+            Assert.Equal(1, battle.DefenderTroops[DefenderRole.Gunner]);
         }
 
         [Fact]
@@ -458,7 +458,7 @@ namespace FactionWars.Tests.Unit.Combat
             var battle = CreateBattle(defenderTroops: CreateDefaultTroops(4, 0, 1));
 
             // Act
-            var result = battle.RemoveDefenderTroop(DefenderTier.Medium);
+            var result = battle.RemoveDefenderTroop(DefenderRole.Gunner);
 
             // Assert
             Assert.False(result);
@@ -471,10 +471,10 @@ namespace FactionWars.Tests.Unit.Combat
             var battle = CreateBattle(attackerTroops: CreateDefaultTroops(5, 2, 1));
 
             // Act
-            battle.AddAttackerTroops(DefenderTier.Heavy, 3);
+            battle.AddAttackerTroops(DefenderRole.Rifleman, 3);
 
             // Assert
-            Assert.Equal(4, battle.AttackerTroops[DefenderTier.Heavy]);
+            Assert.Equal(4, battle.AttackerTroops[DefenderRole.Rifleman]);
         }
 
         [Fact]
@@ -484,12 +484,12 @@ namespace FactionWars.Tests.Unit.Combat
             var battle = CreateBattle(attackerTroops: CreateDefaultTroops(5, 2, 1));
 
             // Act
-            battle.AddAttackerTroops(DefenderTier.Basic, 0);
-            battle.AddAttackerTroops(DefenderTier.Medium, -1);
+            battle.AddAttackerTroops(DefenderRole.Grunt, 0);
+            battle.AddAttackerTroops(DefenderRole.Gunner, -1);
 
             // Assert
-            Assert.Equal(5, battle.AttackerTroops[DefenderTier.Basic]);
-            Assert.Equal(2, battle.AttackerTroops[DefenderTier.Medium]);
+            Assert.Equal(5, battle.AttackerTroops[DefenderRole.Grunt]);
+            Assert.Equal(2, battle.AttackerTroops[DefenderRole.Gunner]);
         }
 
         [Fact]
@@ -499,10 +499,10 @@ namespace FactionWars.Tests.Unit.Combat
             var battle = CreateBattle(defenderTroops: CreateDefaultTroops(4, 2, 1));
 
             // Act
-            battle.AddDefenderTroops(DefenderTier.Basic, 5);
+            battle.AddDefenderTroops(DefenderRole.Grunt, 5);
 
             // Assert
-            Assert.Equal(9, battle.DefenderTroops[DefenderTier.Basic]);
+            Assert.Equal(9, battle.DefenderTroops[DefenderRole.Grunt]);
         }
 
         [Fact]
@@ -512,12 +512,12 @@ namespace FactionWars.Tests.Unit.Combat
             var battle = CreateBattle(defenderTroops: CreateDefaultTroops(4, 2, 1));
 
             // Act
-            battle.AddDefenderTroops(DefenderTier.Basic, 0);
-            battle.AddDefenderTroops(DefenderTier.Medium, -2);
+            battle.AddDefenderTroops(DefenderRole.Grunt, 0);
+            battle.AddDefenderTroops(DefenderRole.Gunner, -2);
 
             // Assert
-            Assert.Equal(4, battle.DefenderTroops[DefenderTier.Basic]);
-            Assert.Equal(2, battle.DefenderTroops[DefenderTier.Medium]);
+            Assert.Equal(4, battle.DefenderTroops[DefenderRole.Grunt]);
+            Assert.Equal(2, battle.DefenderTroops[DefenderRole.Gunner]);
         }
 
         #endregion
@@ -592,13 +592,13 @@ namespace FactionWars.Tests.Unit.Combat
             var battle = CreateBattle();
 
             // Act
-            battle.RegisterSpawnedAttacker(101, DefenderTier.Basic);
-            battle.RegisterSpawnedAttacker(102, DefenderTier.Medium);
+            battle.RegisterSpawnedAttacker(101, DefenderRole.Grunt);
+            battle.RegisterSpawnedAttacker(102, DefenderRole.Gunner);
 
             // Assert
             Assert.Equal(2, battle.SpawnedAttackers.Count);
-            Assert.Equal(DefenderTier.Basic, battle.SpawnedAttackers[101]);
-            Assert.Equal(DefenderTier.Medium, battle.SpawnedAttackers[102]);
+            Assert.Equal(DefenderRole.Grunt, battle.SpawnedAttackers[101]);
+            Assert.Equal(DefenderRole.Gunner, battle.SpawnedAttackers[102]);
         }
 
         [Fact]
@@ -608,11 +608,11 @@ namespace FactionWars.Tests.Unit.Combat
             var battle = CreateBattle();
 
             // Act
-            battle.RegisterSpawnedDefender(201, DefenderTier.Heavy);
+            battle.RegisterSpawnedDefender(201, DefenderRole.Rifleman);
 
             // Assert
             Assert.Single(battle.SpawnedDefenders);
-            Assert.Equal(DefenderTier.Heavy, battle.SpawnedDefenders[201]);
+            Assert.Equal(DefenderRole.Rifleman, battle.SpawnedDefenders[201]);
         }
 
         [Fact]
@@ -620,8 +620,8 @@ namespace FactionWars.Tests.Unit.Combat
         {
             // Arrange
             var battle = CreateBattle();
-            battle.RegisterSpawnedAttacker(101, DefenderTier.Basic);
-            battle.RegisterSpawnedAttacker(102, DefenderTier.Medium);
+            battle.RegisterSpawnedAttacker(101, DefenderRole.Grunt);
+            battle.RegisterSpawnedAttacker(102, DefenderRole.Gunner);
 
             // Act
             var result = battle.UnregisterSpawnedAttacker(101);
@@ -650,7 +650,7 @@ namespace FactionWars.Tests.Unit.Combat
         {
             // Arrange
             var battle = CreateBattle();
-            battle.RegisterSpawnedDefender(201, DefenderTier.Basic);
+            battle.RegisterSpawnedDefender(201, DefenderRole.Grunt);
 
             // Act
             var result = battle.UnregisterSpawnedDefender(201);
@@ -665,13 +665,13 @@ namespace FactionWars.Tests.Unit.Combat
         {
             // Arrange
             var battle = CreateBattle();
-            battle.RegisterSpawnedAttacker(101, DefenderTier.Heavy);
+            battle.RegisterSpawnedAttacker(101, DefenderRole.Rifleman);
 
             // Act
             var tier = battle.GetSpawnedAttackerTier(101);
 
             // Assert
-            Assert.Equal(DefenderTier.Heavy, tier);
+            Assert.Equal(DefenderRole.Rifleman, tier);
         }
 
         [Fact]
@@ -688,17 +688,17 @@ namespace FactionWars.Tests.Unit.Combat
         }
 
         [Fact]
-        public void ZoneBattle_GetSpawnedDefenderTier_ShouldReturnTierIfFound()
+        public void ZoneBattle_GetSpawnedDefenderRole_ShouldReturnTierIfFound()
         {
             // Arrange
             var battle = CreateBattle();
-            battle.RegisterSpawnedDefender(201, DefenderTier.Medium);
+            battle.RegisterSpawnedDefender(201, DefenderRole.Gunner);
 
             // Act
-            var tier = battle.GetSpawnedDefenderTier(201);
+            var tier = battle.GetSpawnedDefenderRole(201);
 
             // Assert
-            Assert.Equal(DefenderTier.Medium, tier);
+            Assert.Equal(DefenderRole.Gunner, tier);
         }
 
         [Fact]
@@ -706,8 +706,8 @@ namespace FactionWars.Tests.Unit.Combat
         {
             // Arrange
             var battle = CreateBattle();
-            battle.RegisterSpawnedAttacker(101, DefenderTier.Basic);
-            battle.RegisterSpawnedDefender(201, DefenderTier.Basic);
+            battle.RegisterSpawnedAttacker(101, DefenderRole.Grunt);
+            battle.RegisterSpawnedDefender(201, DefenderRole.Grunt);
 
             // Act
             battle.ClearSpawnedPeds();
@@ -726,14 +726,14 @@ namespace FactionWars.Tests.Unit.Combat
         {
             // Arrange
             var battle = CreateBattle();
-            battle.RegisterSpawnedAttacker(101, DefenderTier.Basic);
-            battle.RegisterSpawnedAttacker(102, DefenderTier.Basic);
-            battle.RegisterSpawnedAttacker(103, DefenderTier.Medium);
+            battle.RegisterSpawnedAttacker(101, DefenderRole.Grunt);
+            battle.RegisterSpawnedAttacker(102, DefenderRole.Grunt);
+            battle.RegisterSpawnedAttacker(103, DefenderRole.Gunner);
 
             // Act & Assert
-            Assert.Equal(2, battle.GetSpawnedAttackerCountByTier(DefenderTier.Basic));
-            Assert.Equal(1, battle.GetSpawnedAttackerCountByTier(DefenderTier.Medium));
-            Assert.Equal(0, battle.GetSpawnedAttackerCountByTier(DefenderTier.Heavy));
+            Assert.Equal(2, battle.GetSpawnedAttackerCountByTier(DefenderRole.Grunt));
+            Assert.Equal(1, battle.GetSpawnedAttackerCountByTier(DefenderRole.Gunner));
+            Assert.Equal(0, battle.GetSpawnedAttackerCountByTier(DefenderRole.Rifleman));
         }
 
         [Fact]
@@ -741,14 +741,14 @@ namespace FactionWars.Tests.Unit.Combat
         {
             // Arrange
             var battle = CreateBattle();
-            battle.RegisterSpawnedDefender(201, DefenderTier.Heavy);
-            battle.RegisterSpawnedDefender(202, DefenderTier.Heavy);
-            battle.RegisterSpawnedDefender(203, DefenderTier.Basic);
+            battle.RegisterSpawnedDefender(201, DefenderRole.Rifleman);
+            battle.RegisterSpawnedDefender(202, DefenderRole.Rifleman);
+            battle.RegisterSpawnedDefender(203, DefenderRole.Grunt);
 
             // Act & Assert
-            Assert.Equal(1, battle.GetSpawnedDefenderCountByTier(DefenderTier.Basic));
-            Assert.Equal(0, battle.GetSpawnedDefenderCountByTier(DefenderTier.Medium));
-            Assert.Equal(2, battle.GetSpawnedDefenderCountByTier(DefenderTier.Heavy));
+            Assert.Equal(1, battle.GetSpawnedDefenderCountByTier(DefenderRole.Grunt));
+            Assert.Equal(0, battle.GetSpawnedDefenderCountByTier(DefenderRole.Gunner));
+            Assert.Equal(2, battle.GetSpawnedDefenderCountByTier(DefenderRole.Rifleman));
         }
 
         #endregion
