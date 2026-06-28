@@ -9,38 +9,39 @@ namespace FactionWars.ScriptHookV
     {
         private void UpdateCoreSystems(float deltaTime)
         {
-            _economyManager?.Update(deltaTime);
-            _gameStateManager?.UpdatePlayTime(deltaTime);
-            _telemetryService?.Update(deltaTime);
+            _tickProfiler.Measure("economy", () => _economyManager?.Update(deltaTime));
+            _tickProfiler.Measure("playTime", () => _gameStateManager?.UpdatePlayTime(deltaTime));
+            _tickProfiler.Measure("telemetry", () => _telemetryService?.Update(deltaTime));
         }
 
         private void UpdateWorldSystems(float deltaTime)
         {
-            TryRestoreRuntimeWorldState();
+            _tickProfiler.Measure("worldRestore", () => TryRestoreRuntimeWorldState());
+            _tickProfiler.Measure("blips", () => _mapBlipManager?.UpdateBlipColors());
+            _tickProfiler.Measure("territory", () => _territoryManager?.Update());
+            _tickProfiler.Measure("ai", () => _aiController?.Update(deltaTime));
+            _tickProfiler.Measure("zoneBattle", () => _zoneBattleManager?.Tick(deltaTime));
+            _tickProfiler.Measure("police", () => _policeSuppressionController?.Update());
+            _tickProfiler.Measure("victory", () => _victoryManager?.Update(deltaTime));
 
-            _mapBlipManager?.UpdateBlipColors();
-            _territoryManager?.Update();
-            _aiController?.Update(deltaTime);
-            _zoneBattleManager?.Tick(deltaTime);
-            _policeSuppressionController?.Update();
-            _victoryManager?.Update(deltaTime);
             // Only Escort boards the player's vehicle; HoldArea/S&D keep the squad on the ground.
             var boardPlayerVehicle = _squadStanceController == null
                 || _squadStanceController.CurrentStance == SquadStance.Escort;
-            _followerManager?.Update(CurrentPlayerFactionId ?? "", boardPlayerVehicle);
-            UpdateSquadStance();
-            UpdateFollowerSniperWeapons();
-            _friendlyDefenderManager?.Update();
-            _defenderRallyController?.Update();
-            _commanderManager?.Update();
+            _tickProfiler.Measure("followers", () => _followerManager?.Update(CurrentPlayerFactionId ?? "", boardPlayerVehicle));
+            _tickProfiler.Measure("squadStance", () => UpdateSquadStance());
+            _tickProfiler.Measure("sniperWeapons", () => UpdateFollowerSniperWeapons());
+            _tickProfiler.Measure("friendlyDefenders", () => _friendlyDefenderManager?.Update());
+            _tickProfiler.Measure("defenderRally", () => _defenderRallyController?.Update());
+            _tickProfiler.Measure("commander", () => _commanderManager?.Update());
+
             var currentZone = _territoryManager?.CurrentZone;
             var enemyFactionId = currentZone?.OwnerFactionId;
             if (enemyFactionId != null && enemyFactionId != CurrentPlayerFactionId)
             {
-                _enemyDefenderManager?.Update(enemyFactionId);
+                _tickProfiler.Measure("enemyDefenders", () => _enemyDefenderManager?.Update(enemyFactionId));
             }
 
-            _battleAttackerManager?.Update();
+            _tickProfiler.Measure("battleAttackers", () => _battleAttackerManager?.Update());
         }
 
         private string _lastSquadStanceSummary = "";
