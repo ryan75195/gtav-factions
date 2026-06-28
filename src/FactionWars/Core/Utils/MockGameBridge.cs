@@ -1020,10 +1020,18 @@ namespace FactionWars.Core.Utils
             public bool PersistFollowing { get; set; }
         }
 
+        private readonly Dictionary<int, int> _followEntityCalls = new Dictionary<int, int>();
+
+        /// <summary>Number of times TaskFollowToOffsetFromEntity was called for this ped. Test hook
+        /// for verifying the reconciler issues a persistent follow once (dedup), not every tick.</summary>
+        public int GetFollowEntityCallCount(int pedHandle)
+            => _followEntityCalls.TryGetValue(pedHandle, out var c) ? c : 0;
+
         public void TaskFollowToOffsetFromEntity(int pedHandle, int targetEntityHandle, Vector3 offset, float moveBlendRatio, float stoppingRadius, bool persistFollowing)
         {
             if (_peds.ContainsKey(pedHandle))
             {
+                _followEntityCalls[pedHandle] = (_followEntityCalls.TryGetValue(pedHandle, out var fc) ? fc : 0) + 1;
                 // In GTA V, every TASK_X call is a primary-task replacement.
                 _wanderingPeds.Remove(pedHandle);
                 _pedsFacingPosition.Remove(pedHandle);

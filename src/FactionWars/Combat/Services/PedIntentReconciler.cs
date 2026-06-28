@@ -57,6 +57,15 @@ namespace FactionWars.Combat.Services
                     _gameBridge.RemovePedFromFollowerGroup(pedHandle);
                     _gameBridge.TaskGoToEntity(pedHandle, intent.Discriminator, intent.Radius);
                     break;
+                case PedIntentKind.RegroupOnPlayer:
+                    // Group-follow can't drag a ped back from beyond its range; sprint to the
+                    // moving player with a persistent follow task instead (mirrors the rally
+                    // controller). Detach from the group first so group-follow doesn't fight it.
+                    _gameBridge.RemovePedFromFollowerGroup(pedHandle);
+                    _gameBridge.TaskFollowToOffsetFromEntity(
+                        pedHandle, intent.Discriminator, new Vector3(0f, 0f, 0f),
+                        moveBlendRatio: 3.0f, stoppingRadius: intent.Radius, persistFollowing: true);
+                    break;
                 case PedIntentKind.SeekHatedTargets:
                     _gameBridge.RemovePedFromFollowerGroup(pedHandle);
                     _gameBridge.TaskCombatHatedTargetsAroundPed(pedHandle, intent.Radius);

@@ -12,6 +12,7 @@ namespace FactionWars.Combat.Models
         GuardArea,
         CombatTarget,
         AdvanceOnTarget,
+        RegroupOnPlayer,
         SeekHatedTargets,
         WanderArea,
         GoToCoord,
