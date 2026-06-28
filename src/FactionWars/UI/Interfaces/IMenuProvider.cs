@@ -42,6 +42,13 @@ namespace FactionWars.UI.Interfaces
         event EventHandler? MenuClosed;
 
         /// <summary>
+        /// Raised when the user backs out of a menu via the native back control (B / Backspace /
+        /// Esc), as distinct from a programmatic close. The argument is the id of the menu that was
+        /// backed out of, so navigation can return to that menu's parent instead of fully closing.
+        /// </summary>
+        event EventHandler<string>? MenuBackedOut;
+
+        /// <summary>
         /// Updates any menu display logic (called each tick if needed).
         /// </summary>
         void Update();

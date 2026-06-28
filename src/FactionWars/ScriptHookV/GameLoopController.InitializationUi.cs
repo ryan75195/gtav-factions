@@ -37,6 +37,7 @@ namespace FactionWars.ScriptHookV
             InitializeRecruitmentMenus(playerContext, purchaseService);
             InitializeResourcesAndSettingsMenus(playerContext);
             _menuProvider.ItemSelected += OnMainMenuItemSelected;
+            _menuProvider.MenuBackedOut += OnMenuBackedOut;
         }
 
         private void InitializeOverviewMenus(
@@ -49,11 +50,11 @@ namespace FactionWars.ScriptHookV
 
             _overviewMenuController = new OverviewMenuController(
                 menuProvider, _factionService, zoneService, playerContext);
-            _overviewMenuController.BackRequested += (s, e) => mainMenuController.OnKeyDown(MainMenuController.MenuToggleKeyCode);
+            _overviewMenuController.BackRequested += BackTo(OverviewMenuController.OverviewMenuId, () => mainMenuController.OnKeyDown(MainMenuController.MenuToggleKeyCode));
 
             _zoneManagementMenuController = new ZoneManagementMenuController(
                 menuProvider, _factionService, zoneService, playerContext, allocationService);
-            _zoneManagementMenuController.BackRequested += (s, e) => mainMenuController.OnKeyDown(MainMenuController.MenuToggleKeyCode);
+            _zoneManagementMenuController.BackRequested += BackTo(ZoneManagementMenuController.ZoneManagementMenuId, () => mainMenuController.OnKeyDown(MainMenuController.MenuToggleKeyCode));
         }
 
     }
