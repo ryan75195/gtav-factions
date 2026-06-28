@@ -785,11 +785,11 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         }
 
         [Fact]
-        public void Update_WhenFollowerInCombat_ShouldNotOrderFollowerIntoVehicle()
+        public void Update_WhenFollowerInCombat_ShouldClearCombatThenBoard()
         {
-            // A follower actively fighting must not be pulled into the player's vehicle: native
-            // combat AI keeps aborting the enter task, producing the rapid enter/exit oscillation
-            // players see when driving during a battle. Let them fight; they seat up when combat ends.
+            // The player wants to flee with the squad: a fighting follower must break off combat
+            // and board. Clearing the combat task first stops native combat AI from aborting the
+            // enter task (which previously caused rapid enter/exit oscillation).
             var factionId = "blue";
             var follower = CreateFollowerWithPedHandle(factionId, DefenderRole.Grunt, 42);
             var followers = new List<Follower> { follower };
@@ -808,8 +808,38 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             // Act
             _manager.Update(factionId);
 
-            // Assert - the fighting follower is never tasked into the vehicle
-            _gameBridgeMock.Verify(g => g.TaskPedEnterVehicle(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>()), Times.Never);
+            // Assert - combat is cleared and the follower is tasked to board
+            _gameBridgeMock.Verify(g => g.ClearPedTasks(42), Times.Once);
+            _gameBridgeMock.Verify(g => g.TaskPedEnterVehicle(42, vehicleHandle, It.IsAny<int>()), Times.Once);
+        }
+
+        [Fact]
+        public void Update_WhenBoardOrderRecentlyIssued_ShouldNotReissueWithinCooldown()
+        {
+            // Re-issuing the board order every tick is exactly what caused the thrash. Once a
+            // follower has been ordered to board, hold off re-issuing for the cooldown window.
+            var factionId = "blue";
+            var follower = CreateFollowerWithPedHandle(factionId, DefenderRole.Grunt, 42);
+            var followers = new List<Follower> { follower };
+            var vehicleHandle = 100;
+
+            _followerServiceMock.Setup(s => s.GetFollowers(factionId)).Returns(followers);
+            _gameBridgeMock.Setup(g => g.IsPedAlive(42)).Returns(true);
+            _gameBridgeMock.Setup(g => g.IsPlayerInVehicle()).Returns(true);
+            _gameBridgeMock.Setup(g => g.GetPlayerVehicle()).Returns(vehicleHandle);
+            _gameBridgeMock.Setup(g => g.IsPedInVehicle(42)).Returns(false);
+            _gameBridgeMock.Setup(g => g.IsPedInCombat(42)).Returns(true);
+            _gameBridgeMock.Setup(g => g.GetGameTime()).Returns(1000); // same tick time both calls
+            _seatPriorityServiceMock.Setup(s => s.GetPrioritizedFreeSeats(vehicleHandle)).Returns(new[] { 1, 2 });
+            _seatPriorityServiceMock.Setup(s => s.FilterFollowersByProximity(It.IsAny<int[]>(), vehicleHandle, 15f))
+                .Returns(new[] { 42 });
+
+            // Act - two updates within the cooldown window
+            _manager.Update(factionId);
+            _manager.Update(factionId);
+
+            // Assert - the board order is issued once, not re-spammed every tick
+            _gameBridgeMock.Verify(g => g.TaskPedEnterVehicle(42, vehicleHandle, It.IsAny<int>()), Times.Once);
         }
 
         [Fact]
