@@ -45,6 +45,11 @@ namespace FactionWars.Combat.Models
         public static PedIntent CombatTarget(int targetHandle)
             => new PedIntent(PedIntentKind.CombatTarget, targetHandle, default, 0f);
 
+        /// <summary>Run toward a target ped, stopping at <paramref name="stoppingRange"/> metres,
+        /// without engaging yet. Tracks the moving target (TASK_GO_TO_ENTITY).</summary>
+        public static PedIntent AdvanceOnTarget(int targetHandle, float stoppingRange)
+            => new PedIntent(PedIntentKind.AdvanceOnTarget, targetHandle, default, stoppingRange);
+
         /// <summary>Seek and fight any hated targets within radius of a center.</summary>
         public static PedIntent SeekHatedTargets(Vector3 center, float radius)
             => new PedIntent(PedIntentKind.SeekHatedTargets, 0, center, radius);

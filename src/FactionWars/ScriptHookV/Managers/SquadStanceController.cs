@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using FactionWars.Combat.Interfaces;
 using FactionWars.Combat.Models;
 using FactionWars.Core.Interfaces;
+using FactionWars.Core.Models;
 using FactionWars.ScriptHookV.Logging;
 
 namespace FactionWars.ScriptHookV.Managers
@@ -18,10 +19,14 @@ namespace FactionWars.ScriptHookV.Managers
         private readonly ISquadStanceResolver _stanceResolver;
         private readonly ITargetAssignmentResolver _assignmentResolver;
         private readonly IPedIntentReconciler _reconciler;
+        private readonly ISquadEngagementResolver _engagementResolver;
 
         private SquadStance _currentStance = SquadStance.Escort;
         private readonly Dictionary<int, AppliedOrder> _lastApplied = new Dictionary<int, AppliedOrder>();
         private readonly Dictionary<int, int> _lastFollowReassertMs = new Dictionary<int, int>();
+        private readonly Dictionary<int, EngagePhase> _enginePhase = new Dictionary<int, EngagePhase>();
+        private readonly Dictionary<int, int> _losMisses = new Dictionary<int, int>();
+        private IReadOnlyDictionary<int, DefenderRole> _rolesByHandle = new Dictionary<int, DefenderRole>();
 
         private const int FollowerReassertIntervalMs = 2000;
         private const float HoldRadiusPerBodyguard = 8f;
@@ -30,12 +35,13 @@ namespace FactionWars.ScriptHookV.Managers
         // zone centre/radius scattered bodyguards ~50m apart across the whole zone.
         private const float HoldRingRadius = 10f;
 
-        public SquadStanceController(IGameBridge gameBridge, ISquadStanceResolver stanceResolver, ITargetAssignmentResolver assignmentResolver, IPedIntentReconciler reconciler)
+        public SquadStanceController(IGameBridge gameBridge, ISquadStanceResolver stanceResolver, ITargetAssignmentResolver assignmentResolver, IPedIntentReconciler reconciler, ISquadEngagementResolver engagementResolver)
         {
             _gameBridge = gameBridge ?? throw new ArgumentNullException(nameof(gameBridge));
             _stanceResolver = stanceResolver ?? throw new ArgumentNullException(nameof(stanceResolver));
             _assignmentResolver = assignmentResolver ?? throw new ArgumentNullException(nameof(assignmentResolver));
             _reconciler = reconciler ?? throw new ArgumentNullException(nameof(reconciler));
+            _engagementResolver = engagementResolver ?? throw new ArgumentNullException(nameof(engagementResolver));
         }
 
         public SquadStance CurrentStance => _currentStance;
@@ -52,12 +58,15 @@ namespace FactionWars.ScriptHookV.Managers
             _currentStance = _currentStance.Next();
             _lastApplied.Clear();
             _reconciler.Clear();
+            _enginePhase.Clear();
+            _losMisses.Clear();
             FileLogger.AI($"SquadStance.CycleStance: {previous} -> {_currentStance} (party={onFootBodyguardHandles.Count})");
             _gameBridge.ShowNotification($"~b~Bodyguards:~w~ {StanceLabel(_currentStance)}");
         }
 
-        public void Update(Vector3 anchorCenter, float anchorRadius, IReadOnlyList<int> onFootBodyguardHandles, IReadOnlyList<EnemyTarget> enemiesInRange)
+        public void Update(Vector3 anchorCenter, float anchorRadius, IReadOnlyList<int> onFootBodyguardHandles, IReadOnlyList<EnemyTarget> enemiesInZone, IReadOnlyDictionary<int, DefenderRole> rolesByHandle)
         {
+            _rolesByHandle = rolesByHandle ?? new Dictionary<int, DefenderRole>();
             PruneStale(onFootBodyguardHandles);
             if (onFootBodyguardHandles == null || onFootBodyguardHandles.Count == 0)
             {
@@ -70,7 +79,7 @@ namespace FactionWars.ScriptHookV.Managers
                     ApplyHoldArea(onFootBodyguardHandles);
                     break;
                 case SquadStance.SearchAndDestroy:
-                    ApplySearchAndDestroy(anchorCenter, anchorRadius, onFootBodyguardHandles, enemiesInRange);
+                    ApplySearchAndDestroy(anchorCenter, anchorRadius, onFootBodyguardHandles, enemiesInZone);
                     break;
                 default:
                     ApplyEscort(onFootBodyguardHandles);
@@ -87,6 +96,8 @@ namespace FactionWars.ScriptHookV.Managers
                 {
                     _lastApplied.Remove(handle);
                     _reconciler.Forget(handle);
+                    _enginePhase.Remove(handle);
+                    _losMisses.Remove(handle);
                 }
             }
             foreach (var handle in new List<int>(_lastFollowReassertMs.Keys))

@@ -574,6 +574,19 @@ namespace FactionWars.Core.Utils
             _activeWeaponSetCount[pedHandle] = (_activeWeaponSetCount.TryGetValue(pedHandle, out var c) ? c : 0) + 1;
         }
 
+        private readonly HashSet<(int, int)> _clearLos = new HashSet<(int, int)>();
+
+        /// <summary>Test hook: sets whether `from` has clear LOS to `to`.</summary>
+        public void SetLineOfSight(int from, int to, bool clear)
+        {
+            if (clear) _clearLos.Add((from, to));
+            else _clearLos.Remove((from, to));
+        }
+
+        /// <inheritdoc />
+        public bool HasClearLineOfSight(int fromPedHandle, int toPedHandle)
+            => _clearLos.Contains((fromPedHandle, toPedHandle));
+
         private readonly HashSet<int> _shootingPeds = new HashSet<int>();
         private readonly Dictionary<int, int> _pedAmmo = new Dictionary<int, int>();
 
@@ -944,6 +957,7 @@ namespace FactionWars.Core.Utils
             => _combatPedTargets.TryGetValue(pedHandle, out var t) ? t : -1;
 
         private readonly Dictionary<int, GoToEntityState> _goToEntityPeds = new Dictionary<int, GoToEntityState>();
+        private readonly Dictionary<int, int> _goToEntityCalls = new Dictionary<int, int>();
 
         private class GoToEntityState
         {
@@ -965,6 +979,7 @@ namespace FactionWars.Core.Utils
                     TargetEntityHandle = targetEntityHandle,
                     StoppingRange = stoppingRange
                 };
+                _goToEntityCalls[pedHandle] = (_goToEntityCalls.TryGetValue(pedHandle, out var goToCount) ? goToCount : 0) + 1;
             }
         }
 
@@ -978,6 +993,10 @@ namespace FactionWars.Core.Utils
         /// <summary>Gets the stopping range for a go-to-entity task.</summary>
         public float? GetGoToEntityStoppingRange(int pedHandle)
             => _goToEntityPeds.TryGetValue(pedHandle, out var state) ? state.StoppingRange : (float?)null;
+
+        /// <summary>Gets the number of times TaskGoToEntity has been called for a ped handle.</summary>
+        public int GetGoToEntityCallCount(int pedHandle)
+            => _goToEntityCalls.TryGetValue(pedHandle, out var c) ? c : 0;
 
         private readonly Dictionary<int, FollowEntityState> _followEntityPeds = new Dictionary<int, FollowEntityState>();
 

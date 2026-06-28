@@ -71,6 +71,13 @@ namespace FactionWars.Core.Interfaces
         int GetPedHealth(int pedHandle);
 
         /// <summary>
+        /// True if <paramref name="fromPedHandle"/> has a clear line of sight to
+        /// <paramref name="toPedHandle"/> (wraps HAS_ENTITY_CLEAR_LOS_TO_ENTITY). False for
+        /// invalid/dead handles.
+        /// </summary>
+        bool HasClearLineOfSight(int fromPedHandle, int toPedHandle);
+
+        /// <summary>
         /// Checks whether the ped entity still exists in the world. Returns true for
         /// both alive and dead peds (GTA keeps a corpse around for a while before
         /// cleanup) and false for handles that have been streamed out by the

@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using FactionWars.Combat.Models;
 using FactionWars.Core.Interfaces;
+using FactionWars.Core.Models;
 using FactionWars.ScriptHookV.Logging;
 
 namespace FactionWars.ScriptHookV.Managers
@@ -100,16 +101,47 @@ namespace FactionWars.ScriptHookV.Managers
                 bodyguards.Add(new BodyguardPosition(pedHandle, _gameBridge.GetPedPosition(pedHandle)));
             }
 
+            var enemyPositions = new Dictionary<int, Vector3>();
+            foreach (var enemy in enemies) enemyPositions[enemy.Handle] = enemy.Position;
+
             var assignment = _assignmentResolver.Assign(bodyguards, enemies, BuildPreviousAssignment());
             foreach (var pedHandle in handles)
             {
                 if (DisembarkedThisTick(pedHandle)) continue;
                 if (!assignment.TryGetValue(pedHandle, out var targetHandle)) continue;
-                if (AlreadyApplied(pedHandle, SquadStance.SearchAndDestroy, BodyguardOrderKind.AttackTarget, targetHandle)) continue;
+                if (!enemyPositions.TryGetValue(targetHandle, out var targetPos)) continue;
 
+                ApplyEngagement(pedHandle, targetHandle, targetPos);
+            }
+        }
+
+        // Advance toward the assigned enemy until in weapon range with line of sight, then engage.
+        // Hysteresis (in the resolver) keeps the phase from flipping every tick.
+        private void ApplyEngagement(int pedHandle, int targetHandle, Vector3 targetPos)
+        {
+            float dist = _gameBridge.GetPedPosition(pedHandle).DistanceTo(targetPos);
+            bool los = _gameBridge.HasClearLineOfSight(pedHandle, targetHandle);
+            var role = _rolesByHandle.TryGetValue(pedHandle, out var r) ? r : DefenderRole.Grunt;
+            var phase = _enginePhase.TryGetValue(pedHandle, out var p) ? p : EngagePhase.Advance;
+            int misses = _losMisses.TryGetValue(pedHandle, out var m) ? m : 0;
+
+            var decision = _engagementResolver.Resolve(dist, los, role, phase, misses);
+            _enginePhase[pedHandle] = decision.Phase;
+            _losMisses[pedHandle] = decision.ConsecutiveLosMisses;
+
+            if (decision.Phase == EngagePhase.Engage)
+            {
+                if (AlreadyApplied(pedHandle, SquadStance.SearchAndDestroy, BodyguardOrderKind.AttackTarget, targetHandle)) return;
                 _reconciler.Submit(pedHandle, PedIntent.CombatTarget(targetHandle));
                 Remember(pedHandle, SquadStance.SearchAndDestroy, BodyguardOrderKind.AttackTarget, targetHandle);
-                FileLogger.AI($"SquadStance S&D: ped {pedHandle} attack {targetHandle} inPlayerGroup={_gameBridge.IsPedFollowingPlayer(pedHandle)} inCombat={_gameBridge.IsPedInCombat(pedHandle)}");
+                FileLogger.AI($"SquadStance S&D: ped {pedHandle} engage {targetHandle} dist={dist:F0} los={los}");
+            }
+            else
+            {
+                if (AlreadyApplied(pedHandle, SquadStance.SearchAndDestroy, BodyguardOrderKind.AdvanceOnTarget, targetHandle)) return;
+                _reconciler.Submit(pedHandle, PedIntent.AdvanceOnTarget(targetHandle, decision.EngageRange));
+                Remember(pedHandle, SquadStance.SearchAndDestroy, BodyguardOrderKind.AdvanceOnTarget, targetHandle);
+                FileLogger.AI($"SquadStance S&D: ped {pedHandle} advance {targetHandle} dist={dist:F0} stop={decision.EngageRange:F0}");
             }
         }
 
@@ -118,7 +150,11 @@ namespace FactionWars.ScriptHookV.Managers
             var previous = new Dictionary<int, int>();
             foreach (var kvp in _lastApplied)
             {
-                if (kvp.Value.Kind == BodyguardOrderKind.AttackTarget)
+                // Both phases pin a follower to its enemy (Discriminator = target handle): keeping
+                // AdvanceOnTarget here preserves stickiness across the whole advance->engage lifecycle,
+                // not just once a follower is already engaging.
+                if (kvp.Value.Kind == BodyguardOrderKind.AttackTarget
+                    || kvp.Value.Kind == BodyguardOrderKind.AdvanceOnTarget)
                 {
                     previous[kvp.Key] = kvp.Value.Discriminator;
                 }

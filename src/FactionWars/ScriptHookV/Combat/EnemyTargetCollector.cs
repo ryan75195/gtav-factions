@@ -31,5 +31,18 @@ namespace FactionWars.ScriptHookV.Combat
 
             return result;
         }
+
+        public IReadOnlyList<EnemyTarget> CollectAll(IReadOnlyList<int> hostileHandles)
+        {
+            var result = new List<EnemyTarget>();
+            if (hostileHandles == null) return result;
+
+            foreach (var handle in hostileHandles)
+            {
+                result.Add(new EnemyTarget(handle, _gameBridge.GetPedPosition(handle)));
+            }
+
+            return result;
+        }
     }
 }

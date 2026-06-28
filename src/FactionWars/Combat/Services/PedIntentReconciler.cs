@@ -53,6 +53,10 @@ namespace FactionWars.Combat.Services
                     _gameBridge.RemovePedFromFollowerGroup(pedHandle);
                     _gameBridge.TaskCombatPed(pedHandle, intent.Discriminator);
                     break;
+                case PedIntentKind.AdvanceOnTarget:
+                    _gameBridge.RemovePedFromFollowerGroup(pedHandle);
+                    _gameBridge.TaskGoToEntity(pedHandle, intent.Discriminator, intent.Radius);
+                    break;
                 case PedIntentKind.SeekHatedTargets:
                     _gameBridge.RemovePedFromFollowerGroup(pedHandle);
                     _gameBridge.TaskCombatHatedTargetsAroundPed(pedHandle, intent.Radius);

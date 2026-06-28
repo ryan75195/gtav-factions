@@ -62,17 +62,19 @@ namespace FactionWars.ScriptHookV
             {
                 var hostileHandles = GatherHostileHandles();
                 hostileCount = hostileHandles.Count;
-                enemies = _enemyTargetCollector!.Collect(hostileHandles, anchor.Center, anchor.Radius);
+                enemies = _enemyTargetCollector!.CollectAll(hostileHandles);
             }
 
-            var summary = $"stance={_squadStanceController.CurrentStance} onFoot={handles.Count} inVehicle={_gameBridge.IsPlayerInVehicle()} hostiles={hostileCount} enemiesInRange={enemies.Count}";
+            var rolesByHandle = _followerManager.OnFootBodyguardRoles;
+
+            var summary = $"stance={_squadStanceController.CurrentStance} onFoot={handles.Count} inVehicle={_gameBridge.IsPlayerInVehicle()} hostiles={hostileCount} enemiesInZone={enemies.Count}";
             if (summary != _lastSquadStanceSummary)
             {
                 FileLogger.AI($"UpdateSquadStance: {summary}");
                 _lastSquadStanceSummary = summary;
             }
 
-            _squadStanceController.Update(anchor.Center, anchor.Radius, handles, enemies);
+            _squadStanceController.Update(anchor.Center, anchor.Radius, handles, enemies, rolesByHandle);
             SampleSquadState(handles, _squadStanceController.CurrentStance);
         }
 
