@@ -109,8 +109,13 @@ namespace FactionWars.ScriptHookV
             Function.Call(Hash.SET_PED_COMBAT_RANGE, ped.Handle, 2);
             Function.Call(Hash.SET_PED_COMBAT_MOVEMENT, ped.Handle, 2);
             ped.FiringPattern = FiringPattern.FullAuto;
+
+            // Group membership drives native follow; the combat attributes above keep the ped
+            // fighting threats reactively. Do NOT issue TASK_COMBAT_HATED_TARGETS_AROUND_PED here —
+            // it is a primary combat-search task that overrides group-follow, so the ped stands and
+            // searches instead of escorting the player (no movement when no enemies are nearby).
             Function.Call(Hash.SET_PED_AS_GROUP_MEMBER, ped.Handle, Function.Call<int>(Hash.GET_PLAYER_GROUP, Game.Player.Handle));
-            Function.Call(Hash.TASK_COMBAT_HATED_TARGETS_AROUND_PED, ped.Handle, 100f, 0);
+            FileLogger.AI($"ConfigureFollowerCombat: ped {ped.Handle} set as group member (follow), no standing hunt task");
         }
 
     }
