@@ -105,10 +105,12 @@ namespace FactionWars.ScriptHookV
             Function.Call(Hash.SET_PED_COMBAT_ATTRIBUTES, ped.Handle, 20, true);
             Function.Call(Hash.SET_PED_COMBAT_ATTRIBUTES, ped.Handle, 1, true);
             Function.Call(Hash.SET_PED_COMBAT_ATTRIBUTES, ped.Handle, 52, true);
-            Function.Call(Hash.SET_PED_COMBAT_ABILITY, ped.Handle, 2);
-            Function.Call(Hash.SET_PED_COMBAT_RANGE, ped.Handle, 2);
-            Function.Call(Hash.SET_PED_COMBAT_MOVEMENT, ped.Handle, 2);
             ped.FiringPattern = FiringPattern.FullAuto;
+            // Ability/range/movement are owned by the per-role profile (FollowerManager
+            // .ConfigureFollowerCombat), applied once at recruit. Do NOT set a blanket
+            // ABILITY/RANGE/MOVEMENT here: SetPedAsFollower runs on every Escort re-follow and
+            // would otherwise overwrite the role profile (e.g. reset a sniper to the generic
+            // Offensive/Far profile) every time the squad re-forms.
 
             // Group membership drives native follow; the combat attributes above keep the ped
             // fighting threats reactively. Do NOT issue TASK_COMBAT_HATED_TARGETS_AROUND_PED here —

@@ -17,6 +17,7 @@ namespace FactionWars.ScriptHookV.Managers
         private readonly IGameBridge _gameBridge;
         private readonly ISquadStanceResolver _stanceResolver;
         private readonly ITargetAssignmentResolver _assignmentResolver;
+        private readonly IPedIntentReconciler _reconciler;
 
         private SquadStance _currentStance = SquadStance.Escort;
         private readonly Dictionary<int, AppliedOrder> _lastApplied = new Dictionary<int, AppliedOrder>();
@@ -29,11 +30,12 @@ namespace FactionWars.ScriptHookV.Managers
         // zone centre/radius scattered bodyguards ~50m apart across the whole zone.
         private const float HoldRingRadius = 10f;
 
-        public SquadStanceController(IGameBridge gameBridge, ISquadStanceResolver stanceResolver, ITargetAssignmentResolver assignmentResolver)
+        public SquadStanceController(IGameBridge gameBridge, ISquadStanceResolver stanceResolver, ITargetAssignmentResolver assignmentResolver, IPedIntentReconciler reconciler)
         {
             _gameBridge = gameBridge ?? throw new ArgumentNullException(nameof(gameBridge));
             _stanceResolver = stanceResolver ?? throw new ArgumentNullException(nameof(stanceResolver));
             _assignmentResolver = assignmentResolver ?? throw new ArgumentNullException(nameof(assignmentResolver));
+            _reconciler = reconciler ?? throw new ArgumentNullException(nameof(reconciler));
         }
 
         public SquadStance CurrentStance => _currentStance;
@@ -49,6 +51,7 @@ namespace FactionWars.ScriptHookV.Managers
             var previous = _currentStance;
             _currentStance = _currentStance.Next();
             _lastApplied.Clear();
+            _reconciler.Clear();
             FileLogger.AI($"SquadStance.CycleStance: {previous} -> {_currentStance} (party={onFootBodyguardHandles.Count})");
             _gameBridge.ShowNotification($"~b~Bodyguards:~w~ {StanceLabel(_currentStance)}");
         }
@@ -80,7 +83,11 @@ namespace FactionWars.ScriptHookV.Managers
             var keep = currentHandles == null ? new HashSet<int>() : new HashSet<int>(currentHandles);
             foreach (var handle in new List<int>(_lastApplied.Keys))
             {
-                if (!keep.Contains(handle)) _lastApplied.Remove(handle);
+                if (!keep.Contains(handle))
+                {
+                    _lastApplied.Remove(handle);
+                    _reconciler.Forget(handle);
+                }
             }
             foreach (var handle in new List<int>(_lastFollowReassertMs.Keys))
             {
