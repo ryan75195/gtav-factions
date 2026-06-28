@@ -27,7 +27,7 @@ namespace FactionWars.Tests.Unit.Persistence
         }
 
         [Fact]
-        public void Read_NewRoleNames_RoundTrips()
+        public void Read_NewRoleNames_MapsToRoles()
         {
             var json = "{\"Grunt\":5,\"Rifleman\":2}";
 
@@ -35,6 +35,24 @@ namespace FactionWars.Tests.Unit.Persistence
 
             Assert.Equal(5, result![DefenderRole.Grunt]);
             Assert.Equal(2, result[DefenderRole.Rifleman]);
+        }
+
+        [Fact]
+        public void Read_IntegerStringKeys_MapsToRoles()
+        {
+            var json = "{\"0\":1,\"3\":2}";
+
+            var result = JsonConvert.DeserializeObject<Dictionary<DefenderRole, int>>(json, Settings);
+
+            Assert.Equal(1, result![DefenderRole.Grunt]);
+            Assert.Equal(2, result[DefenderRole.Rocketeer]);
+        }
+
+        [Fact]
+        public void Read_UnknownKey_Throws()
+        {
+            Assert.Throws<JsonSerializationException>(() =>
+                JsonConvert.DeserializeObject<Dictionary<DefenderRole, int>>("{\"Unknown\":1}", Settings));
         }
 
         [Fact]
