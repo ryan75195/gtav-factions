@@ -67,7 +67,7 @@ namespace FactionWars.ScriptHookV.Managers
 
             if (!pedHandle.IsValid) return;
 
-            ConfigureDefenderCombat(pedHandle.Handle, roleConfig);
+            ConfigureDefenderCombat(pedHandle.Handle, roleConfig, center);
 
             // Use combat targeting if battle is active, otherwise walking wander
             if (_zonesInBattle.Contains(zoneId))
@@ -125,7 +125,7 @@ namespace FactionWars.ScriptHookV.Managers
                 var pedHandle = _spawner.Spawn(_playerFactionId, _playerFactionId, model, spawnPos, zoneId);
                 if (!pedHandle.IsValid) continue;
 
-                ConfigureDefenderCombat(pedHandle.Handle, roleConfig);
+                ConfigureDefenderCombat(pedHandle.Handle, roleConfig, zoneCenter);
 
                 // Use combat targeting if battle is active, otherwise walking wander
                 if (inBattle)
@@ -163,7 +163,7 @@ namespace FactionWars.ScriptHookV.Managers
         /// <summary>
         /// Configures a defender's combat attributes based on their tier configuration.
         /// </summary>
-        private void ConfigureDefenderCombat(int pedHandle, DefenderRoleConfig roleConfig)
+        private void ConfigureDefenderCombat(int pedHandle, DefenderRoleConfig roleConfig, Vector3 zoneCenter)
         {
             // Give pistol first as secondary weapon for drive-by shooting
             _gameBridge.GivePedWeapon(pedHandle, "weapon_pistol");
@@ -181,6 +181,8 @@ namespace FactionWars.ScriptHookV.Managers
             {
                 _gameBridge.SetPedCanSwitchWeapons(pedHandle, false);
             }
+
+            _sniperDeployment.DeployIfSniper(pedHandle, roleConfig, zoneCenter);
         }
     }
 }

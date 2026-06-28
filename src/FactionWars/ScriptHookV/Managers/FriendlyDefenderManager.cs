@@ -33,6 +33,7 @@ namespace FactionWars.ScriptHookV.Managers
         private readonly IPedBlipService _pedBlipService;
         private readonly IZoneService _zoneService;
         private readonly IZoneCombatantSpawner _spawner;
+        private readonly ISniperDeploymentService _sniperDeployment;
         private string _playerFactionId;
 
         private readonly Dictionary<string, Dictionary<int, DefenderRole>> _spawnedPedTierByZone; // zoneId -> (pedHandle -> tier)
@@ -47,12 +48,10 @@ namespace FactionWars.ScriptHookV.Managers
         /// Spawn radius as a fraction of zone radius (80%).
         /// </summary>
         private const float SpawnRadiusFraction = 0.8f;
-
         /// <summary>
         /// Time in milliseconds before corpses are despawned (15 seconds).
         /// </summary>
         private const int CorpseDelayMs = 15000;
-
         /// <summary>
         /// Maximum number of defenders that can be spawned at once per zone.
         /// Additional allocated troops are held in reserve.
@@ -92,6 +91,7 @@ namespace FactionWars.ScriptHookV.Managers
             _zoneService = dependencies.ZoneService ?? throw new ArgumentNullException(nameof(dependencies.ZoneService));
             _spawner = dependencies.Spawner
                 ?? new ZoneCombatantSpawner(new AllegianceResolver(), _pedSpawningService, _pedBlipService, _gameBridge);
+            _sniperDeployment = dependencies.SniperDeployment ?? new SniperDeploymentService(new PerchResolver(), _gameBridge);
             _playerFactionId = playerFactionId ?? throw new ArgumentNullException(nameof(playerFactionId));
 
             _spawnedPedTierByZone = new Dictionary<string, Dictionary<int, DefenderRole>>();
@@ -185,7 +185,7 @@ namespace FactionWars.ScriptHookV.Managers
                     var pedHandle = _spawner.Spawn(_playerFactionId, _playerFactionId, model, spawnPos, zone.Id);
                     if (!pedHandle.IsValid) continue;
 
-                    ConfigureDefenderCombat(pedHandle.Handle, roleConfig);
+                    ConfigureDefenderCombat(pedHandle.Handle, roleConfig, zone.Center);
                     // Bounded native wander — keeps idle peds inside the zone
                     // without per-tick checks. The leash sweep handles the
                     // combat-chase case separately.
