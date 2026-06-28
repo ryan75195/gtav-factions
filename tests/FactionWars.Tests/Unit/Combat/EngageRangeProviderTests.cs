@@ -19,5 +19,12 @@ namespace FactionWars.Tests.Unit.Combat
         {
             Assert.Equal(expected, _provider.For(role));
         }
+
+        [Fact]
+        public void For_UnmappedRole_ReturnsFallback()
+        {
+            // An out-of-range enum value (e.g. a future role not yet in the table) falls back to 30m.
+            Assert.Equal(30f, _provider.For((DefenderRole)999));
+        }
     }
 }
