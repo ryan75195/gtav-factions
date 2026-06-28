@@ -320,6 +320,14 @@ namespace FactionWars.Core.Interfaces
         bool IsPedFollowingPlayer(int pedHandle);
 
         /// <summary>
+        /// Removes a ped from the player's ped group so native group-follow no longer overrides
+        /// its issued tasks. Used when a bodyguard switches to a stance (hold/search-and-destroy)
+        /// that must override the default "stay near the leader" behaviour.
+        /// </summary>
+        /// <param name="pedHandle">Handle of the ped to detach from the player group.</param>
+        void RemovePedFromFollowerGroup(int pedHandle);
+
+        /// <summary>
         /// Checks if the player is currently in a vehicle.
         /// </summary>
         /// <returns>True if the player is in a vehicle, false otherwise.</returns>

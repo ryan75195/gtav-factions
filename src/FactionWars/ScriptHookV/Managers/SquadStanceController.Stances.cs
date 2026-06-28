@@ -65,6 +65,7 @@ namespace FactionWars.ScriptHookV.Managers
                 if (AlreadyApplied(pedHandle, SquadStance.HoldArea, BodyguardOrderKind.HoldAtPoint, i)) continue;
 
                 var order = _stanceResolver.Resolve(SquadStance.HoldArea, anchorCenter, anchorRadius, i, handles.Count);
+                _gameBridge.RemovePedFromFollowerGroup(pedHandle);
                 _gameBridge.TaskGuardArea(pedHandle, order.Point, HoldRadiusPerBodyguard);
                 Remember(pedHandle, SquadStance.HoldArea, BodyguardOrderKind.HoldAtPoint, i);
                 FileLogger.AI($"SquadStance HoldArea: ped {pedHandle} guard ({order.Point.X:F0},{order.Point.Y:F0}) inPlayerGroup={_gameBridge.IsPedFollowingPlayer(pedHandle)} inCombat={_gameBridge.IsPedInCombat(pedHandle)}");
@@ -91,6 +92,7 @@ namespace FactionWars.ScriptHookV.Managers
                 if (!assignment.TryGetValue(pedHandle, out var targetHandle)) continue;
                 if (AlreadyApplied(pedHandle, SquadStance.SearchAndDestroy, BodyguardOrderKind.AttackTarget, targetHandle)) continue;
 
+                _gameBridge.RemovePedFromFollowerGroup(pedHandle);
                 _gameBridge.TaskCombatPed(pedHandle, targetHandle);
                 Remember(pedHandle, SquadStance.SearchAndDestroy, BodyguardOrderKind.AttackTarget, targetHandle);
                 FileLogger.AI($"SquadStance S&D: ped {pedHandle} attack {targetHandle} inPlayerGroup={_gameBridge.IsPedFollowingPlayer(pedHandle)} inCombat={_gameBridge.IsPedInCombat(pedHandle)}");
@@ -116,6 +118,7 @@ namespace FactionWars.ScriptHookV.Managers
             foreach (var pedHandle in handles)
             {
                 if (AlreadyApplied(pedHandle, SquadStance.SearchAndDestroy, BodyguardOrderKind.SeekInRadius, 0)) continue;
+                _gameBridge.RemovePedFromFollowerGroup(pedHandle);
                 _gameBridge.TaskCombatHatedTargetsAroundPed(pedHandle, anchorRadius);
                 Remember(pedHandle, SquadStance.SearchAndDestroy, BodyguardOrderKind.SeekInRadius, 0);
                 FileLogger.AI($"SquadStance S&D-seek: ped {pedHandle} seek r{anchorRadius:F0} inPlayerGroup={_gameBridge.IsPedFollowingPlayer(pedHandle)} inCombat={_gameBridge.IsPedInCombat(pedHandle)}");

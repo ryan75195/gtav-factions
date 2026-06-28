@@ -126,6 +126,56 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         }
 
         [Fact]
+        public void Update_HoldArea_RemovesBodyguardFromPlayerGroupSoGuardTaskIsNotOverridden()
+        {
+            _controller = Build();
+            int bg = _bridge.CreatePed("bg", new Vector3(1f, 0f, 0f));
+            _bridge.SetPedAsFollower(bg); // recruited bodyguards start in the player's ped group
+            Assert.True(_bridge.IsPedFollowingPlayer(bg));
+            var party = new List<int> { bg };
+            _controller.CycleStance(party); // -> HoldArea
+
+            _controller.Update(Anchor, 50f, party, new List<EnemyTarget>());
+
+            // Native group-follow overrides TaskGuardArea; entering HoldArea must detach the
+            // bodyguard from the player group so the guard task actually holds.
+            Assert.False(_bridge.IsPedFollowingPlayer(bg));
+        }
+
+        [Fact]
+        public void Update_SearchAndDestroy_RemovesBodyguardFromPlayerGroupSoCombatTaskIsNotOverridden()
+        {
+            _controller = Build();
+            int bg = _bridge.CreatePed("bg", new Vector3(1f, 0f, 0f));
+            _bridge.SetPedAsFollower(bg);
+            Assert.True(_bridge.IsPedFollowingPlayer(bg));
+            var party = new List<int> { bg };
+            _controller.CycleStance(party); // HoldArea
+            _controller.CycleStance(party); // SearchAndDestroy
+
+            _controller.Update(Anchor, 50f, party, new List<EnemyTarget> { new EnemyTarget(777, new Vector3(10f, 0f, 0f)) });
+
+            // The bodyguard is tasked to attack a distant enemy; group-follow would pin it to the
+            // player. Entering S&D must detach it so it can engage.
+            Assert.False(_bridge.IsPedFollowingPlayer(bg));
+        }
+
+        [Fact]
+        public void Update_SearchAndDestroy_NoEnemies_SeekFallbackRemovesBodyguardFromPlayerGroup()
+        {
+            _controller = Build();
+            int bg = _bridge.CreatePed("bg", new Vector3(1f, 0f, 0f));
+            _bridge.SetPedAsFollower(bg);
+            var party = new List<int> { bg };
+            _controller.CycleStance(party); // HoldArea
+            _controller.CycleStance(party); // SearchAndDestroy
+
+            _controller.Update(Anchor, 50f, party, new List<EnemyTarget>()); // seek fallback
+
+            Assert.False(_bridge.IsPedFollowingPlayer(bg));
+        }
+
+        [Fact]
         public void Update_EscortStance_RepairsFollowerGroupForBodyguardNotFollowingPlayer()
         {
             // Controller starts in Escort by default — no cycling needed.
