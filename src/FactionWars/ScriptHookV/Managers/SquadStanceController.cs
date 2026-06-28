@@ -29,6 +29,11 @@ namespace FactionWars.ScriptHookV.Managers
         private IReadOnlyDictionary<int, DefenderRole> _rolesByHandle = new Dictionary<int, DefenderRole>();
 
         private const int FollowerReassertIntervalMs = 2000;
+
+        // Beyond this distance from the player, a bodyguard that still reports as a player-group
+        // member is treated as stranded (native group-follow desync) and re-tasked back into
+        // formation. Generous enough that normal follow lag while sprinting does not trip it.
+        private const float EscortFollowRepairDistance = 25f;
         private const float HoldRadiusPerBodyguard = 8f;
 
         // HoldArea holds a tight ring around the PLAYER, not the zone. Anchoring on the

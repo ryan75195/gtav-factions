@@ -453,13 +453,24 @@ namespace FactionWars.Core.Utils
         /// </summary>
         public IReadOnlyList<int> FollowingPeds => _followingPeds;
 
+        private readonly Dictionary<int, int> _setAsFollowerCalls = new Dictionary<int, int>();
+
         public void SetPedAsFollower(int pedHandle)
         {
+            _setAsFollowerCalls[pedHandle] = (_setAsFollowerCalls.TryGetValue(pedHandle, out var c) ? c : 0) + 1;
             if (_peds.ContainsKey(pedHandle) && !_followingPeds.Contains(pedHandle))
             {
                 _followingPeds.Add(pedHandle);
             }
         }
+
+        /// <summary>
+        /// Number of times <see cref="SetPedAsFollower"/> was called for this ped. Test hook for
+        /// verifying an Escort re-task fired even when the ped was already in the player's group
+        /// (the call is a no-op on group membership but re-issues the follow task in real GTA).
+        /// </summary>
+        public int GetSetAsFollowerCallCount(int pedHandle)
+            => _setAsFollowerCalls.TryGetValue(pedHandle, out var c) ? c : 0;
 
         public bool IsPedFollowingPlayer(int pedHandle) => _followingPeds.Contains(pedHandle);
 
