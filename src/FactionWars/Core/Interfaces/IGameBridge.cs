@@ -66,6 +66,11 @@ namespace FactionWars.Core.Interfaces
         int GetPedCombatAbilityValue(int pedHandle);
 
         /// <summary>
+        /// Observability: the ped's current health. Read-only.
+        /// </summary>
+        int GetPedHealth(int pedHandle);
+
+        /// <summary>
         /// Checks whether the ped entity still exists in the world. Returns true for
         /// both alive and dead peds (GTA keeps a corpse around for a while before
         /// cleanup) and false for handles that have been streamed out by the
