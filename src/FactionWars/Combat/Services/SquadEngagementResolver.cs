@@ -10,7 +10,6 @@ namespace FactionWars.Combat.Services
     public sealed class SquadEngagementResolver : ISquadEngagementResolver
     {
         private const float HysteresisFactor = 1.3f;
-        private const int LosGraceMisses = 2;
 
         private readonly IEngageRangeProvider _rangeProvider;
 
@@ -31,9 +30,12 @@ namespace FactionWars.Combat.Services
 
             if (currentPhase == EngagePhase.Engage)
             {
+                // Once engaged, drop back to advance ONLY when the target moves out of range.
+                // Do NOT drop on transient line-of-sight loss: TaskCombatPed already repositions
+                // for LOS, and re-tasking on every LOS blip caused an aim/run flicker. losMisses
+                // is still tracked for telemetry but no longer flips the phase.
                 bool rangeBroken = distToTarget > range * HysteresisFactor;
-                bool losBroken = losMisses >= LosGraceMisses;
-                var phase = (rangeBroken || losBroken) ? EngagePhase.Advance : EngagePhase.Engage;
+                var phase = rangeBroken ? EngagePhase.Advance : EngagePhase.Engage;
                 return new EngageDecision(phase, range, losMisses);
             }
 
