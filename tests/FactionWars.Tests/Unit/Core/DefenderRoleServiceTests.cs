@@ -88,11 +88,12 @@ namespace FactionWars.Tests.Unit.Core
             var configs = _service.GetAllRoleConfigs();
 
             // Assert
-            Assert.Equal(4, configs.Count);
+            Assert.Equal(5, configs.Count);
             Assert.Contains(configs, c => c.Role == DefenderRole.Grunt);
             Assert.Contains(configs, c => c.Role == DefenderRole.Gunner);
             Assert.Contains(configs, c => c.Role == DefenderRole.Rifleman);
             Assert.Contains(configs, c => c.Role == DefenderRole.Rocketeer);
+            Assert.Contains(configs, c => c.Role == DefenderRole.Sniper);
         }
 
         [Fact]

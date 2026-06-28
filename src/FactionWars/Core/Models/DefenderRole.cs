@@ -17,6 +17,9 @@ namespace FactionWars.Core.Models
         Rifleman = 2,
 
         /// <summary>RPG anti-vehicle specialist. (Formerly Elite.)</summary>
-        Rocketeer = 3
+        Rocketeer = 3,
+
+        /// <summary>Sniper rifle, long-range / perch specialist. Fragile up close.</summary>
+        Sniper = 4
     }
 }

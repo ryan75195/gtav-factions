@@ -68,6 +68,18 @@ namespace FactionWars.Core.Services
                         accuracy: 0.8f,
                         combatModifier: 2.5f,
                         ragdollEnabled: false)
+                },
+                {
+                    DefenderRole.Sniper,
+                    new DefenderRoleConfig(
+                        role: DefenderRole.Sniper,
+                        cost: 1500,
+                        health: 275,
+                        armor: 50,
+                        weapon: "WEAPON_SNIPERRIFLE",
+                        accuracy: 0.8f,
+                        combatModifier: 2.2f,
+                        ragdollEnabled: false)
                 }
             };
 

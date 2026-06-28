@@ -14,5 +14,11 @@ namespace FactionWars.Tests.Unit.Core
         {
             Assert.Equal(expected, (int)role);
         }
+
+        [Fact]
+        public void Sniper_HasValueFour()
+        {
+            Assert.Equal(4, (int)DefenderRole.Sniper);
+        }
     }
 }
