@@ -49,9 +49,9 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
             // Setup default faction state with reserves
             // After consolidation, initialTroopCount goes to Basic tier, so we use reserve pool only
             var factionState = new FactionState(PlayerFactionId, 10000);
-            factionState.AddReserveTroops(DefenderTier.Basic, 20);
-            factionState.AddReserveTroops(DefenderTier.Medium, 15);
-            factionState.AddReserveTroops(DefenderTier.Heavy, 10);
+            factionState.AddReserveTroops(DefenderRole.Grunt, 20);
+            factionState.AddReserveTroops(DefenderRole.Gunner, 15);
+            factionState.AddReserveTroops(DefenderRole.Rifleman, 10);
             factionState.AddZone("zone_downtown");
             factionState.AddZone("zone_vinewood");
             factionState.AddZone("zone_airport");
@@ -220,9 +220,9 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
         {
             // Arrange
             var allocation = new ZoneDefenderAllocation(PlayerFactionId, "zone_downtown");
-            allocation.AddTroops(DefenderTier.Basic, 5);
-            allocation.AddTroops(DefenderTier.Medium, 3);
-            allocation.AddTroops(DefenderTier.Heavy, 2);
+            allocation.AddTroops(DefenderRole.Grunt, 5);
+            allocation.AddTroops(DefenderRole.Gunner, 3);
+            allocation.AddTroops(DefenderRole.Rifleman, 2);
             _allocationServiceMock.Setup(a => a.GetAllocation(PlayerFactionId, "zone_downtown")).Returns(allocation);
 
             // Act
@@ -349,9 +349,9 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
         {
             // Arrange
             var allocation = new ZoneDefenderAllocation(PlayerFactionId, "zone_downtown");
-            allocation.AddTroops(DefenderTier.Basic, 5);
-            allocation.AddTroops(DefenderTier.Medium, 3);
-            allocation.AddTroops(DefenderTier.Heavy, 2);
+            allocation.AddTroops(DefenderRole.Grunt, 5);
+            allocation.AddTroops(DefenderRole.Gunner, 3);
+            allocation.AddTroops(DefenderRole.Rifleman, 2);
             _allocationServiceMock.Setup(a => a.GetAllocation(PlayerFactionId, "zone_downtown")).Returns(allocation);
             _controller.Show();
 
@@ -428,7 +428,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
         {
             // Arrange
             var factionState = _factionServiceMock.Object.GetFactionState(PlayerFactionId)!;
-            _allocationServiceMock.Setup(a => a.AllocateTroops(factionState, "zone_downtown", DefenderTier.Basic, 1)).Returns(true);
+            _allocationServiceMock.Setup(a => a.AllocateTroops(factionState, "zone_downtown", DefenderRole.Grunt, 1)).Returns(true);
             _controller.Show();
             _menuProvider.SimulateItemSelection("zone_downtown");
 
@@ -436,7 +436,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
             _menuProvider.SimulateItemSelection(ZoneManagementMenuController.AllocateBasicItemId);
 
             // Assert
-            _allocationServiceMock.Verify(a => a.AllocateTroops(It.IsAny<FactionState>(), "zone_downtown", DefenderTier.Basic, It.IsAny<int>()), Times.Once);
+            _allocationServiceMock.Verify(a => a.AllocateTroops(It.IsAny<FactionState>(), "zone_downtown", DefenderRole.Grunt, It.IsAny<int>()), Times.Once);
         }
 
         [Fact]
@@ -444,7 +444,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
         {
             // Arrange
             var factionState = _factionServiceMock.Object.GetFactionState(PlayerFactionId)!;
-            _allocationServiceMock.Setup(a => a.AllocateTroops(factionState, "zone_downtown", DefenderTier.Medium, 1)).Returns(true);
+            _allocationServiceMock.Setup(a => a.AllocateTroops(factionState, "zone_downtown", DefenderRole.Gunner, 1)).Returns(true);
             _controller.Show();
             _menuProvider.SimulateItemSelection("zone_downtown");
 
@@ -452,7 +452,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
             _menuProvider.SimulateItemSelection(ZoneManagementMenuController.AllocateMediumItemId);
 
             // Assert
-            _allocationServiceMock.Verify(a => a.AllocateTroops(It.IsAny<FactionState>(), "zone_downtown", DefenderTier.Medium, It.IsAny<int>()), Times.Once);
+            _allocationServiceMock.Verify(a => a.AllocateTroops(It.IsAny<FactionState>(), "zone_downtown", DefenderRole.Gunner, It.IsAny<int>()), Times.Once);
         }
 
         [Fact]
@@ -460,7 +460,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
         {
             // Arrange
             var factionState = _factionServiceMock.Object.GetFactionState(PlayerFactionId)!;
-            _allocationServiceMock.Setup(a => a.AllocateTroops(factionState, "zone_downtown", DefenderTier.Heavy, 1)).Returns(true);
+            _allocationServiceMock.Setup(a => a.AllocateTroops(factionState, "zone_downtown", DefenderRole.Rifleman, 1)).Returns(true);
             _controller.Show();
             _menuProvider.SimulateItemSelection("zone_downtown");
 
@@ -468,7 +468,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
             _menuProvider.SimulateItemSelection(ZoneManagementMenuController.AllocateHeavyItemId);
 
             // Assert
-            _allocationServiceMock.Verify(a => a.AllocateTroops(It.IsAny<FactionState>(), "zone_downtown", DefenderTier.Heavy, It.IsAny<int>()), Times.Once);
+            _allocationServiceMock.Verify(a => a.AllocateTroops(It.IsAny<FactionState>(), "zone_downtown", DefenderRole.Rifleman, It.IsAny<int>()), Times.Once);
         }
 
         [Fact]
@@ -501,9 +501,9 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
         {
             // Arrange
             var allocation = new ZoneDefenderAllocation(PlayerFactionId, "zone_downtown");
-            allocation.AddTroops(DefenderTier.Basic, 5);
+            allocation.AddTroops(DefenderRole.Grunt, 5);
             _allocationServiceMock.Setup(a => a.GetAllocation(PlayerFactionId, "zone_downtown")).Returns(allocation);
-            _allocationServiceMock.Setup(a => a.WithdrawTroops(It.IsAny<FactionState>(), "zone_downtown", DefenderTier.Basic, 1)).Returns(true);
+            _allocationServiceMock.Setup(a => a.WithdrawTroops(It.IsAny<FactionState>(), "zone_downtown", DefenderRole.Grunt, 1)).Returns(true);
             _controller.Show();
             _menuProvider.SimulateItemSelection("zone_downtown");
 
@@ -511,7 +511,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
             _menuProvider.SimulateItemSelection(ZoneManagementMenuController.WithdrawBasicItemId);
 
             // Assert
-            _allocationServiceMock.Verify(a => a.WithdrawTroops(It.IsAny<FactionState>(), "zone_downtown", DefenderTier.Basic, It.IsAny<int>()), Times.Once);
+            _allocationServiceMock.Verify(a => a.WithdrawTroops(It.IsAny<FactionState>(), "zone_downtown", DefenderRole.Grunt, It.IsAny<int>()), Times.Once);
         }
 
         [Fact]
@@ -519,9 +519,9 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
         {
             // Arrange
             var allocation = new ZoneDefenderAllocation(PlayerFactionId, "zone_downtown");
-            allocation.AddTroops(DefenderTier.Medium, 5);
+            allocation.AddTroops(DefenderRole.Gunner, 5);
             _allocationServiceMock.Setup(a => a.GetAllocation(PlayerFactionId, "zone_downtown")).Returns(allocation);
-            _allocationServiceMock.Setup(a => a.WithdrawTroops(It.IsAny<FactionState>(), "zone_downtown", DefenderTier.Medium, 1)).Returns(true);
+            _allocationServiceMock.Setup(a => a.WithdrawTroops(It.IsAny<FactionState>(), "zone_downtown", DefenderRole.Gunner, 1)).Returns(true);
             _controller.Show();
             _menuProvider.SimulateItemSelection("zone_downtown");
 
@@ -529,7 +529,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
             _menuProvider.SimulateItemSelection(ZoneManagementMenuController.WithdrawMediumItemId);
 
             // Assert
-            _allocationServiceMock.Verify(a => a.WithdrawTroops(It.IsAny<FactionState>(), "zone_downtown", DefenderTier.Medium, It.IsAny<int>()), Times.Once);
+            _allocationServiceMock.Verify(a => a.WithdrawTroops(It.IsAny<FactionState>(), "zone_downtown", DefenderRole.Gunner, It.IsAny<int>()), Times.Once);
         }
 
         [Fact]
@@ -537,9 +537,9 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
         {
             // Arrange
             var allocation = new ZoneDefenderAllocation(PlayerFactionId, "zone_downtown");
-            allocation.AddTroops(DefenderTier.Heavy, 5);
+            allocation.AddTroops(DefenderRole.Rifleman, 5);
             _allocationServiceMock.Setup(a => a.GetAllocation(PlayerFactionId, "zone_downtown")).Returns(allocation);
-            _allocationServiceMock.Setup(a => a.WithdrawTroops(It.IsAny<FactionState>(), "zone_downtown", DefenderTier.Heavy, 1)).Returns(true);
+            _allocationServiceMock.Setup(a => a.WithdrawTroops(It.IsAny<FactionState>(), "zone_downtown", DefenderRole.Rifleman, 1)).Returns(true);
             _controller.Show();
             _menuProvider.SimulateItemSelection("zone_downtown");
 
@@ -547,7 +547,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
             _menuProvider.SimulateItemSelection(ZoneManagementMenuController.WithdrawHeavyItemId);
 
             // Assert
-            _allocationServiceMock.Verify(a => a.WithdrawTroops(It.IsAny<FactionState>(), "zone_downtown", DefenderTier.Heavy, It.IsAny<int>()), Times.Once);
+            _allocationServiceMock.Verify(a => a.WithdrawTroops(It.IsAny<FactionState>(), "zone_downtown", DefenderRole.Rifleman, It.IsAny<int>()), Times.Once);
         }
 
         [Fact]

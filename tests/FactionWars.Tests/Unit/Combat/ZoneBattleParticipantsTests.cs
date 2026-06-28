@@ -9,8 +9,8 @@ namespace FactionWars.Tests.Unit.Combat
 {
     public class ZoneBattleParticipantsTests
     {
-        private static Dictionary<DefenderTier, int> Troops(int basic) =>
-            new Dictionary<DefenderTier, int> { { DefenderTier.Basic, basic } };
+        private static Dictionary<DefenderRole, int> Troops(int basic) =>
+            new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, basic } };
 
         [Fact]
         public void Participants_HasExactlyOneDefenderAndOneAttacker()
@@ -65,10 +65,10 @@ namespace FactionWars.Tests.Unit.Combat
             // Mutating through the new participant API should update legacy totals.
             var battle = new ZoneBattle("trevor", "michael", "zone_1", Troops(3), Troops(3));
 
-            battle.Defender.RemoveTroop(DefenderTier.Basic);
+            battle.Defender.RemoveTroop(DefenderRole.Grunt);
 
             Assert.Equal(2, battle.TotalDefenderTroops);
-            Assert.Equal(2, battle.DefenderTroops[DefenderTier.Basic]);
+            Assert.Equal(2, battle.DefenderTroops[DefenderRole.Grunt]);
         }
 
         [Fact]
@@ -78,7 +78,7 @@ namespace FactionWars.Tests.Unit.Combat
             // visible on the participant.
             var battle = new ZoneBattle("trevor", "michael", "zone_1", Troops(3), Troops(3));
 
-            battle.RemoveAttackerTroop(DefenderTier.Basic);
+            battle.RemoveAttackerTroop(DefenderRole.Grunt);
 
             Assert.Equal(2, battle.Attackers[0].AliveCount);
         }
@@ -97,7 +97,7 @@ namespace FactionWars.Tests.Unit.Combat
         public void ConstructorWithParticipants_PreservesParticipantInstances()
         {
             var defender = BattleParticipant.ForAi("michael", BattleRole.Defender,
-                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 5 } });
+                new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 5 } });
             var attacker = BattleParticipant.ForPlayer("player_faction", BattleRole.Attacker, () => 4);
 
             var battle = new ZoneBattle("zone_42", new List<BattleParticipant> { defender, attacker },
@@ -117,9 +117,9 @@ namespace FactionWars.Tests.Unit.Combat
         public void ConstructorWithParticipants_ThrowsWhenNoDefender()
         {
             var attacker1 = BattleParticipant.ForAi("trevor", BattleRole.Attacker,
-                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 1 } });
+                new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 1 } });
             var attacker2 = BattleParticipant.ForAi("franklin", BattleRole.Attacker,
-                new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 1 } });
+                new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 1 } });
 
             Assert.Throws<ArgumentException>(() =>
                 new ZoneBattle("zone_42", new List<BattleParticipant> { attacker1, attacker2 }));

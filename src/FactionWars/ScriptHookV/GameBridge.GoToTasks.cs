@@ -44,8 +44,6 @@ namespace FactionWars.ScriptHookV
         /// <inheritdoc />
         public void TaskGoToCoord(int pedHandle, DomainVector3 destination)
         {
-            FileLogger.AI($"TaskGoToCoord: CALLED for ped {pedHandle} to ({destination.X:F1}, {destination.Y:F1}, {destination.Z:F1})");
-
             try
             {
                 var ped = Entity.FromHandle(pedHandle) as Ped;
@@ -62,7 +60,6 @@ namespace FactionWars.ScriptHookV
                     ped.Handle,
                     destination.X, destination.Y, destination.Z,
                     2.0f, 0, false, 786603, 0.0f);
-                FileLogger.AI($"TaskGoToCoord: TASK_GO_TO_COORD_ANY_MEANS issued for ped {pedHandle}");
             }
             catch (Exception ex)
             {

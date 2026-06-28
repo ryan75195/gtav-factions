@@ -14,6 +14,6 @@ namespace FactionWars.Combat.Interfaces
         /// Returns the spawned defenders for the given zone, mapped from ped handle to tier.
         /// Returns an empty dictionary if the zone has no spawned defenders.
         /// </summary>
-        IReadOnlyDictionary<int, DefenderTier> GetDefendersInZone(string zoneId);
+        IReadOnlyDictionary<int, DefenderRole> GetDefendersInZone(string zoneId);
     }
 }

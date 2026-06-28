@@ -18,7 +18,7 @@ namespace FactionWars.AI.Services
         private readonly IFactionService _factionService;
         private readonly IZoneDefenderAllocationService _allocationService;
         private readonly IVehicleThreatService _vehicleThreatService;
-        private readonly IDefenderTierService _tierService;
+        private readonly IDefenderRoleService _tierService;
 
         /// <summary>
         /// Creates a new AntiVehicleResponseService.
@@ -31,7 +31,7 @@ namespace FactionWars.AI.Services
             IFactionService factionService,
             IZoneDefenderAllocationService allocationService,
             IVehicleThreatService vehicleThreatService,
-            IDefenderTierService tierService)
+            IDefenderRoleService tierService)
         {
             _factionService = factionService;
             _allocationService = allocationService;
@@ -63,8 +63,8 @@ namespace FactionWars.AI.Services
             }
 
             // Check available Elite units in reserve
-            int availableElite = factionState.GetReserveTroops(DefenderTier.Elite);
-            int eliteCost = _tierService.GetCost(DefenderTier.Elite);
+            int availableElite = factionState.GetReserveTroops(DefenderRole.Rocketeer);
+            int eliteCost = _tierService.GetCost(DefenderRole.Rocketeer);
             int eliteToDeploy = GetEliteToDeploy(factionId, factionState, requiredRpgCount, availableElite, eliteCost);
 
             return AllocateEliteDefenders(factionId, zoneId, eliteToDeploy);
@@ -89,7 +89,7 @@ namespace FactionWars.AI.Services
                     break;
 
                 if (_factionService.SpendCash(factionId, eliteCost) &&
-                    _factionService.AddReserveTroops(factionId, DefenderTier.Elite, 1))
+                    _factionService.AddReserveTroops(factionId, DefenderRole.Rocketeer, 1))
                 {
                     eliteToDeploy++;
                     eliteNeeded--;
@@ -112,7 +112,7 @@ namespace FactionWars.AI.Services
             if (factionState == null)
                 return 0;
 
-            return _allocationService.AllocateTroops(factionState, zoneId, DefenderTier.Elite, eliteToDeploy)
+            return _allocationService.AllocateTroops(factionState, zoneId, DefenderRole.Rocketeer, eliteToDeploy)
                 ? eliteToDeploy
                 : 0;
         }

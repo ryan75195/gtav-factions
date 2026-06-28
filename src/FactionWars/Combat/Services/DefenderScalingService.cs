@@ -21,7 +21,7 @@ namespace FactionWars.Combat.Services
         private const int DefaultScaleFactor = 5;
 
         /// <inheritdoc />
-        public DefenderSpawnPlan CalculateSpawnPlan(Dictionary<DefenderTier, int> troopsByTier, int maxPeds)
+        public DefenderSpawnPlan CalculateSpawnPlan(Dictionary<DefenderRole, int> troopsByTier, int maxPeds)
         {
             if (troopsByTier == null)
                 throw new ArgumentNullException(nameof(troopsByTier));
@@ -39,7 +39,7 @@ namespace FactionWars.Combat.Services
 
             // Calculate proportional ped counts for each tier
             var plan = new DefenderSpawnPlan();
-            var tiers = new[] { DefenderTier.Heavy, DefenderTier.Medium, DefenderTier.Basic };
+            var tiers = new[] { DefenderRole.Rifleman, DefenderRole.Gunner, DefenderRole.Grunt };
             var rawCounts = CalculateRawCounts(troopsByTier, tiers, totalTroops, maxPeds);
             var wholeNumbers = AssignWholeNumbers(troopsByTier, tiers, rawCounts, out var remainders, out int totalAssigned);
             DistributeRemainingPeds(troopsByTier, tiers, wholeNumbers, remainders, maxPeds - totalAssigned);
@@ -53,13 +53,13 @@ namespace FactionWars.Combat.Services
             return plan;
         }
 
-        private static Dictionary<DefenderTier, double> CalculateRawCounts(
-            Dictionary<DefenderTier, int> troopsByTier,
-            DefenderTier[] tiers,
+        private static Dictionary<DefenderRole, double> CalculateRawCounts(
+            Dictionary<DefenderRole, int> troopsByTier,
+            DefenderRole[] tiers,
             int totalTroops,
             int maxPeds)
         {
-            var rawCounts = new Dictionary<DefenderTier, double>();
+            var rawCounts = new Dictionary<DefenderRole, double>();
             foreach (var tier in tiers)
             {
                 int troops = troopsByTier.TryGetValue(tier, out var t) ? t : 0;
@@ -70,15 +70,15 @@ namespace FactionWars.Combat.Services
             return rawCounts;
         }
 
-        private static Dictionary<DefenderTier, int> AssignWholeNumbers(
-            Dictionary<DefenderTier, int> troopsByTier,
-            DefenderTier[] tiers,
-            Dictionary<DefenderTier, double> rawCounts,
-            out Dictionary<DefenderTier, double> remainders,
+        private static Dictionary<DefenderRole, int> AssignWholeNumbers(
+            Dictionary<DefenderRole, int> troopsByTier,
+            DefenderRole[] tiers,
+            Dictionary<DefenderRole, double> rawCounts,
+            out Dictionary<DefenderRole, double> remainders,
             out int totalAssigned)
         {
-            var wholeNumbers = new Dictionary<DefenderTier, int>();
-            remainders = new Dictionary<DefenderTier, double>();
+            var wholeNumbers = new Dictionary<DefenderRole, int>();
+            remainders = new Dictionary<DefenderRole, double>();
             totalAssigned = 0;
 
             foreach (var tier in tiers)
@@ -101,10 +101,10 @@ namespace FactionWars.Combat.Services
         }
 
         private static void DistributeRemainingPeds(
-            Dictionary<DefenderTier, int> troopsByTier,
-            DefenderTier[] tiers,
-            Dictionary<DefenderTier, int> wholeNumbers,
-            Dictionary<DefenderTier, double> remainders,
+            Dictionary<DefenderRole, int> troopsByTier,
+            DefenderRole[] tiers,
+            Dictionary<DefenderRole, int> wholeNumbers,
+            Dictionary<DefenderRole, double> remainders,
             int pedsToDistribute)
         {
             var orderedByRemainder = tiers
@@ -123,9 +123,9 @@ namespace FactionWars.Combat.Services
         }
 
         private static void EnsureRepresentedTiers(
-            Dictionary<DefenderTier, int> troopsByTier,
-            DefenderTier[] tiers,
-            Dictionary<DefenderTier, int> wholeNumbers,
+            Dictionary<DefenderRole, int> troopsByTier,
+            DefenderRole[] tiers,
+            Dictionary<DefenderRole, int> wholeNumbers,
             int totalAssigned,
             int maxPeds)
         {

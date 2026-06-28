@@ -123,19 +123,23 @@ namespace FactionWars.ScriptHookV.UI
                     break;
 
                 case RecruitBasicItemId:
-                    if (factionId != null) RecruitFollower(factionId, DefenderTier.Basic);
+                    if (factionId != null) RecruitFollower(factionId, DefenderRole.Grunt);
                     break;
 
                 case RecruitMediumItemId:
-                    if (factionId != null) RecruitFollower(factionId, DefenderTier.Medium);
+                    if (factionId != null) RecruitFollower(factionId, DefenderRole.Gunner);
                     break;
 
                 case RecruitHeavyItemId:
-                    if (factionId != null) RecruitFollower(factionId, DefenderTier.Heavy);
+                    if (factionId != null) RecruitFollower(factionId, DefenderRole.Rifleman);
                     break;
 
                 case RecruitEliteItemId:
-                    if (factionId != null) RecruitFollower(factionId, DefenderTier.Elite);
+                    if (factionId != null) RecruitFollower(factionId, DefenderRole.Rocketeer);
+                    break;
+
+                case RecruitSniperItemId:
+                    if (factionId != null) RecruitFollower(factionId, DefenderRole.Sniper);
                     break;
 
                 case ManageFollowersItemId:

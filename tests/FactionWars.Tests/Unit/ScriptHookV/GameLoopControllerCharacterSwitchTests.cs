@@ -390,6 +390,24 @@ namespace FactionWars.Tests.Unit.ScriptHookV
         }
 
         [Fact]
+        public void OnTick_CharacterSwitched_DoesNotRemovePlayerWeapons()
+        {
+            // Arrange
+            SetupController("player_zero"); // Michael
+            var controller = new GameLoopController(_container);
+            controller.OnTick();
+            _gameBridge.GivePlayerWeapon("weapon_carbinerifle", 250);
+
+            // Act - switch to Trevor.
+            _gameBridge.PlayerCharacterModel = "player_two";
+            controller.OnTick();
+
+            // Assert - the loadout survives the switch.
+            Assert.False(_gameBridge.WereAllPlayerWeaponsRemoved);
+            Assert.Contains("weapon_carbinerifle", _gameBridge.PlayerWeapons);
+        }
+
+        [Fact]
         public void OnAbort_AfterSwitch_CleansUpCorrectly()
         {
             // Arrange

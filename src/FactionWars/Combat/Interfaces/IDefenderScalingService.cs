@@ -20,7 +20,7 @@ namespace FactionWars.Combat.Interfaces
         /// <returns>A spawn plan indicating how many peds of each tier to spawn.</returns>
         /// <exception cref="System.ArgumentNullException">Thrown if troopsByTier is null.</exception>
         /// <exception cref="System.ArgumentOutOfRangeException">Thrown if maxPeds is negative.</exception>
-        DefenderSpawnPlan CalculateSpawnPlan(Dictionary<DefenderTier, int> troopsByTier, int maxPeds);
+        DefenderSpawnPlan CalculateSpawnPlan(Dictionary<DefenderRole, int> troopsByTier, int maxPeds);
 
         /// <summary>
         /// Calculates the scaled number of defenders for a given troop count.

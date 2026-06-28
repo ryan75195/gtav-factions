@@ -108,9 +108,9 @@ namespace FactionWars.ScriptHookV.UI
             var victoryPercent = totalZones > 0 ? (int)Math.Round((double)zonesOwned / totalZones * 100) : 0;
 
             // Get reserve troops by tier
-            var basicReserve = factionState?.GetReserveTroops(DefenderTier.Basic) ?? 0;
-            var mediumReserve = factionState?.GetReserveTroops(DefenderTier.Medium) ?? 0;
-            var heavyReserve = factionState?.GetReserveTroops(DefenderTier.Heavy) ?? 0;
+            var basicReserve = factionState?.GetReserveTroops(DefenderRole.Grunt) ?? 0;
+            var mediumReserve = factionState?.GetReserveTroops(DefenderRole.Gunner) ?? 0;
+            var heavyReserve = factionState?.GetReserveTroops(DefenderRole.Rifleman) ?? 0;
 
             var menu = new MenuDefinition(OverviewMenuId, "Overview", factionName);
             AddOverviewItems(menu, zonesOwned, totalZones, victoryPercent, cash, totalReserveTroops,

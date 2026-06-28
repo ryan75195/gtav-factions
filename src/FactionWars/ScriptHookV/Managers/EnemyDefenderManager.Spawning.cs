@@ -10,20 +10,20 @@ namespace FactionWars.ScriptHookV.Managers
 {
     public partial class EnemyDefenderManager
     {
-        private void ConfigureEnemyDefender(int pedHandle, DefenderTierConfig tierConfig, Vector3 zoneCenter, float wanderRadius)
+        private void ConfigureEnemyDefender(int pedHandle, DefenderRoleConfig roleConfig, Vector3 zoneCenter, float wanderRadius)
         {
             // Give weapons
             _gameBridge.GivePedWeapon(pedHandle, "weapon_pistol");
-            _gameBridge.GivePedWeapon(pedHandle, tierConfig.Weapon);
-            _gameBridge.SetPedAccuracy(pedHandle, tierConfig.Accuracy);
-            _gameBridge.SetPedArmor(pedHandle, tierConfig.Armor);
-            _gameBridge.SetPedHealth(pedHandle, tierConfig.Health);
+            _gameBridge.GivePedWeapon(pedHandle, roleConfig.Weapon);
+            _gameBridge.SetPedAccuracy(pedHandle, roleConfig.Accuracy);
+            _gameBridge.SetPedArmor(pedHandle, roleConfig.Armor);
+            _gameBridge.SetPedHealth(pedHandle, roleConfig.Health);
             _gameBridge.SetPedCriticalHitsEnabled(pedHandle, true);
-            _gameBridge.SetPedRagdollEnabled(pedHandle, tierConfig.RagdollEnabled);
+            _gameBridge.SetPedRagdollEnabled(pedHandle, roleConfig.RagdollEnabled);
             _gameBridge.SetPedCombatAttributes(pedHandle, canUseCover: true, willFightArmedPeds: true);
 
             // Elite tier uses RPG - prevent AI from switching to pistol (AI prefers pistol to avoid self-damage)
-            if (tierConfig.Tier == DefenderTier.Elite)
+            if (roleConfig.Role == DefenderRole.Rocketeer)
             {
                 _gameBridge.SetPedCanSwitchWeapons(pedHandle, false);
             }
@@ -33,28 +33,13 @@ namespace FactionWars.ScriptHookV.Managers
             _gameBridge.SetPedSeeingRange(pedHandle, perceptionRange);
             _gameBridge.SetPedHearingRange(pedHandle, perceptionRange);
 
-            // Set as hostile wanderer - will engage player and followers on sight
-            _gameBridge.SetPedAsHostileWanderer(pedHandle);
-
-            // Task to seek and fight hated targets (player, followers, friendly defenders)
+            // Hostile stance (persistence, combat attributes) is set by ZoneCombatantSpawner at
+            // spawn time; the relationship matrix decides who this ped hates. Here we only add the
+            // zone patrol/seek tasking that drives them toward hated targets in range.
             _gameBridge.TaskCombatHatedTargetsAroundPed(pedHandle, wanderRadius);
-        }
 
-        private void ConfigureBattleRelationships(string zoneId)
-        {
-            var battle = _zoneBattleManager?.GetBattleForZone(zoneId);
-            if (battle == null)
-                return;
-
-            for (int i = 0; i < battle.Participants.Count; i++)
-            {
-                for (int j = i + 1; j < battle.Participants.Count; j++)
-                {
-                    var group1 = _pedSpawningService.GetRelationshipGroup(battle.Participants[i].FactionId);
-                    var group2 = _pedSpawningService.GetRelationshipGroup(battle.Participants[j].FactionId);
-                    _gameBridge.SetRelationshipBetweenGroups(group1, group2, relationship: 5, bidirectional: true);
-                }
-            }
+            // Sniper-specific: move ped to high-ground perch and issue guard task. No-op for other roles.
+            _sniperDeployment.DeployIfSniper(pedHandle, roleConfig, zoneCenter);
         }
 
         /// <summary>

@@ -9,12 +9,12 @@ namespace FactionWars.Telemetry.Models
         public long PlayTimeSeconds { get; }
         public string FactionId { get; }
         public string ZoneId { get; }
-        public DefenderTier Tier { get; }
+        public DefenderRole Tier { get; }
         public int Count { get; }
         public AllocationSource Source { get; }
 
         public AllocationEventRow(DateTime timestamp, long playTimeSeconds,
-            string factionId, string zoneId, DefenderTier tier, int count, AllocationSource source)
+            string factionId, string zoneId, DefenderRole tier, int count, AllocationSource source)
         {
             Timestamp = timestamp;
             PlayTimeSeconds = playTimeSeconds;

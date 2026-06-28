@@ -36,8 +36,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV
 
             // Recruit some followers for Michael's faction
             var followerService = _container.Resolve<IFollowerService>();
-            followerService.Recruit("michael", DefenderTier.Basic);
-            followerService.Recruit("michael", DefenderTier.Medium);
+            followerService.Recruit("michael", DefenderRole.Grunt);
+            followerService.Recruit("michael", DefenderRole.Gunner);
 
             Assert.Equal(2, followerService.GetFollowerCount("michael"));
 
@@ -60,8 +60,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             var followerService = _container.Resolve<IFollowerService>();
 
             // Recruit followers for multiple factions (simulating scenario where other factions have followers)
-            followerService.Recruit("michael", DefenderTier.Basic);
-            followerService.Recruit("trevor", DefenderTier.Basic);
+            followerService.Recruit("michael", DefenderRole.Grunt);
+            followerService.Recruit("trevor", DefenderRole.Grunt);
 
             Assert.Equal(1, followerService.GetFollowerCount("michael"));
             Assert.Equal(1, followerService.GetFollowerCount("trevor"));
@@ -84,8 +84,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             controller.OnTick();
 
             var followerService = _container.Resolve<IFollowerService>();
-            followerService.Recruit("michael", DefenderTier.Basic);
-            followerService.Recruit("michael", DefenderTier.Heavy);
+            followerService.Recruit("michael", DefenderRole.Grunt);
+            followerService.Recruit("michael", DefenderRole.Rifleman);
 
             var initialCount = followerService.GetFollowerCount("michael");
 
@@ -110,7 +110,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             var followerManager = controller.FollowerManager;
             Assert.NotNull(followerManager);
 
-            var result = followerManager!.RecruitFollower("michael", DefenderTier.Basic);
+            var result = followerManager!.RecruitFollower("michael", DefenderRole.Grunt);
             Assert.True(result.Success);
 
             var followerPedHandle = result.Follower!.PedHandle;
@@ -136,7 +136,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             var followerService = _container.Resolve<IFollowerService>();
 
             // Recruit followers for Michael
-            followerService.Recruit("michael", DefenderTier.Basic);
+            followerService.Recruit("michael", DefenderRole.Grunt);
             Assert.Equal(1, followerService.GetFollowerCount("michael"));
 
             // Act - Switch to Franklin
@@ -146,7 +146,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             Assert.Equal(0, followerService.GetFollowerCount("michael"));
 
             // Recruit followers for Franklin
-            followerService.Recruit("franklin", DefenderTier.Medium);
+            followerService.Recruit("franklin", DefenderRole.Gunner);
             Assert.Equal(1, followerService.GetFollowerCount("franklin"));
 
             // Act - Switch to Trevor

@@ -14,8 +14,6 @@ namespace FactionWars.ScriptHookV
         {
             try
             {
-                FileLogger.Info($"SetPedAsFollower called for handle {pedHandle}");
-
                 var ped = Entity.FromHandle(pedHandle) as Ped;
                 if (ped == null || !ped.Exists())
                 {
@@ -36,7 +34,6 @@ namespace FactionWars.ScriptHookV
                 // Set relationship to be friendly with the player
                 var playerGroup = player.RelationshipGroup;
                 ped.RelationshipGroup = playerGroup;
-                FileLogger.Info($"Set ped {pedHandle} to player's relationship group");
 
                 // Ensure followers hate the defender enemies group (used by hostile zone defenders)
                 var defenderEnemyGroup = World.AddRelationshipGroup("DEFENDER_ENEMIES");
@@ -45,8 +42,6 @@ namespace FactionWars.ScriptHookV
                 AddPedToPlayerGroup(player, ped, pedHandle);
 
                 ConfigureFollowerCombat(ped);
-
-                FileLogger.Info($"Follower {pedHandle} configured: combat and follow behavior set");
             }
             catch (Exception ex)
             {
@@ -225,19 +220,22 @@ namespace FactionWars.ScriptHookV
                 // Use native for better control - TASK_ENTER_VEHICLE with flags
                 // Flags: 1 = warp if failed, 8 = don't wait for door to open, 16 = warp in
                 // Timeout -1 = no timeout
-                // Speed: 2.0 = run
+                // Speed: 1.0 = walk, 2.0 = run, 3.0 = sprint. Followers should hustle to the car.
+                const float SprintSpeed = 3.0f;
                 Function.Call(Hash.TASK_ENTER_VEHICLE,
                     ped.Handle,
                     vehicle.Handle,
                     -1,           // timeout - no timeout
                     gtaSeatIndex, // seat
-                    2.0f,         // speed (run)
+                    SprintSpeed,  // speed (sprint)
                     1,            // flag: 1 = normal entry
                     0);           // unknown
+
+                FileLogger.AI($"TaskPedEnterVehicle: ped {pedHandle} -> vehicle {vehicleHandle} seat {gtaSeatIndex} speed {SprintSpeed:F1} (sprint)");
             }
-            catch
+            catch (Exception ex)
             {
-                // Silently ignore
+                FileLogger.Error($"TaskPedEnterVehicle exception for ped {pedHandle}", ex);
             }
         }
 

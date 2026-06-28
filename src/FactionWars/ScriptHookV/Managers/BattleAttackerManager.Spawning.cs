@@ -7,14 +7,14 @@ using FactionWars.Core.Models;
 using FactionWars.ScriptHookV.Logging;
 using FactionWars.ScriptHookV.Models;
 using FactionWars.ScriptHookV.Services;
-using FactionWars.ScriptHookV.Utils;
+using FactionWars.Core.Utils;
 using FactionWars.Territory.Models;
 
 namespace FactionWars.ScriptHookV.Managers
 {
     public partial class BattleAttackerManager
     {
-        private bool TrySpawnReplacement(string zoneId, DefenderTier preferredTier, ZoneBattle? battle)
+        private bool TrySpawnReplacement(string zoneId, DefenderRole preferredTier, ZoneBattle? battle)
         {
             if (battle == null) return false;
 
@@ -24,6 +24,11 @@ namespace FactionWars.ScriptHookV.Managers
             var zone = _zoneService.GetZone(zoneId);
             if (zone == null) return false;
 
+            // Never spawn the player's own faction as a hostile attacker: resolve the hostile
+            // attacker the same way the initial spawn does, and bail if there isn't one.
+            var attackerFactionId = GetHostileAttackerForPlayer(battle)?.FactionId;
+            if (attackerFactionId == null) return false;
+
             // Try preferred tier first
             if (battle.AttackerTroops.TryGetValue(preferredTier, out var allocatedCount))
             {
@@ -31,14 +36,14 @@ namespace FactionWars.ScriptHookV.Managers
 
                 if (allocatedCount > spawnedOfTier)
                 {
-                    SpawnSingleAttacker(zoneId, preferredTier, battle.AttackerFactionId, zone);
+                    SpawnSingleAttacker(zoneId, preferredTier, attackerFactionId, zone);
                     FileLogger.Combat($"BattleAttackerManager: Spawned replacement {preferredTier} in {zoneId}");
                     return true;
                 }
             }
 
             // Try other tiers (highest first)
-            foreach (var tier in new[] { DefenderTier.Elite, DefenderTier.Heavy, DefenderTier.Medium, DefenderTier.Basic })
+            foreach (var tier in new[] { DefenderRole.Rocketeer, DefenderRole.Rifleman, DefenderRole.Gunner, DefenderRole.Grunt })
             {
                 if (tier == preferredTier) continue;
 
@@ -48,7 +53,7 @@ namespace FactionWars.ScriptHookV.Managers
 
                     if (allocatedCount > spawnedOfTier)
                     {
-                        SpawnSingleAttacker(zoneId, tier, battle.AttackerFactionId, zone);
+                        SpawnSingleAttacker(zoneId, tier, attackerFactionId, zone);
                         FileLogger.Combat($"BattleAttackerManager: Spawned replacement {tier} in {zoneId}");
                         return true;
                     }
@@ -61,21 +66,21 @@ namespace FactionWars.ScriptHookV.Managers
         /// <summary>
         /// Spawns a single enemy attacker.
         /// </summary>
-        private void SpawnSingleAttacker(string zoneId, DefenderTier tier, string attackerFactionId, Zone zone)
+        private void SpawnSingleAttacker(string zoneId, DefenderRole tier, string attackerFactionId, Zone zone)
         {
             if (!_pedSpawningService.CanSpawn()) return;
 
             var model = _modelsByTier.TryGetValue(tier, out var m) ? m : "g_m_y_famca_01";
-            var tierConfig = _defenderTierService.GetTierConfig(tier);
+            var roleConfig = _defenderRoleService.GetRoleConfig(tier);
             var random = new Random();
 
             var spawnPos = CalculateRandomSpawnPosition(zone.Center, zone.Radius, random);
-            var pedHandle = _pedSpawningService.SpawnPed(model, spawnPos, attackerFactionId, zoneId);
+            // Single spawn site owns relationship group, blip colour, and hostile stance.
+            var pedHandle = _spawner.Spawn(attackerFactionId, _playerFactionId, model, spawnPos, zoneId);
 
             if (!pedHandle.IsValid) return;
 
-            ConfigureAttacker(pedHandle.Handle, tierConfig, zone.Center, zone.Radius);
-            _pedBlipService.CreateBlipForPed(pedHandle.Handle, FactionBlipColor.ForFactionId(attackerFactionId));
+            ConfigureAttacker(pedHandle.Handle, roleConfig, zone.Center, zone.Radius);
 
             EnsureSpawnTracking(zoneId);
             _spawnedPedTierByZone[zoneId][pedHandle.Handle] = tier;
@@ -103,42 +108,29 @@ namespace FactionWars.ScriptHookV.Managers
         /// <summary>
         /// Configures an enemy attacker's combat attributes and behavior.
         /// </summary>
-        private void ConfigureAttacker(int pedHandle, DefenderTierConfig tierConfig, Vector3 zoneCenter, float wanderRadius)
+        private void ConfigureAttacker(int pedHandle, DefenderRoleConfig roleConfig, Vector3 zoneCenter, float wanderRadius)
         {
             // Give weapons
             _gameBridge.GivePedWeapon(pedHandle, "weapon_pistol");
-            _gameBridge.GivePedWeapon(pedHandle, tierConfig.Weapon);
-            _gameBridge.SetPedAccuracy(pedHandle, tierConfig.Accuracy);
-            _gameBridge.SetPedArmor(pedHandle, tierConfig.Armor);
-            _gameBridge.SetPedHealth(pedHandle, tierConfig.Health);
+            _gameBridge.GivePedWeapon(pedHandle, roleConfig.Weapon);
+            _gameBridge.SetPedAccuracy(pedHandle, roleConfig.Accuracy);
+            _gameBridge.SetPedArmor(pedHandle, roleConfig.Armor);
+            _gameBridge.SetPedHealth(pedHandle, roleConfig.Health);
             _gameBridge.SetPedCriticalHitsEnabled(pedHandle, true);
-            _gameBridge.SetPedRagdollEnabled(pedHandle, tierConfig.RagdollEnabled);
+            _gameBridge.SetPedRagdollEnabled(pedHandle, roleConfig.RagdollEnabled);
             _gameBridge.SetPedCombatAttributes(pedHandle, canUseCover: true, willFightArmedPeds: true);
 
             // Elite tier uses RPG - prevent AI from switching to pistol (AI prefers pistol to avoid self-damage)
-            if (tierConfig.Tier == DefenderTier.Elite)
+            if (roleConfig.Role == DefenderRole.Rocketeer)
             {
                 _gameBridge.SetPedCanSwitchWeapons(pedHandle, false);
             }
 
-            // Set as hostile wanderer - will engage player and followers on sight
-            _gameBridge.SetPedAsHostileWanderer(pedHandle);
-
-            // Seek any hated targets in the battle, not only the player.
+            // Hostile stance (persistence, combat attributes) is set by ZoneCombatantSpawner at
+            // spawn time; the relationship matrix decides who this ped hates. Here we only add the
+            // tasking that drives them to seek any hated target in the battle, not only the player.
             _gameBridge.TaskCombatHatedTargetsAroundPed(pedHandle, wanderRadius);
         }
 
-        private void ConfigureBattleRelationships(ZoneBattle battle)
-        {
-            for (int i = 0; i < battle.Participants.Count; i++)
-            {
-                for (int j = i + 1; j < battle.Participants.Count; j++)
-                {
-                    var group1 = _pedSpawningService.GetRelationshipGroup(battle.Participants[i].FactionId);
-                    var group2 = _pedSpawningService.GetRelationshipGroup(battle.Participants[j].FactionId);
-                    _gameBridge.SetRelationshipBetweenGroups(group1, group2, relationship: 5, bidirectional: true);
-                }
-            }
-        }
     }
 }

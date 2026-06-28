@@ -60,27 +60,27 @@ namespace FactionWars.Telemetry.Services
                     timestamp, playTimeSeconds, faction.Id,
                     GetSnapshotCash(faction.Id, state.Cash), total,
                     _zoneService.GetZoneCount(faction.Id),
-                    totalByTier[DefenderTier.Basic],
-                    totalByTier[DefenderTier.Medium],
-                    totalByTier[DefenderTier.Heavy],
-                    totalByTier[DefenderTier.Elite],
+                    totalByTier[DefenderRole.Grunt],
+                    totalByTier[DefenderRole.Gunner],
+                    totalByTier[DefenderRole.Rifleman],
+                    totalByTier[DefenderRole.Rocketeer],
                     reserve, deployed));
             }
             return rows;
         }
 
-        private static Dictionary<DefenderTier, int> GetReserveByTier(FactionState state)
+        private static Dictionary<DefenderRole, int> GetReserveByTier(FactionState state)
         {
-            return new Dictionary<DefenderTier, int>
+            return new Dictionary<DefenderRole, int>
             {
-                { DefenderTier.Basic, state.GetReserveTroops(DefenderTier.Basic) },
-                { DefenderTier.Medium, state.GetReserveTroops(DefenderTier.Medium) },
-                { DefenderTier.Heavy, state.GetReserveTroops(DefenderTier.Heavy) },
-                { DefenderTier.Elite, state.GetReserveTroops(DefenderTier.Elite) }
+                { DefenderRole.Grunt, state.GetReserveTroops(DefenderRole.Grunt) },
+                { DefenderRole.Gunner, state.GetReserveTroops(DefenderRole.Gunner) },
+                { DefenderRole.Rifleman, state.GetReserveTroops(DefenderRole.Rifleman) },
+                { DefenderRole.Rocketeer, state.GetReserveTroops(DefenderRole.Rocketeer) }
             };
         }
 
-        private Dictionary<DefenderTier, int> GetDeployedByTier(string factionId)
+        private Dictionary<DefenderRole, int> GetDeployedByTier(string factionId)
         {
             var deployed = EmptyTierCounts();
             if (_allocationService == null)
@@ -88,21 +88,21 @@ namespace FactionWars.Telemetry.Services
 
             foreach (var allocation in _allocationService.GetAllocationsForFaction(factionId))
             {
-                deployed[DefenderTier.Basic] += allocation.GetTroopCount(DefenderTier.Basic);
-                deployed[DefenderTier.Medium] += allocation.GetTroopCount(DefenderTier.Medium);
-                deployed[DefenderTier.Heavy] += allocation.GetTroopCount(DefenderTier.Heavy);
-                deployed[DefenderTier.Elite] += allocation.GetTroopCount(DefenderTier.Elite);
+                deployed[DefenderRole.Grunt] += allocation.GetTroopCount(DefenderRole.Grunt);
+                deployed[DefenderRole.Gunner] += allocation.GetTroopCount(DefenderRole.Gunner);
+                deployed[DefenderRole.Rifleman] += allocation.GetTroopCount(DefenderRole.Rifleman);
+                deployed[DefenderRole.Rocketeer] += allocation.GetTroopCount(DefenderRole.Rocketeer);
             }
 
             return deployed;
         }
 
-        private static Dictionary<DefenderTier, int> SumByTier(
-            Dictionary<DefenderTier, int> reserve,
-            Dictionary<DefenderTier, int> deployed)
+        private static Dictionary<DefenderRole, int> SumByTier(
+            Dictionary<DefenderRole, int> reserve,
+            Dictionary<DefenderRole, int> deployed)
         {
             var total = EmptyTierCounts();
-            foreach (var tier in new[] { DefenderTier.Basic, DefenderTier.Medium, DefenderTier.Heavy, DefenderTier.Elite })
+            foreach (var tier in new[] { DefenderRole.Grunt, DefenderRole.Gunner, DefenderRole.Rifleman, DefenderRole.Rocketeer })
             {
                 total[tier] = reserve[tier] + deployed[tier];
             }
@@ -110,18 +110,18 @@ namespace FactionWars.Telemetry.Services
             return total;
         }
 
-        private static Dictionary<DefenderTier, int> EmptyTierCounts()
+        private static Dictionary<DefenderRole, int> EmptyTierCounts()
         {
-            return new Dictionary<DefenderTier, int>
+            return new Dictionary<DefenderRole, int>
             {
-                { DefenderTier.Basic, 0 },
-                { DefenderTier.Medium, 0 },
-                { DefenderTier.Heavy, 0 },
-                { DefenderTier.Elite, 0 }
+                { DefenderRole.Grunt, 0 },
+                { DefenderRole.Gunner, 0 },
+                { DefenderRole.Rifleman, 0 },
+                { DefenderRole.Rocketeer, 0 }
             };
         }
 
-        private static int SumTroops(Dictionary<DefenderTier, int> troopsByTier)
+        private static int SumTroops(Dictionary<DefenderRole, int> troopsByTier)
         {
             int total = 0;
             foreach (var count in troopsByTier.Values)

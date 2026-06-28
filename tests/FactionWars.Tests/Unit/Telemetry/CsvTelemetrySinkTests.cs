@@ -194,13 +194,13 @@ namespace FactionWars.Tests.Unit.Telemetry
             sink.WriteRecruitment(new RecruitmentEventRow(timestamp, 12, "trevor",
                 troopsRecruited: 3, cost: 600, cashBefore: 1000, cashAfter: 400));
             sink.WriteAllocation(new AllocationEventRow(timestamp, 13, "michael",
-                "zone1", DefenderTier.Basic, 2, AllocationSource.Player));
+                "zone1", DefenderRole.Grunt, 2, AllocationSource.Player));
             sink.WriteResourceTick(new ResourceTickEventRow(timestamp, 14, "michael",
                 income: 250, zonesContributing: 2));
             sink.WriteMatchMeta(new MatchMetaEventRow(timestamp, 15,
                 MatchMetaEventType.ModSessionStart, "start"));
             sink.WritePlayerEvent(new PlayerEventRow(timestamp, 16, PlayerEventType.Death,
-                "zone1", "trevor", DefenderTier.Basic, "death"));
+                "zone1", "trevor", DefenderRole.Grunt, "death"));
 
             var saveDir = Path.Combine(_tempDir, "SGTA_events");
             Assert.True(File.Exists(Path.Combine(saveDir, "battles.csv")));

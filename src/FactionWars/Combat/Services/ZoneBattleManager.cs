@@ -68,7 +68,7 @@ namespace FactionWars.Combat.Services
             string factionId,
             bool isPlayer,
             Func<int>? aliveCountCallback,
-            Dictionary<DefenderTier, int>? troops)
+            Dictionary<DefenderRole, int>? troops)
         {
             if (string.IsNullOrEmpty(zoneId)) throw new ArgumentNullException(nameof(zoneId));
             if (string.IsNullOrEmpty(factionId)) throw new ArgumentNullException(nameof(factionId));
@@ -110,7 +110,7 @@ namespace FactionWars.Combat.Services
             string factionId,
             bool isPlayer,
             Func<int>? aliveCountCallback,
-            Dictionary<DefenderTier, int>? troops)
+            Dictionary<DefenderRole, int>? troops)
         {
             if (isPlayer)
             {
@@ -156,7 +156,7 @@ namespace FactionWars.Combat.Services
             var allocation = _allocationService.GetAllocation(defenderFactionId, zone.Id);
             var defenderTroops = allocation != null
                 ? allocation.GetTroopsCopy()
-                : new Dictionary<DefenderTier, int>();
+                : new Dictionary<DefenderRole, int>();
 
             var defender = BattleParticipant.ForAi(defenderFactionId, BattleRole.Defender, defenderTroops);
             var attacker = BattleParticipant.ForPlayer(playerFactionId, BattleRole.Attacker, aliveCountCallback);
@@ -201,7 +201,7 @@ namespace FactionWars.Combat.Services
         public event Action<ZoneBattle, BattleOutcome>? BattleEnded;
 
         /// <inheritdoc />
-        public event Action<ZoneBattle, DefenderTier, string>? TroopKilled;
+        public event Action<ZoneBattle, DefenderRole, string>? TroopKilled;
 
         /// <summary>
         /// Creates a new ZoneBattleManager.

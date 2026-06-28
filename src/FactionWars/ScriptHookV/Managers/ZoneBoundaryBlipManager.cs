@@ -58,6 +58,22 @@ namespace FactionWars.ScriptHookV.Managers
             DeleteActiveBlip();
         }
 
+        /// <summary>
+        /// Recolours the active boundary blip when the player's current zone changes hands while
+        /// they are still inside it (captured/neutralised mid-fight, so no exit/re-enter fires to
+        /// redraw it). Without this the boundary keeps the previous owner's colour after a capture.
+        /// </summary>
+        /// <param name="zoneId">The zone whose ownership changed.</param>
+        /// <param name="newOwnerFactionId">The new owning faction, or null if neutral.</param>
+        public void OnOwnershipChanged(string zoneId, string? newOwnerFactionId)
+        {
+            if (_disposed || _activeBlip == -1) return;
+            if (_territory.CurrentZone?.Id != zoneId) return;
+
+            _bridge.SetBlipColor(_activeBlip, GetBoundaryColor(newOwnerFactionId));
+            FileLogger.Zone($"ZoneBoundaryBlipManager: recoloured boundary for {zoneId} -> {newOwnerFactionId ?? "NONE"}");
+        }
+
         private void DeleteActiveBlip()
         {
             if (_activeBlip == -1) return;

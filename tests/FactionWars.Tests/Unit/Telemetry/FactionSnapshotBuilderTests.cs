@@ -17,10 +17,10 @@ namespace FactionWars.Tests.Unit.Telemetry
         private static FactionState MakeState(string id, int cash, int basic, int medium, int heavy, int elite)
         {
             var s = new FactionState(id) { Cash = cash };
-            s.AddReserveTroops(DefenderTier.Basic, basic);
-            s.AddReserveTroops(DefenderTier.Medium, medium);
-            s.AddReserveTroops(DefenderTier.Heavy, heavy);
-            s.AddReserveTroops(DefenderTier.Elite, elite);
+            s.AddReserveTroops(DefenderRole.Grunt, basic);
+            s.AddReserveTroops(DefenderRole.Gunner, medium);
+            s.AddReserveTroops(DefenderRole.Rifleman, heavy);
+            s.AddReserveTroops(DefenderRole.Rocketeer, elite);
             return s;
         }
 
@@ -63,11 +63,11 @@ namespace FactionWars.Tests.Unit.Telemetry
             var michael = new Faction("michael", "Michael's Crew");
             var state = MakeState("michael", 500, 4, 2, 1, 0);
             var downtown = new ZoneDefenderAllocation("michael", "downtown");
-            downtown.AddTroops(DefenderTier.Basic, 10);
-            downtown.AddTroops(DefenderTier.Medium, 3);
-            downtown.AddTroops(DefenderTier.Elite, 1);
+            downtown.AddTroops(DefenderRole.Grunt, 10);
+            downtown.AddTroops(DefenderRole.Gunner, 3);
+            downtown.AddTroops(DefenderRole.Rocketeer, 1);
             var vinewood = new ZoneDefenderAllocation("michael", "vinewood");
-            vinewood.AddTroops(DefenderTier.Heavy, 2);
+            vinewood.AddTroops(DefenderRole.Rifleman, 2);
 
             factionService.Setup(s => s.GetAllFactions()).Returns(new[] { michael });
             factionService.Setup(s => s.GetFactionState("michael")).Returns(state);

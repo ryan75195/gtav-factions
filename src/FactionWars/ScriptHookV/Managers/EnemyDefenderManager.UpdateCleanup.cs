@@ -34,6 +34,12 @@ namespace FactionWars.ScriptHookV.Managers
                     if (!ZoneLeashEnforcer.ShouldLeash(pedPos, zone.Center, zone.Radius))
                         continue;
 
+                    // Don't yank a ped that's actively fighting — clearing its tasks
+                    // cancels combat, the AI immediately re-engages and strays again,
+                    // and the leash re-fires every interval (thrash + log spam).
+                    if (_gameBridge.IsPedInCombat(pedHandle))
+                        continue;
+
                     var returnPoint = ZoneLeashEnforcer.PickReturnPoint(zone.Center, zone.Radius, _leashRandom);
                     _gameBridge.ClearPedTasks(pedHandle);
                     _gameBridge.TaskGoToCoord(pedHandle, returnPoint);
@@ -46,7 +52,7 @@ namespace FactionWars.ScriptHookV.Managers
         /// Handles the death of an enemy defender.
         /// Tracks corpse for delayed cleanup, removes blip, decrements allocation, spawns replacement.
         /// </summary>
-        private void HandleDefenderDeath(string zoneId, int pedHandle, DefenderTier tier, string enemyFactionId)
+        private void HandleDefenderDeath(string zoneId, int pedHandle, DefenderRole tier, string enemyFactionId)
         {
             FileLogger.Combat($"EnemyDefenderManager: Defender died in {zoneId}, tier={tier}");
 

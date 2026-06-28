@@ -582,9 +582,9 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         private void SetupDefenderAllocation(string factionId, string zoneId, int basic, int medium, int heavy)
         {
             var allocation = new ZoneDefenderAllocation(factionId, zoneId);
-            allocation.AddTroops(DefenderTier.Basic, basic);
-            allocation.AddTroops(DefenderTier.Medium, medium);
-            allocation.AddTroops(DefenderTier.Heavy, heavy);
+            allocation.AddTroops(DefenderRole.Grunt, basic);
+            allocation.AddTroops(DefenderRole.Gunner, medium);
+            allocation.AddTroops(DefenderRole.Rifleman, heavy);
 
             _allocationServiceMock.Setup(a => a.GetAllocation(factionId, zoneId))
                 .Returns(allocation);

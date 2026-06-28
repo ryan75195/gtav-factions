@@ -18,7 +18,7 @@ namespace FactionWars.Tests.Unit.Economy
     public class TroopPurchaseServiceTests
     {
         private readonly Mock<IGameBridge> _mockGameBridge;
-        private readonly Mock<IDefenderTierService> _mockDefenderTierService;
+        private readonly Mock<IDefenderRoleService> _mockDefenderRoleService;
         private readonly Mock<IFactionService> _mockFactionService;
         private readonly ITroopPurchaseService _troopPurchaseService;
 
@@ -27,17 +27,17 @@ namespace FactionWars.Tests.Unit.Economy
         public TroopPurchaseServiceTests()
         {
             _mockGameBridge = new Mock<IGameBridge>();
-            _mockDefenderTierService = new Mock<IDefenderTierService>();
+            _mockDefenderRoleService = new Mock<IDefenderRoleService>();
             _mockFactionService = new Mock<IFactionService>();
 
             // Default tier costs
-            _mockDefenderTierService.Setup(s => s.GetCost(DefenderTier.Basic)).Returns(200);
-            _mockDefenderTierService.Setup(s => s.GetCost(DefenderTier.Medium)).Returns(500);
-            _mockDefenderTierService.Setup(s => s.GetCost(DefenderTier.Heavy)).Returns(1000);
+            _mockDefenderRoleService.Setup(s => s.GetCost(DefenderRole.Grunt)).Returns(200);
+            _mockDefenderRoleService.Setup(s => s.GetCost(DefenderRole.Gunner)).Returns(500);
+            _mockDefenderRoleService.Setup(s => s.GetCost(DefenderRole.Rifleman)).Returns(1000);
 
             _troopPurchaseService = new TroopPurchaseService(
                 _mockGameBridge.Object,
-                _mockDefenderTierService.Object,
+                _mockDefenderRoleService.Object,
                 _mockFactionService.Object);
         }
 
@@ -49,7 +49,7 @@ namespace FactionWars.Tests.Unit.Economy
             // Arrange & Act
             var service = new TroopPurchaseService(
                 _mockGameBridge.Object,
-                _mockDefenderTierService.Object,
+                _mockDefenderRoleService.Object,
                 _mockFactionService.Object);
 
             // Assert
@@ -63,13 +63,13 @@ namespace FactionWars.Tests.Unit.Economy
             var exception = Assert.Throws<ArgumentNullException>(() =>
                 new TroopPurchaseService(
                     null!,
-                    _mockDefenderTierService.Object,
+                    _mockDefenderRoleService.Object,
                     _mockFactionService.Object));
             Assert.Equal("gameBridge", exception.ParamName);
         }
 
         [Fact]
-        public void Constructor_WithNullDefenderTierService_ThrowsArgumentNullException()
+        public void Constructor_WithNullDefenderRoleService_ThrowsArgumentNullException()
         {
             // Act & Assert
             var exception = Assert.Throws<ArgumentNullException>(() =>
@@ -77,7 +77,7 @@ namespace FactionWars.Tests.Unit.Economy
                     _mockGameBridge.Object,
                     null!,
                     _mockFactionService.Object));
-            Assert.Equal("defenderTierService", exception.ParamName);
+            Assert.Equal("defenderRoleService", exception.ParamName);
         }
 
         [Fact]
@@ -87,7 +87,7 @@ namespace FactionWars.Tests.Unit.Economy
             var exception = Assert.Throws<ArgumentNullException>(() =>
                 new TroopPurchaseService(
                     _mockGameBridge.Object,
-                    _mockDefenderTierService.Object,
+                    _mockDefenderRoleService.Object,
                     null!));
             Assert.Equal("factionService", exception.ParamName);
         }
@@ -103,7 +103,7 @@ namespace FactionWars.Tests.Unit.Economy
             _mockGameBridge.Setup(g => g.GetPlayerMoney()).Returns(1000);
 
             // Act - 5 basic troops at $200 each = $1000
-            bool canAfford = _troopPurchaseService.CanAfford(DefenderTier.Basic, 5);
+            bool canAfford = _troopPurchaseService.CanAfford(DefenderRole.Grunt, 5);
 
             // Assert
             Assert.True(canAfford);
@@ -116,7 +116,7 @@ namespace FactionWars.Tests.Unit.Economy
             _mockGameBridge.Setup(g => g.GetPlayerMoney()).Returns(500);
 
             // Act - 5 basic troops at $200 each = $1000 needed
-            bool canAfford = _troopPurchaseService.CanAfford(DefenderTier.Basic, 5);
+            bool canAfford = _troopPurchaseService.CanAfford(DefenderRole.Grunt, 5);
 
             // Assert
             Assert.False(canAfford);
@@ -129,7 +129,7 @@ namespace FactionWars.Tests.Unit.Economy
             _mockGameBridge.Setup(g => g.GetPlayerMoney()).Returns(500);
 
             // Act - 1 medium troop at $500
-            bool canAfford = _troopPurchaseService.CanAfford(DefenderTier.Medium, 1);
+            bool canAfford = _troopPurchaseService.CanAfford(DefenderRole.Gunner, 1);
 
             // Assert
             Assert.True(canAfford);
@@ -142,7 +142,7 @@ namespace FactionWars.Tests.Unit.Economy
             _mockGameBridge.Setup(g => g.GetPlayerMoney()).Returns(0);
 
             // Act
-            bool canAfford = _troopPurchaseService.CanAfford(DefenderTier.Heavy, 0);
+            bool canAfford = _troopPurchaseService.CanAfford(DefenderRole.Rifleman, 0);
 
             // Assert
             Assert.True(canAfford);
@@ -153,7 +153,7 @@ namespace FactionWars.Tests.Unit.Economy
         {
             // Act & Assert
             Assert.Throws<ArgumentOutOfRangeException>(() =>
-                _troopPurchaseService.CanAfford(DefenderTier.Basic, -1));
+                _troopPurchaseService.CanAfford(DefenderRole.Grunt, -1));
         }
 
         #endregion
@@ -164,9 +164,9 @@ namespace FactionWars.Tests.Unit.Economy
         public void GetTroopCost_ReturnsCorrectCostFromTierService()
         {
             // Act
-            int basicCost = _troopPurchaseService.GetTroopCost(DefenderTier.Basic);
-            int mediumCost = _troopPurchaseService.GetTroopCost(DefenderTier.Medium);
-            int heavyCost = _troopPurchaseService.GetTroopCost(DefenderTier.Heavy);
+            int basicCost = _troopPurchaseService.GetTroopCost(DefenderRole.Grunt);
+            int mediumCost = _troopPurchaseService.GetTroopCost(DefenderRole.Gunner);
+            int heavyCost = _troopPurchaseService.GetTroopCost(DefenderRole.Rifleman);
 
             // Assert
             Assert.Equal(200, basicCost);
@@ -182,7 +182,7 @@ namespace FactionWars.Tests.Unit.Economy
         public void CalculateTotalCost_WithSingleTier_ReturnsCorrectTotal()
         {
             // Act
-            int cost = _troopPurchaseService.CalculateTotalCost(DefenderTier.Basic, 5);
+            int cost = _troopPurchaseService.CalculateTotalCost(DefenderRole.Grunt, 5);
 
             // Assert - 5 x $200 = $1000
             Assert.Equal(1000, cost);
@@ -192,7 +192,7 @@ namespace FactionWars.Tests.Unit.Economy
         public void CalculateTotalCost_WithZeroCount_ReturnsZero()
         {
             // Act
-            int cost = _troopPurchaseService.CalculateTotalCost(DefenderTier.Heavy, 0);
+            int cost = _troopPurchaseService.CalculateTotalCost(DefenderRole.Rifleman, 0);
 
             // Assert
             Assert.Equal(0, cost);
@@ -211,7 +211,7 @@ namespace FactionWars.Tests.Unit.Economy
             _mockFactionService.Setup(f => f.GetFactionState(PlayerFactionId)).Returns(factionState);
 
             // Act - Buy 5 basic troops at $200 each = $1000
-            var result = _troopPurchaseService.PurchaseTroops(PlayerFactionId, DefenderTier.Basic, 5);
+            var result = _troopPurchaseService.PurchaseTroops(PlayerFactionId, DefenderRole.Grunt, 5);
 
             // Assert
             Assert.True(result.Success);
@@ -227,14 +227,14 @@ namespace FactionWars.Tests.Unit.Economy
             _mockFactionService.Setup(f => f.GetFactionState(PlayerFactionId)).Returns(factionState);
 
             // Act - Buy 5 basic troops
-            var result = _troopPurchaseService.PurchaseTroops(PlayerFactionId, DefenderTier.Basic, 5);
+            var result = _troopPurchaseService.PurchaseTroops(PlayerFactionId, DefenderRole.Grunt, 5);
 
             // Assert
             Assert.True(result.Success);
             Assert.Equal(5, result.TroopsPurchased);
             Assert.Equal(1000, result.TotalCost);
             _mockFactionService.Verify(
-                f => f.AddReserveTroops(PlayerFactionId, DefenderTier.Basic, 5),
+                f => f.AddReserveTroops(PlayerFactionId, DefenderRole.Grunt, 5),
                 Times.Once);
         }
 
@@ -245,14 +245,14 @@ namespace FactionWars.Tests.Unit.Economy
             _mockGameBridge.Setup(g => g.GetPlayerMoney()).Returns(500);
 
             // Act - Try to buy 5 basic troops ($1000 needed)
-            var result = _troopPurchaseService.PurchaseTroops(PlayerFactionId, DefenderTier.Basic, 5);
+            var result = _troopPurchaseService.PurchaseTroops(PlayerFactionId, DefenderRole.Grunt, 5);
 
             // Assert
             Assert.False(result.Success);
             Assert.Equal(0, result.TroopsPurchased);
             _mockGameBridge.Verify(g => g.AddPlayerMoney(It.IsAny<int>()), Times.Never);
             _mockFactionService.Verify(
-                f => f.AddReserveTroops(It.IsAny<string>(), It.IsAny<DefenderTier>(), It.IsAny<int>()),
+                f => f.AddReserveTroops(It.IsAny<string>(), It.IsAny<DefenderRole>(), It.IsAny<int>()),
                 Times.Never);
         }
 
@@ -263,7 +263,7 @@ namespace FactionWars.Tests.Unit.Economy
             _mockGameBridge.Setup(g => g.GetPlayerMoney()).Returns(2000);
 
             // Act
-            var result = _troopPurchaseService.PurchaseTroops(PlayerFactionId, DefenderTier.Basic, 0);
+            var result = _troopPurchaseService.PurchaseTroops(PlayerFactionId, DefenderRole.Grunt, 0);
 
             // Assert
             Assert.True(result.Success);
@@ -277,7 +277,7 @@ namespace FactionWars.Tests.Unit.Economy
         {
             // Act & Assert
             Assert.Throws<ArgumentOutOfRangeException>(() =>
-                _troopPurchaseService.PurchaseTroops(PlayerFactionId, DefenderTier.Basic, -1));
+                _troopPurchaseService.PurchaseTroops(PlayerFactionId, DefenderRole.Grunt, -1));
         }
 
         [Fact]
@@ -285,7 +285,7 @@ namespace FactionWars.Tests.Unit.Economy
         {
             // Act & Assert
             var exception = Assert.Throws<ArgumentNullException>(() =>
-                _troopPurchaseService.PurchaseTroops(null!, DefenderTier.Basic, 5));
+                _troopPurchaseService.PurchaseTroops(null!, DefenderRole.Grunt, 5));
             Assert.Equal("factionId", exception.ParamName);
         }
 
@@ -298,7 +298,7 @@ namespace FactionWars.Tests.Unit.Economy
             _mockFactionService.Setup(f => f.GetFactionState(PlayerFactionId)).Returns(factionState);
 
             // Act - Buy 3 medium troops at $500 each = $1500
-            var result = _troopPurchaseService.PurchaseTroops(PlayerFactionId, DefenderTier.Medium, 3);
+            var result = _troopPurchaseService.PurchaseTroops(PlayerFactionId, DefenderRole.Gunner, 3);
 
             // Assert
             Assert.True(result.Success);
@@ -315,7 +315,7 @@ namespace FactionWars.Tests.Unit.Economy
             _mockFactionService.Setup(f => f.GetFactionState(PlayerFactionId)).Returns(factionState);
 
             // Act - Buy 2 heavy troops at $1000 each = $2000
-            var result = _troopPurchaseService.PurchaseTroops(PlayerFactionId, DefenderTier.Heavy, 2);
+            var result = _troopPurchaseService.PurchaseTroops(PlayerFactionId, DefenderRole.Rifleman, 2);
 
             // Assert
             Assert.True(result.Success);

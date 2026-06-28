@@ -5,14 +5,14 @@ using FactionWars.Core.Models;
 using FactionWars.ScriptHookV.Logging;
 using FactionWars.ScriptHookV.Models;
 using FactionWars.ScriptHookV.Services;
-using FactionWars.ScriptHookV.Utils;
+using FactionWars.Core.Utils;
 using FactionWars.Territory.Models;
 
 namespace FactionWars.ScriptHookV.Managers
 {
     public partial class EnemyDefenderManager
     {
-        private bool TrySpawnReplacement(string zoneId, DefenderTier preferredTier, string enemyFactionId, ZoneDefenderAllocation? allocation)
+        private bool TrySpawnReplacement(string zoneId, DefenderRole preferredTier, string enemyFactionId, ZoneDefenderAllocation? allocation)
         {
             if (allocation == null) return false;
 
@@ -34,7 +34,7 @@ namespace FactionWars.ScriptHookV.Managers
             }
 
             // Try other tiers (highest first)
-            foreach (var tier in new[] { DefenderTier.Elite, DefenderTier.Heavy, DefenderTier.Medium, DefenderTier.Basic })
+            foreach (var tier in new[] { DefenderRole.Rocketeer, DefenderRole.Rifleman, DefenderRole.Gunner, DefenderRole.Grunt })
             {
                 if (tier == preferredTier) continue;
 
@@ -52,7 +52,7 @@ namespace FactionWars.ScriptHookV.Managers
             return false;
         }
 
-        public void OnTroopsAllocated(string factionId, string zoneId, DefenderTier tier, int count)
+        public void OnTroopsAllocated(string factionId, string zoneId, DefenderRole tier, int count)
         {
             if (string.IsNullOrEmpty(factionId) || string.IsNullOrEmpty(zoneId) || count <= 0)
                 return;
@@ -88,25 +88,26 @@ namespace FactionWars.ScriptHookV.Managers
         /// <summary>
         /// Spawns a single enemy defender.
         /// </summary>
-        private void SpawnSingleDefender(string zoneId, DefenderTier tier, string enemyFactionId, Zone zone)
+        private void SpawnSingleDefender(string zoneId, DefenderRole tier, string enemyFactionId, Zone zone)
         {
             if (!_pedSpawningService.CanSpawn()) return;
 
             var model = FactionPedModels.GetModel(enemyFactionId, tier);
-            var tierConfig = _defenderTierService.GetTierConfig(tier);
+            var roleConfig = _defenderRoleService.GetRoleConfig(tier);
             var random = new Random();
 
             var spawnPos = CalculateRandomSpawnPosition(zone.Center, zone.Radius, random);
-            var pedHandle = _pedSpawningService.SpawnPed(model, spawnPos, enemyFactionId, zoneId);
+            var playerFactionId = _playerFactionIdAccessor() ?? string.Empty;
+            // Single spawn site owns relationship group, blip colour, and hostile stance.
+            var pedHandle = _spawner.Spawn(enemyFactionId, playerFactionId, model, spawnPos, zoneId);
 
             if (!pedHandle.IsValid) return;
 
-            ConfigureEnemyDefender(pedHandle.Handle, tierConfig, zone.Center, zone.Radius);
-            _pedBlipService.CreateBlipForPed(pedHandle.Handle, FactionBlipColor.ForFactionId(enemyFactionId));
+            ConfigureEnemyDefender(pedHandle.Handle, roleConfig, zone.Center, zone.Radius);
 
             if (!_spawnedPedTierByZone.ContainsKey(zoneId))
             {
-                _spawnedPedTierByZone[zoneId] = new Dictionary<int, DefenderTier>();
+                _spawnedPedTierByZone[zoneId] = new Dictionary<int, DefenderRole>();
             }
             _spawnedPedTierByZone[zoneId][pedHandle.Handle] = tier;
         }

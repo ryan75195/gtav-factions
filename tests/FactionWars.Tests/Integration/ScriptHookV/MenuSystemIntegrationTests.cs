@@ -115,6 +115,39 @@ namespace FactionWars.Tests.Integration.ScriptHookV
             Assert.Equal(MainMenuController.MainMenuId, _menuProvider.CurrentMenuId);
         }
 
+        [Fact]
+        public void ShopSubmenu_NativeBackReturnsToMainMenu()
+        {
+            // Arrange - open the shop submenu
+            _controller.OnKeyDown(F7KeyCode);
+            _menuProvider.SimulateItemSelection(MainMenuController.ShopItemId);
+            Assert.Equal(ShopMenuController.ShopMenuId, _menuProvider.CurrentMenuId);
+
+            // Act - press the native back control (B / Backspace / Esc)
+            _menuProvider.SimulateBackOut();
+
+            // Assert - returns to the main menu, not fully closed
+            Assert.True(_menuProvider.IsMenuVisible);
+            Assert.Equal(MainMenuController.MainMenuId, _menuProvider.CurrentMenuId);
+        }
+
+        [Fact]
+        public void DefendersSubmenu_NativeBackReturnsToRecruitmentMenu()
+        {
+            // Arrange - drill main -> recruitment -> defenders
+            _controller.OnKeyDown(F7KeyCode);
+            _menuProvider.SimulateItemSelection(MainMenuController.RecruitmentItemId);
+            _menuProvider.SimulateItemSelection(RecruitmentMenuController.DefendersItemId);
+            Assert.Equal(DefendersMenuController.MenuId, _menuProvider.CurrentMenuId);
+
+            // Act - native back from defenders
+            _menuProvider.SimulateBackOut();
+
+            // Assert - returns to the recruitment menu (one level up), not the main menu or closed
+            Assert.True(_menuProvider.IsMenuVisible);
+            Assert.Equal(RecruitmentMenuController.MenuId, _menuProvider.CurrentMenuId);
+        }
+
         #endregion
 
         #region Recruitment Submenu Tests

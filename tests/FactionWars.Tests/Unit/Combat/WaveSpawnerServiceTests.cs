@@ -37,9 +37,9 @@ namespace FactionWars.Tests.Unit.Combat
 
             // Assert
             Assert.Equal(6, state.TotalRemaining);
-            Assert.Equal(3, state.GetRemaining(DefenderTier.Basic));
-            Assert.Equal(2, state.GetRemaining(DefenderTier.Medium));
-            Assert.Equal(1, state.GetRemaining(DefenderTier.Heavy));
+            Assert.Equal(3, state.GetRemaining(DefenderRole.Grunt));
+            Assert.Equal(2, state.GetRemaining(DefenderRole.Gunner));
+            Assert.Equal(1, state.GetRemaining(DefenderRole.Rifleman));
             Assert.False(state.IsComplete);
         }
 
@@ -55,7 +55,7 @@ namespace FactionWars.Tests.Unit.Combat
             var nextTier = service.GetNextWaveTier(state);
 
             // Assert - Heavy spawns first (highest priority)
-            Assert.Equal(DefenderTier.Heavy, nextTier);
+            Assert.Equal(DefenderRole.Rifleman, nextTier);
         }
 
         [Fact]
@@ -67,13 +67,13 @@ namespace FactionWars.Tests.Unit.Combat
             var state = service.CreateWaveState(plan);
 
             // Simulate Heavy wave complete
-            state.RecordSpawned(DefenderTier.Heavy, 1);
+            state.RecordSpawned(DefenderRole.Rifleman, 1);
 
             // Act
             var nextTier = service.GetNextWaveTier(state);
 
             // Assert - Medium spawns after Heavy
-            Assert.Equal(DefenderTier.Medium, nextTier);
+            Assert.Equal(DefenderRole.Gunner, nextTier);
         }
 
         [Fact]
@@ -85,14 +85,14 @@ namespace FactionWars.Tests.Unit.Combat
             var state = service.CreateWaveState(plan);
 
             // Simulate Heavy and Medium waves complete
-            state.RecordSpawned(DefenderTier.Heavy, 1);
-            state.RecordSpawned(DefenderTier.Medium, 2);
+            state.RecordSpawned(DefenderRole.Rifleman, 1);
+            state.RecordSpawned(DefenderRole.Gunner, 2);
 
             // Act
             var nextTier = service.GetNextWaveTier(state);
 
             // Assert - Basic spawns last
-            Assert.Equal(DefenderTier.Basic, nextTier);
+            Assert.Equal(DefenderRole.Grunt, nextTier);
         }
 
         [Fact]
@@ -104,9 +104,9 @@ namespace FactionWars.Tests.Unit.Combat
             var state = service.CreateWaveState(plan);
 
             // Simulate all waves complete
-            state.RecordSpawned(DefenderTier.Heavy, 1);
-            state.RecordSpawned(DefenderTier.Medium, 1);
-            state.RecordSpawned(DefenderTier.Basic, 1);
+            state.RecordSpawned(DefenderRole.Rifleman, 1);
+            state.RecordSpawned(DefenderRole.Gunner, 1);
+            state.RecordSpawned(DefenderRole.Grunt, 1);
 
             // Act
             var nextTier = service.GetNextWaveTier(state);
@@ -127,7 +127,7 @@ namespace FactionWars.Tests.Unit.Combat
             var nextTier = service.GetNextWaveTier(state);
 
             // Assert - Should skip Heavy since there are none
-            Assert.Equal(DefenderTier.Medium, nextTier);
+            Assert.Equal(DefenderRole.Gunner, nextTier);
         }
 
         [Fact]
@@ -142,7 +142,7 @@ namespace FactionWars.Tests.Unit.Combat
             var nextTier = service.GetNextWaveTier(state);
 
             // Assert - Should skip to Basic directly
-            Assert.Equal(DefenderTier.Basic, nextTier);
+            Assert.Equal(DefenderRole.Grunt, nextTier);
         }
 
         [Fact]
@@ -154,9 +154,9 @@ namespace FactionWars.Tests.Unit.Combat
             var state = service.CreateWaveState(plan);
 
             // Act
-            var heavyCount = service.GetSpawnCountForWave(state, DefenderTier.Heavy, maxToSpawn: 10);
-            var mediumCount = service.GetSpawnCountForWave(state, DefenderTier.Medium, maxToSpawn: 10);
-            var basicCount = service.GetSpawnCountForWave(state, DefenderTier.Basic, maxToSpawn: 10);
+            var heavyCount = service.GetSpawnCountForWave(state, DefenderRole.Rifleman, maxToSpawn: 10);
+            var mediumCount = service.GetSpawnCountForWave(state, DefenderRole.Gunner, maxToSpawn: 10);
+            var basicCount = service.GetSpawnCountForWave(state, DefenderRole.Grunt, maxToSpawn: 10);
 
             // Assert
             Assert.Equal(1, heavyCount);
@@ -173,7 +173,7 @@ namespace FactionWars.Tests.Unit.Combat
             var state = service.CreateWaveState(plan);
 
             // Act
-            var count = service.GetSpawnCountForWave(state, DefenderTier.Basic, maxToSpawn: 3);
+            var count = service.GetSpawnCountForWave(state, DefenderRole.Grunt, maxToSpawn: 3);
 
             // Assert - Should only spawn up to max
             Assert.Equal(3, count);
@@ -186,10 +186,10 @@ namespace FactionWars.Tests.Unit.Combat
             var service = new WaveSpawnerService();
             var plan = new DefenderSpawnPlan(basicPeds: 3, mediumPeds: 2, heavyPeds: 1);
             var state = service.CreateWaveState(plan);
-            state.RecordSpawned(DefenderTier.Heavy, 1);
+            state.RecordSpawned(DefenderRole.Rifleman, 1);
 
             // Act
-            var count = service.GetSpawnCountForWave(state, DefenderTier.Heavy, maxToSpawn: 10);
+            var count = service.GetSpawnCountForWave(state, DefenderRole.Rifleman, maxToSpawn: 10);
 
             // Assert - Heavy is complete, should be 0
             Assert.Equal(0, count);
@@ -204,13 +204,13 @@ namespace FactionWars.Tests.Unit.Combat
             var state = service.CreateWaveState(plan);
 
             // Act
-            state.RecordSpawned(DefenderTier.Heavy, 1);
-            state.RecordSpawned(DefenderTier.Medium, 2);
+            state.RecordSpawned(DefenderRole.Rifleman, 1);
+            state.RecordSpawned(DefenderRole.Gunner, 2);
 
             // Assert
-            Assert.Equal(1, state.GetRemaining(DefenderTier.Heavy));
-            Assert.Equal(1, state.GetRemaining(DefenderTier.Medium));
-            Assert.Equal(5, state.GetRemaining(DefenderTier.Basic));
+            Assert.Equal(1, state.GetRemaining(DefenderRole.Rifleman));
+            Assert.Equal(1, state.GetRemaining(DefenderRole.Gunner));
+            Assert.Equal(5, state.GetRemaining(DefenderRole.Grunt));
             Assert.Equal(7, state.TotalRemaining);
         }
 
@@ -223,10 +223,10 @@ namespace FactionWars.Tests.Unit.Combat
             var state = service.CreateWaveState(plan);
 
             // Act - Record more than we have
-            state.RecordSpawned(DefenderTier.Heavy, 5);
+            state.RecordSpawned(DefenderRole.Rifleman, 5);
 
             // Assert - Should not go below 0
-            Assert.Equal(0, state.GetRemaining(DefenderTier.Heavy));
+            Assert.Equal(0, state.GetRemaining(DefenderRole.Rifleman));
         }
 
         [Fact]
@@ -238,9 +238,9 @@ namespace FactionWars.Tests.Unit.Combat
             var state = service.CreateWaveState(plan);
 
             // Act
-            state.RecordSpawned(DefenderTier.Heavy, 1);
-            state.RecordSpawned(DefenderTier.Medium, 1);
-            state.RecordSpawned(DefenderTier.Basic, 2);
+            state.RecordSpawned(DefenderRole.Rifleman, 1);
+            state.RecordSpawned(DefenderRole.Gunner, 1);
+            state.RecordSpawned(DefenderRole.Grunt, 2);
 
             // Assert
             Assert.True(state.IsComplete);
@@ -256,13 +256,13 @@ namespace FactionWars.Tests.Unit.Combat
             var state = service.CreateWaveState(plan);
 
             // Act
-            state.RecordSpawned(DefenderTier.Heavy, 2);
-            state.RecordSpawned(DefenderTier.Medium, 1);
+            state.RecordSpawned(DefenderRole.Rifleman, 2);
+            state.RecordSpawned(DefenderRole.Gunner, 1);
 
             // Assert
-            Assert.Equal(2, state.GetSpawned(DefenderTier.Heavy));
-            Assert.Equal(1, state.GetSpawned(DefenderTier.Medium));
-            Assert.Equal(0, state.GetSpawned(DefenderTier.Basic));
+            Assert.Equal(2, state.GetSpawned(DefenderRole.Rifleman));
+            Assert.Equal(1, state.GetSpawned(DefenderRole.Gunner));
+            Assert.Equal(0, state.GetSpawned(DefenderRole.Grunt));
             Assert.Equal(3, state.TotalSpawned);
         }
 
@@ -277,9 +277,9 @@ namespace FactionWars.Tests.Unit.Combat
 
             // Assert
             Assert.Equal(3, order.Count);
-            Assert.Equal(DefenderTier.Heavy, order[0]);
-            Assert.Equal(DefenderTier.Medium, order[1]);
-            Assert.Equal(DefenderTier.Basic, order[2]);
+            Assert.Equal(DefenderRole.Rifleman, order[0]);
+            Assert.Equal(DefenderRole.Gunner, order[1]);
+            Assert.Equal(DefenderRole.Grunt, order[2]);
         }
 
         [Fact]
@@ -291,12 +291,12 @@ namespace FactionWars.Tests.Unit.Combat
             var state = service.CreateWaveState(plan);
 
             // Act
-            state.RecordSpawned(DefenderTier.Heavy, 1);
+            state.RecordSpawned(DefenderRole.Rifleman, 1);
 
             // Assert
-            Assert.True(state.IsTierComplete(DefenderTier.Heavy));
-            Assert.False(state.IsTierComplete(DefenderTier.Medium));
-            Assert.False(state.IsTierComplete(DefenderTier.Basic));
+            Assert.True(state.IsTierComplete(DefenderRole.Rifleman));
+            Assert.False(state.IsTierComplete(DefenderRole.Gunner));
+            Assert.False(state.IsTierComplete(DefenderRole.Grunt));
         }
 
         [Fact]

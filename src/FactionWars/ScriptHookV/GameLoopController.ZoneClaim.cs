@@ -44,7 +44,7 @@ namespace FactionWars.ScriptHookV
 
             // Allocate 1 Basic troop
             var allocationService = _container.Resolve<IZoneDefenderAllocationService>();
-            allocationService.SetAllocation(playerFaction!, zoneId, DefenderTier.Basic, 1);
+            allocationService.SetAllocation(playerFaction!, zoneId, DefenderRole.Grunt, 1);
 
             _gameBridge.ShowNotification($"~g~You now control {zoneName}!");
 
@@ -68,7 +68,7 @@ namespace FactionWars.ScriptHookV
         /// <summary>
         /// Handles troop killed events from ZoneBattleManager for the kill feed.
         /// </summary>
-        private void OnZoneBattleTroopKilled(ZoneBattle battle, DefenderTier tier, string side)
+        private void OnZoneBattleTroopKilled(ZoneBattle battle, DefenderRole tier, string side)
         {
             // Determine killer and victim based on who got killed
             string killerFactionId = side == "attacker" ? battle.DefenderFactionId : battle.AttackerFactionId;

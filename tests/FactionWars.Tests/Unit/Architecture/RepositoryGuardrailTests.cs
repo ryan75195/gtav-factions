@@ -90,7 +90,7 @@ namespace FactionWars.Tests.Unit.Architecture
                 AssertRegistered<IDifficultyService>,
                 AssertRegistered<IZoneService>,
                 AssertRegistered<IFactionService>,
-                AssertRegistered<IDefenderTierService>,
+                AssertRegistered<IDefenderRoleService>,
                 AssertRegistered<IFollowerService>,
                 AssertRegistered<IZoneDefenderAllocationRepository>,
                 AssertRegistered<IZoneDefenderAllocationService>,

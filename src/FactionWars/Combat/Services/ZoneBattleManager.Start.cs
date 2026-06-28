@@ -11,8 +11,8 @@ namespace FactionWars.Combat.Services
             string zoneId,
             string attackerFactionId,
             string defenderFactionId,
-            Dictionary<DefenderTier, int> attackerTroops,
-            Dictionary<DefenderTier, int> defenderTroops)
+            Dictionary<DefenderRole, int> attackerTroops,
+            Dictionary<DefenderRole, int> defenderTroops)
         {
             if (string.IsNullOrEmpty(zoneId))
                 throw new ArgumentNullException(nameof(zoneId));

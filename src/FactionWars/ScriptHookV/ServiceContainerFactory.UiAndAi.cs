@@ -88,7 +88,7 @@ namespace FactionWars.ScriptHookV
                     container.Resolve<IFactionService>(),
                     container.Resolve<IZoneDefenderAllocationService>(),
                     container.Resolve<IVehicleThreatService>(),
-                    container.Resolve<IDefenderTierService>()));
+                    container.Resolve<IDefenderRoleService>()));
 
             // Aggression response service - tracks aggression and determines AI responses
             container.RegisterSingleton<IAggressionResponseService>(() =>
@@ -128,7 +128,7 @@ namespace FactionWars.ScriptHookV
             container.RegisterSingleton<IAIRecruitmentService>(() => new AIRecruitmentService(
                 container.Resolve<IFactionService>(),
                 container.Resolve<IAIBudgetService>(),
-                container.Resolve<IDefenderTierService>(),
+                container.Resolve<IDefenderRoleService>(),
                 container.Resolve<ICapitalDeploymentService>()));
         }
 
