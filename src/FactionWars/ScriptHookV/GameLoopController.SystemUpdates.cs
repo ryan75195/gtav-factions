@@ -26,6 +26,7 @@ namespace FactionWars.ScriptHookV
             _victoryManager?.Update(deltaTime);
             _followerManager?.Update(CurrentPlayerFactionId ?? "");
             UpdateSquadStance();
+            UpdateFollowerSniperWeapons();
             _friendlyDefenderManager?.Update();
             _defenderRallyController?.Update();
             _commanderManager?.Update();
@@ -106,6 +107,28 @@ namespace FactionWars.ScriptHookV
             if (_enemyDefenderManager != null) handles.AddRange(_enemyDefenderManager.GetHostilePedHandles());
             if (_battleAttackerManager != null) handles.AddRange(_battleAttackerManager.GetHostilePedHandles());
             return handles;
+        }
+
+        // Sniper bodyguards hold a scoped rifle that the AI barely fires at point-blank range.
+        // Mirror the zone-defender close defense: switch each sniper to a pistol when any hostile
+        // is within SidearmThresholdMeters, back to the rifle when they're all beyond it.
+        private void UpdateFollowerSniperWeapons()
+        {
+            if (_followerManager == null || _sharedSniperDeployment == null) return;
+
+            var snipers = _followerManager.SniperBodyguardHandles;
+            if (snipers.Count == 0) return;
+
+            var hostilePositions = new List<Vector3>();
+            foreach (var handle in GatherHostileHandles())
+            {
+                hostilePositions.Add(_gameBridge.GetPedPosition(handle));
+            }
+
+            foreach (var sniper in snipers)
+            {
+                _sharedSniperDeployment.UpdateCloseDefense(sniper, hostilePositions);
+            }
         }
 
         /// <summary>
