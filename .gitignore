@@ -32,3 +32,6 @@ lib/
 
 # Local agent dependencies
 .claude/hooks/node_modules/
+
+# Generated telemetry/analysis reports
+reports/
