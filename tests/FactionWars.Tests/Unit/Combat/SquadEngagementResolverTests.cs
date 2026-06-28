@@ -64,11 +64,12 @@ namespace FactionWars.Tests.Unit.Combat
         }
 
         [Fact]
-        public void Engaging_SecondLosMiss_DropsToAdvance()
+        public void Engaging_SustainedLosLoss_InRange_StaysEngaged()
         {
-            var d = Resolve(15f, false, EngagePhase.Engage, 1);
-            Assert.Equal(EngagePhase.Advance, d.Phase);
-            Assert.Equal(2, d.ConsecutiveLosMisses);
+            // In range but line of sight repeatedly broken: stay engaged and let the combat task
+            // reposition for LOS. Dropping to advance here is what caused the aim/run flicker.
+            var d = Resolve(15f, false, EngagePhase.Engage, 5);
+            Assert.Equal(EngagePhase.Engage, d.Phase);
         }
 
         [Fact]
