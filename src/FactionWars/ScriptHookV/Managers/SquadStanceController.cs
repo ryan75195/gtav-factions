@@ -34,6 +34,10 @@ namespace FactionWars.ScriptHookV.Managers
         // member is treated as stranded (native group-follow desync) and re-tasked back into
         // formation. Generous enough that normal follow lag while sprinting does not trip it.
         private const float EscortFollowRepairDistance = 25f;
+
+        // Past this distance, running back is hopeless (a respawn/fast-travel left the bodyguard
+        // far across the map), so the stranded ped is warped next to the player instead of sprinting.
+        private const float EscortTeleportDistance = 150f;
         private const float HoldRadiusPerBodyguard = 8f;
 
         // HoldArea holds a tight ring around the PLAYER, not the zone. Anchoring on the

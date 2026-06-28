@@ -273,24 +273,39 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         }
 
         [Fact]
-        public void Update_EscortStance_RepairsStrandedBodyguardStillNominallyInGroup()
+        public void Update_EscortStance_StrandedBodyguard_SprintsBackInsteadOfTrustingGroupFollow()
         {
-            // A ped can be a player-group member yet stranded far away: native group-follow
-            // leaves it nominally "following" (IsPedFollowingPlayer == true) while it stands
-            // still. Escort must re-task such a ped instead of trusting the follow flag.
+            // A stranded ped (here nominally still a group member) can't be recovered by GTA
+            // group-follow from beyond its range. Escort must give it an explicit sprint-to-player
+            // task rather than re-applying group membership, which doesn't sprint it back.
             _controller = Build();
             _bridge.PlayerPosition = new Vector3(0f, 0f, 0f);
-            int bg = _bridge.CreatePed("bg", new Vector3(50f, 0f, 0f)); // 50m from the player
+            _bridge.PlayerPedHandle = 7777;
+            int bg = _bridge.CreatePed("bg", new Vector3(50f, 0f, 0f)); // 50m: stranded, recoverable on foot
             _bridge.SetPedAsFollower(bg); // nominally in the player's group
-            Assert.True(_bridge.IsPedFollowingPlayer(bg));
-            int before = _bridge.GetSetAsFollowerCallCount(bg);
             var party = new List<int> { bg };
 
             _controller.Update(Anchor, 50f, party, new List<EnemyTarget>(), NoRoles);
 
-            // Stranded => re-task fired (SetPedAsFollower re-applied) despite the follow flag.
-            Assert.True(_bridge.GetSetAsFollowerCallCount(bg) > before,
-                "stranded group member should be re-followed");
+            Assert.True(_bridge.IsPedFollowingEntity(bg)); // sprint-to-player task issued
+            Assert.Equal(7777, _bridge.GetFollowEntityTarget(bg)); // toward the player ped
+        }
+
+        [Fact]
+        public void Update_EscortStance_VeryFarStrandedBodyguard_IsTeleportedNearPlayer()
+        {
+            // Beyond the teleport threshold (e.g. left behind by a respawn/fast-travel), running
+            // back is absurd; the bodyguard is warped next to the player instead.
+            _controller = Build();
+            _bridge.PlayerPosition = new Vector3(0f, 0f, 0f);
+            _bridge.PlayerPedHandle = 7777;
+            int bg = _bridge.CreatePed("bg", new Vector3(300f, 0f, 0f)); // 300m: too far to run back
+            var party = new List<int> { bg };
+
+            _controller.Update(Anchor, 50f, party, new List<EnemyTarget>(), NoRoles);
+
+            float dist = _bridge.PlayerPosition.DistanceTo(_bridge.GetPedPosition(bg));
+            Assert.True(dist <= 25f, $"expected teleport near player, ped is {dist:F0}m away");
         }
 
         [Fact]

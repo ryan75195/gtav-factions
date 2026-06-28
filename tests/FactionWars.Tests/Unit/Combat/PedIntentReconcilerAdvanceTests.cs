@@ -66,5 +66,37 @@ namespace FactionWars.Tests.Unit.Combat
 
             Assert.Equal(newTarget, bridge.GetGoToEntityTarget(follower));
         }
+
+        [Fact]
+        public void RegroupOnPlayer_SprintsToPlayer_AtStoppingRadius()
+        {
+            var bridge = new MockGameBridge();
+            var reconciler = new PedIntentReconciler(bridge);
+            int follower = bridge.CreatePed("f", new Vector3(50f, 0f, 0f));
+            int player = 7777;
+
+            reconciler.Submit(follower, PedIntent.RegroupOnPlayer(player, 25f));
+
+            Assert.True(bridge.IsPedFollowingEntity(follower));
+            Assert.Equal(player, bridge.GetFollowEntityTarget(follower));
+            Assert.Equal(25f, bridge.GetFollowEntityStoppingRadius(follower)!.Value);
+        }
+
+        [Fact]
+        public void RegroupOnPlayer_SamePlayer_NotReissued()
+        {
+            // The persistent follow task must be issued once and left to track the moving player,
+            // not re-issued (and re-started) every tick.
+            var bridge = new MockGameBridge();
+            var reconciler = new PedIntentReconciler(bridge);
+            int follower = bridge.CreatePed("f", new Vector3(50f, 0f, 0f));
+            int player = 7777;
+
+            reconciler.Submit(follower, PedIntent.RegroupOnPlayer(player, 25f));
+            int callsAfterFirst = bridge.GetFollowEntityCallCount(follower);
+            reconciler.Submit(follower, PedIntent.RegroupOnPlayer(player, 25f)); // identical -> deduped
+
+            Assert.Equal(callsAfterFirst, bridge.GetFollowEntityCallCount(follower));
+        }
     }
 }

@@ -31,6 +31,7 @@ namespace FactionWars.ScriptHookV.Managers
             if (_gameBridge.IsPlayerDead()) return;
             int now = _gameBridge.GetGameTime();
             var playerPos = _gameBridge.GetPlayerPosition();
+            int playerHandle = _gameBridge.GetPlayerPedHandle();
 
             foreach (var pedHandle in handles)
             {
@@ -40,32 +41,64 @@ namespace FactionWars.ScriptHookV.Managers
                     continue;
                 }
 
-                // IsPedFollowingPlayer only checks ped-group MEMBERSHIP, not actual movement.
-                // Native group-follow can leave a ped nominally "following" while it stands
-                // stranded far from the player. Trust the follow flag only when the ped is
-                // actually near; otherwise fall through and re-task it back into formation.
-                bool stranded = playerPos.DistanceTo(_gameBridge.GetPedPosition(pedHandle)) > EscortFollowRepairDistance;
-                if (_gameBridge.IsPedFollowingPlayer(pedHandle) && !stranded)
+                // Distance, not group membership, decides recovery. IsPedFollowingPlayer only
+                // checks ped-group MEMBERSHIP; group-follow can leave a ped nominally "following"
+                // yet stranded, and cannot drag it back from beyond its range.
+                float dist = playerPos.DistanceTo(_gameBridge.GetPedPosition(pedHandle));
+                if (dist <= EscortFollowRepairDistance)
                 {
-                    _lastFollowReassertMs.Remove(pedHandle);
-                    continue;
+                    ApplyNearEscort(pedHandle, now);
                 }
-                if (_gameBridge.IsPedInCombat(pedHandle) && !stranded)
+                else
                 {
-                    continue;
+                    ApplyStrandedRecovery(pedHandle, playerHandle, playerPos, dist, now);
                 }
-                if (_lastFollowReassertMs.TryGetValue(pedHandle, out var last) && now - last < FollowerReassertIntervalMs)
-                {
-                    continue;
-                }
+            }
+        }
 
-                // Periodic repair: force re-application even though the intent is unchanged.
+        // Within group-follow range: trust the follow flag, otherwise periodically re-apply
+        // group-follow (force re-application even though the intent is unchanged).
+        private void ApplyNearEscort(int pedHandle, int now)
+        {
+            if (_gameBridge.IsPedFollowingPlayer(pedHandle))
+            {
+                _lastFollowReassertMs.Remove(pedHandle);
+                return;
+            }
+            if (_gameBridge.IsPedInCombat(pedHandle)) return;
+            if (_lastFollowReassertMs.TryGetValue(pedHandle, out var last) && now - last < FollowerReassertIntervalMs) return;
+
+            _reconciler.Forget(pedHandle);
+            _reconciler.Submit(pedHandle, PedIntent.FollowPlayer());
+            _lastFollowReassertMs[pedHandle] = now;
+            FileLogger.AI($"SquadStance Escort: ped {pedHandle} re-followed (near)");
+        }
+
+        // Beyond group-follow range: group re-add can't sprint the ped back. Sprint it to the
+        // player (persistent follow task, issued once via reconciler dedup); if it is too far to
+        // run back at all (respawn / fast-travel), warp it next to the player and re-follow.
+        private void ApplyStrandedRecovery(int pedHandle, int playerHandle, Vector3 playerPos, float dist, int now)
+        {
+            if (dist > EscortTeleportDistance)
+            {
+                if (_lastFollowReassertMs.TryGetValue(pedHandle, out var last) && now - last < FollowerReassertIntervalMs) return;
+                _gameBridge.SetPedPosition(pedHandle, TeleportPointNear(playerPos));
                 _reconciler.Forget(pedHandle);
                 _reconciler.Submit(pedHandle, PedIntent.FollowPlayer());
                 _lastFollowReassertMs[pedHandle] = now;
-                FileLogger.AI($"SquadStance Escort: ped {pedHandle} re-followed stranded={stranded} inGroup={_gameBridge.IsPedFollowingPlayer(pedHandle)}");
+                FileLogger.AI($"SquadStance Escort: ped {pedHandle} teleported back dist={dist:F0}");
+                return;
             }
+
+            _reconciler.Submit(pedHandle, PedIntent.RegroupOnPlayer(playerHandle, EscortFollowRepairDistance));
+            if (_lastFollowReassertMs.TryGetValue(pedHandle, out var lastLog) && now - lastLog < FollowerReassertIntervalMs) return;
+            _lastFollowReassertMs[pedHandle] = now;
+            FileLogger.AI($"SquadStance Escort: ped {pedHandle} sprinting back dist={dist:F0}");
         }
+
+        // A few metres off the player so warped-in bodyguards don't stack on the player model.
+        private static Vector3 TeleportPointNear(Vector3 playerPos)
+            => new Vector3(playerPos.X + 2f, playerPos.Y + 2f, playerPos.Z);
 
         // A bodyguard that boarded the player's vehicle during Escort must get out before it can
         // hold or hunt on the ground. Returns true if it was in a vehicle (and was tasked to leave),

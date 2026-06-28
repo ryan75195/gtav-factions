@@ -50,6 +50,12 @@ namespace FactionWars.Combat.Models
         public static PedIntent AdvanceOnTarget(int targetHandle, float stoppingRange)
             => new PedIntent(PedIntentKind.AdvanceOnTarget, targetHandle, default, stoppingRange);
 
+        /// <summary>Sprint back to the player and stay glued, recovering a bodyguard stranded
+        /// beyond group-follow range. Tracks the moving player (TASK_FOLLOW_TO_OFFSET_FROM_ENTITY,
+        /// persistent). <paramref name="stoppingRadius"/> is the idle radius on arrival.</summary>
+        public static PedIntent RegroupOnPlayer(int playerHandle, float stoppingRadius)
+            => new PedIntent(PedIntentKind.RegroupOnPlayer, playerHandle, default, stoppingRadius);
+
         /// <summary>Seek and fight any hated targets within radius of a center.</summary>
         public static PedIntent SeekHatedTargets(Vector3 center, float radius)
             => new PedIntent(PedIntentKind.SeekHatedTargets, 0, center, radius);
