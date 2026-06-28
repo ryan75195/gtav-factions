@@ -505,6 +505,46 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         }
 
         [Fact]
+        public void Update_WhenFollowerBoarded_RestoresPrimaryWeapon()
+        {
+            // In a vehicle (esp. a heli, where GTA lets passengers fire rifles/RPGs) a boarded
+            // follower must hold its primary weapon, not be left on the on-foot CQC pistol.
+            var factionId = "blue";
+            var sniper = CreateFollowerWithPedHandle(factionId, DefenderRole.Sniper, 50);
+            _followerServiceMock.Setup(s => s.GetFollowers(factionId)).Returns(new List<Follower> { sniper });
+            _defenderRoleServiceMock.Setup(s => s.GetRoleConfig(DefenderRole.Sniper))
+                .Returns(new DefenderRoleConfig(DefenderRole.Sniper, 1000, 200, 100, "WEAPON_SNIPERRIFLE", 0.9f, 2.0f));
+            _gameBridgeMock.Setup(g => g.IsPedAlive(50)).Returns(true);
+            _gameBridgeMock.Setup(g => g.IsPlayerInVehicle()).Returns(true);
+            _gameBridgeMock.Setup(g => g.GetPlayerVehicle()).Returns(900);
+            _gameBridgeMock.Setup(g => g.IsPedInVehicle(50)).Returns(true); // boarded
+
+            _manager.Update(factionId);
+
+            _gameBridgeMock.Verify(g => g.SetPedActiveWeapon(50, "WEAPON_SNIPERRIFLE"), Times.AtLeastOnce);
+        }
+
+        [Fact]
+        public void Update_WhenBoardedFollowerWeaponUnchanged_DoesNotReissueEveryTick()
+        {
+            // The restore must dedup so it does not re-equip (and interrupt firing) every tick.
+            var factionId = "blue";
+            var sniper = CreateFollowerWithPedHandle(factionId, DefenderRole.Sniper, 50);
+            _followerServiceMock.Setup(s => s.GetFollowers(factionId)).Returns(new List<Follower> { sniper });
+            _defenderRoleServiceMock.Setup(s => s.GetRoleConfig(DefenderRole.Sniper))
+                .Returns(new DefenderRoleConfig(DefenderRole.Sniper, 1000, 200, 100, "WEAPON_SNIPERRIFLE", 0.9f, 2.0f));
+            _gameBridgeMock.Setup(g => g.IsPedAlive(50)).Returns(true);
+            _gameBridgeMock.Setup(g => g.IsPlayerInVehicle()).Returns(true);
+            _gameBridgeMock.Setup(g => g.GetPlayerVehicle()).Returns(900);
+            _gameBridgeMock.Setup(g => g.IsPedInVehicle(50)).Returns(true);
+
+            _manager.Update(factionId);
+            _manager.Update(factionId);
+
+            _gameBridgeMock.Verify(g => g.SetPedActiveWeapon(50, "WEAPON_SNIPERRIFLE"), Times.Once);
+        }
+
+        [Fact]
         public void Update_WithUnspawnedFollower_ShouldSkip()
         {
             // Arrange

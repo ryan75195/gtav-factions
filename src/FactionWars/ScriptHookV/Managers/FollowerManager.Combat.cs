@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using FactionWars.Combat.Models;
 using FactionWars.Core.Interfaces;
 using FactionWars.Core.Models;
@@ -7,6 +8,35 @@ namespace FactionWars.ScriptHookV.Managers
 {
     public partial class FollowerManager
     {
+        // Primary weapon last equipped for each boarded follower, so the restore is deduped and
+        // does not re-equip (interrupting fire) every tick.
+        private readonly Dictionary<int, string> _boardedWeapon = new Dictionary<int, string>();
+
+        // GTA lets vehicle passengers (especially in helis/boats) fire their primary weapon —
+        // sniper rifle, RPG, rifle — not just a one-handed pistol. While a follower is boarded,
+        // keep its primary (tier) weapon equipped so it is not stuck on the on-foot CQC pistol.
+        // The pistol stays reserved for on-foot close defense; this owns the in-vehicle weapon.
+        private void RestoreBoardedFollowerWeapons(IReadOnlyList<Follower> followers)
+        {
+            var boarded = new HashSet<int>();
+            foreach (var follower in followers)
+            {
+                if (follower.PedHandle < 0 || !_gameBridge.IsPedInVehicle(follower.PedHandle)) continue;
+                boarded.Add(follower.PedHandle);
+
+                var weapon = _defenderRoleService.GetRoleConfig(follower.Tier).Weapon;
+                if (_boardedWeapon.TryGetValue(follower.PedHandle, out var last) && last == weapon) continue;
+
+                _gameBridge.SetPedActiveWeapon(follower.PedHandle, weapon);
+                _boardedWeapon[follower.PedHandle] = weapon;
+            }
+
+            // Once a follower is no longer boarded, drop its dedup state so the primary is
+            // re-applied next time it boards; on-foot weapon choice is owned elsewhere.
+            foreach (var handle in new List<int>(_boardedWeapon.Keys))
+                if (!boarded.Contains(handle)) _boardedWeapon.Remove(handle);
+        }
+
         // Combat profile values for SetPedCombatProfile (-1 = leave engine default).
         private const int CombatAbilityProfessional = 2;
         private const int CombatRangeFar = 2;
