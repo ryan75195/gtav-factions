@@ -10,5 +10,8 @@ namespace FactionWars.ScriptHookV.Combat.Interfaces
     public interface IEnemyTargetCollector
     {
         IReadOnlyList<EnemyTarget> Collect(IReadOnlyList<int> hostileHandles, Vector3 center, float radius);
+
+        /// <summary>Every hostile with its live position, no radius filter (whole-zone target pool).</summary>
+        IReadOnlyList<EnemyTarget> CollectAll(IReadOnlyList<int> hostileHandles);
     }
 }

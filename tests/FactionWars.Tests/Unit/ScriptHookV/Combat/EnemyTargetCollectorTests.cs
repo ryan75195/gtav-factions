@@ -36,5 +36,26 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Combat
             var collector = new EnemyTargetCollector(new MockGameBridge());
             Assert.Empty(collector.Collect(null!, new Vector3(0f, 0f, 0f), 50f));
         }
+
+        [Fact]
+        public void CollectAll_IncludesEveryHostile_RegardlessOfDistance()
+        {
+            var bridge = new MockGameBridge();
+            int near = bridge.CreatePed("a", new Vector3(0f, 0f, 0f));
+            int far = bridge.CreatePed("b", new Vector3(5000f, 0f, 0f));
+            var collector = new EnemyTargetCollector(bridge);
+
+            var result = collector.CollectAll(new List<int> { near, far });
+
+            Assert.Equal(2, result.Count);
+            Assert.Contains(result, t => t.Handle == far);
+        }
+
+        [Fact]
+        public void CollectAll_NullInput_ReturnsEmpty()
+        {
+            var collector = new EnemyTargetCollector(new MockGameBridge());
+            Assert.Empty(collector.CollectAll(null!));
+        }
     }
 }
