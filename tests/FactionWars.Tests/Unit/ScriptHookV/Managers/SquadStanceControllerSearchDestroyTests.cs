@@ -61,6 +61,32 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         }
 
         [Fact]
+        public void Advancing_KeepsTarget_WhenNearerEnemyAppears()
+        {
+            // Stickiness must hold during the Advance phase, not just Engage: an advancing follower
+            // re-dispersed onto a newly-appeared nearer enemy every tick would veer and thrash.
+            int follower = _bridge.CreatePed("f", new Vector3(0f, 0f, 0f));
+            int far = _bridge.CreatePed("e1", new Vector3(50f, 0f, 0f));     // out of range -> advance
+            int nearer = _bridge.CreatePed("e2", new Vector3(40f, 0f, 0f));  // out of range but nearer
+
+            _controller.Update(new Vector3(0f, 0f, 0f), 250f, new List<int> { follower },
+                new List<EnemyTarget> { new EnemyTarget(far, _bridge.GetPedPosition(far)) },
+                Roles(follower, DefenderRole.Grunt));
+            Assert.Equal(far, _bridge.GetGoToEntityTarget(follower)!.Value);
+
+            // A nearer enemy appears; the advancing follower must stay committed to its original target.
+            _controller.Update(new Vector3(0f, 0f, 0f), 250f, new List<int> { follower },
+                new List<EnemyTarget>
+                {
+                    new EnemyTarget(far, _bridge.GetPedPosition(far)),
+                    new EnemyTarget(nearer, _bridge.GetPedPosition(nearer))
+                },
+                Roles(follower, DefenderRole.Grunt));
+
+            Assert.Equal(far, _bridge.GetGoToEntityTarget(follower)!.Value);
+        }
+
+        [Fact]
         public void InRangeNoLos_StaysAdvance()
         {
             int follower = _bridge.CreatePed("f", new Vector3(0f, 0f, 0f));

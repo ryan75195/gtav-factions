@@ -150,7 +150,11 @@ namespace FactionWars.ScriptHookV.Managers
             var previous = new Dictionary<int, int>();
             foreach (var kvp in _lastApplied)
             {
-                if (kvp.Value.Kind == BodyguardOrderKind.AttackTarget)
+                // Both phases pin a follower to its enemy (Discriminator = target handle): keeping
+                // AdvanceOnTarget here preserves stickiness across the whole advance->engage lifecycle,
+                // not just once a follower is already engaging.
+                if (kvp.Value.Kind == BodyguardOrderKind.AttackTarget
+                    || kvp.Value.Kind == BodyguardOrderKind.AdvanceOnTarget)
                 {
                     previous[kvp.Key] = kvp.Value.Discriminator;
                 }
