@@ -111,7 +111,7 @@ namespace FactionWars.ScriptHookV
             container.RegisterSingleton<ITroopPurchaseService>(() =>
                 new TroopPurchaseService(
                     container.Resolve<IGameBridge>(),
-                    container.Resolve<IDefenderTierService>(),
+                    container.Resolve<IDefenderRoleService>(),
                     container.Resolve<IFactionService>()));
         }
 

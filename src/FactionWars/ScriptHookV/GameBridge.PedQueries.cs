@@ -97,12 +97,16 @@ namespace FactionWars.ScriptHookV
                     return;
 
                 ped.Task.ClearAllImmediately();
-                FileLogger.AI($"ClearPedTasks: Cleared tasks for ped {pedHandle}");
             }
             catch (Exception ex)
             {
                 FileLogger.Error($"ClearPedTasks exception for ped {pedHandle}", ex);
             }
+        }
+
+        public void SetPlayerPosition(DomainVector3 position)
+        {
+            SetPedPosition(GetPlayerPedHandle(), position);
         }
 
         /// <inheritdoc />

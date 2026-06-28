@@ -21,7 +21,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
         private readonly Mock<IZoneBattleManager> _battleManagerMock;
         private readonly Mock<IPedSpawningService> _pedSpawningMock;
         private readonly Mock<IPedDespawnService> _pedDespawnMock;
-        private readonly Mock<IDefenderTierService> _tierServiceMock;
+        private readonly Mock<IDefenderRoleService> _tierServiceMock;
         private readonly Mock<IPedBlipService> _blipServiceMock;
         private readonly Mock<IZoneService> _zoneServiceMock;
         private readonly Mock<IFactionService> _factionServiceMock;
@@ -32,13 +32,13 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             _battleManagerMock = new Mock<IZoneBattleManager>();
             _pedSpawningMock = new Mock<IPedSpawningService>();
             _pedDespawnMock = new Mock<IPedDespawnService>();
-            _tierServiceMock = new Mock<IDefenderTierService>();
+            _tierServiceMock = new Mock<IDefenderRoleService>();
             _blipServiceMock = new Mock<IPedBlipService>();
             _zoneServiceMock = new Mock<IZoneService>();
             _factionServiceMock = new Mock<IFactionService>();
 
-            _tierServiceMock.Setup(t => t.GetTierConfig(It.IsAny<DefenderTier>()))
-                .Returns(new DefenderTierConfig(DefenderTier.Basic, 100, 100, 0, "weapon_pistol", 50, 1.0f));
+            _tierServiceMock.Setup(t => t.GetRoleConfig(It.IsAny<DefenderRole>()))
+                .Returns(new DefenderRoleConfig(DefenderRole.Grunt, 100, 100, 0, "weapon_pistol", 50, 1.0f));
 
             // Default to "ped exists" so Update treats !IsPedAlive as a real death rather
             // than streamed-out culling. Tests that want to simulate streaming override this.
@@ -50,8 +50,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV
         {
             // Arrange
             var zone = new Zone("downtown", "Downtown", new Vector3(0, 0, 0), 100f) { OwnerFactionId = "player" };
-            var attackerTroops = new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 5 } };
-            var defenderTroops = new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 3 } };
+            var attackerTroops = new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 5 } };
+            var defenderTroops = new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 3 } };
             var battle = new ZoneBattle("enemy", "player", "downtown", attackerTroops, defenderTroops, "player");
 
             _battleManagerMock.Setup(b => b.GetBattleForZone("downtown")).Returns(battle);
@@ -94,8 +94,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV
         {
             // Arrange
             var zone = new Zone("downtown", "Downtown", new Vector3(0, 0, 0), 100f) { OwnerFactionId = "enemy" };
-            var attackerTroops = new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 5 } };
-            var defenderTroops = new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 3 } };
+            var attackerTroops = new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 5 } };
+            var defenderTroops = new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 3 } };
             var battle = new ZoneBattle("player", "enemy", "downtown", attackerTroops, defenderTroops, "player");
 
             _battleManagerMock.Setup(b => b.GetBattleForZone("downtown")).Returns(battle);
@@ -114,8 +114,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV
         public void OnPlayerZoneEntered_PlayerJoinedExistingAiBattle_ShouldSpawnOtherAiAttacker()
         {
             var zone = new Zone("downtown", "Downtown", new Vector3(0, 0, 0), 100f) { OwnerFactionId = "michael" };
-            var defender = BattleParticipant.ForAi("michael", BattleRole.Defender, new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 3 } });
-            var aiAttacker = BattleParticipant.ForAi("franklin", BattleRole.Attacker, new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 5 } });
+            var defender = BattleParticipant.ForAi("michael", BattleRole.Defender, new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 3 } });
+            var aiAttacker = BattleParticipant.ForAi("franklin", BattleRole.Attacker, new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 5 } });
             var playerAttacker = BattleParticipant.ForPlayer("trevor", BattleRole.Attacker, () => 1);
             var battle = new ZoneBattle("downtown", new List<BattleParticipant> { defender, aiAttacker, playerAttacker }, "trevor");
 
@@ -134,9 +134,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV
                 Times.Exactly(5));
             _pedSpawningMock.Verify(p => p.SpawnPed(It.IsAny<string>(), It.IsAny<Vector3>(), "trevor", "downtown"),
                 Times.Never);
-            _gameBridgeMock.Verify(g => g.SetRelationshipBetweenGroups("MICHAEL", "FRANKLIN", 5, true), Times.Once);
-            _gameBridgeMock.Verify(g => g.SetRelationshipBetweenGroups("MICHAEL", "TREVOR", 5, true), Times.Once);
-            _gameBridgeMock.Verify(g => g.SetRelationshipBetweenGroups("FRANKLIN", "TREVOR", 5, true), Times.Once);
+            // Faction-vs-faction relationships are no longer wired per spawn (now owned by
+            // RelationshipMatrixInitializer); the attacker is still tasked to engage hated targets.
             _gameBridgeMock.Verify(g => g.TaskCombatHatedTargetsAroundPed(100, zone.Radius), Times.AtLeastOnce);
         }
 
@@ -147,8 +146,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             // Battle has 15 Basic attackers total, but only 12 are spawned (MaxSpawnedAttackers)
             // When one dies, a replacement should spawn from the remaining 3 reserves
             var zone = new Zone("downtown", "Downtown", new Vector3(0, 0, 0), 100f) { OwnerFactionId = "player" };
-            var attackerTroops = new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 15 } };
-            var defenderTroops = new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 10 } };
+            var attackerTroops = new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 15 } };
+            var defenderTroops = new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 10 } };
             var battle = new ZoneBattle("enemy", "player", "downtown", attackerTroops, defenderTroops, "player");
             battle.IsPlayerPresent = true;
 
@@ -157,8 +156,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             _zoneServiceMock.Setup(z => z.GetZone("downtown")).Returns(zone);
 
             // Set up mock to actually decrement battle troops when ReportTroopKilled is called
-            _battleManagerMock.Setup(b => b.ReportTroopKilled("downtown", "enemy", It.IsAny<DefenderTier>()))
-                .Callback<string, string, DefenderTier>((zoneId, factionId, tier) => battle.RemoveAttackerTroop(tier));
+            _battleManagerMock.Setup(b => b.ReportTroopKilled("downtown", "enemy", It.IsAny<DefenderRole>()))
+                .Callback<string, string, DefenderRole>((zoneId, factionId, tier) => battle.RemoveAttackerTroop(tier));
 
             // Spawn peds with unique handles (100-111)
             int pedHandle = 100;
@@ -199,8 +198,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             // When battle has exactly 12 Basic attackers (= MaxSpawnedAttackers) and all are spawned,
             // there's no reserve. When one dies, no replacement should spawn.
             var zone = new Zone("downtown", "Downtown", new Vector3(0, 0, 0), 100f) { OwnerFactionId = "player" };
-            var attackerTroops = new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 12 } };
-            var defenderTroops = new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 10 } };
+            var attackerTroops = new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 12 } };
+            var defenderTroops = new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 10 } };
             var battle = new ZoneBattle("enemy", "player", "downtown", attackerTroops, defenderTroops, "player");
             battle.IsPlayerPresent = true;
 
@@ -209,8 +208,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             _zoneServiceMock.Setup(z => z.GetZone("downtown")).Returns(zone);
 
             // Set up mock to actually decrement battle troops when ReportTroopKilled is called
-            _battleManagerMock.Setup(b => b.ReportTroopKilled("downtown", "enemy", It.IsAny<DefenderTier>()))
-                .Callback<string, string, DefenderTier>((zoneId, factionId, tier) => battle.RemoveAttackerTroop(tier));
+            _battleManagerMock.Setup(b => b.ReportTroopKilled("downtown", "enemy", It.IsAny<DefenderRole>()))
+                .Callback<string, string, DefenderRole>((zoneId, factionId, tier) => battle.RemoveAttackerTroop(tier));
 
             // Spawn peds with unique handles (100-111)
             int pedHandle = 100;
@@ -257,8 +256,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             // EXPECTED: No attackers spawn because they were killed by background sim
 
             var zone = new Zone("downtown", "Downtown", new Vector3(0, 0, 0), 100f) { OwnerFactionId = "player" };
-            var attackerTroops = new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 5 } };
-            var defenderTroops = new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 3 } };
+            var attackerTroops = new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 5 } };
+            var defenderTroops = new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 3 } };
             var battle = new ZoneBattle("enemy", "player", "downtown", attackerTroops, defenderTroops, "player");
 
             _battleManagerMock.Setup(b => b.GetBattleForZone("downtown")).Returns(battle);
@@ -281,11 +280,11 @@ namespace FactionWars.Tests.Unit.ScriptHookV
 
             // Simulate background battle killing all attacker troops (defenders won while player away)
             // The background simulation calls battle.RemoveAttackerTroop() for each simulated kill
-            battle.RemoveAttackerTroop(DefenderTier.Basic);
-            battle.RemoveAttackerTroop(DefenderTier.Basic);
-            battle.RemoveAttackerTroop(DefenderTier.Basic);
-            battle.RemoveAttackerTroop(DefenderTier.Basic);
-            battle.RemoveAttackerTroop(DefenderTier.Basic);
+            battle.RemoveAttackerTroop(DefenderRole.Grunt);
+            battle.RemoveAttackerTroop(DefenderRole.Grunt);
+            battle.RemoveAttackerTroop(DefenderRole.Grunt);
+            battle.RemoveAttackerTroop(DefenderRole.Grunt);
+            battle.RemoveAttackerTroop(DefenderRole.Grunt);
 
             // Now battle.AttackerTroops[Basic] == 0 - defenders won in background
             Assert.Equal(0, battle.TotalAttackerTroops);
@@ -310,8 +309,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             // the same number of attackers spawn because ZoneBattle state is unchanged.
 
             var zone = new Zone("downtown", "Downtown", new Vector3(0, 0, 0), 100f) { OwnerFactionId = "player" };
-            var attackerTroops = new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 5 } };
-            var defenderTroops = new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 3 } };
+            var attackerTroops = new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 5 } };
+            var defenderTroops = new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 3 } };
             var battle = new ZoneBattle("enemy", "player", "downtown", attackerTroops, defenderTroops, "player");
 
             _battleManagerMock.Setup(b => b.GetBattleForZone("downtown")).Returns(battle);
@@ -352,13 +351,13 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             // Real attacker ped death (player witnessing combat) must reduce the
             // attacking faction's reserve so attacks actually deplete forces.
             var zone = new Zone("downtown", "Downtown", new Vector3(0, 0, 0), 100f) { OwnerFactionId = "player" };
-            var attackerTroops = new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 1 } };
-            var defenderTroops = new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 1 } };
+            var attackerTroops = new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 1 } };
+            var defenderTroops = new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 1 } };
             var battle = new ZoneBattle("enemy", "player", "downtown", attackerTroops, defenderTroops, "player");
             battle.IsPlayerPresent = true;
 
             var enemyState = new FactionState("enemy");
-            enemyState.AddReserveTroops(DefenderTier.Basic, 5);
+            enemyState.AddReserveTroops(DefenderRole.Grunt, 5);
             _factionServiceMock.Setup(f => f.GetFactionState("enemy")).Returns(enemyState);
 
             _battleManagerMock.Setup(b => b.GetBattleForZone("downtown")).Returns(battle);
@@ -375,7 +374,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             manager.Update();
 
             // Reserve was 5, one attacker died → reserve should now be 4.
-            Assert.Equal(4, enemyState.GetReserveTroops(DefenderTier.Basic));
+            Assert.Equal(4, enemyState.GetReserveTroops(DefenderRole.Grunt));
         }
 
         [Fact]
@@ -384,8 +383,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             // Arrange: set up a battle with the player as defender, simulate spawning
             // one Basic attacker ped, then mark that ped dead and run Update.
             var zone = new Zone("downtown", "Downtown", new Vector3(0, 0, 0), 100f) { OwnerFactionId = "player" };
-            var attackerTroops = new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 1 } };
-            var defenderTroops = new Dictionary<DefenderTier, int> { { DefenderTier.Basic, 1 } };
+            var attackerTroops = new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 1 } };
+            var defenderTroops = new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 1 } };
             var battle = new ZoneBattle("enemy", "player", "downtown", attackerTroops, defenderTroops, "player");
             _battleManagerMock.Setup(b => b.GetBattleForZone("downtown")).Returns(battle);
             _pedSpawningMock.Setup(p => p.CanSpawn()).Returns(true);
@@ -412,7 +411,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             Assert.NotNull(captured);
             Assert.Equal("downtown", captured!.ZoneId);
             Assert.Equal("enemy", captured.FactionId);
-            Assert.Equal(DefenderTier.Basic, captured.Tier);
+            Assert.Equal(DefenderRole.Grunt, captured.Tier);
             Assert.Equal(42, captured.PedHandle);
             Assert.Equal(99, captured.KillerPedHandle);
         }
@@ -425,6 +424,41 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             manager.DespawnAllAttackers();
 
             _pedDespawnMock.Verify(p => p.DespawnPed(It.IsAny<int>()), Times.Never);
+        }
+
+        [Fact]
+        public void OnPlayerZoneEntered_RoutesSpawnThroughSpawner_WithHostileFactionNeverPlayer()
+        {
+            var zone = new Zone("downtown", "Downtown", new Vector3(0, 0, 0), 100f) { OwnerFactionId = "player" };
+            var attackerTroops = new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 2 } };
+            var defenderTroops = new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 1 } };
+            var battle = new ZoneBattle("enemy", "player", "downtown", attackerTroops, defenderTroops, "player");
+            _battleManagerMock.Setup(b => b.GetBattleForZone("downtown")).Returns(battle);
+            _pedSpawningMock.Setup(p => p.CanSpawn()).Returns(true);
+            _gameBridgeMock.Setup(g => g.GetSafeCoordForPed(It.IsAny<Vector3>())).Returns(new Vector3(0, 0, 0));
+
+            var spawnerMock = new Mock<FactionWars.ScriptHookV.Combat.Interfaces.IZoneCombatantSpawner>();
+            int handle = 100;
+            spawnerMock.Setup(s => s.Spawn(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Vector3>(), It.IsAny<string>()))
+                .Returns(() => new PedHandle(handle++));
+
+            var manager = new BattleAttackerManager(new FactionWars.ScriptHookV.Models.BattleAttackerManagerDependencies
+            {
+                GameBridge = _gameBridgeMock.Object,
+                ZoneBattleManager = _battleManagerMock.Object,
+                PedSpawningService = _pedSpawningMock.Object,
+                PedDespawnService = _pedDespawnMock.Object,
+                DefenderRoleService = _tierServiceMock.Object,
+                PedBlipService = _blipServiceMock.Object,
+                ZoneService = _zoneServiceMock.Object,
+                FactionService = _factionServiceMock.Object,
+                Spawner = spawnerMock.Object
+            }, "player");
+
+            manager.OnPlayerZoneEntered(zone);
+
+            spawnerMock.Verify(s => s.Spawn("enemy", "player", It.IsAny<string>(), It.IsAny<Vector3>(), "downtown"), Times.AtLeastOnce);
+            spawnerMock.Verify(s => s.Spawn("player", It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Vector3>(), It.IsAny<string>()), Times.Never);
         }
 
         private BattleAttackerManager CreateManager(string playerFactionId)

@@ -1,6 +1,6 @@
 using FactionWars.Core.Interfaces;
 
-namespace FactionWars.ScriptHookV.Utils
+namespace FactionWars.Core.Utils
 {
     /// <summary>
     /// Maps a faction id to the corresponding <see cref="BlipColor"/> for HUD/map rendering.

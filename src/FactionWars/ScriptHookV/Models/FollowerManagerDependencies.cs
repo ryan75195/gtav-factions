@@ -9,7 +9,7 @@ namespace FactionWars.ScriptHookV.Models
         public IGameBridge? GameBridge { get; set; }
         public IFollowerService? FollowerService { get; set; }
         public IPedSpawningService? PedSpawningService { get; set; }
-        public IDefenderTierService? DefenderTierService { get; set; }
+        public IDefenderRoleService? DefenderRoleService { get; set; }
         public IPedBlipService? PedBlipService { get; set; }
         public IVehicleSeatPriorityService? SeatPriorityService { get; set; }
     }

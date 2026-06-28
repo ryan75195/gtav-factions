@@ -1,8 +1,7 @@
 namespace FactionWars.Persistence.Models
 {
     /// <summary>
-    /// Player position and heading at save time. Recorded in the sidecar but
-    /// not consumed by load logic in v1 — reserved for a future "restore position" feature.
+    /// Player position and heading at save time.
     /// </summary>
     public sealed class PlayerPosition
     {

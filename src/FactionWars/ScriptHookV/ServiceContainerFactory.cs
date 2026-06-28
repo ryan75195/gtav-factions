@@ -135,8 +135,8 @@ namespace FactionWars.ScriptHookV
                 new FactionService(container.Resolve<IFactionRepository>()));
 
             // Defender tier service - manages defender tier configurations
-            container.RegisterSingleton<IDefenderTierService>(() =>
-                new DefenderTierService());
+            container.RegisterSingleton<IDefenderRoleService>(() =>
+                new DefenderRoleService());
 
             // Follower service - manages player followers (bodyguards)
             container.RegisterSingleton<IFollowerService>(() =>

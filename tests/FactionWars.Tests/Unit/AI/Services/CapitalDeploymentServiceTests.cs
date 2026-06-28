@@ -93,7 +93,7 @@ namespace FactionWars.Tests.Unit.AI.Services
         private void SetupZoneAllocation(string factionId, string zoneId, int totalTroops)
         {
             var allocation = new ZoneDefenderAllocation(factionId, zoneId);
-            allocation.AddTroops(DefenderTier.Basic, totalTroops);
+            allocation.AddTroops(DefenderRole.Grunt, totalTroops);
             _mockAllocationService
                 .Setup(a => a.GetAllocation(factionId, zoneId))
                 .Returns(allocation);

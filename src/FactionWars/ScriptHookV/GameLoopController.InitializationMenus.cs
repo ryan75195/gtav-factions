@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using FactionWars.Core.Interfaces;
 using FactionWars.Economy.Interfaces;
 using FactionWars.ScriptHookV.Models;
@@ -8,15 +10,36 @@ namespace FactionWars.ScriptHookV
 {
     public partial class GameLoopController
     {
+        // Maps a submenu's id to the navigation action that returns to its parent. Used for the
+        // native back control (B / Backspace / Esc) so backing out of a submenu goes up one level
+        // instead of closing the whole menu. The same action backs the menu's "Back" item.
+        private readonly Dictionary<string, Action> _menuBackActions = new Dictionary<string, Action>();
+
+        // Registers a menu's parent-navigation action for native back, and returns the matching
+        // BackRequested handler so the "Back" item and the native back share one action.
+        private EventHandler BackTo(string menuId, Action toParent)
+        {
+            _menuBackActions[menuId] = toParent;
+            return (s, e) => toParent();
+        }
+
+        private void OnMenuBackedOut(object? sender, string menuId)
+        {
+            if (_menuBackActions.TryGetValue(menuId, out var toParent))
+            {
+                toParent();
+            }
+        }
+
         private void InitializeRecruitmentMenus(IPlayerContext playerContext, ITroopPurchaseService purchaseService)
         {
             var menuProvider = RequiredMenuProvider;
             var mainMenuController = RequiredMainMenuController;
 
             _recruitmentMenuController = new RecruitmentMenuController(menuProvider, _gameBridge);
-            _recruitmentMenuController.BackRequested += (s, e) => mainMenuController.OnKeyDown(MainMenuController.MenuToggleKeyCode);
+            _recruitmentMenuController.BackRequested += BackTo(RecruitmentMenuController.MenuId, () => mainMenuController.OnKeyDown(MainMenuController.MenuToggleKeyCode));
             _defendersMenuController = new DefendersMenuController(menuProvider, _factionService, purchaseService, playerContext);
-            _defendersMenuController.BackRequested += (s, e) => _recruitmentMenuController.Show();
+            _defendersMenuController.BackRequested += BackTo(DefendersMenuController.MenuId, () => _recruitmentMenuController.Show());
             _squadMenuController = new SquadMenuController(
                 new SquadMenuControllerDependencies
                 {
@@ -27,7 +50,7 @@ namespace FactionWars.ScriptHookV
                 },
                 _followerManager,
                 _gameBridge);
-            _squadMenuController.BackRequested += (s, e) => _recruitmentMenuController.Show();
+            _squadMenuController.BackRequested += BackTo(SquadMenuController.MenuId, () => _recruitmentMenuController.Show());
             _recruitmentMenuController.DefendersRequested += (s, e) => _defendersMenuController.Show();
             _recruitmentMenuController.SquadRequested += (s, e) => _squadMenuController.Show();
         }
@@ -49,7 +72,7 @@ namespace FactionWars.ScriptHookV
                 ResourceModifier = resourceModifier,
                 SupplyLineService = supplyLineService
             });
-            _resourcesMenuController.BackRequested += (s, e) => mainMenuController.OnKeyDown(MainMenuController.MenuToggleKeyCode);
+            _resourcesMenuController.BackRequested += BackTo(ResourcesMenuController.ResourcesMenuId, () => mainMenuController.OnKeyDown(MainMenuController.MenuToggleKeyCode));
 
             _difficultyService = _container.Resolve<IDifficultyService>();
             var difficultyService = RequiredDifficultyService;
@@ -58,9 +81,9 @@ namespace FactionWars.ScriptHookV
             _resourceTickService.SetPlayerFactionId(CurrentPlayerFactionId);
             difficultyService.DifficultyChanged += OnDifficultyChanged;
             _settingsMenuController = new SettingsMenuController(menuProvider, difficultyService, _gameBridge);
-            _settingsMenuController.BackRequested += (s, e) => mainMenuController.OnKeyDown(MainMenuController.MenuToggleKeyCode);
+            _settingsMenuController.BackRequested += BackTo(SettingsMenuController.SettingsMenuId, () => mainMenuController.OnKeyDown(MainMenuController.MenuToggleKeyCode));
             _shopMenuController = new ShopMenuController(menuProvider, _gameBridge);
-            _shopMenuController.BackRequested += (s, e) => mainMenuController.OnKeyDown(MainMenuController.MenuToggleKeyCode);
+            _shopMenuController.BackRequested += BackTo(ShopMenuController.ShopMenuId, () => mainMenuController.OnKeyDown(MainMenuController.MenuToggleKeyCode));
         }
 
     }

@@ -39,7 +39,7 @@ namespace FactionWars.Tests.Unit.Core
             var parameters = method.GetParameters();
             Assert.Equal(2, parameters.Length);
             Assert.Equal(typeof(string), parameters[0].ParameterType); // factionId
-            Assert.Equal(typeof(DefenderTier), parameters[1].ParameterType); // tier
+            Assert.Equal(typeof(DefenderRole), parameters[1].ParameterType); // tier
         }
 
         [Fact]
@@ -210,21 +210,21 @@ namespace FactionWars.Tests.Unit.Core
             var service = CreateService();
 
             // Act
-            var result = service.Recruit(TestFactionId, DefenderTier.Basic);
+            var result = service.Recruit(TestFactionId, DefenderRole.Grunt);
 
             // Assert
             Assert.True(result.Success);
             Assert.NotNull(result.Follower);
             Assert.Null(result.FailureReason);
             Assert.Equal(TestFactionId, result.Follower!.FactionId);
-            Assert.Equal(DefenderTier.Basic, result.Follower.Tier);
+            Assert.Equal(DefenderRole.Grunt, result.Follower.Tier);
         }
 
         [Theory]
-        [InlineData(DefenderTier.Basic)]
-        [InlineData(DefenderTier.Medium)]
-        [InlineData(DefenderTier.Heavy)]
-        public void Recruit_WithDifferentTiers_CreatesFollowerWithCorrectTier(DefenderTier tier)
+        [InlineData(DefenderRole.Grunt)]
+        [InlineData(DefenderRole.Gunner)]
+        [InlineData(DefenderRole.Rifleman)]
+        public void Recruit_WithDifferentTiers_CreatesFollowerWithCorrectTier(DefenderRole tier)
         {
             // Arrange
             var service = CreateService();
@@ -244,7 +244,7 @@ namespace FactionWars.Tests.Unit.Core
             var service = CreateService();
 
             // Act
-            var result = service.Recruit(null!, DefenderTier.Basic);
+            var result = service.Recruit(null!, DefenderRole.Grunt);
 
             // Assert
             Assert.False(result.Success);
@@ -259,7 +259,7 @@ namespace FactionWars.Tests.Unit.Core
             var service = CreateService();
 
             // Act
-            var result = service.Recruit(string.Empty, DefenderTier.Basic);
+            var result = service.Recruit(string.Empty, DefenderRole.Grunt);
 
             // Assert
             Assert.False(result.Success);
@@ -271,11 +271,11 @@ namespace FactionWars.Tests.Unit.Core
         {
             // Arrange
             var service = CreateService(maxFollowers: 2);
-            service.Recruit(TestFactionId, DefenderTier.Basic);
-            service.Recruit(TestFactionId, DefenderTier.Basic);
+            service.Recruit(TestFactionId, DefenderRole.Grunt);
+            service.Recruit(TestFactionId, DefenderRole.Grunt);
 
             // Act
-            var result = service.Recruit(TestFactionId, DefenderTier.Basic);
+            var result = service.Recruit(TestFactionId, DefenderRole.Grunt);
 
             // Assert
             Assert.False(result.Success);
@@ -287,11 +287,11 @@ namespace FactionWars.Tests.Unit.Core
         {
             // Arrange - max followers is a global limit, not per-faction
             var service = CreateService(maxFollowers: 2);
-            service.Recruit("faction_a", DefenderTier.Basic);
-            service.Recruit("faction_b", DefenderTier.Basic);
+            service.Recruit("faction_a", DefenderRole.Grunt);
+            service.Recruit("faction_b", DefenderRole.Grunt);
 
             // Act - third recruit should fail regardless of faction
-            var result = service.Recruit("faction_c", DefenderTier.Basic);
+            var result = service.Recruit("faction_c", DefenderRole.Grunt);
 
             // Assert
             Assert.False(result.Success);
@@ -305,8 +305,8 @@ namespace FactionWars.Tests.Unit.Core
             var service = CreateService();
 
             // Act
-            var result1 = service.Recruit(TestFactionId, DefenderTier.Basic);
-            var result2 = service.Recruit(TestFactionId, DefenderTier.Basic);
+            var result1 = service.Recruit(TestFactionId, DefenderRole.Grunt);
+            var result2 = service.Recruit(TestFactionId, DefenderRole.Grunt);
 
             // Assert
             Assert.NotEqual(result1.Follower!.Id, result2.Follower!.Id);
@@ -319,7 +319,7 @@ namespace FactionWars.Tests.Unit.Core
             var service = CreateService();
 
             // Act
-            var result = service.Recruit(TestFactionId, DefenderTier.Basic);
+            var result = service.Recruit(TestFactionId, DefenderRole.Grunt);
 
             // Assert
             Assert.True(result.Follower!.IsAlive);
@@ -347,9 +347,9 @@ namespace FactionWars.Tests.Unit.Core
         {
             // Arrange
             var service = CreateService();
-            service.Recruit("faction_a", DefenderTier.Basic);
-            service.Recruit("faction_b", DefenderTier.Medium);
-            service.Recruit("faction_a", DefenderTier.Heavy);
+            service.Recruit("faction_a", DefenderRole.Grunt);
+            service.Recruit("faction_b", DefenderRole.Gunner);
+            service.Recruit("faction_a", DefenderRole.Rifleman);
 
             // Act
             var factionAFollowers = service.GetFollowers("faction_a");
@@ -380,9 +380,9 @@ namespace FactionWars.Tests.Unit.Core
         {
             // Arrange
             var service = CreateService();
-            service.Recruit("faction_a", DefenderTier.Basic);
-            service.Recruit("faction_a", DefenderTier.Basic);
-            service.Recruit("faction_b", DefenderTier.Basic);
+            service.Recruit("faction_a", DefenderRole.Grunt);
+            service.Recruit("faction_a", DefenderRole.Grunt);
+            service.Recruit("faction_b", DefenderRole.Grunt);
 
             // Act
             var countA = service.GetFollowerCount("faction_a");
@@ -402,7 +402,7 @@ namespace FactionWars.Tests.Unit.Core
         {
             // Arrange
             var service = CreateService();
-            var recruitResult = service.Recruit(TestFactionId, DefenderTier.Basic);
+            var recruitResult = service.Recruit(TestFactionId, DefenderRole.Grunt);
             var followerId = recruitResult.Follower!.Id;
 
             // Act
@@ -418,7 +418,7 @@ namespace FactionWars.Tests.Unit.Core
         {
             // Arrange
             var service = CreateService();
-            service.Recruit(TestFactionId, DefenderTier.Basic);
+            service.Recruit(TestFactionId, DefenderRole.Grunt);
 
             // Act
             var follower = service.GetFollowerById(Guid.NewGuid());
@@ -436,7 +436,7 @@ namespace FactionWars.Tests.Unit.Core
         {
             // Arrange
             var service = CreateService();
-            var recruitResult = service.Recruit(TestFactionId, DefenderTier.Basic);
+            var recruitResult = service.Recruit(TestFactionId, DefenderRole.Grunt);
             var followerId = recruitResult.Follower!.Id;
 
             // Act
@@ -451,7 +451,7 @@ namespace FactionWars.Tests.Unit.Core
         {
             // Arrange
             var service = CreateService();
-            var recruitResult = service.Recruit(TestFactionId, DefenderTier.Basic);
+            var recruitResult = service.Recruit(TestFactionId, DefenderRole.Grunt);
             var followerId = recruitResult.Follower!.Id;
 
             // Act
@@ -467,7 +467,7 @@ namespace FactionWars.Tests.Unit.Core
         {
             // Arrange
             var service = CreateService();
-            service.Recruit(TestFactionId, DefenderTier.Basic);
+            service.Recruit(TestFactionId, DefenderRole.Grunt);
 
             // Act
             var dismissed = service.DismissFollower(Guid.NewGuid());
@@ -481,8 +481,8 @@ namespace FactionWars.Tests.Unit.Core
         {
             // Arrange
             var service = CreateService();
-            service.Recruit(TestFactionId, DefenderTier.Basic);
-            var result = service.Recruit(TestFactionId, DefenderTier.Basic);
+            service.Recruit(TestFactionId, DefenderRole.Grunt);
+            var result = service.Recruit(TestFactionId, DefenderRole.Grunt);
 
             // Act
             service.DismissFollower(result.Follower!.Id);
@@ -496,11 +496,11 @@ namespace FactionWars.Tests.Unit.Core
         {
             // Arrange
             var service = CreateService(maxFollowers: 1);
-            var result = service.Recruit(TestFactionId, DefenderTier.Basic);
+            var result = service.Recruit(TestFactionId, DefenderRole.Grunt);
             service.DismissFollower(result.Follower!.Id);
 
             // Act
-            var newResult = service.Recruit(TestFactionId, DefenderTier.Medium);
+            var newResult = service.Recruit(TestFactionId, DefenderRole.Gunner);
 
             // Assert
             Assert.True(newResult.Success);
@@ -515,9 +515,9 @@ namespace FactionWars.Tests.Unit.Core
         {
             // Arrange
             var service = CreateService();
-            service.Recruit("faction_a", DefenderTier.Basic);
-            service.Recruit("faction_a", DefenderTier.Medium);
-            service.Recruit("faction_b", DefenderTier.Basic);
+            service.Recruit("faction_a", DefenderRole.Grunt);
+            service.Recruit("faction_a", DefenderRole.Gunner);
+            service.Recruit("faction_b", DefenderRole.Grunt);
 
             // Act
             service.DismissAllFollowers("faction_a");
@@ -532,8 +532,8 @@ namespace FactionWars.Tests.Unit.Core
         {
             // Arrange
             var service = CreateService();
-            service.Recruit("faction_a", DefenderTier.Basic);
-            var factionBResult = service.Recruit("faction_b", DefenderTier.Basic);
+            service.Recruit("faction_a", DefenderRole.Grunt);
+            var factionBResult = service.Recruit("faction_b", DefenderRole.Grunt);
 
             // Act
             service.DismissAllFollowers("faction_a");
@@ -558,7 +558,7 @@ namespace FactionWars.Tests.Unit.Core
         {
             // Arrange
             var service = CreateService();
-            service.Recruit(TestFactionId, DefenderTier.Basic);
+            service.Recruit(TestFactionId, DefenderRole.Grunt);
 
             // Act & Assert - should handle gracefully
             var exception = Record.Exception(() => service.DismissAllFollowers(null!));
@@ -574,7 +574,7 @@ namespace FactionWars.Tests.Unit.Core
         {
             // Arrange
             var service = CreateService();
-            var result = service.Recruit(TestFactionId, DefenderTier.Basic);
+            var result = service.Recruit(TestFactionId, DefenderRole.Grunt);
             var followerId = result.Follower!.Id;
 
             // Act
@@ -589,8 +589,8 @@ namespace FactionWars.Tests.Unit.Core
         {
             // Arrange
             var service = CreateService();
-            service.Recruit(TestFactionId, DefenderTier.Basic);
-            var result = service.Recruit(TestFactionId, DefenderTier.Medium);
+            service.Recruit(TestFactionId, DefenderRole.Grunt);
+            var result = service.Recruit(TestFactionId, DefenderRole.Gunner);
 
             // Act
             service.HandleFollowerDeath(result.Follower!.Id);
@@ -615,11 +615,11 @@ namespace FactionWars.Tests.Unit.Core
         {
             // Arrange
             var service = CreateService(maxFollowers: 1);
-            var result = service.Recruit(TestFactionId, DefenderTier.Basic);
+            var result = service.Recruit(TestFactionId, DefenderRole.Grunt);
             service.HandleFollowerDeath(result.Follower!.Id);
 
             // Act
-            var newResult = service.Recruit(TestFactionId, DefenderTier.Heavy);
+            var newResult = service.Recruit(TestFactionId, DefenderRole.Rifleman);
 
             // Assert
             Assert.True(newResult.Success);
@@ -636,11 +636,11 @@ namespace FactionWars.Tests.Unit.Core
             var service = CreateService(maxFollowers: 3);
 
             // Act - series of operations
-            var r1 = service.Recruit("faction_a", DefenderTier.Basic);
-            var r2 = service.Recruit("faction_a", DefenderTier.Medium);
-            var r3 = service.Recruit("faction_b", DefenderTier.Heavy);
+            var r1 = service.Recruit("faction_a", DefenderRole.Grunt);
+            var r2 = service.Recruit("faction_a", DefenderRole.Gunner);
+            var r3 = service.Recruit("faction_b", DefenderRole.Rifleman);
             service.DismissFollower(r2.Follower!.Id);
-            var r4 = service.Recruit("faction_c", DefenderTier.Basic);
+            var r4 = service.Recruit("faction_c", DefenderRole.Grunt);
             service.HandleFollowerDeath(r1.Follower!.Id);
 
             // Assert
@@ -656,7 +656,7 @@ namespace FactionWars.Tests.Unit.Core
         {
             // Arrange
             var service = CreateService();
-            service.Recruit(TestFactionId, DefenderTier.Basic);
+            service.Recruit(TestFactionId, DefenderRole.Grunt);
 
             // Act
             var followers = service.GetFollowers(TestFactionId);

@@ -77,7 +77,7 @@ namespace FactionWars.ScriptHookV.Managers
         /// <summary>
         /// Gets the number of spawned attackers of a specific tier in a zone.
         /// </summary>
-        public int GetSpawnedCountByTier(string zoneId, DefenderTier tier)
+        public int GetSpawnedCountByTier(string zoneId, DefenderRole tier)
         {
             if (!_spawnedPedTierByZone.TryGetValue(zoneId, out var pedTiers))
                 return 0;

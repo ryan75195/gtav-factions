@@ -63,16 +63,14 @@ namespace FactionWars.ScriptHookV
 
         /// <summary>
         /// Syncs player state to their faction's economic state on character switch.
-        /// Clears weapons and sets cash to faction capital.
+        /// Sets cash to faction capital. The player's weapon loadout is preserved
+        /// across switches.
         /// </summary>
         private void SyncPlayerToFactionState(string? factionId)
         {
             if (string.IsNullOrEmpty(factionId))
                 return;
             var factionKey = factionId!;
-
-            // Clear weapons for fresh start
-            _gameBridge.RemoveAllPlayerWeapons();
 
             // Get faction state and sync player's GTA money to faction's cash
             var factionState = _factionRepository.GetState(factionKey);

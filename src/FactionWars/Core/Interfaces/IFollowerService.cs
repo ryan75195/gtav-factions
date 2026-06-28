@@ -16,7 +16,7 @@ namespace FactionWars.Core.Interfaces
         /// <param name="factionId">The faction to recruit the follower for.</param>
         /// <param name="tier">The quality tier of the follower.</param>
         /// <returns>A result indicating success or failure with the recruited follower.</returns>
-        FollowerRecruitResult Recruit(string factionId, DefenderTier tier);
+        FollowerRecruitResult Recruit(string factionId, DefenderRole tier);
 
         /// <summary>
         /// Gets all followers belonging to a faction.

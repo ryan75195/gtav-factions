@@ -26,7 +26,7 @@ namespace FactionWars.Core.Services
         }
 
         /// <inheritdoc />
-        public FollowerRecruitResult Recruit(string factionId, DefenderTier tier)
+        public FollowerRecruitResult Recruit(string factionId, DefenderRole tier)
         {
             // Validate faction ID
             if (string.IsNullOrEmpty(factionId))

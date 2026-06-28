@@ -1,5 +1,5 @@
 using FactionWars.Core.Interfaces;
-using FactionWars.ScriptHookV.Utils;
+using FactionWars.Core.Utils;
 using Xunit;
 
 namespace FactionWars.Tests.Unit.ScriptHookV.Utils

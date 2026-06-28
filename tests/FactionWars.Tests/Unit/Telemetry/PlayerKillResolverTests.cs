@@ -12,7 +12,7 @@ namespace FactionWars.Tests.Unit.Telemetry
         [Fact]
         public void Resolve_KillerIsPlayer_ReturnsPlayerEvent()
         {
-            var args = new AttackerKilledEventArgs("morningwood", "trevor", DefenderTier.Heavy,
+            var args = new AttackerKilledEventArgs("morningwood", "trevor", DefenderRole.Rifleman,
                 pedHandle: 42, killerPedHandle: 99);
 
             var result = PlayerKillResolver.Resolve(args, playerPedHandle: 99,
@@ -22,13 +22,13 @@ namespace FactionWars.Tests.Unit.Telemetry
             Assert.Equal(PlayerEventType.Kill, result!.Type);
             Assert.Equal("morningwood", result.ZoneId);
             Assert.Equal("trevor", result.TargetFaction);
-            Assert.Equal(DefenderTier.Heavy, result.TargetTier);
+            Assert.Equal(DefenderRole.Rifleman, result.TargetTier);
         }
 
         [Fact]
         public void Resolve_KillerIsNotPlayer_ReturnsNull()
         {
-            var args = new AttackerKilledEventArgs("morningwood", "trevor", DefenderTier.Basic,
+            var args = new AttackerKilledEventArgs("morningwood", "trevor", DefenderRole.Grunt,
                 pedHandle: 42, killerPedHandle: 50);
 
             var result = PlayerKillResolver.Resolve(args, playerPedHandle: 99,
@@ -40,7 +40,7 @@ namespace FactionWars.Tests.Unit.Telemetry
         [Fact]
         public void Resolve_KillerUnknown_ReturnsNull()
         {
-            var args = new AttackerKilledEventArgs("morningwood", "trevor", DefenderTier.Basic,
+            var args = new AttackerKilledEventArgs("morningwood", "trevor", DefenderRole.Grunt,
                 pedHandle: 42, killerPedHandle: 0);
 
             var result = PlayerKillResolver.Resolve(args, playerPedHandle: 99,

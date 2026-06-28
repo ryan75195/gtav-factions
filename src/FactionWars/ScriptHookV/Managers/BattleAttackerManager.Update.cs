@@ -11,7 +11,7 @@ namespace FactionWars.ScriptHookV.Managers
             if (_currentBattleZoneId == null) return;
 
             var currentGameTime = _gameBridge.GetGameTime();
-            var deadPeds = new List<(string zoneId, int pedHandle, DefenderTier tier)>();
+            var deadPeds = new List<(string zoneId, int pedHandle, DefenderRole tier)>();
             var streamedOutPeds = new List<(string zoneId, int pedHandle)>();
 
             // Check all spawned attackers for death

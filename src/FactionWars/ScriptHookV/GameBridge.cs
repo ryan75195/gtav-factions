@@ -35,7 +35,6 @@ namespace FactionWars.ScriptHookV
 
                 // Get ground Z coordinate for proper placement
                 var gtaPosition = new GTA.Math.Vector3(position.X, position.Y, position.Z);
-                FileLogger.Spawn($"Initial position: ({gtaPosition.X:F1}, {gtaPosition.Y:F1}, {gtaPosition.Z:F1})");
 
                 bool gotGround = TryAdjustPedSpawnHeight(position, ref gtaPosition, out var groundZ);
 
@@ -52,7 +51,6 @@ namespace FactionWars.ScriptHookV
                 if (ped != null && ped.Exists() && gotGround && groundZ > 0)
                 {
                     Function.Call(Hash.SET_ENTITY_COORDS, ped.Handle, gtaPosition.X, gtaPosition.Y, groundZ, false, false, false, true);
-                    FileLogger.Spawn($"Forced ped to ground Z={groundZ:F1}");
                 }
 
                 model.MarkAsNoLongerNeeded();
@@ -60,14 +58,11 @@ namespace FactionWars.ScriptHookV
                 if (ped == null || !ValidateCreatedPed(ped))
                     return -1;
 
-                FileLogger.Spawn($"Ped created successfully: Handle={ped.Handle}, Health={ped.Health}");
-
                 // Make ped persistent so they don't despawn
                 ped.IsPersistent = true;
 
                 // NOTE: Don't set combat task here - caller will configure based on ped type
                 // (enemy defenders vs friendly followers have different behaviors)
-                FileLogger.Spawn($"Ped configured: Persistent=true, ready for combat configuration");
 
                 return ped.Handle;
             }
@@ -115,6 +110,24 @@ namespace FactionWars.ScriptHookV
             catch (Exception ex)
             {
                 FileLogger.Error($"IsPedAlive exception for ped {pedHandle}", ex);
+                return false;
+            }
+        }
+
+        /// <inheritdoc />
+        public bool IsPedInCombat(int pedHandle)
+        {
+            try
+            {
+                var ped = Entity.FromHandle(pedHandle) as Ped;
+                if (ped == null || !ped.Exists())
+                    return false;
+
+                return ped.IsInCombat;
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error($"IsPedInCombat exception for ped {pedHandle}", ex);
                 return false;
             }
         }

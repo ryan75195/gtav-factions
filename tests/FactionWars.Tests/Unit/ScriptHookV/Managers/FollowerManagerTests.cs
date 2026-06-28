@@ -4,6 +4,7 @@ using FactionWars.Combat.Interfaces;
 using FactionWars.Combat.Models;
 using FactionWars.Core.Interfaces;
 using FactionWars.Core.Models;
+using FactionWars.Persistence.Models;
 using FactionWars.ScriptHookV.Managers;
 using FactionWars.UI.Interfaces;
 using Moq;
@@ -16,7 +17,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         private readonly Mock<IGameBridge> _gameBridgeMock;
         private readonly Mock<IFollowerService> _followerServiceMock;
         private readonly Mock<IPedSpawningService> _pedSpawningServiceMock;
-        private readonly Mock<IDefenderTierService> _defenderTierServiceMock;
+        private readonly Mock<IDefenderRoleService> _defenderRoleServiceMock;
         private readonly Mock<IPedBlipService> _pedBlipServiceMock;
         private readonly Mock<IVehicleSeatPriorityService> _seatPriorityServiceMock;
         private readonly FollowerManager _manager;
@@ -26,20 +27,21 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             _gameBridgeMock = new Mock<IGameBridge>();
             _followerServiceMock = new Mock<IFollowerService>();
             _pedSpawningServiceMock = new Mock<IPedSpawningService>();
-            _defenderTierServiceMock = new Mock<IDefenderTierService>();
+            _defenderRoleServiceMock = new Mock<IDefenderRoleService>();
             _pedBlipServiceMock = new Mock<IPedBlipService>();
             _seatPriorityServiceMock = new Mock<IVehicleSeatPriorityService>();
 
             // Set up default tier configs (tests can override as needed)
-            _defenderTierServiceMock.Setup(s => s.GetTierConfig(DefenderTier.Basic))
-                .Returns(new DefenderTierConfig(DefenderTier.Basic, 200, 100, 0, "weapon_pistol", 0.4f, 1.0f));
-            _defenderTierServiceMock.Setup(s => s.GetTierConfig(DefenderTier.Medium))
-                .Returns(new DefenderTierConfig(DefenderTier.Medium, 500, 150, 50, "weapon_pistol", 0.6f, 1.5f));
-            _defenderTierServiceMock.Setup(s => s.GetTierConfig(DefenderTier.Heavy))
-                .Returns(new DefenderTierConfig(DefenderTier.Heavy, 1000, 200, 100, "weapon_smg", 0.8f, 2.0f));
+            _defenderRoleServiceMock.Setup(s => s.GetRoleConfig(DefenderRole.Grunt))
+                .Returns(new DefenderRoleConfig(DefenderRole.Grunt, 200, 100, 0, "weapon_pistol", 0.4f, 1.0f));
+            _defenderRoleServiceMock.Setup(s => s.GetRoleConfig(DefenderRole.Gunner))
+                .Returns(new DefenderRoleConfig(DefenderRole.Gunner, 500, 150, 50, "weapon_pistol", 0.6f, 1.5f));
+            _defenderRoleServiceMock.Setup(s => s.GetRoleConfig(DefenderRole.Rifleman))
+                .Returns(new DefenderRoleConfig(DefenderRole.Rifleman, 1000, 200, 100, "weapon_smg", 0.8f, 2.0f));
 
             // Set up default player money (plenty of cash by default)
             _gameBridgeMock.Setup(g => g.GetPlayerMoney()).Returns(10000);
+            _gameBridgeMock.Setup(g => g.IsPedFollowingPlayer(It.IsAny<int>())).Returns(true);
 
             // Default: return seats as-is, return all followers
             _seatPriorityServiceMock.Setup(s => s.GetPrioritizedFreeSeats(It.IsAny<int>()))
@@ -52,7 +54,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
                 _gameBridgeMock.Object,
                 _followerServiceMock.Object,
                 _pedSpawningServiceMock.Object,
-                _defenderTierServiceMock.Object,
+                _defenderRoleServiceMock.Object,
                 _pedBlipServiceMock.Object,
                 _seatPriorityServiceMock.Object);
         }
@@ -67,7 +69,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
                 null!,
                 _followerServiceMock.Object,
                 _pedSpawningServiceMock.Object,
-                _defenderTierServiceMock.Object,
+                _defenderRoleServiceMock.Object,
                 _pedBlipServiceMock.Object,
                 _seatPriorityServiceMock.Object));
         }
@@ -80,7 +82,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
                 _gameBridgeMock.Object,
                 null!,
                 _pedSpawningServiceMock.Object,
-                _defenderTierServiceMock.Object,
+                _defenderRoleServiceMock.Object,
                 _pedBlipServiceMock.Object,
                 _seatPriorityServiceMock.Object));
         }
@@ -93,13 +95,13 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
                 _gameBridgeMock.Object,
                 _followerServiceMock.Object,
                 null!,
-                _defenderTierServiceMock.Object,
+                _defenderRoleServiceMock.Object,
                 _pedBlipServiceMock.Object,
                 _seatPriorityServiceMock.Object));
         }
 
         [Fact]
-        public void Constructor_WithNullDefenderTierService_ShouldThrowArgumentNullException()
+        public void Constructor_WithNullDefenderRoleService_ShouldThrowArgumentNullException()
         {
             // Act & Assert
             Assert.Throws<ArgumentNullException>(() => new FollowerManager(
@@ -119,7 +121,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
                 _gameBridgeMock.Object,
                 _followerServiceMock.Object,
                 _pedSpawningServiceMock.Object,
-                _defenderTierServiceMock.Object,
+                _defenderRoleServiceMock.Object,
                 null!,
                 _seatPriorityServiceMock.Object));
         }
@@ -132,7 +134,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
                 _gameBridgeMock.Object,
                 _followerServiceMock.Object,
                 _pedSpawningServiceMock.Object,
-                _defenderTierServiceMock.Object,
+                _defenderRoleServiceMock.Object,
                 _pedBlipServiceMock.Object,
                 null!));
         }
@@ -146,7 +148,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         {
             // Arrange
             var factionId = "blue";
-            var tier = DefenderTier.Basic;
+            var tier = DefenderRole.Grunt;
             var playerPos = new Vector3(100f, 200f, 30f);
             var spawnPos = new Vector3(102f, 202f, 30f);
             var follower = new Follower(factionId, tier);
@@ -175,7 +177,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         {
             // Arrange
             var factionId = "blue";
-            var tier = DefenderTier.Basic;
+            var tier = DefenderRole.Grunt;
 
             _followerServiceMock.Setup(s => s.Recruit(factionId, tier))
                 .Returns(FollowerRecruitResult.Failed(FollowerRecruitFailureReason.MaxFollowersReached));
@@ -193,7 +195,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         {
             // Arrange
             var factionId = "blue";
-            var tier = DefenderTier.Basic;
+            var tier = DefenderRole.Grunt;
             var playerPos = new Vector3(100f, 200f, 30f);
             var follower = new Follower(factionId, tier);
 
@@ -217,7 +219,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         public void RecruitFollower_WithNullFactionId_ShouldThrowArgumentNullException()
         {
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => _manager.RecruitFollower(null!, DefenderTier.Basic));
+            Assert.Throws<ArgumentNullException>(() => _manager.RecruitFollower(null!, DefenderRole.Grunt));
         }
 
         [Fact]
@@ -225,7 +227,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         {
             // Arrange
             var factionId = "blue";
-            var tier = DefenderTier.Medium;
+            var tier = DefenderRole.Gunner;
             var playerPos = new Vector3(100f, 200f, 30f);
             var follower = new Follower(factionId, tier);
 
@@ -261,7 +263,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         {
             // Arrange
             var followerId = Guid.NewGuid();
-            var follower = CreateFollowerWithPedHandle("blue", DefenderTier.Basic, 42);
+            var follower = CreateFollowerWithPedHandle("blue", DefenderRole.Grunt, 42);
 
             _followerServiceMock.Setup(s => s.GetFollowerById(followerId)).Returns(follower);
             _followerServiceMock.Setup(s => s.DismissFollower(followerId)).Returns(true);
@@ -301,9 +303,9 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             var factionId = "blue";
             var followers = new List<Follower>
             {
-                CreateFollowerWithPedHandle(factionId, DefenderTier.Basic, 1),
-                CreateFollowerWithPedHandle(factionId, DefenderTier.Medium, 2),
-                CreateFollowerWithPedHandle(factionId, DefenderTier.Heavy, 3)
+                CreateFollowerWithPedHandle(factionId, DefenderRole.Grunt, 1),
+                CreateFollowerWithPedHandle(factionId, DefenderRole.Gunner, 2),
+                CreateFollowerWithPedHandle(factionId, DefenderRole.Rifleman, 3)
             };
 
             _followerServiceMock.Setup(s => s.GetFollowers(factionId)).Returns(followers);
@@ -351,7 +353,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         {
             // Arrange
             var factionId = "blue";
-            var follower = CreateFollowerWithPedHandle(factionId, DefenderTier.Basic, 42);
+            var follower = CreateFollowerWithPedHandle(factionId, DefenderRole.Grunt, 42);
             var followers = new List<Follower> { follower };
 
             _followerServiceMock.Setup(s => s.GetFollowers(factionId)).Returns(followers);
@@ -370,7 +372,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         {
             // Arrange
             var factionId = "blue";
-            var follower = CreateFollowerWithPedHandle(factionId, DefenderTier.Basic, 42);
+            var follower = CreateFollowerWithPedHandle(factionId, DefenderRole.Grunt, 42);
             var followers = new List<Follower> { follower };
 
             _followerServiceMock.Setup(s => s.GetFollowers(factionId)).Returns(followers);
@@ -388,7 +390,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         {
             // Arrange
             var factionId = "blue";
-            var follower = new Follower(factionId, DefenderTier.Basic, -1); // Not spawned (handle = -1)
+            var follower = new Follower(factionId, DefenderRole.Grunt, -1); // Not spawned (handle = -1)
             var followers = new List<Follower> { follower };
 
             _followerServiceMock.Setup(s => s.GetFollowers(factionId)).Returns(followers);
@@ -415,7 +417,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         {
             // Arrange
             var factionId = "blue";
-            var follower = CreateFollowerWithPedHandle(factionId, DefenderTier.Basic, 42);
+            var follower = CreateFollowerWithPedHandle(factionId, DefenderRole.Grunt, 42);
             var followers = new List<Follower> { follower };
 
             _followerServiceMock.Setup(s => s.GetFollowers(factionId)).Returns(followers);
@@ -476,8 +478,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             // Arrange
             var followers = new List<Follower>
             {
-                new Follower("blue", DefenderTier.Basic),
-                new Follower("blue", DefenderTier.Medium)
+                new Follower("blue", DefenderRole.Grunt),
+                new Follower("blue", DefenderRole.Gunner)
             };
             _followerServiceMock.Setup(s => s.GetFollowers("blue")).Returns(followers);
 
@@ -496,8 +498,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         public void GetRecruitCost_ShouldReturnTierCost()
         {
             // Arrange
-            var tierConfig = new DefenderTierConfig(
-                DefenderTier.Heavy,
+            var roleConfig = new DefenderRoleConfig(
+                DefenderRole.Rifleman,
                 cost: 1000,
                 health: 200,
                 armor: 100,
@@ -505,11 +507,11 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
                 accuracy: 0.8f,
                 combatModifier: 2.0f);
 
-            _defenderTierServiceMock.Setup(s => s.GetTierConfig(DefenderTier.Heavy))
-                .Returns(tierConfig);
+            _defenderRoleServiceMock.Setup(s => s.GetRoleConfig(DefenderRole.Rifleman))
+                .Returns(roleConfig);
 
             // Act
-            var cost = _manager.GetRecruitCost(DefenderTier.Heavy);
+            var cost = _manager.GetRecruitCost(DefenderRole.Rifleman);
 
             // Assert
             Assert.Equal(1000, cost);
@@ -523,20 +525,20 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         public void SetModelForTier_ShouldStoreModel()
         {
             // Arrange & Act
-            _manager.SetModelForTier(DefenderTier.Basic, "g_m_y_lost_01");
-            _manager.SetModelForTier(DefenderTier.Medium, "g_m_y_lost_02");
-            _manager.SetModelForTier(DefenderTier.Heavy, "g_m_y_lost_03");
+            _manager.SetModelForTier(DefenderRole.Grunt, "g_m_y_lost_01");
+            _manager.SetModelForTier(DefenderRole.Gunner, "g_m_y_lost_02");
+            _manager.SetModelForTier(DefenderRole.Rifleman, "g_m_y_lost_03");
 
             // Assert - verify through recruitment
-            var follower = new Follower("blue", DefenderTier.Heavy);
-            _followerServiceMock.Setup(s => s.Recruit("blue", DefenderTier.Heavy))
+            var follower = new Follower("blue", DefenderRole.Rifleman);
+            _followerServiceMock.Setup(s => s.Recruit("blue", DefenderRole.Rifleman))
                 .Returns(FollowerRecruitResult.Succeeded(follower));
             _gameBridgeMock.Setup(g => g.GetPlayerPosition()).Returns(new Vector3(0, 0, 0));
             _pedSpawningServiceMock.Setup(s => s.CanSpawn()).Returns(true);
             _pedSpawningServiceMock.Setup(s => s.SpawnPed(It.IsAny<string>(), It.IsAny<Vector3>(), It.IsAny<string>(), null))
                 .Returns(new PedHandle(1, "blue", default, "g_m_y_lost_03", null));
 
-            _manager.RecruitFollower("blue", DefenderTier.Heavy);
+            _manager.RecruitFollower("blue", DefenderRole.Rifleman);
 
             _pedSpawningServiceMock.Verify(s => s.SpawnPed("g_m_y_lost_03", It.IsAny<Vector3>(), "blue", null), Times.Once);
         }
@@ -550,7 +552,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         {
             // Arrange
             var factionId = "blue";
-            var tier = DefenderTier.Medium;
+            var tier = DefenderRole.Gunner;
             var cost = 500;
             var playerMoney = 1000;
             var playerPos = new Vector3(100f, 200f, 30f);
@@ -558,8 +560,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
 
             _gameBridgeMock.Setup(g => g.GetPlayerMoney()).Returns(playerMoney);
             _gameBridgeMock.Setup(g => g.GetPlayerPosition()).Returns(playerPos);
-            _defenderTierServiceMock.Setup(s => s.GetTierConfig(tier))
-                .Returns(new DefenderTierConfig(tier, cost, 150, 50, "weapon_pistol", 0.6f, 1.5f));
+            _defenderRoleServiceMock.Setup(s => s.GetRoleConfig(tier))
+                .Returns(new DefenderRoleConfig(tier, cost, 150, 50, "weapon_pistol", 0.6f, 1.5f));
             _followerServiceMock.Setup(s => s.Recruit(factionId, tier))
                 .Returns(FollowerRecruitResult.Succeeded(follower));
             _pedSpawningServiceMock.Setup(s => s.CanSpawn()).Returns(true);
@@ -581,13 +583,13 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         {
             // Arrange
             var factionId = "blue";
-            var tier = DefenderTier.Heavy;
+            var tier = DefenderRole.Rifleman;
             var cost = 1000;
             var playerMoney = 500; // Not enough
 
             _gameBridgeMock.Setup(g => g.GetPlayerMoney()).Returns(playerMoney);
-            _defenderTierServiceMock.Setup(s => s.GetTierConfig(tier))
-                .Returns(new DefenderTierConfig(tier, cost, 200, 100, "weapon_smg", 0.8f, 2.0f));
+            _defenderRoleServiceMock.Setup(s => s.GetRoleConfig(tier))
+                .Returns(new DefenderRoleConfig(tier, cost, 200, 100, "weapon_smg", 0.8f, 2.0f));
 
             // Act
             var result = _manager.RecruitFollower(factionId, tier);
@@ -603,7 +605,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         {
             // Arrange
             var factionId = "blue";
-            var tier = DefenderTier.Basic;
+            var tier = DefenderRole.Grunt;
             var cost = 200;
             var playerMoney = 1000;
             var playerPos = new Vector3(100f, 200f, 30f);
@@ -612,8 +614,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
 
             _gameBridgeMock.Setup(g => g.GetPlayerMoney()).Returns(playerMoney);
             _gameBridgeMock.Setup(g => g.GetPlayerPosition()).Returns(playerPos);
-            _defenderTierServiceMock.Setup(s => s.GetTierConfig(tier))
-                .Returns(new DefenderTierConfig(tier, cost, 100, 0, "weapon_pistol", 0.4f, 1.0f));
+            _defenderRoleServiceMock.Setup(s => s.GetRoleConfig(tier))
+                .Returns(new DefenderRoleConfig(tier, cost, 100, 0, "weapon_pistol", 0.4f, 1.0f));
             _followerServiceMock.Setup(s => s.Recruit(factionId, tier))
                 .Returns(FollowerRecruitResult.Succeeded(follower));
             _pedSpawningServiceMock.Setup(s => s.CanSpawn()).Returns(true);
@@ -635,7 +637,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         {
             // Arrange
             var factionId = "blue";
-            var tier = DefenderTier.Basic;
+            var tier = DefenderRole.Grunt;
             var cost = 200;
             var playerMoney = 1000;
             var playerPos = new Vector3(100f, 200f, 30f);
@@ -643,8 +645,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
 
             _gameBridgeMock.Setup(g => g.GetPlayerMoney()).Returns(playerMoney);
             _gameBridgeMock.Setup(g => g.GetPlayerPosition()).Returns(playerPos);
-            _defenderTierServiceMock.Setup(s => s.GetTierConfig(tier))
-                .Returns(new DefenderTierConfig(tier, cost, 100, 0, "weapon_pistol", 0.4f, 1.0f));
+            _defenderRoleServiceMock.Setup(s => s.GetRoleConfig(tier))
+                .Returns(new DefenderRoleConfig(tier, cost, 100, 0, "weapon_pistol", 0.4f, 1.0f));
             _followerServiceMock.Setup(s => s.Recruit(factionId, tier))
                 .Returns(FollowerRecruitResult.Succeeded(follower));
             _pedSpawningServiceMock.Setup(s => s.CanSpawn()).Returns(false);
@@ -665,7 +667,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         public void CanRecruitWithCost_WhenInsufficientFunds_ShouldReturnFalse()
         {
             // Arrange
-            var tier = DefenderTier.Heavy;
+            var tier = DefenderRole.Rifleman;
             var cost = 1000;
             var playerMoney = 500;
 
@@ -673,8 +675,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             _followerServiceMock.Setup(s => s.GetMaxFollowers()).Returns(6);
             _pedSpawningServiceMock.Setup(s => s.CanSpawn()).Returns(true);
             _gameBridgeMock.Setup(g => g.GetPlayerMoney()).Returns(playerMoney);
-            _defenderTierServiceMock.Setup(s => s.GetTierConfig(tier))
-                .Returns(new DefenderTierConfig(tier, cost, 200, 100, "weapon_smg", 0.8f, 2.0f));
+            _defenderRoleServiceMock.Setup(s => s.GetRoleConfig(tier))
+                .Returns(new DefenderRoleConfig(tier, cost, 200, 100, "weapon_smg", 0.8f, 2.0f));
 
             // Act
             var canRecruit = _manager.CanRecruitWithCost("blue", tier);
@@ -687,7 +689,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         public void CanRecruitWithCost_WhenSufficientFunds_ShouldReturnTrue()
         {
             // Arrange
-            var tier = DefenderTier.Basic;
+            var tier = DefenderRole.Grunt;
             var cost = 200;
             var playerMoney = 1000;
 
@@ -695,8 +697,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             _followerServiceMock.Setup(s => s.GetMaxFollowers()).Returns(6);
             _pedSpawningServiceMock.Setup(s => s.CanSpawn()).Returns(true);
             _gameBridgeMock.Setup(g => g.GetPlayerMoney()).Returns(playerMoney);
-            _defenderTierServiceMock.Setup(s => s.GetTierConfig(tier))
-                .Returns(new DefenderTierConfig(tier, cost, 100, 0, "weapon_pistol", 0.4f, 1.0f));
+            _defenderRoleServiceMock.Setup(s => s.GetRoleConfig(tier))
+                .Returns(new DefenderRoleConfig(tier, cost, 100, 0, "weapon_pistol", 0.4f, 1.0f));
 
             // Act
             var canRecruit = _manager.CanRecruitWithCost("blue", tier);
@@ -762,7 +764,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         {
             // Arrange
             var factionId = "blue";
-            var follower = CreateFollowerWithPedHandle(factionId, DefenderTier.Basic, 42);
+            var follower = CreateFollowerWithPedHandle(factionId, DefenderRole.Grunt, 42);
             var followers = new List<Follower> { follower };
             var vehicleHandle = 100;
 
@@ -783,23 +785,61 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         }
 
         [Fact]
-        public void Update_WhenPlayerExitsVehicle_ShouldOrderFollowersToExitVehicle()
+        public void Update_WhenFollowerInCombat_ShouldClearCombatThenBoard()
         {
-            // Arrange
+            // The player wants to flee with the squad: a fighting follower must break off combat
+            // and board. Clearing the combat task first stops native combat AI from aborting the
+            // enter task (which previously caused rapid enter/exit oscillation).
             var factionId = "blue";
-            var follower = CreateFollowerWithPedHandle(factionId, DefenderTier.Basic, 42);
+            var follower = CreateFollowerWithPedHandle(factionId, DefenderRole.Grunt, 42);
             var followers = new List<Follower> { follower };
+            var vehicleHandle = 100;
 
             _followerServiceMock.Setup(s => s.GetFollowers(factionId)).Returns(followers);
             _gameBridgeMock.Setup(g => g.IsPedAlive(42)).Returns(true);
-            _gameBridgeMock.Setup(g => g.IsPlayerInVehicle()).Returns(false);
-            _gameBridgeMock.Setup(g => g.IsPedInVehicle(42)).Returns(true);
+            _gameBridgeMock.Setup(g => g.IsPlayerInVehicle()).Returns(true);
+            _gameBridgeMock.Setup(g => g.GetPlayerVehicle()).Returns(vehicleHandle);
+            _gameBridgeMock.Setup(g => g.IsPedInVehicle(42)).Returns(false);
+            _gameBridgeMock.Setup(g => g.IsPedInCombat(42)).Returns(true); // engaged in battle
+            _seatPriorityServiceMock.Setup(s => s.GetPrioritizedFreeSeats(vehicleHandle)).Returns(new[] { 1, 2 });
+            _seatPriorityServiceMock.Setup(s => s.FilterFollowersByProximity(It.IsAny<int[]>(), vehicleHandle, 15f))
+                .Returns(new[] { 42 });
 
             // Act
             _manager.Update(factionId);
 
-            // Assert
-            _gameBridgeMock.Verify(g => g.TaskPedLeaveVehicle(42), Times.Once);
+            // Assert - combat is cleared and the follower is tasked to board
+            _gameBridgeMock.Verify(g => g.ClearPedTasks(42), Times.Once);
+            _gameBridgeMock.Verify(g => g.TaskPedEnterVehicle(42, vehicleHandle, It.IsAny<int>()), Times.Once);
+        }
+
+        [Fact]
+        public void Update_WhenBoardOrderRecentlyIssued_ShouldNotReissueWithinCooldown()
+        {
+            // Re-issuing the board order every tick is exactly what caused the thrash. Once a
+            // follower has been ordered to board, hold off re-issuing for the cooldown window.
+            var factionId = "blue";
+            var follower = CreateFollowerWithPedHandle(factionId, DefenderRole.Grunt, 42);
+            var followers = new List<Follower> { follower };
+            var vehicleHandle = 100;
+
+            _followerServiceMock.Setup(s => s.GetFollowers(factionId)).Returns(followers);
+            _gameBridgeMock.Setup(g => g.IsPedAlive(42)).Returns(true);
+            _gameBridgeMock.Setup(g => g.IsPlayerInVehicle()).Returns(true);
+            _gameBridgeMock.Setup(g => g.GetPlayerVehicle()).Returns(vehicleHandle);
+            _gameBridgeMock.Setup(g => g.IsPedInVehicle(42)).Returns(false);
+            _gameBridgeMock.Setup(g => g.IsPedInCombat(42)).Returns(true);
+            _gameBridgeMock.Setup(g => g.GetGameTime()).Returns(1000); // same tick time both calls
+            _seatPriorityServiceMock.Setup(s => s.GetPrioritizedFreeSeats(vehicleHandle)).Returns(new[] { 1, 2 });
+            _seatPriorityServiceMock.Setup(s => s.FilterFollowersByProximity(It.IsAny<int[]>(), vehicleHandle, 15f))
+                .Returns(new[] { 42 });
+
+            // Act - two updates within the cooldown window
+            _manager.Update(factionId);
+            _manager.Update(factionId);
+
+            // Assert - the board order is issued once, not re-spammed every tick
+            _gameBridgeMock.Verify(g => g.TaskPedEnterVehicle(42, vehicleHandle, It.IsAny<int>()), Times.Once);
         }
 
         [Fact]
@@ -807,7 +847,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         {
             // Arrange
             var factionId = "blue";
-            var follower = CreateFollowerWithPedHandle(factionId, DefenderTier.Basic, 42);
+            var follower = CreateFollowerWithPedHandle(factionId, DefenderRole.Grunt, 42);
             var followers = new List<Follower> { follower };
             var vehicleHandle = 100;
 
@@ -832,7 +872,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         {
             // Arrange
             var factionId = "blue";
-            var follower = CreateFollowerWithPedHandle(factionId, DefenderTier.Basic, 42);
+            var follower = CreateFollowerWithPedHandle(factionId, DefenderRole.Grunt, 42);
             var followers = new List<Follower> { follower };
 
             _followerServiceMock.Setup(s => s.GetFollowers(factionId)).Returns(followers);
@@ -848,11 +888,32 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         }
 
         [Fact]
+        public void Update_PlayerOnFoot_ExposesAliveHandlesWithoutTasking()
+        {
+            // Arrange
+            var factionId = "blue";
+            var follower = CreateFollowerWithPedHandle(factionId, DefenderRole.Grunt, 42);
+            var followers = new List<Follower> { follower };
+
+            _followerServiceMock.Setup(s => s.GetFollowers(factionId)).Returns(followers);
+            _gameBridgeMock.Setup(g => g.IsPedAlive(42)).Returns(true);
+            _gameBridgeMock.Setup(g => g.IsPlayerInVehicle()).Returns(false);
+
+            // Act
+            _manager.Update(factionId);
+
+            // Assert — FollowerManager exposes the handle; on-foot tasking belongs to SquadStanceController.
+            Assert.Single(_manager.OnFootBodyguardHandles);
+            Assert.Equal(42, _manager.OnFootBodyguardHandles[0]);
+            _gameBridgeMock.Verify(g => g.SetPedAsFollower(It.IsAny<int>()), Times.Never);
+        }
+
+        [Fact]
         public void Update_WhenNoFreeSeatsInVehicle_ShouldNotOrderFollowerToEnter()
         {
             // Arrange
             var factionId = "blue";
-            var follower = CreateFollowerWithPedHandle(factionId, DefenderTier.Basic, 42);
+            var follower = CreateFollowerWithPedHandle(factionId, DefenderRole.Grunt, 42);
             var followers = new List<Follower> { follower };
             var vehicleHandle = 100;
 
@@ -877,8 +938,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         {
             // Arrange
             var factionId = "blue";
-            var follower1 = CreateFollowerWithPedHandle(factionId, DefenderTier.Basic, 42);
-            var follower2 = CreateFollowerWithPedHandle(factionId, DefenderTier.Medium, 43);
+            var follower1 = CreateFollowerWithPedHandle(factionId, DefenderRole.Grunt, 42);
+            var follower2 = CreateFollowerWithPedHandle(factionId, DefenderRole.Gunner, 43);
             var followers = new List<Follower> { follower1, follower2 };
             var vehicleHandle = 100;
 
@@ -906,9 +967,9 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         {
             // Arrange
             var factionId = "blue";
-            var follower1 = CreateFollowerWithPedHandle(factionId, DefenderTier.Basic, 42);
-            var follower2 = CreateFollowerWithPedHandle(factionId, DefenderTier.Medium, 43);
-            var follower3 = CreateFollowerWithPedHandle(factionId, DefenderTier.Heavy, 44);
+            var follower1 = CreateFollowerWithPedHandle(factionId, DefenderRole.Grunt, 42);
+            var follower2 = CreateFollowerWithPedHandle(factionId, DefenderRole.Gunner, 43);
+            var follower3 = CreateFollowerWithPedHandle(factionId, DefenderRole.Rifleman, 44);
             var followers = new List<Follower> { follower1, follower2, follower3 };
             var vehicleHandle = 100;
 
@@ -933,7 +994,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         {
             // Arrange
             var factionId = "blue";
-            var follower = CreateFollowerWithPedHandle(factionId, DefenderTier.Basic, 42);
+            var follower = CreateFollowerWithPedHandle(factionId, DefenderRole.Grunt, 42);
             var followers = new List<Follower> { follower };
             var vehicleHandle = 100;
 
@@ -959,7 +1020,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         {
             // Arrange
             var factionId = "blue";
-            var follower = CreateFollowerWithPedHandle(factionId, DefenderTier.Basic, 42);
+            var follower = CreateFollowerWithPedHandle(factionId, DefenderRole.Grunt, 42);
             var followers = new List<Follower> { follower };
             var vehicleHandle = 100;
 
@@ -989,15 +1050,15 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         {
             // Arrange
             var factionId = "blue";
-            var tier = DefenderTier.Heavy;
+            var tier = DefenderRole.Rifleman;
             var playerPos = new Vector3(100f, 200f, 30f);
             var follower = new Follower(factionId, tier);
             var pedHandle = 42;
 
             _gameBridgeMock.Setup(g => g.GetPlayerMoney()).Returns(10000);
             _gameBridgeMock.Setup(g => g.GetPlayerPosition()).Returns(playerPos);
-            _defenderTierServiceMock.Setup(s => s.GetTierConfig(tier))
-                .Returns(new DefenderTierConfig(tier, 1000, 200, 100, "weapon_carbinerifle", 0.7f, 2.0f));
+            _defenderRoleServiceMock.Setup(s => s.GetRoleConfig(tier))
+                .Returns(new DefenderRoleConfig(tier, 1000, 200, 100, "weapon_carbinerifle", 0.7f, 2.0f));
             _followerServiceMock.Setup(s => s.Recruit(factionId, tier))
                 .Returns(FollowerRecruitResult.Succeeded(follower));
             _pedSpawningServiceMock.Setup(s => s.CanSpawn()).Returns(true);
@@ -1015,22 +1076,22 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         }
 
         [Theory]
-        [InlineData(DefenderTier.Basic, "weapon_pistol")]
-        [InlineData(DefenderTier.Medium, "weapon_smg")]
-        [InlineData(DefenderTier.Heavy, "weapon_carbinerifle")]
-        public void RecruitFollower_ShouldGiveCorrectWeaponPerTier(DefenderTier tier, string expectedWeapon)
+        [InlineData(DefenderRole.Grunt, "weapon_pistol")]
+        [InlineData(DefenderRole.Gunner, "weapon_smg")]
+        [InlineData(DefenderRole.Rifleman, "weapon_carbinerifle")]
+        public void RecruitFollower_ShouldGiveCorrectWeaponPerTier(DefenderRole tier, string expectedWeapon)
         {
             // Arrange
             var factionId = "blue";
             var playerPos = new Vector3(100f, 200f, 30f);
             var follower = new Follower(factionId, tier);
             var pedHandle = 42;
-            var cost = tier == DefenderTier.Basic ? 200 : tier == DefenderTier.Medium ? 500 : 1000;
+            var cost = tier == DefenderRole.Grunt ? 200 : tier == DefenderRole.Gunner ? 500 : 1000;
 
             _gameBridgeMock.Setup(g => g.GetPlayerMoney()).Returns(10000);
             _gameBridgeMock.Setup(g => g.GetPlayerPosition()).Returns(playerPos);
-            _defenderTierServiceMock.Setup(s => s.GetTierConfig(tier))
-                .Returns(new DefenderTierConfig(tier, cost, 100, 0, expectedWeapon, 0.5f, 1.0f));
+            _defenderRoleServiceMock.Setup(s => s.GetRoleConfig(tier))
+                .Returns(new DefenderRoleConfig(tier, cost, 100, 0, expectedWeapon, 0.5f, 1.0f));
             _followerServiceMock.Setup(s => s.Recruit(factionId, tier))
                 .Returns(FollowerRecruitResult.Succeeded(follower));
             _pedSpawningServiceMock.Setup(s => s.CanSpawn()).Returns(true);
@@ -1053,7 +1114,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         {
             // Arrange
             var factionId = "blue";
-            var tier = DefenderTier.Heavy;
+            var tier = DefenderRole.Rifleman;
             var playerPos = new Vector3(100f, 200f, 30f);
             var follower = new Follower(factionId, tier);
             var pedHandle = 42;
@@ -1061,8 +1122,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
 
             _gameBridgeMock.Setup(g => g.GetPlayerMoney()).Returns(10000);
             _gameBridgeMock.Setup(g => g.GetPlayerPosition()).Returns(playerPos);
-            _defenderTierServiceMock.Setup(s => s.GetTierConfig(tier))
-                .Returns(new DefenderTierConfig(tier, 1000, 200, 100, "weapon_carbinerifle", expectedAccuracy, 2.0f));
+            _defenderRoleServiceMock.Setup(s => s.GetRoleConfig(tier))
+                .Returns(new DefenderRoleConfig(tier, 1000, 200, 100, "weapon_carbinerifle", expectedAccuracy, 2.0f));
             _followerServiceMock.Setup(s => s.Recruit(factionId, tier))
                 .Returns(FollowerRecruitResult.Succeeded(follower));
             _pedSpawningServiceMock.Setup(s => s.CanSpawn()).Returns(true);
@@ -1080,22 +1141,22 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         }
 
         [Theory]
-        [InlineData(DefenderTier.Basic, 0.3f)]
-        [InlineData(DefenderTier.Medium, 0.5f)]
-        [InlineData(DefenderTier.Heavy, 0.7f)]
-        public void RecruitFollower_ShouldSetCorrectAccuracyPerTier(DefenderTier tier, float expectedAccuracy)
+        [InlineData(DefenderRole.Grunt, 0.3f)]
+        [InlineData(DefenderRole.Gunner, 0.5f)]
+        [InlineData(DefenderRole.Rifleman, 0.7f)]
+        public void RecruitFollower_ShouldSetCorrectAccuracyPerTier(DefenderRole tier, float expectedAccuracy)
         {
             // Arrange
             var factionId = "blue";
             var playerPos = new Vector3(100f, 200f, 30f);
             var follower = new Follower(factionId, tier);
             var pedHandle = 42;
-            var cost = tier == DefenderTier.Basic ? 200 : tier == DefenderTier.Medium ? 500 : 1000;
+            var cost = tier == DefenderRole.Grunt ? 200 : tier == DefenderRole.Gunner ? 500 : 1000;
 
             _gameBridgeMock.Setup(g => g.GetPlayerMoney()).Returns(10000);
             _gameBridgeMock.Setup(g => g.GetPlayerPosition()).Returns(playerPos);
-            _defenderTierServiceMock.Setup(s => s.GetTierConfig(tier))
-                .Returns(new DefenderTierConfig(tier, cost, 100, 50, "weapon_pistol", expectedAccuracy, 1.0f));
+            _defenderRoleServiceMock.Setup(s => s.GetRoleConfig(tier))
+                .Returns(new DefenderRoleConfig(tier, cost, 100, 50, "weapon_pistol", expectedAccuracy, 1.0f));
             _followerServiceMock.Setup(s => s.Recruit(factionId, tier))
                 .Returns(FollowerRecruitResult.Succeeded(follower));
             _pedSpawningServiceMock.Setup(s => s.CanSpawn()).Returns(true);
@@ -1117,7 +1178,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         {
             // Arrange
             var factionId = "blue";
-            var tier = DefenderTier.Heavy;
+            var tier = DefenderRole.Rifleman;
             var playerPos = new Vector3(100f, 200f, 30f);
             var follower = new Follower(factionId, tier);
             var pedHandle = 42;
@@ -1125,8 +1186,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
 
             _gameBridgeMock.Setup(g => g.GetPlayerMoney()).Returns(10000);
             _gameBridgeMock.Setup(g => g.GetPlayerPosition()).Returns(playerPos);
-            _defenderTierServiceMock.Setup(s => s.GetTierConfig(tier))
-                .Returns(new DefenderTierConfig(tier, 1000, 200, expectedArmor, "weapon_carbinerifle", 0.7f, 2.0f));
+            _defenderRoleServiceMock.Setup(s => s.GetRoleConfig(tier))
+                .Returns(new DefenderRoleConfig(tier, 1000, 200, expectedArmor, "weapon_carbinerifle", 0.7f, 2.0f));
             _followerServiceMock.Setup(s => s.Recruit(factionId, tier))
                 .Returns(FollowerRecruitResult.Succeeded(follower));
             _pedSpawningServiceMock.Setup(s => s.CanSpawn()).Returns(true);
@@ -1144,22 +1205,22 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         }
 
         [Theory]
-        [InlineData(DefenderTier.Basic, 0)]
-        [InlineData(DefenderTier.Medium, 50)]
-        [InlineData(DefenderTier.Heavy, 100)]
-        public void RecruitFollower_ShouldSetCorrectArmorPerTier(DefenderTier tier, int expectedArmor)
+        [InlineData(DefenderRole.Grunt, 0)]
+        [InlineData(DefenderRole.Gunner, 50)]
+        [InlineData(DefenderRole.Rifleman, 100)]
+        public void RecruitFollower_ShouldSetCorrectArmorPerTier(DefenderRole tier, int expectedArmor)
         {
             // Arrange
             var factionId = "blue";
             var playerPos = new Vector3(100f, 200f, 30f);
             var follower = new Follower(factionId, tier);
             var pedHandle = 42;
-            var cost = tier == DefenderTier.Basic ? 200 : tier == DefenderTier.Medium ? 500 : 1000;
+            var cost = tier == DefenderRole.Grunt ? 200 : tier == DefenderRole.Gunner ? 500 : 1000;
 
             _gameBridgeMock.Setup(g => g.GetPlayerMoney()).Returns(10000);
             _gameBridgeMock.Setup(g => g.GetPlayerPosition()).Returns(playerPos);
-            _defenderTierServiceMock.Setup(s => s.GetTierConfig(tier))
-                .Returns(new DefenderTierConfig(tier, cost, 100, expectedArmor, "weapon_pistol", 0.5f, 1.0f));
+            _defenderRoleServiceMock.Setup(s => s.GetRoleConfig(tier))
+                .Returns(new DefenderRoleConfig(tier, cost, 100, expectedArmor, "weapon_pistol", 0.5f, 1.0f));
             _followerServiceMock.Setup(s => s.Recruit(factionId, tier))
                 .Returns(FollowerRecruitResult.Succeeded(follower));
             _pedSpawningServiceMock.Setup(s => s.CanSpawn()).Returns(true);
@@ -1181,15 +1242,15 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         {
             // Arrange
             var factionId = "blue";
-            var tier = DefenderTier.Medium;
+            var tier = DefenderRole.Gunner;
             var playerPos = new Vector3(100f, 200f, 30f);
             var follower = new Follower(factionId, tier);
             var pedHandle = 42;
 
             _gameBridgeMock.Setup(g => g.GetPlayerMoney()).Returns(10000);
             _gameBridgeMock.Setup(g => g.GetPlayerPosition()).Returns(playerPos);
-            _defenderTierServiceMock.Setup(s => s.GetTierConfig(tier))
-                .Returns(new DefenderTierConfig(tier, 500, 150, 50, "weapon_smg", 0.5f, 1.5f));
+            _defenderRoleServiceMock.Setup(s => s.GetRoleConfig(tier))
+                .Returns(new DefenderRoleConfig(tier, 500, 150, 50, "weapon_smg", 0.5f, 1.5f));
             _followerServiceMock.Setup(s => s.Recruit(factionId, tier))
                 .Returns(FollowerRecruitResult.Succeeded(follower));
             _pedSpawningServiceMock.Setup(s => s.CanSpawn()).Returns(true);
@@ -1212,7 +1273,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         {
             // Arrange
             var factionId = "blue";
-            var tier = DefenderTier.Heavy;
+            var tier = DefenderRole.Rifleman;
             var playerPos = new Vector3(100f, 200f, 30f);
             var follower = new Follower(factionId, tier);
             var pedHandle = 42;
@@ -1220,8 +1281,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
 
             _gameBridgeMock.Setup(g => g.GetPlayerMoney()).Returns(10000);
             _gameBridgeMock.Setup(g => g.GetPlayerPosition()).Returns(playerPos);
-            _defenderTierServiceMock.Setup(s => s.GetTierConfig(tier))
-                .Returns(new DefenderTierConfig(tier, 1000, expectedHealth, 100, "weapon_carbinerifle", 0.7f, 2.0f));
+            _defenderRoleServiceMock.Setup(s => s.GetRoleConfig(tier))
+                .Returns(new DefenderRoleConfig(tier, 1000, expectedHealth, 100, "weapon_carbinerifle", 0.7f, 2.0f));
             _followerServiceMock.Setup(s => s.Recruit(factionId, tier))
                 .Returns(FollowerRecruitResult.Succeeded(follower));
             _pedSpawningServiceMock.Setup(s => s.CanSpawn()).Returns(true);
@@ -1241,22 +1302,22 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         }
 
         [Theory]
-        [InlineData(DefenderTier.Basic, 100)]
-        [InlineData(DefenderTier.Medium, 150)]
-        [InlineData(DefenderTier.Heavy, 200)]
-        public void RecruitFollower_ShouldSetCorrectHealthPerTier(DefenderTier tier, int expectedHealth)
+        [InlineData(DefenderRole.Grunt, 100)]
+        [InlineData(DefenderRole.Gunner, 150)]
+        [InlineData(DefenderRole.Rifleman, 200)]
+        public void RecruitFollower_ShouldSetCorrectHealthPerTier(DefenderRole tier, int expectedHealth)
         {
             // Arrange
             var factionId = "blue";
             var playerPos = new Vector3(100f, 200f, 30f);
             var follower = new Follower(factionId, tier);
             var pedHandle = 42;
-            var cost = tier == DefenderTier.Basic ? 200 : tier == DefenderTier.Medium ? 500 : 1000;
+            var cost = tier == DefenderRole.Grunt ? 200 : tier == DefenderRole.Gunner ? 500 : 1000;
 
             _gameBridgeMock.Setup(g => g.GetPlayerMoney()).Returns(10000);
             _gameBridgeMock.Setup(g => g.GetPlayerPosition()).Returns(playerPos);
-            _defenderTierServiceMock.Setup(s => s.GetTierConfig(tier))
-                .Returns(new DefenderTierConfig(tier, cost, expectedHealth, 50, "weapon_pistol", 0.5f, 1.0f));
+            _defenderRoleServiceMock.Setup(s => s.GetRoleConfig(tier))
+                .Returns(new DefenderRoleConfig(tier, cost, expectedHealth, 50, "weapon_pistol", 0.5f, 1.0f));
             _followerServiceMock.Setup(s => s.Recruit(factionId, tier))
                 .Returns(FollowerRecruitResult.Succeeded(follower));
             _pedSpawningServiceMock.Setup(s => s.CanSpawn()).Returns(true);
@@ -1275,9 +1336,73 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
 
         #endregion
 
+        #region RestoreFollowers Tests
+
+        [Fact]
+        public void RestoreFollowers_WithSavedFollower_ShouldSpawnAndConfigureFollower()
+        {
+            // Arrange
+            var factionId = "blue";
+            var savedFollower = new SavedFollowerState
+            {
+                FactionId = factionId,
+                Role = DefenderRole.Gunner,
+                Position = new PlayerPosition { X = 10f, Y = 20f, Z = 30f },
+            };
+            var follower = new Follower(factionId, DefenderRole.Gunner);
+
+            _followerServiceMock.Setup(s => s.GetFollowers(factionId)).Returns(Array.Empty<Follower>());
+            _followerServiceMock.Setup(s => s.DismissAllFollowers(factionId));
+            _followerServiceMock.Setup(s => s.Recruit(factionId, DefenderRole.Gunner))
+                .Returns(FollowerRecruitResult.Succeeded(follower));
+            _pedSpawningServiceMock.Setup(s => s.SpawnPed(
+                    "g_m_y_lost_02",
+                    It.Is<Vector3>(p => p.X == 10f && p.Y == 20f && p.Z == 30f),
+                    factionId,
+                    null))
+                .Returns(new PedHandle(42, factionId, new Vector3(10f, 20f, 30f), "g_m_y_lost_02", null));
+
+            // Act
+            _manager.RestoreFollowers(factionId, new[] { savedFollower }, -1);
+
+            // Assert
+            Assert.Equal(42, follower.PedHandle);
+            _gameBridgeMock.Verify(g => g.SetPedAsFollower(42), Times.Once);
+            _pedBlipServiceMock.Verify(b => b.CreateBlipForPed(42, BlipColor.Yellow), Times.Once);
+        }
+
+        [Fact]
+        public void RestoreFollowers_WithVehicleSeat_ShouldRestoreFollowerIntoVehicle()
+        {
+            // Arrange
+            var factionId = "blue";
+            var savedFollower = new SavedFollowerState
+            {
+                FactionId = factionId,
+                Role = DefenderRole.Grunt,
+                Position = new PlayerPosition { X = 10f, Y = 20f, Z = 30f },
+                VehicleSeatIndex = 1,
+            };
+            var follower = new Follower(factionId, DefenderRole.Grunt);
+
+            _followerServiceMock.Setup(s => s.GetFollowers(factionId)).Returns(Array.Empty<Follower>());
+            _followerServiceMock.Setup(s => s.Recruit(factionId, DefenderRole.Grunt))
+                .Returns(FollowerRecruitResult.Succeeded(follower));
+            _pedSpawningServiceMock.Setup(s => s.SpawnPed(It.IsAny<string>(), It.IsAny<Vector3>(), factionId, null))
+                .Returns(new PedHandle(42, factionId, new Vector3(10f, 20f, 30f), "g_m_y_lost_01", null));
+
+            // Act
+            _manager.RestoreFollowers(factionId, new[] { savedFollower }, 100);
+
+            // Assert
+            _gameBridgeMock.Verify(g => g.SetPedIntoVehicle(42, 100, 1), Times.Once);
+        }
+
+        #endregion
+
         #region Helper Methods
 
-        private Follower CreateFollowerWithPedHandle(string factionId, DefenderTier tier, int pedHandle)
+        private Follower CreateFollowerWithPedHandle(string factionId, DefenderRole tier, int pedHandle)
         {
             var follower = new Follower(factionId, tier, pedHandle);
             return follower;

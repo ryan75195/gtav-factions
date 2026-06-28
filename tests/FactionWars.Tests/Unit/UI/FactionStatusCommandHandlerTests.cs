@@ -54,8 +54,8 @@ namespace FactionWars.Tests.Unit.UI
             state.Weapons = 10;
             state.RecruitmentPoints = 100;
             // Add reserve troops for the player (15 basic, 10 medium) = 25 total reserve
-            state.AddReserveTroops(FactionWars.Core.Models.DefenderTier.Basic, 15);
-            state.AddReserveTroops(FactionWars.Core.Models.DefenderTier.Medium, 10);
+            state.AddReserveTroops(FactionWars.Core.Models.DefenderRole.Grunt, 15);
+            state.AddReserveTroops(FactionWars.Core.Models.DefenderRole.Gunner, 10);
 
             // Create zone objects for the zone service mock
             var center = new Vector3(0, 0, 0);

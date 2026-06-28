@@ -7,20 +7,46 @@ namespace FactionWars.AI.Services
 {
     public partial class AIRecruitmentService
     {
-        private int BuyEliteTroops(
+        private const int SniperPerNDefenders = 6;
+
+        private int BuySnipers(
             int cash,
             int maxTroops,
-            Dictionary<DefenderTier, int> recruited,
+            Dictionary<DefenderRole, int> recruited,
             out int remainingSlots)
         {
             int remainingBudget = cash;
             remainingSlots = maxTroops;
-            int eliteToBuy = GetEliteCountForWealth(cash);
-            int eliteCost = TierService.GetCost(DefenderTier.Elite);
+            if (cash < MidWealthThreshold)
+                return remainingBudget;
+
+            int snipersWanted = Math.Min(remainingSlots, (maxTroops + SniperPerNDefenders - 1) / SniperPerNDefenders);
+            int sniperCost = TierService.GetCost(DefenderRole.Sniper);
+            for (int i = 0; i < snipersWanted && remainingSlots > 0 && remainingBudget >= sniperCost; i++)
+            {
+                recruited[DefenderRole.Sniper]++;
+                remainingBudget -= sniperCost;
+                remainingSlots--;
+            }
+
+            return remainingBudget;
+        }
+
+        private int BuyEliteTroops(
+            int wealthSignal,
+            int startBudget,
+            int maxTroops,
+            Dictionary<DefenderRole, int> recruited,
+            out int remainingSlots)
+        {
+            int remainingBudget = startBudget;
+            remainingSlots = maxTroops;
+            int eliteToBuy = GetEliteCountForWealth(wealthSignal);
+            int eliteCost = TierService.GetCost(DefenderRole.Rocketeer);
 
             for (int i = 0; i < eliteToBuy && remainingSlots > 0 && remainingBudget >= eliteCost; i++)
             {
-                recruited[DefenderTier.Elite]++;
+                recruited[DefenderRole.Rocketeer]++;
                 remainingBudget -= eliteCost;
                 remainingSlots--;
             }
@@ -31,7 +57,7 @@ namespace FactionWars.AI.Services
         private void BuyStandardTroops(
             int remainingBudget,
             int remainingSlots,
-            Dictionary<DefenderTier, int> recruited)
+            Dictionary<DefenderRole, int> recruited)
         {
             var distribution = GetTierDistributionForWealth(remainingBudget);
             int standardTroopsToBuy = remainingSlots;
@@ -40,9 +66,9 @@ namespace FactionWars.AI.Services
             int heavyCount = (int)Math.Round(standardTroopsToBuy * distribution.HeavyPercent);
             NormalizeStandardCounts(remainingSlots, ref basicCount, ref mediumCount, ref heavyCount);
 
-            remainingBudget = BuyTier(recruited, DefenderTier.Heavy, heavyCount, remainingBudget);
-            remainingBudget = BuyTier(recruited, DefenderTier.Medium, mediumCount, remainingBudget);
-            BuyTier(recruited, DefenderTier.Basic, basicCount, remainingBudget);
+            remainingBudget = BuyTier(recruited, DefenderRole.Rifleman, heavyCount, remainingBudget);
+            remainingBudget = BuyTier(recruited, DefenderRole.Gunner, mediumCount, remainingBudget);
+            BuyTier(recruited, DefenderRole.Grunt, basicCount, remainingBudget);
         }
 
         private static void NormalizeStandardCounts(
@@ -80,12 +106,12 @@ namespace FactionWars.AI.Services
         }
 
         private int BuyTier(
-            Dictionary<DefenderTier, int> recruited,
-            DefenderTier tier,
+            Dictionary<DefenderRole, int> recruited,
+            DefenderRole tier,
             int count,
             int remainingBudget)
         {
-                int cost = TierService.GetCost(tier);
+            int cost = TierService.GetCost(tier);
             for (int i = 0; i < count && remainingBudget >= cost; i++)
             {
                 recruited[tier]++;
@@ -95,7 +121,7 @@ namespace FactionWars.AI.Services
             return remainingBudget;
         }
 
-        private int ApplyRecruitment(string factionId, Dictionary<DefenderTier, int> recruited)
+        private int ApplyRecruitment(string factionId, Dictionary<DefenderRole, int> recruited)
         {
             int totalRecruited = 0;
             int totalCost = 0;

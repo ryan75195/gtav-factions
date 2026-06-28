@@ -142,7 +142,8 @@ namespace FactionWars.ScriptHookV
             UpdateCoreSystems(deltaTime);
             UpdatePlayerRespawnPlacement();
             PollControllerInput();
-            _menuProvider?.SetSelectKeyHeld(_enterKeyHeld);
+            _menuProvider?.SetSelectKeyHeld(IsSelectKeyHeld());
+            ThrottleMenuNavigation();
             _mainMenuController?.Update();
             UpdateWorldSystems(deltaTime);
 

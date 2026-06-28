@@ -11,7 +11,7 @@ namespace FactionWars.Core.Models
     /// </summary>
     public class ZoneDefenderAllocation
     {
-        private readonly Dictionary<DefenderTier, int> _troops;
+        private readonly Dictionary<DefenderRole, int> _troops;
 
         /// <summary>
         /// The ID of the faction that owns this allocation.
@@ -49,12 +49,12 @@ namespace FactionWars.Core.Models
 
             FactionId = factionId;
             ZoneId = zoneId;
-            _troops = new Dictionary<DefenderTier, int>
+            _troops = new Dictionary<DefenderRole, int>
             {
-                { DefenderTier.Basic, 0 },
-                { DefenderTier.Medium, 0 },
-                { DefenderTier.Heavy, 0 },
-                { DefenderTier.Elite, 0 }
+                { DefenderRole.Grunt, 0 },
+                { DefenderRole.Gunner, 0 },
+                { DefenderRole.Rifleman, 0 },
+                { DefenderRole.Rocketeer, 0 }
             };
         }
 
@@ -63,7 +63,7 @@ namespace FactionWars.Core.Models
         /// </summary>
         /// <param name="tier">The defender tier to query.</param>
         /// <returns>The number of troops in that tier.</returns>
-        public int GetTroopCount(DefenderTier tier)
+        public int GetTroopCount(DefenderRole tier)
         {
             return _troops.TryGetValue(tier, out var count) ? count : 0;
         }
@@ -74,7 +74,7 @@ namespace FactionWars.Core.Models
         /// <param name="tier">The defender tier to add to.</param>
         /// <param name="count">The number of troops to add (must be non-negative).</param>
         /// <exception cref="ArgumentOutOfRangeException">Thrown if count is negative.</exception>
-        public void AddTroops(DefenderTier tier, int count)
+        public void AddTroops(DefenderRole tier, int count)
         {
             if (count < 0)
                 throw new ArgumentOutOfRangeException(nameof(count), "Count cannot be negative.");
@@ -92,7 +92,7 @@ namespace FactionWars.Core.Models
         /// <param name="count">The number of troops to remove (must be non-negative).</param>
         /// <returns>True if the troops were removed, false if insufficient troops.</returns>
         /// <exception cref="ArgumentOutOfRangeException">Thrown if count is negative.</exception>
-        public bool RemoveTroops(DefenderTier tier, int count)
+        public bool RemoveTroops(DefenderRole tier, int count)
         {
             if (count < 0)
                 throw new ArgumentOutOfRangeException(nameof(count), "Count cannot be negative.");
@@ -110,7 +110,7 @@ namespace FactionWars.Core.Models
         /// <param name="tier">The defender tier to check.</param>
         /// <param name="count">The minimum troop count to check for.</param>
         /// <returns>True if the tier has enough troops, false otherwise.</returns>
-        public bool HasTroops(DefenderTier tier, int count)
+        public bool HasTroops(DefenderRole tier, int count)
         {
             return _troops.TryGetValue(tier, out var current) && current >= count;
         }
@@ -119,14 +119,14 @@ namespace FactionWars.Core.Models
         /// Returns a copy of the troop counts by tier.
         /// </summary>
         /// <returns>A new dictionary with troop counts by tier.</returns>
-        public Dictionary<DefenderTier, int> GetTroopsCopy()
+        public Dictionary<DefenderRole, int> GetTroopsCopy()
         {
-            return new Dictionary<DefenderTier, int>(_troops);
+            return new Dictionary<DefenderRole, int>(_troops);
         }
 
         public override string ToString()
         {
-            return $"ZoneDefenderAllocation[{FactionId}/{ZoneId}]: Basic={GetTroopCount(DefenderTier.Basic)}, Medium={GetTroopCount(DefenderTier.Medium)}, Heavy={GetTroopCount(DefenderTier.Heavy)}, Elite={GetTroopCount(DefenderTier.Elite)}";
+            return $"ZoneDefenderAllocation[{FactionId}/{ZoneId}]: Basic={GetTroopCount(DefenderRole.Grunt)}, Medium={GetTroopCount(DefenderRole.Gunner)}, Heavy={GetTroopCount(DefenderRole.Rifleman)}, Elite={GetTroopCount(DefenderRole.Rocketeer)}";
         }
     }
 }

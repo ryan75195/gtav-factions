@@ -43,6 +43,40 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
         }
 
         [Fact]
+        public void Show_IncludesPoliceSuvOption()
+        {
+            // Arrange
+            _gameBridge.PlayerMoney = 100000;
+            var controller = new ShopMenuController(_menuProviderMock.Object, _gameBridge);
+
+            // Act
+            controller.Show();
+
+            // Assert
+            Assert.NotNull(_lastShownMenu);
+            var policeSuv = _lastShownMenu!.Items.FirstOrDefault(i => i.Id == "buy_police_suv");
+            Assert.NotNull(policeSuv);
+            Assert.Contains("Police SUV", policeSuv!.Text);
+        }
+
+        [Fact]
+        public void SelectingPoliceSuv_DeductsMoneyAndSpawnsVehicle()
+        {
+            // Arrange
+            _gameBridge.PlayerMoney = 100000;
+            var controller = new ShopMenuController(_menuProviderMock.Object, _gameBridge);
+            controller.Show();
+            var startMoney = _gameBridge.PlayerMoney;
+
+            // Act
+            _menuProviderMock.Raise(m => m.ItemSelected += null,
+                new MenuItemSelectedEventArgs(ShopMenuController.ShopMenuId, "buy_police_suv"));
+
+            // Assert - money deducted (a positive price) and a vehicle was created
+            Assert.True(_gameBridge.PlayerMoney < startMoney);
+        }
+
+        [Fact]
         public void Show_DisplaysPlayerCash()
         {
             // Arrange

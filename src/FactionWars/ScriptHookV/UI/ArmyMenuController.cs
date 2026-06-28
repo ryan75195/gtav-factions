@@ -112,7 +112,7 @@ namespace FactionWars.ScriptHookV.UI
         private readonly IFactionService _factionService;
         private readonly ITroopPurchaseService _purchaseService;
         private readonly IFollowerService _followerService;
-        private readonly IDefenderTierService _tierService;
+        private readonly IDefenderRoleService _tierService;
         private readonly IPlayerContext _playerContext;
         private readonly IFollowerManager? _followerManager;
         private readonly IGameBridge? _gameBridge;
@@ -160,7 +160,7 @@ namespace FactionWars.ScriptHookV.UI
                 FactionService = (IFactionService?)dependencies[1],
                 PurchaseService = (ITroopPurchaseService?)dependencies[2],
                 FollowerService = (IFollowerService?)dependencies[3],
-                TierService = (IDefenderTierService?)dependencies[4],
+                TierService = (IDefenderRoleService?)dependencies[4],
                 PlayerContext = (IPlayerContext?)dependencies[5]
             })
         {
@@ -208,9 +208,9 @@ namespace FactionWars.ScriptHookV.UI
 
         private static void AddReserveSummaryItem(MenuDefinition menu, FactionState? factionState)
         {
-            var basicReserve = factionState?.GetReserveTroops(DefenderTier.Basic) ?? 0;
-            var mediumReserve = factionState?.GetReserveTroops(DefenderTier.Medium) ?? 0;
-            var heavyReserve = factionState?.GetReserveTroops(DefenderTier.Heavy) ?? 0;
+            var basicReserve = factionState?.GetReserveTroops(DefenderRole.Grunt) ?? 0;
+            var mediumReserve = factionState?.GetReserveTroops(DefenderRole.Gunner) ?? 0;
+            var heavyReserve = factionState?.GetReserveTroops(DefenderRole.Rifleman) ?? 0;
 
             var reserveItem = new MenuItem(
                 ReserveSummaryItemId,

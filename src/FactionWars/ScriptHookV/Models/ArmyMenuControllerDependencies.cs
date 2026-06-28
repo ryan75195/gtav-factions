@@ -11,7 +11,7 @@ namespace FactionWars.ScriptHookV.Models
         public IFactionService? FactionService { get; set; }
         public ITroopPurchaseService? PurchaseService { get; set; }
         public IFollowerService? FollowerService { get; set; }
-        public IDefenderTierService? TierService { get; set; }
+        public IDefenderRoleService? TierService { get; set; }
         public IPlayerContext? PlayerContext { get; set; }
     }
 }

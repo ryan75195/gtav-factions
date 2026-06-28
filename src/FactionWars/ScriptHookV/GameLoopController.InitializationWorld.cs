@@ -39,7 +39,7 @@ namespace FactionWars.ScriptHookV
             {
                 PedSpawning = _container.Resolve<IPedSpawningService>(),
                 PedDespawn = _container.Resolve<IPedDespawnService>(),
-                DefenderTier = _container.Resolve<IDefenderTierService>(),
+                DefenderRole = _container.Resolve<IDefenderRoleService>(),
                 PedBlip = _container.Resolve<IPedBlipService>()
             };
         }
@@ -48,7 +48,7 @@ namespace FactionWars.ScriptHookV
         {
             public IPedSpawningService PedSpawning { get; set; } = null!;
             public IPedDespawnService PedDespawn { get; set; } = null!;
-            public IDefenderTierService DefenderTier { get; set; } = null!;
+            public IDefenderRoleService DefenderRole { get; set; } = null!;
             public IPedBlipService PedBlip { get; set; } = null!;
         }
 
