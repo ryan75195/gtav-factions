@@ -37,6 +37,9 @@ namespace FactionWars.ScriptHookV.Managers
             // spawn time; the relationship matrix decides who this ped hates. Here we only add the
             // zone patrol/seek tasking that drives them toward hated targets in range.
             _gameBridge.TaskCombatHatedTargetsAroundPed(pedHandle, wanderRadius);
+
+            // Sniper-specific: move ped to high-ground perch and issue guard task. No-op for other roles.
+            _sniperDeployment.DeployIfSniper(pedHandle, roleConfig, zoneCenter);
         }
 
         /// <summary>

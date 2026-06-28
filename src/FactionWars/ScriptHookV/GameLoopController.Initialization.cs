@@ -235,7 +235,8 @@ namespace FactionWars.ScriptHookV
                 PedBlipService = spawnServices.PedBlip,
                 ZoneService = zoneService,
                 ZoneBattleManager = zoneBattleManager,
-                CurrentPlayerFactionIdAccessor = () => CurrentPlayerFactionId
+                CurrentPlayerFactionIdAccessor = () => CurrentPlayerFactionId,
+                SniperDeployment = new SniperDeploymentService(new PerchResolver(), _gameBridge)
             });
 
             _battleAttackerManager = new BattleAttackerManager(

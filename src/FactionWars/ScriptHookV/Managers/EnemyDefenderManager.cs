@@ -36,6 +36,7 @@ namespace FactionWars.ScriptHookV.Managers
         private readonly IZoneBattleManager? _zoneBattleManager;
         private readonly IZoneCombatantSpawner _spawner;
         private readonly Func<string?> _playerFactionIdAccessor;
+        private readonly ISniperDeploymentService _sniperDeployment;
 
         private readonly Dictionary<string, Dictionary<int, DefenderRole>> _spawnedPedTierByZone;
         private readonly Dictionary<int, int> _corpseDeathTimes; // pedHandle -> game time when died
@@ -68,6 +69,8 @@ namespace FactionWars.ScriptHookV.Managers
             _spawner = dependencies.Spawner
                 ?? new ZoneCombatantSpawner(new AllegianceResolver(), _pedSpawningService, _pedBlipService, _gameBridge);
             _playerFactionIdAccessor = dependencies.CurrentPlayerFactionIdAccessor ?? (() => null);
+            _sniperDeployment = dependencies.SniperDeployment
+                ?? new SniperDeploymentService(new PerchResolver(), _gameBridge);
 
             _spawnedPedTierByZone = new Dictionary<string, Dictionary<int, DefenderRole>>();
             _corpseDeathTimes = new Dictionary<int, int>();
@@ -124,7 +127,7 @@ namespace FactionWars.ScriptHookV.Managers
             var totalSpawned = 0;
             var random = new Random();
 
-            foreach (DefenderRole tier in new[] { DefenderRole.Rocketeer, DefenderRole.Rifleman, DefenderRole.Gunner, DefenderRole.Grunt })
+            foreach (DefenderRole tier in new[] { DefenderRole.Rocketeer, DefenderRole.Sniper, DefenderRole.Rifleman, DefenderRole.Gunner, DefenderRole.Grunt })
             {
                 var count = allocation.GetTroopCount(tier);
                 if (count <= 0) continue;
