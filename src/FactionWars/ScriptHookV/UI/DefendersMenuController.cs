@@ -49,6 +49,11 @@ namespace FactionWars.ScriptHookV.UI
         public const string PurchaseEliteItemId = "purchase_elite";
 
         /// <summary>
+        /// Item ID for purchasing sniper troops.
+        /// </summary>
+        public const string PurchaseSniperItemId = "purchase_sniper";
+
+        /// <summary>
         /// Item ID for back button.
         /// </summary>
         public const string BackItemId = "back";
@@ -125,6 +130,7 @@ namespace FactionWars.ScriptHookV.UI
             AddPurchaseItem(menu, PurchaseMediumItemId, DefenderRole.Gunner, "SMG, medium armor", factionId);
             AddPurchaseItem(menu, PurchaseHeavyItemId, DefenderRole.Rifleman, "Carbine, full armor", factionId);
             AddPurchaseItem(menu, PurchaseEliteItemId, DefenderRole.Rocketeer, "RPG, anti-vehicle specialist", factionId);
+            AddPurchaseItem(menu, PurchaseSniperItemId, DefenderRole.Sniper, "Sniper rifle, long-range specialist", factionId);
 
             // Back navigation
             var backItem = new MenuItem(
@@ -179,6 +185,10 @@ namespace FactionWars.ScriptHookV.UI
 
                 case PurchaseEliteItemId:
                     PurchaseTroop(factionId, DefenderRole.Rocketeer);
+                    break;
+
+                case PurchaseSniperItemId:
+                    PurchaseTroop(factionId, DefenderRole.Sniper);
                     break;
             }
         }

@@ -43,6 +43,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
             _purchaseServiceMock.Setup(p => p.GetTroopCost(DefenderRole.Gunner)).Returns(500);
             _purchaseServiceMock.Setup(p => p.GetTroopCost(DefenderRole.Rifleman)).Returns(1000);
             _purchaseServiceMock.Setup(p => p.GetTroopCost(DefenderRole.Rocketeer)).Returns(2000);
+            _purchaseServiceMock.Setup(p => p.GetTroopCost(DefenderRole.Sniper)).Returns(1500);
 
             _controller = new DefendersMenuController(
                 _menuProvider,
@@ -163,15 +164,15 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
         }
 
         [Fact]
-        public void Show_ShouldHaveSevenItems()
+        public void Show_ShouldHaveEightItems()
         {
             // Act
             _controller.Show();
 
-            // Assert - money display, reserve summary, 4 purchase options, back = 7
+            // Assert - money display, reserve summary, 5 purchase options, back = 8
             var menu = _menuProvider.GetCurrentMenuDefinition();
             Assert.NotNull(menu);
-            Assert.Equal(7, menu!.Items.Count);
+            Assert.Equal(8, menu!.Items.Count);
         }
 
         [Fact]
@@ -245,6 +246,39 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
             var eliteItem = menu?.GetItem(DefendersMenuController.PurchaseEliteItemId);
             Assert.NotNull(eliteItem);
             Assert.Contains("2,000", eliteItem!.Text);
+        }
+
+        [Fact]
+        public void Show_ShouldIncludeSniperPurchaseOption()
+        {
+            // Arrange
+            _purchaseServiceMock.Setup(p => p.CanAfford(DefenderRole.Sniper, 1)).Returns(true);
+
+            // Act
+            _controller.Show();
+
+            // Assert
+            var menu = _menuProvider.GetCurrentMenuDefinition();
+            Assert.NotNull(menu);
+            var sniperItem = menu!.GetItem(DefendersMenuController.PurchaseSniperItemId);
+            Assert.NotNull(sniperItem);
+            Assert.Contains("Sniper", sniperItem!.Text);
+        }
+
+        [Fact]
+        public void PurchaseSniper_WithSufficientFunds_ShouldCallPurchaseService()
+        {
+            // Arrange
+            _purchaseServiceMock.Setup(p => p.CanAfford(DefenderRole.Sniper, 1)).Returns(true);
+            _purchaseServiceMock.Setup(p => p.PurchaseTroops(PlayerFactionId, DefenderRole.Sniper, 1))
+                .Returns(TroopPurchaseResult.Successful(DefenderRole.Sniper, 1, 1500));
+            _controller.Show();
+
+            // Act
+            _menuProvider.SimulateItemSelection(DefendersMenuController.PurchaseSniperItemId);
+
+            // Assert
+            _purchaseServiceMock.Verify(p => p.PurchaseTroops(PlayerFactionId, DefenderRole.Sniper, 1), Times.Once);
         }
     }
 }
