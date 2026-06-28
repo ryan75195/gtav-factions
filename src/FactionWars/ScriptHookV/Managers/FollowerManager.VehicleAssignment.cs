@@ -9,47 +9,47 @@ namespace FactionWars.ScriptHookV.Managers
         private const int BoardReissueIntervalMs = 1500;
         private readonly Dictionary<int, int> _lastBoardOrderMs = new Dictionary<int, int>();
 
+        // Commits each follower to a single seat so a re-issued board order keeps targeting the SAME
+        // door instead of shuffling as the free-seat list shifts while others board.
+        private readonly StickyVehicleSeatAssigner _seatAssigner = new StickyVehicleSeatAssigner();
+
         private void AssignFollowersToVehicle(List<int> aliveFollowerHandles, int playerVehicle)
         {
             var prioritizedSeats = _seatPriorityService.GetPrioritizedFreeSeats(playerVehicle);
             var nearbyFollowers = _seatPriorityService.FilterFollowersByProximity(
                 aliveFollowerHandles.ToArray(), playerVehicle, 15f);
 
+            var boarded = new HashSet<int>();
+            foreach (var pedHandle in nearbyFollowers)
+                if (_gameBridge.IsPedInVehicle(pedHandle)) boarded.Add(pedHandle);
+
+            _seatAssigner.Sync(nearbyFollowers, prioritizedSeats, boarded);
+
             int now = _gameBridge.GetGameTime();
-            var seatIndex = 0;
             foreach (var pedHandle in nearbyFollowers)
             {
-                if (seatIndex >= prioritizedSeats.Length)
-                    break;
-
                 if (_gameBridge.IsPedInVehicle(pedHandle))
                 {
                     _lastBoardOrderMs.Remove(pedHandle);
-                    seatIndex++;
                     continue;
                 }
+                if (!_seatAssigner.TryGetSeat(pedHandle, out var seat))
+                    continue; // no free seat committed to this follower yet
 
                 // Already heading in, or ordered recently: don't re-issue. Re-spamming the board
                 // order each tick is what caused the enter/exit oscillation during a battle.
                 if (_gameBridge.IsPedTryingToEnterVehicle(pedHandle))
-                {
-                    seatIndex++;
                     continue;
-                }
                 if (_lastBoardOrderMs.TryGetValue(pedHandle, out var last) && now - last < BoardReissueIntervalMs)
-                {
-                    seatIndex++;
                     continue;
-                }
 
                 // Break off combat first so native combat AI doesn't immediately abort the enter
-                // task, then order the follower to board — letting the player flee with the squad.
+                // task, then order the follower to board its committed seat.
                 if (_gameBridge.IsPedInCombat(pedHandle))
                     _gameBridge.ClearPedTasks(pedHandle);
 
-                _gameBridge.TaskPedEnterVehicle(pedHandle, playerVehicle, prioritizedSeats[seatIndex]);
+                _gameBridge.TaskPedEnterVehicle(pedHandle, playerVehicle, seat);
                 _lastBoardOrderMs[pedHandle] = now;
-                seatIndex++;
             }
         }
 
