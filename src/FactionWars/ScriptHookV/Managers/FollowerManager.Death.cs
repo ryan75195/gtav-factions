@@ -34,5 +34,19 @@ namespace FactionWars.ScriptHookV.Managers
 
             return aliveFollowerHandles;
         }
+
+        private static List<int> FilterSniperHandles(IEnumerable<Follower> followers, ICollection<int> aliveHandles)
+        {
+            var sniperHandles = new List<int>();
+            foreach (var follower in followers)
+            {
+                if (follower.Tier == DefenderRole.Sniper && aliveHandles.Contains(follower.PedHandle))
+                {
+                    sniperHandles.Add(follower.PedHandle);
+                }
+            }
+
+            return sniperHandles;
+        }
     }
 }

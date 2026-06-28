@@ -25,6 +25,10 @@ namespace FactionWars.ScriptHookV.Managers
         private const int FollowerReassertIntervalMs = 2000;
         private const float HoldRadiusPerBodyguard = 8f;
 
+        // HoldArea holds a tight ring around the PLAYER, not the zone. Anchoring on the
+        // zone centre/radius scattered bodyguards ~50m apart across the whole zone.
+        private const float HoldRingRadius = 10f;
+
         public SquadStanceController(IGameBridge gameBridge, ISquadStanceResolver stanceResolver, ITargetAssignmentResolver assignmentResolver)
         {
             _gameBridge = gameBridge ?? throw new ArgumentNullException(nameof(gameBridge));
@@ -60,7 +64,7 @@ namespace FactionWars.ScriptHookV.Managers
             switch (_currentStance)
             {
                 case SquadStance.HoldArea:
-                    ApplyHoldArea(anchorCenter, anchorRadius, onFootBodyguardHandles);
+                    ApplyHoldArea(onFootBodyguardHandles);
                     break;
                 case SquadStance.SearchAndDestroy:
                     ApplySearchAndDestroy(anchorCenter, anchorRadius, onFootBodyguardHandles, enemiesInRange);

@@ -173,6 +173,55 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         }
 
         [Fact]
+        public void RecruitFollower_WithSniper_ShouldSetProfessionalCombatAbilityAndFarRange()
+        {
+            // Arrange — snipers aim but never fire when left at the model's default
+            // (Poor) combat ability; they must be set Professional ability + Far range
+            // like every other combatant so they commit to firing the scoped rifle.
+            var factionId = "blue";
+            var tier = DefenderRole.Sniper;
+            var follower = new Follower(factionId, tier);
+
+            _defenderRoleServiceMock.Setup(s => s.GetRoleConfig(DefenderRole.Sniper))
+                .Returns(new DefenderRoleConfig(DefenderRole.Sniper, 1500, 275, 50, "WEAPON_SNIPERRIFLE", 0.8f, 2.2f));
+            _gameBridgeMock.Setup(g => g.GetPlayerPosition()).Returns(new Vector3(0f, 0f, 0f));
+            _followerServiceMock.Setup(s => s.Recruit(factionId, tier))
+                .Returns(FollowerRecruitResult.Succeeded(follower));
+            _pedSpawningServiceMock.Setup(s => s.CanSpawn()).Returns(true);
+            _pedSpawningServiceMock.Setup(s => s.SpawnPed(It.IsAny<string>(), It.IsAny<Vector3>(), factionId, null))
+                .Returns(new PedHandle(77, factionId, new Vector3(0f, 0f, 0f), "g_m_y_lost_01", null));
+
+            // Act
+            _manager.RecruitFollower(factionId, tier);
+
+            // Assert — Professional ability (2), Far range (2)
+            _gameBridgeMock.Verify(g => g.SetPedCombatProfile(77, 2, 2), Times.Once);
+        }
+
+        [Fact]
+        public void RecruitFollower_WithNonSniper_ShouldNotSetCombatProfile()
+        {
+            // Arrange — only snipers get the profile change; keep grunt/gunner/rifleman
+            // behaviour unchanged to avoid them charging distant enemies.
+            var factionId = "blue";
+            var tier = DefenderRole.Grunt;
+            var follower = new Follower(factionId, tier);
+
+            _gameBridgeMock.Setup(g => g.GetPlayerPosition()).Returns(new Vector3(0f, 0f, 0f));
+            _followerServiceMock.Setup(s => s.Recruit(factionId, tier))
+                .Returns(FollowerRecruitResult.Succeeded(follower));
+            _pedSpawningServiceMock.Setup(s => s.CanSpawn()).Returns(true);
+            _pedSpawningServiceMock.Setup(s => s.SpawnPed(It.IsAny<string>(), It.IsAny<Vector3>(), factionId, null))
+                .Returns(new PedHandle(88, factionId, new Vector3(0f, 0f, 0f), "g_m_y_lost_01", null));
+
+            // Act
+            _manager.RecruitFollower(factionId, tier);
+
+            // Assert
+            _gameBridgeMock.Verify(g => g.SetPedCombatProfile(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>()), Times.Never);
+        }
+
+        [Fact]
         public void RecruitFollower_WhenMaxFollowersReached_ShouldReturnFailure()
         {
             // Arrange
@@ -383,6 +432,47 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
 
             // Assert
             _followerServiceMock.Verify(s => s.HandleFollowerDeath(It.IsAny<Guid>()), Times.Never);
+        }
+
+        [Fact]
+        public void Update_OnFoot_ShouldExposeOnlyAliveSniperBodyguardHandles()
+        {
+            // Arrange — only sniper bodyguards need the close-range sidearm switch,
+            // so the manager must surface their handles separately from the rest.
+            var factionId = "blue";
+            var sniper = CreateFollowerWithPedHandle(factionId, DefenderRole.Sniper, 50);
+            var grunt = CreateFollowerWithPedHandle(factionId, DefenderRole.Grunt, 60);
+            var followers = new List<Follower> { sniper, grunt };
+
+            _followerServiceMock.Setup(s => s.GetFollowers(factionId)).Returns(followers);
+            _gameBridgeMock.Setup(g => g.IsPedAlive(50)).Returns(true);
+            _gameBridgeMock.Setup(g => g.IsPedAlive(60)).Returns(true);
+
+            // Act
+            _manager.Update(factionId);
+
+            // Assert
+            Assert.Equal(new[] { 50 }, _manager.SniperBodyguardHandles);
+        }
+
+        [Fact]
+        public void Update_WhenPlayerInVehicle_ShouldClearSniperBodyguardHandles()
+        {
+            // Arrange — in a vehicle snipers do drive-bys; no on-foot close defense.
+            var factionId = "blue";
+            var sniper = CreateFollowerWithPedHandle(factionId, DefenderRole.Sniper, 50);
+            var followers = new List<Follower> { sniper };
+
+            _followerServiceMock.Setup(s => s.GetFollowers(factionId)).Returns(followers);
+            _gameBridgeMock.Setup(g => g.IsPedAlive(50)).Returns(true);
+            _gameBridgeMock.Setup(g => g.IsPlayerInVehicle()).Returns(true);
+            _gameBridgeMock.Setup(g => g.GetPlayerVehicle()).Returns(900);
+
+            // Act
+            _manager.Update(factionId);
+
+            // Assert
+            Assert.Empty(_manager.SniperBodyguardHandles);
         }
 
         [Fact]

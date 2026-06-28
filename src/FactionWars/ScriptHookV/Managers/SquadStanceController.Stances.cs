@@ -57,14 +57,16 @@ namespace FactionWars.ScriptHookV.Managers
             }
         }
 
-        private void ApplyHoldArea(Vector3 anchorCenter, float anchorRadius, IReadOnlyList<int> handles)
+        private void ApplyHoldArea(IReadOnlyList<int> handles)
         {
+            // Center the hold ring on the player so bodyguards hold near you, not across the zone.
+            var holdCenter = _gameBridge.GetPlayerPosition();
             for (int i = 0; i < handles.Count; i++)
             {
                 int pedHandle = handles[i];
                 if (AlreadyApplied(pedHandle, SquadStance.HoldArea, BodyguardOrderKind.HoldAtPoint, i)) continue;
 
-                var order = _stanceResolver.Resolve(SquadStance.HoldArea, anchorCenter, anchorRadius, i, handles.Count);
+                var order = _stanceResolver.Resolve(SquadStance.HoldArea, holdCenter, HoldRingRadius, i, handles.Count);
                 _gameBridge.RemovePedFromFollowerGroup(pedHandle);
                 _gameBridge.TaskGuardArea(pedHandle, order.Point, HoldRadiusPerBodyguard);
                 Remember(pedHandle, SquadStance.HoldArea, BodyguardOrderKind.HoldAtPoint, i);

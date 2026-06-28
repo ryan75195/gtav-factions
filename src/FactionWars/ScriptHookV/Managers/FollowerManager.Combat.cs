@@ -29,6 +29,16 @@ namespace FactionWars.ScriptHookV.Managers
             // Configure combat behavior - followers should take cover and fight armed enemies
             _gameBridge.SetPedCombatAttributes(pedHandle, canUseCover: true, willFightArmedPeds: true);
 
+            // Snipers inherit the gang model's default (Poor) combat ability, which makes them
+            // aim a scoped rifle but hesitate to fire. Give them Professional ability + Far range
+            // (2, 2) so they actually commit to the shot, matching every other combatant.
+            if (roleConfig.Role == DefenderRole.Sniper)
+            {
+                const int Professional = 2;
+                const int Far = 2;
+                _gameBridge.SetPedCombatProfile(pedHandle, Professional, Far);
+            }
+
             // Elite tier uses RPG - prevent AI from switching to pistol (AI prefers pistol to avoid self-damage)
             if (roleConfig.Role == DefenderRole.Rocketeer)
             {

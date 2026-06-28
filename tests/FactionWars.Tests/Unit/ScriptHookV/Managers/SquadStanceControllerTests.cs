@@ -55,6 +55,25 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         }
 
         [Fact]
+        public void Update_HoldArea_GuardsNearPlayerNotTheZoneAnchor()
+        {
+            // HoldArea should hold a tight ring around the player. Anchoring on the zone
+            // centre/radius scattered bodyguards ~50m across the whole zone.
+            _controller = Build();
+            _bridge.PlayerPosition = new Vector3(100f, 100f, 0f);
+            int bg = _bridge.CreatePed("bg", new Vector3(101f, 100f, 0f));
+            var party = new List<int> { bg };
+            _controller.CycleStance(party); // -> HoldArea
+
+            // Far-off zone anchor with a large radius.
+            _controller.Update(new Vector3(1000f, 1000f, 0f), 80f, party, new List<EnemyTarget>());
+
+            var guardCenter = _bridge.GetGuardAreaCenter(bg);
+            float distFromPlayer = _bridge.PlayerPosition.DistanceTo(guardCenter);
+            Assert.True(distFromPlayer <= 12f, $"hold point should stay near the player, was {distFromPlayer:F1}m away");
+        }
+
+        [Fact]
         public void Update_SearchAndDestroy_WithEnemy_IssuesTaskCombatPed()
         {
             _controller = Build();

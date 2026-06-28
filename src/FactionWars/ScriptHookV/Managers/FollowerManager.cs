@@ -35,6 +35,13 @@ namespace FactionWars.ScriptHookV.Managers
         public IReadOnlyList<int> OnFootBodyguardHandles { get; private set; } = Array.Empty<int>();
 
         /// <summary>
+        /// Alive on-foot bodyguard handles whose role is <see cref="DefenderRole.Sniper"/>, from the
+        /// most recent <see cref="Update"/>. Empty when the player is in a vehicle. Used to drive the
+        /// close-range sidearm switch so snipers fire a pistol in CQC instead of a scoped rifle.
+        /// </summary>
+        public IReadOnlyList<int> SniperBodyguardHandles { get; private set; } = Array.Empty<int>();
+
+        /// <summary>
         /// Creates a new FollowerManager.
         /// </summary>
         /// <param name="gameBridge">The game bridge for game interactions.</param>
@@ -236,10 +243,12 @@ namespace FactionWars.ScriptHookV.Managers
             {
                 AssignFollowersToVehicle(aliveFollowerHandles, playerVehicle);
                 OnFootBodyguardHandles = Array.Empty<int>();
+                SniperBodyguardHandles = Array.Empty<int>();
             }
             else
             {
                 OnFootBodyguardHandles = aliveFollowerHandles;
+                SniperBodyguardHandles = FilterSniperHandles(followers, aliveFollowerHandles);
             }
         }
 

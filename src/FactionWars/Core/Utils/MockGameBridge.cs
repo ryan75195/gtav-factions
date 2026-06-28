@@ -604,6 +604,27 @@ namespace FactionWars.Core.Utils
             }
         }
 
+        private readonly Dictionary<int, int> _combatAbility = new Dictionary<int, int>();
+        private readonly Dictionary<int, int> _combatRange = new Dictionary<int, int>();
+
+        public void SetPedCombatProfile(int pedHandle, int ability, int combatRange)
+        {
+            _combatAbility[pedHandle] = ability;
+            _combatRange[pedHandle] = combatRange;
+        }
+
+        /// <summary>
+        /// Gets the combat ability last set for a ped, or -1 if never set.
+        /// </summary>
+        public int GetPedCombatAbility(int pedHandle) =>
+            _combatAbility.TryGetValue(pedHandle, out var a) ? a : -1;
+
+        /// <summary>
+        /// Gets the combat range last set for a ped, or -1 if never set.
+        /// </summary>
+        public int GetPedCombatRange(int pedHandle) =>
+            _combatRange.TryGetValue(pedHandle, out var r) ? r : -1;
+
         public void SetPedArmor(int pedHandle, int armor)
         {
             if (_peds.TryGetValue(pedHandle, out var ped))

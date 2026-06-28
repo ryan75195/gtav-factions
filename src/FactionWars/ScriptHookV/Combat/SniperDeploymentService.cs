@@ -62,6 +62,7 @@ namespace FactionWars.ScriptHookV.Combat
 
             _lastWeapon[sniperHandle] = desired;
             _gameBridge.SetPedActiveWeapon(sniperHandle, desired);
+            FileLogger.AI($"SniperCloseDefense: ped {sniperHandle} -> {desired} (threatClose={threatClose})");
         }
     }
 }
