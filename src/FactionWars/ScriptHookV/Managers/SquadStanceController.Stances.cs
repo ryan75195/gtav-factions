@@ -30,6 +30,7 @@ namespace FactionWars.ScriptHookV.Managers
         {
             if (_gameBridge.IsPlayerDead()) return;
             int now = _gameBridge.GetGameTime();
+            var playerPos = _gameBridge.GetPlayerPosition();
 
             foreach (var pedHandle in handles)
             {
@@ -38,12 +39,18 @@ namespace FactionWars.ScriptHookV.Managers
                     _reconciler.Submit(pedHandle, PedIntent.LeaveVehicle());
                     continue;
                 }
-                if (_gameBridge.IsPedFollowingPlayer(pedHandle))
+
+                // IsPedFollowingPlayer only checks ped-group MEMBERSHIP, not actual movement.
+                // Native group-follow can leave a ped nominally "following" while it stands
+                // stranded far from the player. Trust the follow flag only when the ped is
+                // actually near; otherwise fall through and re-task it back into formation.
+                bool stranded = playerPos.DistanceTo(_gameBridge.GetPedPosition(pedHandle)) > EscortFollowRepairDistance;
+                if (_gameBridge.IsPedFollowingPlayer(pedHandle) && !stranded)
                 {
                     _lastFollowReassertMs.Remove(pedHandle);
                     continue;
                 }
-                if (_gameBridge.IsPedInCombat(pedHandle))
+                if (_gameBridge.IsPedInCombat(pedHandle) && !stranded)
                 {
                     continue;
                 }
@@ -56,7 +63,7 @@ namespace FactionWars.ScriptHookV.Managers
                 _reconciler.Forget(pedHandle);
                 _reconciler.Submit(pedHandle, PedIntent.FollowPlayer());
                 _lastFollowReassertMs[pedHandle] = now;
-                FileLogger.AI($"SquadStance Escort: ped {pedHandle} re-followed");
+                FileLogger.AI($"SquadStance Escort: ped {pedHandle} re-followed stranded={stranded} inGroup={_gameBridge.IsPedFollowingPlayer(pedHandle)}");
             }
         }
 

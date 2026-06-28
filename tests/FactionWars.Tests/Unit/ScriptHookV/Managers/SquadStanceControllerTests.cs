@@ -273,6 +273,44 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         }
 
         [Fact]
+        public void Update_EscortStance_RepairsStrandedBodyguardStillNominallyInGroup()
+        {
+            // A ped can be a player-group member yet stranded far away: native group-follow
+            // leaves it nominally "following" (IsPedFollowingPlayer == true) while it stands
+            // still. Escort must re-task such a ped instead of trusting the follow flag.
+            _controller = Build();
+            _bridge.PlayerPosition = new Vector3(0f, 0f, 0f);
+            int bg = _bridge.CreatePed("bg", new Vector3(50f, 0f, 0f)); // 50m from the player
+            _bridge.SetPedAsFollower(bg); // nominally in the player's group
+            Assert.True(_bridge.IsPedFollowingPlayer(bg));
+            int before = _bridge.GetSetAsFollowerCallCount(bg);
+            var party = new List<int> { bg };
+
+            _controller.Update(Anchor, 50f, party, new List<EnemyTarget>(), NoRoles);
+
+            // Stranded => re-task fired (SetPedAsFollower re-applied) despite the follow flag.
+            Assert.True(_bridge.GetSetAsFollowerCallCount(bg) > before,
+                "stranded group member should be re-followed");
+        }
+
+        [Fact]
+        public void Update_EscortStance_DoesNotRetaskBodyguardFollowingNearPlayer()
+        {
+            // A bodyguard genuinely following close to the player must NOT be re-tasked every
+            // tick — that would thrash its follow task. The follow flag is trustworthy when near.
+            _controller = Build();
+            _bridge.PlayerPosition = new Vector3(0f, 0f, 0f);
+            int bg = _bridge.CreatePed("bg", new Vector3(5f, 0f, 0f)); // 5m: actually following
+            _bridge.SetPedAsFollower(bg);
+            int before = _bridge.GetSetAsFollowerCallCount(bg);
+            var party = new List<int> { bg };
+
+            _controller.Update(Anchor, 50f, party, new List<EnemyTarget>(), NoRoles);
+
+            Assert.Equal(before, _bridge.GetSetAsFollowerCallCount(bg));
+        }
+
+        [Fact]
         public void Update_EscortStance_OrdersBodyguardInVehicleToLeave()
         {
             // Arrange: controller starts in Escort by default — no cycling needed.
