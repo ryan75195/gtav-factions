@@ -69,6 +69,9 @@ namespace FactionWars.ScriptHookV
             _controller?.OnAbort();
             _controller = null;
             _nativeSaveSidecarWriter = null;
+
+            // Flush and close the log last so buffered lines from this abort are not lost.
+            FileLogger.Shutdown();
         }
 
         private void TickLoadDetector()
