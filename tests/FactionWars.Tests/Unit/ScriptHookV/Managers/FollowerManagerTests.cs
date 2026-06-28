@@ -194,17 +194,21 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             // Act
             _manager.RecruitFollower(factionId, tier);
 
-            // Assert — Professional ability (2), Far range (2)
-            _gameBridgeMock.Verify(g => g.SetPedCombatProfile(77, 2, 2), Times.Once);
+            // Assert — Professional ability (2), Far range (2), default movement (-1, hold & snipe)
+            _gameBridgeMock.Verify(g => g.SetPedCombatProfile(77, 2, 2, -1), Times.Once);
         }
 
-        [Fact]
-        public void RecruitFollower_WithNonSniper_ShouldNotSetCombatProfile()
+        [Theory]
+        [InlineData(DefenderRole.Grunt)]
+        [InlineData(DefenderRole.Gunner)]
+        [InlineData(DefenderRole.Rifleman)]
+        public void RecruitFollower_WithAssaultRole_ShouldSetProfessionalAbilityAndOffensiveMovement(DefenderRole tier)
         {
-            // Arrange — only snipers get the profile change; keep grunt/gunner/rifleman
-            // behaviour unchanged to avoid them charging distant enemies.
+            // Arrange — grunts/gunners/riflemen default to cautious movement, so in Search &
+            // Destroy they hold and shoot instead of closing in. They must get Professional
+            // ability + Offensive movement (2) to advance and press the attack; range left
+            // default (-1) so they don't abandon the player to chase distant enemies.
             var factionId = "blue";
-            var tier = DefenderRole.Grunt;
             var follower = new Follower(factionId, tier);
 
             _gameBridgeMock.Setup(g => g.GetPlayerPosition()).Returns(new Vector3(0f, 0f, 0f));
@@ -217,8 +221,33 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             // Act
             _manager.RecruitFollower(factionId, tier);
 
+            // Assert — Professional ability (2), default range (-1), Offensive movement (2)
+            _gameBridgeMock.Verify(g => g.SetPedCombatProfile(88, 2, -1, 2), Times.Once);
+        }
+
+        [Fact]
+        public void RecruitFollower_WithRocketeer_ShouldNotSetCombatProfile()
+        {
+            // Arrange — an RPG user charging into close range would splash itself, so rocketeers
+            // are excluded from the aggressive assault profile.
+            var factionId = "blue";
+            var tier = DefenderRole.Rocketeer;
+            var follower = new Follower(factionId, tier);
+
+            _defenderRoleServiceMock.Setup(s => s.GetRoleConfig(DefenderRole.Rocketeer))
+                .Returns(new DefenderRoleConfig(DefenderRole.Rocketeer, 2000, 650, 200, "WEAPON_RPG", 0.8f, 2.5f));
+            _gameBridgeMock.Setup(g => g.GetPlayerPosition()).Returns(new Vector3(0f, 0f, 0f));
+            _followerServiceMock.Setup(s => s.Recruit(factionId, tier))
+                .Returns(FollowerRecruitResult.Succeeded(follower));
+            _pedSpawningServiceMock.Setup(s => s.CanSpawn()).Returns(true);
+            _pedSpawningServiceMock.Setup(s => s.SpawnPed(It.IsAny<string>(), It.IsAny<Vector3>(), factionId, null))
+                .Returns(new PedHandle(99, factionId, new Vector3(0f, 0f, 0f), "g_m_y_lost_01", null));
+
+            // Act
+            _manager.RecruitFollower(factionId, tier);
+
             // Assert
-            _gameBridgeMock.Verify(g => g.SetPedCombatProfile(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>()), Times.Never);
+            _gameBridgeMock.Verify(g => g.SetPedCombatProfile(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>()), Times.Never);
         }
 
         [Fact]

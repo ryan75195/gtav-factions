@@ -7,6 +7,12 @@ namespace FactionWars.ScriptHookV.Managers
 {
     public partial class FollowerManager
     {
+        // Combat profile values for SetPedCombatProfile (-1 = leave engine default).
+        private const int CombatAbilityProfessional = 2;
+        private const int CombatRangeFar = 2;
+        private const int CombatMovementOffensive = 2;
+        private const int CombatKeepDefault = -1;
+
         private void ConfigureFollowerCombat(int pedHandle, DefenderRoleConfig roleConfig)
         {
             // Give pistol first as secondary weapon for drive-by shooting from vehicles
@@ -31,12 +37,22 @@ namespace FactionWars.ScriptHookV.Managers
 
             // Snipers inherit the gang model's default (Poor) combat ability, which makes them
             // aim a scoped rifle but hesitate to fire. Give them Professional ability + Far range
-            // (2, 2) so they actually commit to the shot, matching every other combatant.
+            // so they commit to the shot and keep their distance. Movement left default — they
+            // should hold and snipe, not advance.
             if (roleConfig.Role == DefenderRole.Sniper)
             {
-                const int Professional = 2;
-                const int Far = 2;
-                _gameBridge.SetPedCombatProfile(pedHandle, Professional, Far);
+                _gameBridge.SetPedCombatProfile(pedHandle, CombatAbilityProfessional, CombatRangeFar, CombatKeepDefault);
+            }
+            // Assault roles default to cautious movement, so in Search & Destroy they hold and
+            // shoot from range instead of closing in. Professional ability + Offensive movement
+            // makes them advance and press the attack. Range left default so they don't abandon
+            // the player to chase distant enemies while escorting. Rocketeers are excluded — an
+            // RPG user charging into close range would splash itself.
+            else if (roleConfig.Role == DefenderRole.Grunt
+                || roleConfig.Role == DefenderRole.Gunner
+                || roleConfig.Role == DefenderRole.Rifleman)
+            {
+                _gameBridge.SetPedCombatProfile(pedHandle, CombatAbilityProfessional, CombatKeepDefault, CombatMovementOffensive);
             }
 
             // Elite tier uses RPG - prevent AI from switching to pistol (AI prefers pistol to avoid self-damage)

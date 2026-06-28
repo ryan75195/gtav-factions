@@ -606,11 +606,13 @@ namespace FactionWars.Core.Utils
 
         private readonly Dictionary<int, int> _combatAbility = new Dictionary<int, int>();
         private readonly Dictionary<int, int> _combatRange = new Dictionary<int, int>();
+        private readonly Dictionary<int, int> _combatMovement = new Dictionary<int, int>();
 
-        public void SetPedCombatProfile(int pedHandle, int ability, int combatRange)
+        public void SetPedCombatProfile(int pedHandle, int ability, int combatRange, int movement)
         {
-            _combatAbility[pedHandle] = ability;
-            _combatRange[pedHandle] = combatRange;
+            if (ability >= 0) _combatAbility[pedHandle] = ability;
+            if (combatRange >= 0) _combatRange[pedHandle] = combatRange;
+            if (movement >= 0) _combatMovement[pedHandle] = movement;
         }
 
         /// <summary>
@@ -624,6 +626,12 @@ namespace FactionWars.Core.Utils
         /// </summary>
         public int GetPedCombatRange(int pedHandle) =>
             _combatRange.TryGetValue(pedHandle, out var r) ? r : -1;
+
+        /// <summary>
+        /// Gets the combat movement style last set for a ped, or -1 if never set.
+        /// </summary>
+        public int GetPedCombatMovement(int pedHandle) =>
+            _combatMovement.TryGetValue(pedHandle, out var m) ? m : -1;
 
         public void SetPedArmor(int pedHandle, int armor)
         {
