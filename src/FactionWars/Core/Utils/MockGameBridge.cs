@@ -967,22 +967,19 @@ namespace FactionWars.Core.Utils
 
         public void TaskGoToEntity(int pedHandle, int targetEntityHandle, float stoppingRange)
         {
-            // Always record target/range and increment call counter so test assertions work even
-            // when the ped was not explicitly created via CreatePed (unconditional recording).
-            _goToEntityPeds[pedHandle] = new GoToEntityState
-            {
-                TargetEntityHandle = targetEntityHandle,
-                StoppingRange = stoppingRange
-            };
-            _goToEntityCalls[pedHandle] = (_goToEntityCalls.TryGetValue(pedHandle, out var goToCount) ? goToCount : 0) + 1;
-
             if (_peds.ContainsKey(pedHandle))
             {
-                // In GTA V, every TASK_X call is a primary-task replacement: clear competing tasks.
+                // In GTA V, every TASK_X call is a primary-task replacement.
                 _wanderingPeds.Remove(pedHandle);
                 _pedsFacingPosition.Remove(pedHandle);
                 _combatTargetingPeds.Remove(pedHandle);
                 _followEntityPeds.Remove(pedHandle);
+                _goToEntityPeds[pedHandle] = new GoToEntityState
+                {
+                    TargetEntityHandle = targetEntityHandle,
+                    StoppingRange = stoppingRange
+                };
+                _goToEntityCalls[pedHandle] = (_goToEntityCalls.TryGetValue(pedHandle, out var goToCount) ? goToCount : 0) + 1;
             }
         }
 
