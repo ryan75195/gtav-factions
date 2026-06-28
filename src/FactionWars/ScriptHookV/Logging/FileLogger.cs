@@ -1,20 +1,28 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Text;
+using System.Threading;
 
 namespace FactionWars.ScriptHookV.Logging
 {
     /// <summary>
-    /// Simple file logger for debugging FactionWars mod.
-    /// Writes timestamped log entries to a file in the user's Documents folder.
+    /// File logger for the FactionWars mod. Writes timestamped entries to a session log
+    /// in the user's Documents folder. Backed by a persistent buffered StreamWriter: chatty
+    /// levels are flushed on a background timer (keeping disk I/O off the script thread),
+    /// while WARN/ERROR flush immediately so crash-critical lines survive a script abort.
     /// </summary>
-    public static class FileLogger
+    public static partial class FileLogger
     {
         public const string LogDirectoryEnvironmentVariable = "FACTIONWARS_LOG_DIR";
+
+        private const int FlushIntervalMs = 1000;
 
         private static readonly object _lock = new object();
         private static string? _logPath;
         private static bool _initialized;
+        private static StreamWriter? _writer;
+        private static Timer? _flushTimer;
 
         /// <summary>
         /// Gets the path to the log file.
@@ -29,8 +37,36 @@ namespace FactionWars.ScriptHookV.Logging
         }
 
         /// <summary>
-        /// Initializes the logger if not already initialized.
+        /// Flushes any buffered log lines to disk. Safe to call from any thread.
         /// </summary>
+        internal static void Flush()
+        {
+            lock (_lock)
+            {
+                try { _writer?.Flush(); }
+                catch { /* never let logging break the caller */ }
+            }
+        }
+
+        /// <summary>
+        /// Flushes and closes the log. Called on script abort so buffered lines are not lost.
+        /// </summary>
+        internal static void Shutdown()
+        {
+            lock (_lock)
+            {
+                try
+                {
+                    _flushTimer?.Dispose();
+                    _flushTimer = null;
+                    _writer?.Flush();
+                    _writer?.Dispose();
+                    _writer = null;
+                }
+                catch { /* never let logging break the caller */ }
+            }
+        }
+
         private static void EnsureInitialized()
         {
             if (_initialized) return;
@@ -40,24 +76,35 @@ namespace FactionWars.ScriptHookV.Logging
                 if (_initialized) return;
 
                 var logDir = ResolveLogDirectory();
-
                 if (!Directory.Exists(logDir))
                 {
                     Directory.CreateDirectory(logDir);
                 }
 
-                // Create log file with timestamp
                 var timestamp = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss");
                 _logPath = Path.Combine(logDir, $"FactionWars_{timestamp}.log");
-
+                _writer = OpenWriter(_logPath);
+                _flushTimer = new Timer(_ => Flush(), null, FlushIntervalMs, FlushIntervalMs);
                 _initialized = true;
 
-                // Write header
-                WriteRaw("========================================");
-                WriteRaw($"FactionWars Log - {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
-                WriteRaw("========================================");
-                WriteRaw("");
+                WriteHeaderLines();
             }
+        }
+
+        private static StreamWriter OpenWriter(string path)
+        {
+            // FileShare.ReadWrite so the log can be tailed/read while the game holds it open.
+            var stream = new FileStream(path, FileMode.Append, FileAccess.Write, FileShare.ReadWrite);
+            return new StreamWriter(stream, new UTF8Encoding(false)) { AutoFlush = false };
+        }
+
+        private static void WriteHeaderLines()
+        {
+            _writer?.WriteLine("========================================");
+            _writer?.WriteLine($"FactionWars Log - {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+            _writer?.WriteLine("========================================");
+            _writer?.WriteLine(string.Empty);
+            _writer?.Flush();
         }
 
         private static string ResolveLogDirectory()
@@ -92,84 +139,7 @@ namespace FactionWars.ScriptHookV.Logging
         }
 
         /// <summary>
-        /// Writes an info-level log message.
-        /// </summary>
-        public static void Info(string message)
-        {
-            Write("INFO", message);
-        }
-
-        /// <summary>
-        /// Writes a debug-level log message.
-        /// </summary>
-        public static void Debug(string message)
-        {
-            Write("DEBUG", message);
-        }
-
-        /// <summary>
-        /// Writes a warning-level log message.
-        /// </summary>
-        public static void Warn(string message)
-        {
-            Write("WARN", message);
-        }
-
-        /// <summary>
-        /// Writes an error-level log message.
-        /// </summary>
-        public static void Error(string message)
-        {
-            Write("ERROR", message);
-        }
-
-        /// <summary>
-        /// Writes an error with exception details.
-        /// </summary>
-        public static void Error(string message, Exception ex)
-        {
-            Write("ERROR", $"{message}: {ex.GetType().Name}: {ex.Message}");
-            Write("ERROR", $"  StackTrace: {ex.StackTrace}");
-            if (ex.InnerException != null)
-            {
-                Write("ERROR", $"  InnerException: {ex.InnerException.Message}");
-            }
-        }
-
-        /// <summary>
-        /// Writes a combat-related log message.
-        /// </summary>
-        public static void Combat(string message)
-        {
-            Write("COMBAT", message);
-        }
-
-        /// <summary>
-        /// Writes a zone-related log message.
-        /// </summary>
-        public static void Zone(string message)
-        {
-            Write("ZONE", message);
-        }
-
-        /// <summary>
-        /// Writes a spawn-related log message.
-        /// </summary>
-        public static void Spawn(string message)
-        {
-            Write("SPAWN", message);
-        }
-
-        /// <summary>
-        /// Writes an AI-related log message.
-        /// </summary>
-        public static void AI(string message)
-        {
-            Write("AI", message);
-        }
-
-        /// <summary>
-        /// Writes a formatted log entry with timestamp and level.
+        /// Writes a formatted log entry. Buffered unless the level is crash-critical.
         /// </summary>
         private static void Write(string level, string message)
         {
@@ -182,7 +152,10 @@ namespace FactionWars.ScriptHookV.Logging
             {
                 try
                 {
-                    File.AppendAllText(_logPath!, logLine + Environment.NewLine);
+                    if (_writer == null) return;
+                    _writer.WriteLine(logLine);
+                    if (LogFlushPolicy.RequiresImmediateFlush(level))
+                        _writer.Flush();
                 }
                 catch
                 {
@@ -200,29 +173,8 @@ namespace FactionWars.ScriptHookV.Logging
 
             lock (_lock)
             {
-                try
-                {
-                    File.AppendAllText(_logPath!, line + Environment.NewLine);
-                }
-                catch
-                {
-                    // Silently ignore write failures
-                }
-            }
-        }
-
-        /// <summary>
-        /// Writes a separator line for visual organization.
-        /// </summary>
-        public static void Separator(string title = "")
-        {
-            if (string.IsNullOrEmpty(title))
-            {
-                WriteRaw("----------------------------------------");
-            }
-            else
-            {
-                WriteRaw($"--- {title} ---");
+                try { _writer?.WriteLine(line); }
+                catch { /* Silently ignore write failures */ }
             }
         }
     }
