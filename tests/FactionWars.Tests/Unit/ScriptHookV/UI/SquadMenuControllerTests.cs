@@ -3,6 +3,8 @@ using FactionWars.Core.Models;
 using FactionWars.Economy.Interfaces;
 using FactionWars.Economy.Models;
 using FactionWars.Factions.Interfaces;
+using FactionWars.ScriptHookV.Managers;
+using FactionWars.ScriptHookV.Models;
 using FactionWars.ScriptHookV.UI;
 using FactionWars.Tests.Mocks;
 using Moq;
@@ -39,7 +41,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
 
             _followerServiceMock.Setup(f => f.GetFollowerCount(PlayerFactionId)).Returns(0);
             _followerServiceMock.Setup(f => f.GetMaxFollowers()).Returns(6);
-            _followerServiceMock.Setup(f => f.GetFollowers(PlayerFactionId)).Returns(Array.Empty<Follower>());
+            _followerServiceMock.Setup(f => f.GetFollowers(PlayerFactionId)).Returns([]);
 
             _controller = new SquadMenuController(
                 _menuProvider,
@@ -268,6 +270,39 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
 
             // Assert
             Assert.Equal(SquadMenuController.MenuId, _menuProvider.CurrentMenuId);
+        }
+
+        [Fact]
+        public void DismissFollower_WithFollowerManager_ShouldUseWorldCleanupPath()
+        {
+            // Arrange
+            var menuProvider = new MockMenuProvider();
+            var follower = new Follower(PlayerFactionId, DefenderRole.Grunt, pedHandle: 42);
+            var followerManagerMock = new Mock<IFollowerManager>();
+            var controller = new SquadMenuController(
+                new SquadMenuControllerDependencies
+                {
+                    MenuProvider = menuProvider,
+                    PurchaseService = _purchaseServiceMock.Object,
+                    FollowerService = _followerServiceMock.Object,
+                    PlayerContext = _playerContextMock.Object
+                },
+                followerManagerMock.Object);
+
+            _followerServiceMock.Setup(f => f.GetFollowers(PlayerFactionId)).Returns([follower]);
+            _followerServiceMock.Setup(f => f.GetFollowerById(follower.Id)).Returns(follower);
+            followerManagerMock.Setup(f => f.DismissFollower(follower.Id)).Returns(true);
+
+            controller.Show();
+            menuProvider.SimulateItemSelection(SquadMenuController.ManageFollowersItemId);
+            menuProvider.SimulateItemSelection($"follower_{follower.Id}");
+
+            // Act
+            menuProvider.SimulateItemSelection(SquadMenuController.DismissFollowerItemId);
+
+            // Assert
+            followerManagerMock.Verify(f => f.DismissFollower(follower.Id), Times.Once);
+            _followerServiceMock.Verify(f => f.DismissFollower(follower.Id), Times.Never);
         }
 
         [Fact]

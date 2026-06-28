@@ -17,7 +17,15 @@ namespace FactionWars.ScriptHookV.UI
                 case DismissFollowerItemId:
                     if (_selectedFollowerId.HasValue)
                     {
-                        _followerService.DismissFollower(_selectedFollowerId.Value);
+                        if (_followerManager != null)
+                        {
+                            _followerManager.DismissFollower(_selectedFollowerId.Value);
+                        }
+                        else
+                        {
+                            _followerService.DismissFollower(_selectedFollowerId.Value);
+                        }
+
                         _selectedFollowerId = null;
                         ShowFollowerListMenu();
                     }
