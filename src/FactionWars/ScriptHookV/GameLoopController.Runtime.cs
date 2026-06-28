@@ -1,9 +1,15 @@
 using System;
+using System.IO;
 using FactionWars.Core.Interfaces;
+using FactionWars.Core.Services;
 using FactionWars.Economy.Interfaces;
 using FactionWars.AI.Interfaces;
 using FactionWars.Factions.Interfaces;
+using FactionWars.Performance.Interfaces;
+using FactionWars.Performance.Models;
+using FactionWars.Performance.Services;
 using FactionWars.ScriptHookV.Data;
+using FactionWars.ScriptHookV.Diagnostics;
 using FactionWars.ScriptHookV.Logging;
 using FactionWars.ScriptHookV.Managers;
 using FactionWars.ScriptHookV.UI;
@@ -74,6 +80,12 @@ namespace FactionWars.ScriptHookV
         public FriendlyDefenderManager? FriendlyDefenderManager => _friendlyDefenderManager;
 
         /// <summary>
+        /// Profiles each subsystem phase per tick so a >5s blocking-script freeze names the
+        /// executing subsystem (breadcrumb) and slow ticks are logged with a per-phase breakdown.
+        /// </summary>
+        private readonly ITickProfiler _tickProfiler;
+
+        /// <summary>
         /// Creates a new GameLoopController with the specified service container.
         /// </summary>
         /// <param name="container">The service container with all wired services.</param>
@@ -103,6 +115,12 @@ namespace FactionWars.ScriptHookV
             _characterSwitchInitialized = false;
             _gameDataInitialized = false;
             _lastTickTime = DateTime.UtcNow;
+
+            var breadcrumbDir = Path.GetDirectoryName(FileLogger.LogPath) ?? ".";
+            var diagnosticsSink = new FileTickDiagnosticsSink(
+                Path.Combine(breadcrumbDir, "tick_breadcrumb.txt"),
+                FileLogger.Warn);
+            _tickProfiler = new TickProfiler(new SystemTimeProvider(), diagnosticsSink, new TickProfilerOptions());
         }
 
         /// <summary>
@@ -139,17 +157,30 @@ namespace FactionWars.ScriptHookV
                 : (float)(now - _lastTickTime).TotalSeconds;
             _lastTickTime = now;
 
+            _tickProfiler.BeginTick();
+            try
+            {
+                RunTickSystems(deltaTime);
+            }
+            finally
+            {
+                _tickProfiler.EndTick();
+            }
+        }
+
+        private void RunTickSystems(float deltaTime)
+        {
             UpdateCoreSystems(deltaTime);
-            UpdatePlayerRespawnPlacement();
-            PollControllerInput();
+            _tickProfiler.Measure("respawnPlacement", () => UpdatePlayerRespawnPlacement());
+            _tickProfiler.Measure("controllerInput", () => PollControllerInput());
             _menuProvider?.SetSelectKeyHeld(IsSelectKeyHeld());
             ThrottleMenuNavigation();
-            _mainMenuController?.Update();
+            _tickProfiler.Measure("mainMenu", () => _mainMenuController?.Update());
             UpdateWorldSystems(deltaTime);
 
             try
             {
-                UpdateAndDrawHud();
+                _tickProfiler.Measure("hud", () => UpdateAndDrawHud());
             }
             catch (Exception ex)
             {
