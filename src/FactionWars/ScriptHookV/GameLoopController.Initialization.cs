@@ -45,7 +45,6 @@ namespace FactionWars.ScriptHookV
             var allocationService = InitializeTerritoryAndFriendlyManagers(spawnServices);
             SubscribeInitializedManagerEvents(allocationService);
 
-            // Initialize battle HUD renderer
             _battleHudRenderer = new BattleHudRenderer();
 
             InitializeEnemyAndRallyManagers(spawnServices, allocationService);
@@ -60,6 +59,7 @@ namespace FactionWars.ScriptHookV
             InitializeMenuControllers(allocationService);
 
             InitializeStateTelemetryAndSession();
+            InitializeBehaviorSampler();
             LogInitializationComplete();
         }
 

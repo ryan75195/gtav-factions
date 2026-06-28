@@ -4,6 +4,7 @@ using FactionWars.Combat.Interfaces;
 using FactionWars.Core.Interfaces;
 using FactionWars.Core.Models;
 using FactionWars.ScriptHookV.Models;
+using FactionWars.Telemetry.Models;
 using FactionWars.UI.Interfaces;
 
 namespace FactionWars.ScriptHookV.Managers
@@ -237,6 +238,7 @@ namespace FactionWars.ScriptHookV.Managers
             {
                 OnFootBodyguardHandles = Array.Empty<int>();
                 SniperBodyguardHandles = Array.Empty<int>();
+                _trackedFollowers = Array.Empty<TrackedCombatant>();
                 return;
             }
 
@@ -244,6 +246,7 @@ namespace FactionWars.ScriptHookV.Managers
             var playerInVehicle = _gameBridge.IsPlayerInVehicle();
             var playerVehicle = playerInVehicle ? _gameBridge.GetPlayerVehicle() : -1;
             var aliveFollowerHandles = GetAliveFollowerHandles(followers);
+            _trackedFollowers = BuildTrackedFollowers(followers, aliveFollowerHandles);
 
             if (playerInVehicle && playerVehicle >= 0 && boardPlayerVehicle)
             {

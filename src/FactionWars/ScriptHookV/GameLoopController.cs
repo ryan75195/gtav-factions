@@ -19,6 +19,7 @@ using FactionWars.ScriptHookV.Combat.Interfaces;
 using FactionWars.ScriptHookV.Managers;
 using FactionWars.ScriptHookV.Models;
 using FactionWars.ScriptHookV.Persistence;
+using FactionWars.ScriptHookV.Telemetry;
 using FactionWars.ScriptHookV.UI;
 using FactionWars.Telemetry.Interfaces;
 using FactionWars.Telemetry.Services;
@@ -86,6 +87,8 @@ namespace FactionWars.ScriptHookV
         private IVehicleThreatService? _vehicleThreatService;
         private IAntiVehicleResponseService? _antiVehicleResponseService;
         private TelemetryService? _telemetryService;
+        private CombatBehaviorSampler? _behaviorSampler;
+        private IBehaviorTraceSink? _behaviorTraceSink;
         private BattleHudRenderer? _battleHudRenderer;
         private PlayTimeHudRenderer? _playTimeHudRenderer;
         private int _currentBattleHudIndex = 0;

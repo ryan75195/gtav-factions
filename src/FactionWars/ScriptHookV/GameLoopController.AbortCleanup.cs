@@ -23,6 +23,9 @@ namespace FactionWars.ScriptHookV
         {
             _telemetryService?.Dispose();
             _telemetryService = null;
+            _behaviorSampler = null;
+            _behaviorTraceSink?.Dispose();
+            _behaviorTraceSink = null;
             if (_container.TryResolve<ITelemetrySink>(out var telemetrySink) && telemetrySink != null)
             {
                 telemetrySink.Dispose();
