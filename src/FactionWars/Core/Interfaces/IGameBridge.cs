@@ -42,6 +42,30 @@ namespace FactionWars.Core.Interfaces
         bool IsPedInCombat(int pedHandle);
 
         /// <summary>
+        /// Observability: true if the ped is actively firing its weapon this frame. The
+        /// missing primitive when diagnosing "snipers aim but never fire" — records whether
+        /// the trigger is actually pulled. Read-only.
+        /// </summary>
+        bool IsPedShooting(int pedHandle);
+
+        /// <summary>
+        /// Observability: the ped's currently-equipped weapon name, normalized upper-case
+        /// (e.g. "SNIPERRIFLE"); empty string if unknown. Read-only.
+        /// </summary>
+        string GetSelectedWeapon(int pedHandle);
+
+        /// <summary>
+        /// Observability: ammo in the ped's currently-equipped weapon; -1 if unknown. Read-only.
+        /// </summary>
+        int GetPedAmmo(int pedHandle);
+
+        /// <summary>
+        /// Observability: read-back of the ped's combat ability (0 Poor / 1 Average /
+        /// 2 Professional); -1 if unknown. Read-only.
+        /// </summary>
+        int GetPedCombatAbilityValue(int pedHandle);
+
+        /// <summary>
         /// Checks whether the ped entity still exists in the world. Returns true for
         /// both alive and dead peds (GTA keeps a corpse around for a while before
         /// cleanup) and false for handles that have been streamed out by the
