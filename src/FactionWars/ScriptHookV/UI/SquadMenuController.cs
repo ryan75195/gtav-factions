@@ -62,6 +62,11 @@ namespace FactionWars.ScriptHookV.UI
         public const string RecruitEliteItemId = "recruit_elite";
 
         /// <summary>
+        /// Item ID for recruiting sniper follower.
+        /// </summary>
+        public const string RecruitSniperItemId = "recruit_sniper";
+
+        /// <summary>
         /// Item ID for managing followers.
         /// </summary>
         public const string ManageFollowersItemId = "manage_followers";
@@ -176,6 +181,7 @@ namespace FactionWars.ScriptHookV.UI
             AddRecruitItem(menu, RecruitMediumItemId, DefenderRole.Gunner, "SMG bodyguard", canRecruit);
             AddRecruitItem(menu, RecruitHeavyItemId, DefenderRole.Rifleman, "Carbine bodyguard", canRecruit);
             AddRecruitItem(menu, RecruitEliteItemId, DefenderRole.Rocketeer, "RPG bodyguard", canRecruit);
+            AddRecruitItem(menu, RecruitSniperItemId, DefenderRole.Sniper, "Sniper rifle bodyguard, long-range", canRecruit);
 
             // Manage followers
             var manageFollowersItem = new MenuItem(

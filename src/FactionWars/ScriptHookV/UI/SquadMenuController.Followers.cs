@@ -138,6 +138,10 @@ namespace FactionWars.ScriptHookV.UI
                     if (factionId != null) RecruitFollower(factionId, DefenderRole.Rocketeer);
                     break;
 
+                case RecruitSniperItemId:
+                    if (factionId != null) RecruitFollower(factionId, DefenderRole.Sniper);
+                    break;
+
                 case ManageFollowersItemId:
                     _lastSelectedItemId = null;
                     ShowFollowerListMenu();
