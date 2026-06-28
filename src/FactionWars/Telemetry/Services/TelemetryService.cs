@@ -38,9 +38,12 @@ namespace FactionWars.Telemetry.Services
         private readonly Func<bool>? _isPlayerDead;
         private readonly Func<string?> _getCurrentZoneId;
         private readonly Func<Vector3>? _getPlayerPosition;
-        private readonly List<Action> _unsubscribers = new List<Action>();
+        private readonly IZoneBattleManager? _zoneBattleManager;
+        private readonly List<Action> _unsubscribers = [];
         private float _secondsSinceLastSnapshot;
         private bool _wasPlayerDead;
+        private string? _currentPlayerBattleZoneId;
+        private bool _playerBattleEndedSinceLastPoll;
         private bool _disposed;
 
         public TelemetryService(ITelemetrySink sink,
@@ -82,6 +85,7 @@ namespace FactionWars.Telemetry.Services
             _isPlayerDead = opts.IsPlayerDead;
             _getCurrentZoneId = opts.GetCurrentZoneId ?? (() => null);
             _getPlayerPosition = opts.GetPlayerPosition;
+            _zoneBattleManager = opts.ZoneBattleManager;
             if (_isPlayerDead != null)
             {
                 _wasPlayerDead = SafeReadPlayerDead(initialRead: true);
@@ -189,6 +193,7 @@ namespace FactionWars.Telemetry.Services
         public void Update(float deltaTimeSeconds)
         {
             if (_disposed) return;
+            PollPlayerBattleState();
             PollPlayerDeathState();
             _secondsSinceLastSnapshot += deltaTimeSeconds;
             if (_secondsSinceLastSnapshot >= SnapshotIntervalSeconds)
@@ -217,6 +222,11 @@ namespace FactionWars.Telemetry.Services
                     targetFaction: null,
                     targetTier: null,
                     details: BuildPlayerPositionDetails()));
+
+                if (isDead)
+                {
+                    WritePlayerBattleDeath();
+                }
             }
             catch (Exception ex)
             {
@@ -237,15 +247,6 @@ namespace FactionWars.Telemetry.Services
                     : "TelemetryService: player death state read failed", ex);
                 return _wasPlayerDead;
             }
-        }
-
-        private string BuildPlayerPositionDetails()
-        {
-            if (_getPlayerPosition == null) return string.Empty;
-
-            var position = _getPlayerPosition();
-            return Newtonsoft.Json.JsonConvert.SerializeObject(
-                new PlayerPositionDetails(position.X, position.Y, position.Z));
         }
 
         /// <summary>
