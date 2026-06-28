@@ -16,6 +16,12 @@ namespace FactionWars.ScriptHookV.Managers
                 if (seatIndex >= prioritizedSeats.Length)
                     break;
 
+                // Don't pull combat-engaged followers into the vehicle. Native combat AI keeps
+                // aborting the enter task, so re-tasking every tick causes rapid enter/exit
+                // oscillation during a battle. Let them fight; they seat up once combat ends.
+                if (_gameBridge.IsPedInCombat(pedHandle))
+                    continue;
+
                 var inVehicle = _gameBridge.IsPedInVehicle(pedHandle);
                 var tryingToEnter = _gameBridge.IsPedTryingToEnterVehicle(pedHandle);
 

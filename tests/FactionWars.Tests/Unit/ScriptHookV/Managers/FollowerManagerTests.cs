@@ -785,6 +785,34 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         }
 
         [Fact]
+        public void Update_WhenFollowerInCombat_ShouldNotOrderFollowerIntoVehicle()
+        {
+            // A follower actively fighting must not be pulled into the player's vehicle: native
+            // combat AI keeps aborting the enter task, producing the rapid enter/exit oscillation
+            // players see when driving during a battle. Let them fight; they seat up when combat ends.
+            var factionId = "blue";
+            var follower = CreateFollowerWithPedHandle(factionId, DefenderRole.Grunt, 42);
+            var followers = new List<Follower> { follower };
+            var vehicleHandle = 100;
+
+            _followerServiceMock.Setup(s => s.GetFollowers(factionId)).Returns(followers);
+            _gameBridgeMock.Setup(g => g.IsPedAlive(42)).Returns(true);
+            _gameBridgeMock.Setup(g => g.IsPlayerInVehicle()).Returns(true);
+            _gameBridgeMock.Setup(g => g.GetPlayerVehicle()).Returns(vehicleHandle);
+            _gameBridgeMock.Setup(g => g.IsPedInVehicle(42)).Returns(false);
+            _gameBridgeMock.Setup(g => g.IsPedInCombat(42)).Returns(true); // engaged in battle
+            _seatPriorityServiceMock.Setup(s => s.GetPrioritizedFreeSeats(vehicleHandle)).Returns(new[] { 1, 2 });
+            _seatPriorityServiceMock.Setup(s => s.FilterFollowersByProximity(It.IsAny<int[]>(), vehicleHandle, 15f))
+                .Returns(new[] { 42 });
+
+            // Act
+            _manager.Update(factionId);
+
+            // Assert - the fighting follower is never tasked into the vehicle
+            _gameBridgeMock.Verify(g => g.TaskPedEnterVehicle(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>()), Times.Never);
+        }
+
+        [Fact]
         public void Update_WhenPlayerInVehicleAndFollowerAlreadyInVehicle_ShouldNotEnterAgain()
         {
             // Arrange
