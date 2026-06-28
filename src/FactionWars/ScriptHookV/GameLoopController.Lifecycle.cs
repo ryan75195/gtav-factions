@@ -126,8 +126,8 @@ namespace FactionWars.ScriptHookV
                 }
             }
 
-            // D-pad Up = Cycle bodyguard squad stance
-            if (_gameBridge.IsControlJustPressed(ControlDpadUp))
+            // D-pad Left = Cycle bodyguard squad stance
+            if (_gameBridge.IsControlJustPressed(ControlDpadLeft))
             {
                 var bodyguards = _followerManager?.OnFootBodyguardHandles ?? System.Array.Empty<int>();
                 _squadStanceController?.CycleStance(bodyguards);

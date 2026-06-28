@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using FactionWars.Combat.Models;
 using FactionWars.Core.Interfaces;
+using FactionWars.ScriptHookV.Logging;
 
 namespace FactionWars.ScriptHookV
 {
@@ -38,6 +39,8 @@ namespace FactionWars.ScriptHookV
             _battleAttackerManager?.Update();
         }
 
+        private string _lastSquadStanceSummary = "";
+
         private void UpdateSquadStance()
         {
             if (_squadStanceController == null || _followerManager == null) return;
@@ -46,12 +49,47 @@ namespace FactionWars.ScriptHookV
             var anchor = ResolveSquadAnchor();
             IReadOnlyList<EnemyTarget> enemies = System.Array.Empty<EnemyTarget>();
 
+            int hostileCount = 0;
             if (_squadStanceController.CurrentStance == SquadStance.SearchAndDestroy && handles.Count > 0)
             {
-                enemies = _enemyTargetCollector!.Collect(GatherHostileHandles(), anchor.Center, anchor.Radius);
+                var hostileHandles = GatherHostileHandles();
+                hostileCount = hostileHandles.Count;
+                enemies = _enemyTargetCollector!.Collect(hostileHandles, anchor.Center, anchor.Radius);
+            }
+
+            var summary = $"stance={_squadStanceController.CurrentStance} onFoot={handles.Count} inVehicle={_gameBridge.IsPlayerInVehicle()} hostiles={hostileCount} enemiesInRange={enemies.Count}";
+            if (summary != _lastSquadStanceSummary)
+            {
+                FileLogger.AI($"UpdateSquadStance: {summary}");
+                _lastSquadStanceSummary = summary;
             }
 
             _squadStanceController.Update(anchor.Center, anchor.Radius, handles, enemies);
+            SampleSquadState(handles, _squadStanceController.CurrentStance);
+        }
+
+        private int _lastSquadSampleMs;
+        private const int SquadSampleIntervalMs = 2000;
+
+        // Periodically samples each on-foot bodyguard's OUTCOME (distance to player, ped-group
+        // membership, combat state) during non-Escort stances. Where the on-change task logs show
+        // intent, this shows what the peds actually do over time: a bodyguard tasked to hold a ring
+        // point or attack a distant enemy that stays at distToPlayer~0 with inPlayerGroup=true is
+        // being overridden by native group-follow.
+        private void SampleSquadState(IReadOnlyList<int> handles, SquadStance stance)
+        {
+            if (stance == SquadStance.Escort || handles.Count == 0) return;
+
+            int now = _gameBridge.GetGameTime();
+            if (now - _lastSquadSampleMs < SquadSampleIntervalMs) return;
+            _lastSquadSampleMs = now;
+
+            var playerPos = _gameBridge.GetPlayerPosition();
+            foreach (var ped in handles)
+            {
+                float dist = playerPos.DistanceTo(_gameBridge.GetPedPosition(ped));
+                FileLogger.AI($"SquadSample[{stance}]: ped {ped} distToPlayer={dist:F1} inPlayerGroup={_gameBridge.IsPedFollowingPlayer(ped)} inCombat={_gameBridge.IsPedInCombat(ped)}");
+            }
         }
 
         private AreaAnchor ResolveSquadAnchor()
