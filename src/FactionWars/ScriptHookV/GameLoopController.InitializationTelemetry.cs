@@ -1,12 +1,15 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using FactionWars.Configuration;
 using FactionWars.Factions.Interfaces;
 using FactionWars.Persistence.Models;
 using FactionWars.ScriptHookV.Logging;
 using FactionWars.ScriptHookV.Persistence;
+using FactionWars.ScriptHookV.Telemetry;
 using FactionWars.Telemetry.Interfaces;
 using FactionWars.Telemetry.Services;
+using FactionWars.Telemetry.Sinks;
 
 namespace FactionWars.ScriptHookV
 {
@@ -49,6 +52,33 @@ namespace FactionWars.ScriptHookV
                     DifficultyService = _difficultyService,
                     NativeSaveWatcher = _container.Resolve<NativeSaveWatcher>()
                 });
+        }
+
+        /// <summary>
+        /// Builds the combat behavior sampler and its CSV trace sink. The sink writes
+        /// behavior_trace.csv into the same per-save folder as strategic telemetry. The
+        /// sampler reads the four combat managers (which expose their tracked peds via
+        /// <see cref="ITrackedCombatantSource"/>) and is ticked from the world-systems update.
+        /// </summary>
+        private void InitializeBehaviorSampler()
+        {
+            var config = _container.Resolve<GameConfig>();
+            var telemetryRoot = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+                config.Persistence.SaveDirectoryName,
+                "Telemetry");
+
+            var sink = new CsvBehaviorTraceSink(telemetryRoot);
+            _behaviorTraceSink = sink;
+
+            var sources = new List<ITrackedCombatantSource>();
+            if (_followerManager != null) sources.Add(_followerManager);
+            if (_friendlyDefenderManager != null) sources.Add(_friendlyDefenderManager);
+            if (_enemyDefenderManager != null) sources.Add(_enemyDefenderManager);
+            if (_battleAttackerManager != null) sources.Add(_battleAttackerManager);
+
+            _behaviorSampler = new CombatBehaviorSampler(_gameBridge, sources, sink);
+            FileLogger.Info($"Behavior sampler initialized with {sources.Count} source(s); trace root {telemetryRoot}");
         }
 
         /// <summary>

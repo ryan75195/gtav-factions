@@ -42,6 +42,9 @@ namespace FactionWars.ScriptHookV
             }
 
             _tickProfiler.Measure("battleAttackers", () => _battleAttackerManager?.Update());
+
+            // Sampled last so every manager's tracked-combatant snapshot reflects this tick.
+            _tickProfiler.Measure("behaviorSampler", () => _behaviorSampler?.Update());
         }
 
         private string _lastSquadStanceSummary = "";
