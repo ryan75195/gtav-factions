@@ -957,6 +957,7 @@ namespace FactionWars.Core.Utils
             => _combatPedTargets.TryGetValue(pedHandle, out var t) ? t : -1;
 
         private readonly Dictionary<int, GoToEntityState> _goToEntityPeds = new Dictionary<int, GoToEntityState>();
+        private readonly Dictionary<int, int> _goToEntityCalls = new Dictionary<int, int>();
 
         private class GoToEntityState
         {
@@ -966,18 +967,22 @@ namespace FactionWars.Core.Utils
 
         public void TaskGoToEntity(int pedHandle, int targetEntityHandle, float stoppingRange)
         {
+            // Always record target/range and increment call counter so test assertions work even
+            // when the ped was not explicitly created via CreatePed (unconditional recording).
+            _goToEntityPeds[pedHandle] = new GoToEntityState
+            {
+                TargetEntityHandle = targetEntityHandle,
+                StoppingRange = stoppingRange
+            };
+            _goToEntityCalls[pedHandle] = (_goToEntityCalls.TryGetValue(pedHandle, out var goToCount) ? goToCount : 0) + 1;
+
             if (_peds.ContainsKey(pedHandle))
             {
-                // In GTA V, every TASK_X call is a primary-task replacement.
+                // In GTA V, every TASK_X call is a primary-task replacement: clear competing tasks.
                 _wanderingPeds.Remove(pedHandle);
                 _pedsFacingPosition.Remove(pedHandle);
                 _combatTargetingPeds.Remove(pedHandle);
                 _followEntityPeds.Remove(pedHandle);
-                _goToEntityPeds[pedHandle] = new GoToEntityState
-                {
-                    TargetEntityHandle = targetEntityHandle,
-                    StoppingRange = stoppingRange
-                };
             }
         }
 
@@ -991,6 +996,10 @@ namespace FactionWars.Core.Utils
         /// <summary>Gets the stopping range for a go-to-entity task.</summary>
         public float? GetGoToEntityStoppingRange(int pedHandle)
             => _goToEntityPeds.TryGetValue(pedHandle, out var state) ? state.StoppingRange : (float?)null;
+
+        /// <summary>Gets the number of times TaskGoToEntity has been called for a ped handle.</summary>
+        public int GetGoToEntityCallCount(int pedHandle)
+            => _goToEntityCalls.TryGetValue(pedHandle, out var c) ? c : 0;
 
         private readonly Dictionary<int, FollowEntityState> _followEntityPeds = new Dictionary<int, FollowEntityState>();
 
