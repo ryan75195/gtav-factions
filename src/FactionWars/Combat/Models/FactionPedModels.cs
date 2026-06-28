@@ -22,7 +22,8 @@ namespace FactionWars.Combat.Models
                 { DefenderRole.Grunt, "g_m_y_famca_01" },      // Families casual - young street thug
                 { DefenderRole.Gunner, "g_m_y_famdnf_01" },    // Families DNF - established member
                 { DefenderRole.Rifleman, "g_m_y_famfor_01" },     // Families OG - veteran gangster
-                { DefenderRole.Rocketeer, "g_m_y_ballasout_01" }   // Ballas enforcer - gang elite
+                { DefenderRole.Rocketeer, "g_m_y_ballasout_01" },   // Ballas enforcer - gang elite
+                { DefenderRole.Sniper, "g_m_y_famfor_01" }   // Families sniper - perch specialist
             },
 
             // Trevor: Rural/Biker theme (Lost MC, hillbillies)
@@ -31,7 +32,8 @@ namespace FactionWars.Combat.Models
                 { DefenderRole.Grunt, "a_m_m_hillbilly_01" },  // Hillbilly - rural expendable
                 { DefenderRole.Gunner, "g_m_y_lost_01" },      // Lost MC member - biker
                 { DefenderRole.Rifleman, "g_m_y_lost_02" },       // Lost MC veteran - experienced biker
-                { DefenderRole.Rocketeer, "g_m_y_lost_03" }        // Lost MC leader - biker boss
+                { DefenderRole.Rocketeer, "g_m_y_lost_03" },        // Lost MC leader - biker boss
+                { DefenderRole.Sniper, "g_m_y_lost_02" }   // Lost MC sniper - perch specialist
             },
 
             // Michael: Professional theme (Merryweather, suits)
@@ -40,7 +42,8 @@ namespace FactionWars.Combat.Models
                 { DefenderRole.Grunt, "g_m_m_armboss_01" },    // Armenian thug - low-level muscle
                 { DefenderRole.Gunner, "s_m_y_blackops_01" },  // Blackops soldier - professional
                 { DefenderRole.Rifleman, "s_m_y_blackops_02" },   // Blackops veteran - elite soldier
-                { DefenderRole.Rocketeer, "s_m_m_highsec_01" }     // High security - top tier pro
+                { DefenderRole.Rocketeer, "s_m_m_highsec_01" },     // High security - top tier pro
+                { DefenderRole.Sniper, "s_m_y_blackops_03" }   // Blackops sniper - perch specialist
             }
         };
 
