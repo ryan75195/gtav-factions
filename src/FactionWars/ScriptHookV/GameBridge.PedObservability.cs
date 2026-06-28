@@ -65,5 +65,20 @@ namespace FactionWars.ScriptHookV
             // was configured with for offline tests.
             return -1;
         }
+
+        /// <inheritdoc />
+        public int GetPedHealth(int pedHandle)
+        {
+            try
+            {
+                var ped = Entity.FromHandle(pedHandle) as Ped;
+                if (ped == null || !ped.Exists()) return -1;
+                return ped.Health;
+            }
+            catch
+            {
+                return -1;
+            }
+        }
     }
 }
