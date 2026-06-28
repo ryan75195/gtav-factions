@@ -164,14 +164,15 @@ namespace FactionWars.Tests.Unit.AI.Services
 
             var result = _service.TryAutoRecruit("test");
 
-            // 1 Elite + 9 standard (40/30/20 = ~4/3/2)
+            // Sniper-first: 2 Sniper ($3000), then 1 Rocketeer, then 7 standard slots (40/30/20 → 4/2/1)
             Assert.Equal(10, result);
+            _mockFactionService.Verify(f => f.AddReserveTroops("test", DefenderRole.Sniper, 2), Times.Once);
             _mockFactionService.Verify(f => f.AddReserveTroops("test", DefenderRole.Rocketeer, 1), Times.Once);
             _mockFactionService.Verify(f => f.AddReserveTroops("test", DefenderRole.Grunt, 4), Times.Once);
-            _mockFactionService.Verify(f => f.AddReserveTroops("test", DefenderRole.Gunner, 3), Times.Once);
-            _mockFactionService.Verify(f => f.AddReserveTroops("test", DefenderRole.Rifleman, 2), Times.Once);
-            // 1*$2000 + 4*$200 + 3*$500 + 2*$1000 = $2000 + $800 + $1500 + $2000 = $6300
-            _mockFactionService.Verify(f => f.SpendCash("test", 6300), Times.Once);
+            _mockFactionService.Verify(f => f.AddReserveTroops("test", DefenderRole.Gunner, 2), Times.Once);
+            _mockFactionService.Verify(f => f.AddReserveTroops("test", DefenderRole.Rifleman, 1), Times.Once);
+            // 2*$1500 + 1*$2000 + 4*$200 + 2*$500 + 1*$1000 = $3000 + $2000 + $800 + $1000 + $1000 = $7800
+            _mockFactionService.Verify(f => f.SpendCash("test", 7800), Times.Once);
         }
 
         [Fact]
@@ -205,14 +206,15 @@ namespace FactionWars.Tests.Unit.AI.Services
 
             var result = _service.TryAutoRecruit("test");
 
-            // 2 Elite + 8 standard (20/30/40 with rounding = 3/2/3)
+            // Sniper-first: 2 Sniper ($3000), then 2 Rocketeer, then 6 standard slots (20/30/40 → 2/2/2)
             Assert.Equal(10, result);
+            _mockFactionService.Verify(f => f.AddReserveTroops("test", DefenderRole.Sniper, 2), Times.Once);
             _mockFactionService.Verify(f => f.AddReserveTroops("test", DefenderRole.Rocketeer, 2), Times.Once);
-            _mockFactionService.Verify(f => f.AddReserveTroops("test", DefenderRole.Grunt, 3), Times.Once);
+            _mockFactionService.Verify(f => f.AddReserveTroops("test", DefenderRole.Grunt, 2), Times.Once);
             _mockFactionService.Verify(f => f.AddReserveTroops("test", DefenderRole.Gunner, 2), Times.Once);
-            _mockFactionService.Verify(f => f.AddReserveTroops("test", DefenderRole.Rifleman, 3), Times.Once);
-            // 2*$2000 + 3*$200 + 2*$500 + 3*$1000 = $4000 + $600 + $1000 + $3000 = $8600
-            _mockFactionService.Verify(f => f.SpendCash("test", 8600), Times.Once);
+            _mockFactionService.Verify(f => f.AddReserveTroops("test", DefenderRole.Rifleman, 2), Times.Once);
+            // 2*$1500 + 2*$2000 + 2*$200 + 2*$500 + 2*$1000 = $3000 + $4000 + $400 + $1000 + $2000 = $10400
+            _mockFactionService.Verify(f => f.SpendCash("test", 10400), Times.Once);
         }
 
         [Fact]
@@ -486,6 +488,43 @@ namespace FactionWars.Tests.Unit.AI.Services
                 _budgetService,
                 _tierService,
                 null!));
+        }
+
+        #endregion
+
+        #region Sniper Minority Recruitment
+
+        [Fact]
+        public void Recruit_WealthyFaction_BuysCappedSnipers()
+        {
+            // $20,000 with 10 max troops → ceil(10/6) = 2 snipers allowed
+            var factionState = new FactionState("test", initialCash: 20000, initialTroopCount: 0);
+            _mockFactionService.Setup(f => f.GetFactionState("test")).Returns(factionState);
+            _mockFactionService.Setup(f => f.AddReserveTroops(It.IsAny<string>(), It.IsAny<DefenderRole>(), It.IsAny<int>())).Returns(true);
+            _mockFactionService.Setup(f => f.SpendCash(It.IsAny<string>(), It.IsAny<int>())).Returns(true);
+
+            _service.TryAutoRecruit("test");
+
+            int maxAllowed = (10 + 6 - 1) / 6; // ceil(10/6) = 2
+            _mockFactionService.Verify(
+                f => f.AddReserveTroops("test", DefenderRole.Sniper, It.Is<int>(c => c >= 1 && c <= maxAllowed)),
+                Times.Once);
+        }
+
+        [Fact]
+        public void Recruit_PoorFaction_BuysNoSnipers()
+        {
+            // $14,999 — just below MidWealthThreshold → 0 snipers
+            var factionState = new FactionState("test", initialCash: 14999, initialTroopCount: 0);
+            _mockFactionService.Setup(f => f.GetFactionState("test")).Returns(factionState);
+            _mockFactionService.Setup(f => f.AddReserveTroops(It.IsAny<string>(), It.IsAny<DefenderRole>(), It.IsAny<int>())).Returns(true);
+            _mockFactionService.Setup(f => f.SpendCash(It.IsAny<string>(), It.IsAny<int>())).Returns(true);
+
+            _service.TryAutoRecruit("test");
+
+            _mockFactionService.Verify(
+                f => f.AddReserveTroops("test", DefenderRole.Sniper, It.IsAny<int>()),
+                Times.Never);
         }
 
         #endregion

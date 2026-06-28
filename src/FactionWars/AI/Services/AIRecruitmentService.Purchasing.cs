@@ -7,7 +7,9 @@ namespace FactionWars.AI.Services
 {
     public partial class AIRecruitmentService
     {
-        private int BuyEliteTroops(
+        private const int SniperPerNDefenders = 6;
+
+        private int BuySnipers(
             int cash,
             int maxTroops,
             Dictionary<DefenderRole, int> recruited,
@@ -15,7 +17,31 @@ namespace FactionWars.AI.Services
         {
             int remainingBudget = cash;
             remainingSlots = maxTroops;
-            int eliteToBuy = GetEliteCountForWealth(cash);
+            if (cash < MidWealthThreshold)
+                return remainingBudget;
+
+            int snipersWanted = Math.Min(remainingSlots, (maxTroops + SniperPerNDefenders - 1) / SniperPerNDefenders);
+            int sniperCost = TierService.GetCost(DefenderRole.Sniper);
+            for (int i = 0; i < snipersWanted && remainingSlots > 0 && remainingBudget >= sniperCost; i++)
+            {
+                recruited[DefenderRole.Sniper]++;
+                remainingBudget -= sniperCost;
+                remainingSlots--;
+            }
+
+            return remainingBudget;
+        }
+
+        private int BuyEliteTroops(
+            int wealthSignal,
+            int startBudget,
+            int maxTroops,
+            Dictionary<DefenderRole, int> recruited,
+            out int remainingSlots)
+        {
+            int remainingBudget = startBudget;
+            remainingSlots = maxTroops;
+            int eliteToBuy = GetEliteCountForWealth(wealthSignal);
             int eliteCost = TierService.GetCost(DefenderRole.Rocketeer);
 
             for (int i = 0; i < eliteToBuy && remainingSlots > 0 && remainingBudget >= eliteCost; i++)

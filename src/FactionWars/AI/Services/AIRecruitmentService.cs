@@ -134,10 +134,12 @@ namespace FactionWars.AI.Services
                 { DefenderRole.Grunt, 0 },
                 { DefenderRole.Gunner, 0 },
                 { DefenderRole.Rifleman, 0 },
-                { DefenderRole.Rocketeer, 0 }
+                { DefenderRole.Rocketeer, 0 },
+                { DefenderRole.Sniper, 0 }
             };
 
-            int remainingBudget = BuyEliteTroops(cash, maxTroops, recruited, out int remainingSlots);
+            int remainingBudget = BuySnipers(cash, maxTroops, recruited, out int remainingSlots);
+            remainingBudget = BuyEliteTroops(cash, remainingBudget, remainingSlots, recruited, out remainingSlots);
             BuyStandardTroops(remainingBudget, remainingSlots, recruited);
             return ApplyRecruitment(factionId, recruited);
         }
