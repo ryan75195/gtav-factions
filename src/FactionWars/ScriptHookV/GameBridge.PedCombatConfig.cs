@@ -110,19 +110,21 @@ namespace FactionWars.ScriptHookV
         }
 
         /// <inheritdoc />
-        public void SetPedCombatProfile(int pedHandle, int ability, int combatRange)
+        public void SetPedCombatProfile(int pedHandle, int ability, int combatRange, int movement)
         {
             try
             {
                 var ped = Entity.FromHandle(pedHandle) as Ped;
                 if (ped == null || !ped.Exists()) return;
 
-                // Combat ability (0=Poor, 1=Average, 2=Professional) governs how decisively
-                // a ped fires. Range (0=Near, 1=Medium, 2=Far) governs engagement distance.
-                Function.Call(Hash.SET_PED_COMBAT_ABILITY, ped.Handle, ability);
-                Function.Call(Hash.SET_PED_COMBAT_RANGE, ped.Handle, combatRange);
+                // -1 leaves the aspect at the engine default. Ability (0=Poor..2=Professional)
+                // governs how decisively a ped fires; range (0=Near..2=Far) its engagement
+                // distance; movement (0=Stationary..3=Suicidal) whether it holds or advances.
+                if (ability >= 0) Function.Call(Hash.SET_PED_COMBAT_ABILITY, ped.Handle, ability);
+                if (combatRange >= 0) Function.Call(Hash.SET_PED_COMBAT_RANGE, ped.Handle, combatRange);
+                if (movement >= 0) Function.Call(Hash.SET_PED_COMBAT_MOVEMENT, ped.Handle, movement);
 
-                FileLogger.AI($"SetPedCombatProfile: ped {pedHandle} ability={ability} range={combatRange}");
+                FileLogger.AI($"SetPedCombatProfile: ped {pedHandle} ability={ability} range={combatRange} movement={movement}");
             }
             catch (Exception ex)
             {

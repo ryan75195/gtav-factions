@@ -456,15 +456,17 @@ namespace FactionWars.Core.Interfaces
         void SetPedAccuracy(int pedHandle, float accuracy);
 
         /// <summary>
-        /// Sets a ped's combat ability and engagement range. Without this a ped
-        /// inherits its model's default ability (often Poor), which makes it aim
-        /// but hesitate to fire — especially with slow scoped weapons. Mirrors the
-        /// Professional/Far profile every other combatant in the mod receives.
+        /// Sets a ped's combat ability, engagement range, and movement style. Without
+        /// this a ped inherits its model's defaults (often Poor ability + cautious
+        /// movement), which makes it aim but hesitate to fire and hold instead of
+        /// pressing the attack. Pass -1 for any parameter to leave that aspect at the
+        /// engine default (e.g. snipers set ability + range but keep default movement).
         /// </summary>
         /// <param name="pedHandle">Handle of the ped.</param>
-        /// <param name="ability">Combat ability: 0 = Poor, 1 = Average, 2 = Professional.</param>
-        /// <param name="combatRange">Combat range: 0 = Near, 1 = Medium, 2 = Far.</param>
-        void SetPedCombatProfile(int pedHandle, int ability, int combatRange);
+        /// <param name="ability">Combat ability: 0 = Poor, 1 = Average, 2 = Professional; -1 = leave default.</param>
+        /// <param name="combatRange">Combat range: 0 = Near, 1 = Medium, 2 = Far; -1 = leave default.</param>
+        /// <param name="movement">Combat movement: 0 = Stationary, 1 = Defensive, 2 = Offensive, 3 = Suicidal; -1 = leave default.</param>
+        void SetPedCombatProfile(int pedHandle, int ability, int combatRange, int movement);
 
         /// <summary>
         /// Sets a ped's armor value.
