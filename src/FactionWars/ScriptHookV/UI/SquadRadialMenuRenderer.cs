@@ -95,6 +95,12 @@ namespace FactionWars.ScriptHookV.UI
             {
                 _gameBridge.DisableControlThisFrame(control);
             }
+
+            // Lock the camera like the real weapon wheel: disable the look controls so the mouse /
+            // right stick no longer pan the view. The pointing delta is still read below via
+            // GET_DISABLED_CONTROL_NORMAL, so selection keeps working while the camera stays put.
+            _gameBridge.DisableControlThisFrame(LookLeftRight);
+            _gameBridge.DisableControlThisFrame(LookUpDown);
         }
 
         private void ReadPointerIntoMenu()
@@ -113,8 +119,10 @@ namespace FactionWars.ScriptHookV.UI
             }
             else
             {
-                _mouseX += Function.Call<float>(Hash.GET_CONTROL_NORMAL, 0, LookLeftRight) * MouseSensitivity * 60f;
-                _mouseY += Function.Call<float>(Hash.GET_CONTROL_NORMAL, 0, LookUpDown) * MouseSensitivity * 60f;
+                // Read the look delta from the DISABLED control so the camera stays frozen (the look
+                // controls are disabled this frame in SuppressControls) while still steering selection.
+                _mouseX += Function.Call<float>(Hash.GET_DISABLED_CONTROL_NORMAL, 0, LookLeftRight) * MouseSensitivity * 60f;
+                _mouseY += Function.Call<float>(Hash.GET_DISABLED_CONTROL_NORMAL, 0, LookUpDown) * MouseSensitivity * 60f;
                 _mouseX = Clamp(_mouseX, -1f, 1f);
                 _mouseY = Clamp(_mouseY, -1f, 1f);
                 dirX = _mouseX;
@@ -129,11 +137,11 @@ namespace FactionWars.ScriptHookV.UI
 
         private void Draw()
         {
-            // Dim backdrop.
-            DrawRect(0.5f, 0.5f, 1f, 1f, Color.FromArgb(110, 0, 0, 0));
+            // Darker full-screen backdrop so the wheel reads clearly against the world.
+            DrawRect(0.5f, 0.5f, 1f, 1f, Color.FromArgb(150, 0, 0, 0));
 
-            const float radiusX = 0.10f; // ~radiusY * 9/16 so the ring looks circular on 16:9.
-            const float radiusY = 0.18f;
+            const float radiusX = 0.12f; // ~radiusY * 9/16 so the ring looks circular on 16:9.
+            const float radiusY = 0.21f;
             var segments = _menu.Segments;
             for (int i = 0; i < segments.Count; i++)
             {
@@ -142,14 +150,19 @@ namespace FactionWars.ScriptHookV.UI
                 float py = 0.5f - (radiusY * (float)Math.Cos(angle));
                 bool selected = i == _menu.SelectedIndex;
 
-                DrawRect(px, py, 0.13f, 0.05f, selected
-                    ? Color.FromArgb(220, 255, 180, 50)
-                    : Color.FromArgb(150, 0, 0, 0));
-                DrawCenteredText(Label(segments[i]), px, py - 0.02f, selected ? 0.5f : 0.4f,
-                    selected ? Color.Black : Color.White);
+                // Selected segment: bright amber, dark bold label. Unselected: dim slab, light label.
+                DrawRect(px, py, 0.165f, 0.072f, selected
+                    ? Color.FromArgb(235, 255, 176, 32)
+                    : Color.FromArgb(185, 20, 20, 20));
+                DrawCenteredText(Label(segments[i]), px, py - 0.026f, selected ? 0.62f : 0.46f,
+                    selected ? Color.Black : Color.FromArgb(255, 235, 235, 235));
             }
 
-            DrawCenteredText("BODYGUARDS", 0.5f, 0.5f - 0.012f, 0.35f, Color.White);
+            // Center readout: title, the stance about to be applied (big), and a release hint.
+            var pointed = segments[_menu.SelectedIndex];
+            DrawCenteredText("BODYGUARDS", 0.5f, 0.5f - 0.048f, 0.4f, Color.FromArgb(255, 170, 195, 255));
+            DrawCenteredText(Label(pointed), 0.5f, 0.5f - 0.014f, 0.62f, Color.FromArgb(255, 255, 176, 32));
+            DrawCenteredText("release to apply", 0.5f, 0.5f + 0.03f, 0.32f, Color.FromArgb(205, 225, 225, 225));
         }
 
         private static void DrawRect(float x, float y, float width, float height, Color color)
