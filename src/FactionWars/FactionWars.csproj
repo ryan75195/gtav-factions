@@ -26,4 +26,11 @@
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Squad radial wheel art, embedded in the DLL and extracted at runtime via
+         NativeUI.Sprite.WriteFileFromResources (no separate asset to deploy). -->
+    <EmbeddedResource Include="Resources\wheel_ring.png" />
+    <EmbeddedResource Include="Resources\wheel_highlight.png" />
+  </ItemGroup>
+
 </Project>
