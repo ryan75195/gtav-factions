@@ -25,7 +25,9 @@ namespace FactionWars.ScriptHookV.Managers
         private readonly Dictionary<int, AppliedOrder> _lastApplied = new Dictionary<int, AppliedOrder>();
         private readonly Dictionary<int, int> _lastFollowReassertMs = new Dictionary<int, int>();
         private readonly Dictionary<int, EngagePhase> _enginePhase = new Dictionary<int, EngagePhase>();
-        private readonly Dictionary<int, int> _losMisses = new Dictionary<int, int>();
+        // Game time (ms) at which each engaged ped last held line of sight to its target. Used to
+        // measure how long LOS has stayed broken so a sustained loss forces a reposition.
+        private readonly Dictionary<int, int> _lastLosMs = new Dictionary<int, int>();
         private IReadOnlyDictionary<int, DefenderRole> _rolesByHandle = new Dictionary<int, DefenderRole>();
 
         private const int FollowerReassertIntervalMs = 2000;
@@ -68,7 +70,7 @@ namespace FactionWars.ScriptHookV.Managers
             _lastApplied.Clear();
             _reconciler.Clear();
             _enginePhase.Clear();
-            _losMisses.Clear();
+            _lastLosMs.Clear();
             FileLogger.AI($"SquadStance.CycleStance: {previous} -> {_currentStance} (party={onFootBodyguardHandles.Count})");
             _gameBridge.ShowNotification($"~b~Bodyguards:~w~ {StanceLabel(_currentStance)}");
         }
@@ -106,7 +108,7 @@ namespace FactionWars.ScriptHookV.Managers
                     _lastApplied.Remove(handle);
                     _reconciler.Forget(handle);
                     _enginePhase.Remove(handle);
-                    _losMisses.Remove(handle);
+                    _lastLosMs.Remove(handle);
                 }
             }
             foreach (var handle in new List<int>(_lastFollowReassertMs.Keys))
