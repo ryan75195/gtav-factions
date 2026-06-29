@@ -72,5 +72,24 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             // Drain is destructive: a second drain with no new transition is empty.
             Assert.Empty(Source.DrainEngagementTransitions());
         }
+
+        [Fact]
+        public void Update_WhenFollowerLosesItsTarget_ForgetsEngagementState()
+        {
+            int follower = _bridge.CreatePed("f", new Vector3(0f, 0f, 0f));
+            int enemy = _bridge.CreatePed("e", new Vector3(10f, 0f, 0f));
+            _bridge.SetLineOfSight(follower, enemy, true);
+            var enemies = new List<EnemyTarget> { new EnemyTarget(enemy, _bridge.GetPedPosition(enemy)) };
+            _controller.Update(new Vector3(0f, 0f, 0f), 250f,
+                new List<int> { follower }, enemies, Roles(follower, DefenderRole.Grunt));
+            Assert.True(Source.TryGetEngagementState(follower, out _)); // engaged: state present
+
+            // Enemies gone (the follower is no longer assigned a target). Its LOS clock must be
+            // dropped, otherwise it freezes and a later reassignment reports a stale ms_since_los.
+            _controller.Update(new Vector3(0f, 0f, 0f), 250f,
+                new List<int> { follower }, new List<EnemyTarget>(), Roles(follower, DefenderRole.Grunt));
+
+            Assert.False(Source.TryGetEngagementState(follower, out _));
+        }
     }
 }

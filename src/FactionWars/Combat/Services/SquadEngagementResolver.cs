@@ -20,6 +20,11 @@ namespace FactionWars.Combat.Services
         /// almost onto the target (e.g. to a rooftop parapet) until a shot opens up.</summary>
         private const float LosRepositionStopRange = 3f;
 
+        /// <summary>Momentum window after a line-of-sight reposition during which the ped keeps
+        /// advancing onto the target rather than re-engaging the instant LOS flickers back. Without
+        /// it the ped twitches Engage&lt;-&gt;Advance every second or so without ever relocating.</summary>
+        private const int ReengageDelayMs = 700;
+
         private readonly IEngageRangeProvider _rangeProvider;
 
         public SquadEngagementResolver(IEngageRangeProvider rangeProvider)
@@ -32,7 +37,8 @@ namespace FactionWars.Combat.Services
             bool hasLineOfSight,
             DefenderRole role,
             EngagePhase currentPhase,
-            int msSinceLastLos)
+            int msSinceLastLos,
+            int msSinceReposition)
         {
             float range = _rangeProvider.For(role);
 
@@ -59,14 +65,19 @@ namespace FactionWars.Combat.Services
                 return new EngageDecision(EngagePhase.Engage, range, EngagePhaseChangeReason.None);
             }
 
-            if (distToTarget <= range && hasLineOfSight)
+            // Within the momentum window after a reposition, keep advancing onto the target even with
+            // a clear shot: re-engaging now would snap the ped back before it has actually relocated,
+            // producing the Engage<->Advance thrash. Past the window, re-engage normally.
+            bool repositionMomentum = msSinceReposition < ReengageDelayMs;
+
+            if (distToTarget <= range && hasLineOfSight && !repositionMomentum)
             {
                 return new EngageDecision(EngagePhase.Engage, range, EngagePhaseChangeReason.EngageAcquired);
             }
 
             // Advancing: close to engage range when we can see the target, but push right up to it
-            // when we can't — the blocked sight line means we need a different vantage point.
-            float stopRange = hasLineOfSight ? range : LosRepositionStopRange;
+            // when we can't — or while committed to a reposition — since the goal is a new vantage.
+            float stopRange = hasLineOfSight && !repositionMomentum ? range : LosRepositionStopRange;
             return new EngageDecision(EngagePhase.Advance, stopRange, EngagePhaseChangeReason.None);
         }
     }
