@@ -65,15 +65,33 @@ namespace FactionWars.ScriptHookV.Managers
                 return;
             }
 
+            SetStance(_currentStance.Next(), onFootBodyguardHandles);
+        }
+
+        // Applies a chosen stance directly (used by the radial menu). A no-op when the target is
+        // already current, so re-selecting the same stance does not re-task the squad or re-notify.
+        public void SetStance(SquadStance target, IReadOnlyList<int> onFootBodyguardHandles)
+        {
+            if (onFootBodyguardHandles == null || onFootBodyguardHandles.Count == 0)
+            {
+                FileLogger.AI("SquadStance.SetStance: ignored (no on-foot bodyguards)");
+                return;
+            }
+
+            if (target == _currentStance)
+            {
+                return;
+            }
+
             var previous = _currentStance;
-            _currentStance = _currentStance.Next();
+            _currentStance = target;
             _lastApplied.Clear();
             _reconciler.Clear();
             _enginePhase.Clear();
             _lastLosMs.Clear();
             _engagementState.Clear();
             _transitions.Clear();
-            FileLogger.AI($"SquadStance.CycleStance: {previous} -> {_currentStance} (party={onFootBodyguardHandles.Count})");
+            FileLogger.AI($"SquadStance.SetStance: {previous} -> {_currentStance} (party={onFootBodyguardHandles.Count})");
             _gameBridge.ShowNotification($"~b~Bodyguards:~w~ {StanceLabel(_currentStance)}");
         }
 

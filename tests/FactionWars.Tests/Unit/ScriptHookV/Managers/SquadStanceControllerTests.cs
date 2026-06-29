@@ -24,6 +24,27 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         private static readonly IReadOnlyDictionary<int, DefenderRole> NoRoles = new Dictionary<int, DefenderRole>();
 
         [Fact]
+        public void SetStance_AppliesTargetDirectly()
+        {
+            _controller = Build();
+            var party = new List<int> { _bridge.CreatePed("bg", new Vector3(1f, 0f, 0f)) };
+
+            _controller.SetStance(SquadStance.SearchAndDestroy, party);
+
+            Assert.Equal(SquadStance.SearchAndDestroy, _controller.CurrentStance);
+        }
+
+        [Fact]
+        public void SetStance_EmptyParty_DoesNotChangeStance()
+        {
+            _controller = Build();
+
+            _controller.SetStance(SquadStance.SearchAndDestroy, new List<int>());
+
+            Assert.Equal(SquadStance.Escort, _controller.CurrentStance);
+        }
+
+        [Fact]
         public void CycleStance_AdvancesEscortToHoldAreaToSearchAndDestroyToEscort()
         {
             _controller = Build();

@@ -79,6 +79,9 @@ namespace FactionWars.ScriptHookV
             _zoneBattleManager = null;
             _battleHudRenderer = null;
             _currentBattleHudIndex = 0;
+            // Restore time scale in case the squad radial was open when the script aborted.
+            _squadRadialMenuRenderer?.Reset();
+            _squadRadialMenuRenderer = null;
             _policeSuppressionController?.Dispose();
             _policeSuppressionController = null;
 

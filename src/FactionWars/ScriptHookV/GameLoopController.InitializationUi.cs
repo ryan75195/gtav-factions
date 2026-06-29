@@ -20,6 +20,17 @@ namespace FactionWars.ScriptHookV
 
             _eventFeedRenderer = new EventFeedRenderer(_container.Resolve<IFactionRepository>());
             _eventFeedService = _container.Resolve<IEventFeedService>();
+
+            // Native draw/input/time-scale: only under the real game bridge (mirrors PlayTimeHudRenderer).
+            if (_gameBridge.GetType().FullName == "FactionWars.ScriptHookV.GameBridge")
+            {
+                _squadRadialMenuRenderer = new SquadRadialMenuRenderer(
+                    _gameBridge,
+                    () => _squadStanceController!.CurrentStance,
+                    (stance, handles) => _squadStanceController!.SetStance(stance, handles),
+                    () => _followerManager?.OnFootBodyguardHandles ?? System.Array.Empty<int>());
+            }
+
             territoryManager.ZoneEntered += OnZoneEntered;
             territoryManager.ZoneExited += OnZoneExited;
             territoryManager.NeutralZoneEntered += OnNeutralZoneEntered;

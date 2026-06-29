@@ -132,12 +132,9 @@ namespace FactionWars.ScriptHookV
                 }
             }
 
-            // D-pad Left = Cycle bodyguard squad stance
-            if (_gameBridge.IsControlJustPressed(ControlDpadLeft))
-            {
-                var bodyguards = _followerManager?.OnFootBodyguardHandles ?? System.Array.Empty<int>();
-                _squadStanceController?.CycleStance(bodyguards);
-            }
+            // D-pad Left / Left Arrow (control 174) now opens the squad radial menu instead of
+            // instantly cycling. The radial is held-to-open and is driven each frame from the HUD
+            // pass (see SquadRadialMenuController.Update), so there is no just-pressed handler here.
 
             // Note: the A button's held state for menu hold-to-repeat is polled
             // live where it is consumed (see IsSelectKeyHeld). It must NOT be
