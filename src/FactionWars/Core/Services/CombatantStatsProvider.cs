@@ -1,5 +1,5 @@
 using System;
-using FactionWars.Configuration;
+using System.Collections.Generic;
 using FactionWars.Core.Interfaces;
 using FactionWars.Core.Models;
 
@@ -8,48 +8,33 @@ namespace FactionWars.Core.Services
     /// <inheritdoc />
     public sealed class CombatantStatsProvider : ICombatantStatsProvider
     {
-        private readonly CombatantsConfig _config;
+        private readonly IReadOnlyDictionary<CombatantCategory, IReadOnlyDictionary<DefenderRole, RoleStats>> _roleTables;
+        private readonly PlayerStats _playerStats;
 
-        public CombatantStatsProvider(CombatantsConfig config)
+        public CombatantStatsProvider(
+            IReadOnlyDictionary<CombatantCategory, IReadOnlyDictionary<DefenderRole, RoleStats>> roleTables,
+            PlayerStats playerStats)
         {
-            _config = config ?? throw new ArgumentNullException(nameof(config));
+            _roleTables = roleTables ?? throw new ArgumentNullException(nameof(roleTables));
+            _playerStats = playerStats ?? throw new ArgumentNullException(nameof(playerStats));
         }
 
         public RoleStats GetRoleStats(CombatantCategory category, DefenderRole role)
         {
-            var table = TableFor(category);
-            var r = RoleConfigFor(table, role);
-            return new RoleStats(r.Health, r.Armor, r.Accuracy, r.Weapon, r.DamageMultiplier);
-        }
-
-        public PlayerStats GetPlayerStats()
-        {
-            var p = _config.Player;
-            return new PlayerStats(p.MaxHealth, p.SpawnArmor, p.OutgoingDamageMultiplier, p.IncomingDamageMultiplier);
-        }
-
-        private CategoryStatsConfig TableFor(CombatantCategory category)
-        {
-            switch (category)
+            if (!_roleTables.TryGetValue(category, out var table))
             {
-                case CombatantCategory.Squad: return _config.Squad;
-                case CombatantCategory.Friendlies: return _config.Friendlies;
-                case CombatantCategory.Enemies: return _config.Enemies;
-                default: throw new ArgumentOutOfRangeException(nameof(category), category, "Player has no per-role stats; use GetPlayerStats().");
+                throw new ArgumentOutOfRangeException(nameof(category), category,
+                    "No per-role stats for this category; Player uses GetPlayerStats().");
             }
+
+            if (!table.TryGetValue(role, out var stats))
+            {
+                throw new ArgumentOutOfRangeException(nameof(role), role, null);
+            }
+
+            return stats;
         }
 
-        private static RoleStatsConfig RoleConfigFor(CategoryStatsConfig table, DefenderRole role)
-        {
-            switch (role)
-            {
-                case DefenderRole.Grunt: return table.Grunt;
-                case DefenderRole.Gunner: return table.Gunner;
-                case DefenderRole.Rifleman: return table.Rifleman;
-                case DefenderRole.Rocketeer: return table.Rocketeer;
-                case DefenderRole.Sniper: return table.Sniper;
-                default: throw new ArgumentOutOfRangeException(nameof(role), role, null);
-            }
-        }
+        public PlayerStats GetPlayerStats() => _playerStats;
     }
 }

@@ -1,4 +1,5 @@
 using FactionWars.Configuration;
+using FactionWars.Core.Interfaces;
 using FactionWars.Core.Models;
 using FactionWars.Core.Services;
 using Xunit;
@@ -7,8 +8,8 @@ namespace FactionWars.Tests.Unit.Core
 {
     public class CombatantStatsProviderTests
     {
-        private static CombatantStatsProvider Default()
-            => new CombatantStatsProvider(new CombatantsConfig());
+        private static ICombatantStatsProvider Default()
+            => CombatantStatsProviderFactory.Create(new CombatantsConfig());
 
         [Fact]
         public void GetRoleStats_DefaultEnemyRifleman_MatchesCurrentValues()
@@ -26,7 +27,8 @@ namespace FactionWars.Tests.Unit.Core
         {
             var cfg = new CombatantsConfig();
             cfg.Friendlies.Sniper.DamageMultiplier = 8.0f;
-            var s = new CombatantStatsProvider(cfg).GetRoleStats(CombatantCategory.Friendlies, DefenderRole.Sniper);
+            var provider = CombatantStatsProviderFactory.Create(cfg);
+            var s = provider.GetRoleStats(CombatantCategory.Friendlies, DefenderRole.Sniper);
             Assert.Equal(8.0f, s.DamageMultiplier, 2);
             Assert.Equal(1.0f, Default().GetRoleStats(CombatantCategory.Enemies, DefenderRole.Sniper).DamageMultiplier, 2);
         }
