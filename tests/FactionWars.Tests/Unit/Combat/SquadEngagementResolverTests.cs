@@ -13,8 +13,9 @@ namespace FactionWars.Tests.Unit.Combat
         private readonly ISquadEngagementResolver _resolver =
             new SquadEngagementResolver(new EngageRangeProvider());
 
-        private EngageDecision Resolve(float dist, bool los, EngagePhase phase, int msSinceLos)
-            => _resolver.Resolve(dist, los, DefenderRole.Grunt, phase, msSinceLos);
+        // msSinceReposition defaults to "long ago" so existing cases behave as before (no momentum).
+        private EngageDecision Resolve(float dist, bool los, EngagePhase phase, int msSinceLos, int msSinceReposition = 100000)
+            => _resolver.Resolve(dist, los, DefenderRole.Grunt, phase, msSinceLos, msSinceReposition);
 
         [Fact]
         public void OutOfRange_Advances()
@@ -88,6 +89,27 @@ namespace FactionWars.Tests.Unit.Combat
             var d = Resolve(15f, true, EngagePhase.Engage, 0);
             Assert.Equal(EngagePhase.Engage, d.Phase);
             Assert.Equal(EngagePhaseChangeReason.None, d.Reason);
+        }
+
+        [Fact]
+        public void Advancing_JustAfterReposition_KeepsAdvancingDespiteLos()
+        {
+            // A ped that repositioned 300ms ago has regained LOS in range, but re-engaging now would
+            // snap it back before it has actually relocated (the thrash). Keep advancing onto the
+            // target through the momentum window so the reposition sticks.
+            var d = Resolve(15f, true, EngagePhase.Advance, 0, msSinceReposition: 300);
+            Assert.Equal(EngagePhase.Advance, d.Phase);
+            Assert.Equal(3f, d.AdvanceStopRange); // still pushing onto the target, not stopping at range
+            Assert.Equal(EngagePhaseChangeReason.None, d.Reason);
+        }
+
+        [Fact]
+        public void Advancing_AfterReengageDelay_Reengages()
+        {
+            // Once the momentum window has elapsed (800ms >= 700ms), in range + LOS re-engages normally.
+            var d = Resolve(15f, true, EngagePhase.Advance, 0, msSinceReposition: 800);
+            Assert.Equal(EngagePhase.Engage, d.Phase);
+            Assert.Equal(EngagePhaseChangeReason.EngageAcquired, d.Reason);
         }
     }
 }

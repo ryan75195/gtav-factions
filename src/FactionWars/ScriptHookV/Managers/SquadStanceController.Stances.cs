@@ -148,8 +148,14 @@ namespace FactionWars.ScriptHookV.Managers
             foreach (var pedHandle in handles)
             {
                 if (DisembarkedThisTick(pedHandle)) continue;
-                if (!assignment.TryGetValue(pedHandle, out var targetHandle)) continue;
-                if (!enemyPositions.TryGetValue(targetHandle, out var targetPos)) continue;
+                if (!assignment.TryGetValue(pedHandle, out var targetHandle)
+                    || !enemyPositions.TryGetValue(targetHandle, out var targetPos))
+                {
+                    // No valid target this tick: drop the per-ped engagement clocks so a later
+                    // reassignment re-baselines LOS instead of reporting a frozen, stale ms_since_los.
+                    ForgetEngagement(pedHandle);
+                    continue;
+                }
 
                 ApplyEngagement(pedHandle, targetHandle, targetPos);
             }
@@ -165,9 +171,14 @@ namespace FactionWars.ScriptHookV.Managers
             var role = _rolesByHandle.TryGetValue(pedHandle, out var r) ? r : DefenderRole.Grunt;
             var phase = _enginePhase.TryGetValue(pedHandle, out var p) ? p : EngagePhase.Advance;
             int msSinceLos = TrackLineOfSight(pedHandle, los, now);
+            int msSinceReposition = _lastRepositionMs.TryGetValue(pedHandle, out var rt) ? now - rt : int.MaxValue;
 
-            var decision = _engagementResolver.Resolve(dist, los, role, phase, msSinceLos);
+            var decision = _engagementResolver.Resolve(dist, los, role, phase, msSinceLos, msSinceReposition);
             _enginePhase[pedHandle] = decision.Phase;
+            if (decision.Reason == EngagePhaseChangeReason.LosReposition)
+            {
+                _lastRepositionMs[pedHandle] = now;
+            }
             RecordEngagementTelemetry(pedHandle, phase, decision, los, msSinceLos, now, dist);
 
             if (decision.Phase == EngagePhase.Engage)
@@ -218,10 +229,22 @@ namespace FactionWars.ScriptHookV.Managers
             return previous;
         }
 
+        // Drops every per-ped engagement clock/snapshot for a follower that is no longer driving an
+        // engagement this tick, so a later reassignment starts with a fresh LOS baseline rather than
+        // a frozen one. Removal is idempotent — safe to call each tick for an idle ped.
+        private void ForgetEngagement(int handle)
+        {
+            _enginePhase.Remove(handle);
+            _lastLosMs.Remove(handle);
+            _lastRepositionMs.Remove(handle);
+            _engagementState.Remove(handle);
+        }
+
         private void SeekFallback(float anchorRadius, IReadOnlyList<int> handles)
         {
             foreach (var pedHandle in handles)
             {
+                ForgetEngagement(pedHandle);
                 if (DisembarkedThisTick(pedHandle)) continue;
                 if (AlreadyApplied(pedHandle, SquadStance.SearchAndDestroy, BodyguardOrderKind.SeekInRadius, 0)) continue;
                 _reconciler.Submit(pedHandle, PedIntent.SeekHatedTargets(new Vector3(0f, 0f, 0f), anchorRadius));
