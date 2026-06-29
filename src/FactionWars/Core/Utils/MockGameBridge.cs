@@ -487,6 +487,17 @@ namespace FactionWars.Core.Utils
             _followingPeds.Remove(pedHandle);
         }
 
+        private readonly HashSet<int> _blockPermanentEventsPeds = new HashSet<int>();
+
+        public void SetPedBlockPermanentEvents(int pedHandle, bool block)
+        {
+            if (block) _blockPermanentEventsPeds.Add(pedHandle);
+            else _blockPermanentEventsPeds.Remove(pedHandle);
+        }
+
+        /// <summary>Test hook: true if the ped is currently blocking non-temporary events.</summary>
+        public bool GetPedBlockPermanentEventsForTest(int pedHandle) => _blockPermanentEventsPeds.Contains(pedHandle);
+
         public bool IsPlayerInVehicle() => IsPlayerInVehicleValue;
 
         public int GetPlayerVehicle() => PlayerVehicleHandle;

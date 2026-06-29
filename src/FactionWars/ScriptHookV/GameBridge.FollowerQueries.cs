@@ -51,5 +51,29 @@ namespace FactionWars.ScriptHookV
                 FileLogger.Error("RemovePedFromFollowerGroup exception", ex);
             }
         }
+
+        /// <inheritdoc />
+        public void SetPedBlockPermanentEvents(int pedHandle, bool block)
+        {
+            try
+            {
+                var ped = Entity.FromHandle(pedHandle) as Ped;
+                if (ped == null || !ped.Exists())
+                {
+                    FileLogger.AI($"SetPedBlockPermanentEvents: ped {pedHandle} doesn't exist");
+                    return;
+                }
+
+                // SET_BLOCKING_OF_NON_TEMPORARY_EVENTS via SHVDN. When true the ped ignores threat
+                // events (gunfire, spotting enemies) and holds its current task, so an Escort
+                // bodyguard runs all the way back to the player instead of stopping to fight.
+                ped.BlockPermanentEvents = block;
+                FileLogger.AI($"SetPedBlockPermanentEvents: ped {pedHandle} block={block}");
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error("SetPedBlockPermanentEvents exception", ex);
+            }
+        }
     }
 }

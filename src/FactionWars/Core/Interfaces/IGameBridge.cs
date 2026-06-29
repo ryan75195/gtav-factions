@@ -371,6 +371,17 @@ namespace FactionWars.Core.Interfaces
         void RemovePedFromFollowerGroup(int pedHandle);
 
         /// <summary>
+        /// Blocks or unblocks a ped's reaction to non-temporary (permanent) world events such as
+        /// being shot at or seeing an enemy. When blocked, the ped sticks to its current scripted
+        /// task instead of breaking off to fight — used so an Escort bodyguard actually sprints back
+        /// to the player through a firefight rather than stopping to engage. Unblock to restore
+        /// normal threat reactions when the ped returns to a combat stance.
+        /// </summary>
+        /// <param name="pedHandle">Handle of the ped to configure.</param>
+        /// <param name="block">True to ignore threat events, false to react normally.</param>
+        void SetPedBlockPermanentEvents(int pedHandle, bool block);
+
+        /// <summary>
         /// Checks if the player is currently in a vehicle.
         /// </summary>
         /// <returns>True if the player is in a vehicle, false otherwise.</returns>

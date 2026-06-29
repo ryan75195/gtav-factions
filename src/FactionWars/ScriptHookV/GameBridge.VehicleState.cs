@@ -115,25 +115,27 @@ namespace FactionWars.ScriptHookV
         // for the script-GUID pool. That scan breaks after GTA updates and throws a
         // NullReferenceException deep inside SHVDN (FwScriptGuidPoolTask.Run), so every scan returned
         // an empty list and no ambient cars were ever evicted. Bypass the broken pool entirely with
-        // the GET_CLOSEST_VEHICLE native, which returns real game handles. It only yields ONE vehicle
-        // per call, so sample the centre plus a ring of points to cover the scan area. Flag 70 with
-        // model 0 selects non-police cars and motorbikes only (no police/helis/boats), matching the
-        // "just pedestrian cars" intent.
+        // the GET_CLOSEST_VEHICLE native, which returns real game handles. It only yields the ONE
+        // nearest vehicle per query, so a sparse sample collapses to a handful of cars and the rest
+        // keep driving. Instead, grid the scan disc and query a small LOCAL radius at each node, so
+        // each road segment surfaces its own nearest vehicle. Flag 70 with model 0 selects non-police
+        // cars and motorbikes only (no police/helis/boats), matching the "just pedestrian cars" intent.
         public int[] GetNearbyVehicles(Vector3 center, float radius)
         {
             var found = new HashSet<int>();
             try
             {
-                AddClosestVehicle(found, center.X, center.Y, center.Z, radius);
-
-                const int ringSamples = 6;
-                float ringRadius = radius * 0.55f;
-                for (int i = 0; i < ringSamples; i++)
+                // Node spacing; the local query radius overlaps neighbours so no car between nodes is
+                // missed (any point in the disc is within GridStep of some node).
+                const float gridStep = 18f;
+                float r2 = radius * radius;
+                for (float dx = -radius; dx <= radius; dx += gridStep)
                 {
-                    double angle = i * (2 * Math.PI / ringSamples);
-                    float sx = center.X + (float)(Math.Cos(angle) * ringRadius);
-                    float sy = center.Y + (float)(Math.Sin(angle) * ringRadius);
-                    AddClosestVehicle(found, sx, sy, center.Z, radius);
+                    for (float dy = -radius; dy <= radius; dy += gridStep)
+                    {
+                        if (dx * dx + dy * dy > r2) continue; // keep the sample area a disc, not a square
+                        AddClosestVehicle(found, center.X + dx, center.Y + dy, center.Z, gridStep);
+                    }
                 }
             }
             catch (Exception ex)

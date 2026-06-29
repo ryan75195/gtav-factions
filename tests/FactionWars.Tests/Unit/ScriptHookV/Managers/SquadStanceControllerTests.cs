@@ -314,6 +314,24 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         }
 
         [Fact]
+        public void Update_EscortStance_BodyguardAtZoneRange_RunsBackInsteadOfTeleport()
+        {
+            // "Run to me regardless of range in the zone": an in-zone straggler (200m) sprints back
+            // rather than teleporting. Teleport is reserved for absurd, out-of-zone distances.
+            _controller = Build();
+            _bridge.PlayerPosition = new Vector3(0f, 0f, 0f);
+            _bridge.PlayerPedHandle = 7777;
+            int bg = _bridge.CreatePed("bg", new Vector3(200f, 0f, 0f));
+            var party = new List<int> { bg };
+
+            _controller.Update(Anchor, 50f, party, new List<EnemyTarget>(), NoRoles);
+
+            float dist = _bridge.PlayerPosition.DistanceTo(_bridge.GetPedPosition(bg));
+            Assert.True(dist > 25f, $"expected run (position unchanged), but ped was teleported to {dist:F0}m");
+            Assert.True(_bridge.IsPedFollowingEntity(bg)); // sprint-to-player task issued
+        }
+
+        [Fact]
         public void Update_EscortStance_VeryFarStrandedBodyguard_IsTeleportedNearPlayer()
         {
             // Beyond the teleport threshold (e.g. left behind by a respawn/fast-travel), running
