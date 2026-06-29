@@ -64,5 +64,17 @@ namespace FactionWars.ScriptHookV.Combat
             _gameBridge.SetPedActiveWeapon(sniperHandle, desired);
             FileLogger.AI($"SniperCloseDefense: ped {sniperHandle} -> {desired} (threatClose={threatClose})");
         }
+
+        public void RetainOnly(IReadOnlyList<int> activeSniperHandles)
+        {
+            var keep = new HashSet<int>(activeSniperHandles ?? System.Array.Empty<int>());
+            var stale = new List<int>();
+            foreach (var handle in _lastWeapon.Keys)
+            {
+                if (!keep.Contains(handle)) stale.Add(handle);
+            }
+
+            foreach (var handle in stale) _lastWeapon.Remove(handle);
+        }
     }
 }
