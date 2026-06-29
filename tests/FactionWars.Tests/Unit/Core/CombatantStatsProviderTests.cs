@@ -32,6 +32,13 @@ namespace FactionWars.Tests.Unit.Core
         }
 
         [Fact]
+        public void GetRoleStats_PlayerCategory_Throws()
+        {
+            Assert.Throws<System.ArgumentOutOfRangeException>(
+                () => Default().GetRoleStats(CombatantCategory.Player, DefenderRole.Rifleman));
+        }
+
+        [Fact]
         public void GetPlayerStats_DefaultIsVanilla()
         {
             var p = Default().GetPlayerStats();

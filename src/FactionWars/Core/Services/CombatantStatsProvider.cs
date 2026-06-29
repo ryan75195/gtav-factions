@@ -1,6 +1,5 @@
 using System;
 using FactionWars.Configuration;
-using FactionWars.Configuration.Interfaces;
 using FactionWars.Core.Interfaces;
 using FactionWars.Core.Models;
 
@@ -9,9 +8,9 @@ namespace FactionWars.Core.Services
     /// <inheritdoc />
     public sealed class CombatantStatsProvider : ICombatantStatsProvider
     {
-        private readonly ICombatantsConfig _config;
+        private readonly CombatantsConfig _config;
 
-        public CombatantStatsProvider(ICombatantsConfig config)
+        public CombatantStatsProvider(CombatantsConfig config)
         {
             _config = config ?? throw new ArgumentNullException(nameof(config));
         }
