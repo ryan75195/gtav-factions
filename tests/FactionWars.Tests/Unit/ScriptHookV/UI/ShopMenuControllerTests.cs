@@ -159,6 +159,41 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
         }
 
         [Fact]
+        public void Show_IncludesCargobobTransportOption()
+        {
+            // Arrange
+            _gameBridge.PlayerMoney = 100000;
+            var controller = new ShopMenuController(_menuProviderMock.Object, _gameBridge);
+
+            // Act
+            controller.Show();
+
+            // Assert
+            Assert.NotNull(_lastShownMenu);
+            var cargobob = _lastShownMenu!.Items.FirstOrDefault(i => i.Id == "buy_cargobob");
+            Assert.NotNull(cargobob);
+            Assert.Contains("Cargobob", cargobob!.Text);
+            Assert.Contains("$80,000", cargobob.Text);
+        }
+
+        [Fact]
+        public void SelectingCargobob_DeductsMoneyAndSpawnsVehicle()
+        {
+            // Arrange
+            _gameBridge.PlayerMoney = 100000;
+            var controller = new ShopMenuController(_menuProviderMock.Object, _gameBridge);
+            controller.Show();
+
+            // Act
+            _menuProviderMock.Raise(m => m.ItemSelected += null,
+                new MenuItemSelectedEventArgs(ShopMenuController.ShopMenuId, "buy_cargobob"));
+
+            // Assert
+            Assert.Equal(20000, _gameBridge.PlayerMoney); // 100000 - 80000
+            Assert.True(_gameBridge.GetSpawnedVehicleCount() > 0);
+        }
+
+        [Fact]
         public void Show_HasBackButton()
         {
             // Arrange
