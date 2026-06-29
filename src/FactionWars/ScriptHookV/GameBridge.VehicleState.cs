@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using FactionWars.Core.Interfaces;
 using FactionWars.ScriptHookV.Logging;
 using GTA;
@@ -110,23 +111,49 @@ namespace FactionWars.ScriptHookV
             }
         }
 
+        // SHVDN's World.GetNearbyVehicles enumerates the entity pool by pattern-scanning game memory
+        // for the script-GUID pool. That scan breaks after GTA updates and throws a
+        // NullReferenceException deep inside SHVDN (FwScriptGuidPoolTask.Run), so every scan returned
+        // an empty list and no ambient cars were ever evicted. Bypass the broken pool entirely with
+        // the GET_CLOSEST_VEHICLE native, which returns real game handles. It only yields ONE vehicle
+        // per call, so sample the centre plus a ring of points to cover the scan area. Flag 70 with
+        // model 0 selects non-police cars and motorbikes only (no police/helis/boats), matching the
+        // "just pedestrian cars" intent.
         public int[] GetNearbyVehicles(Vector3 center, float radius)
         {
+            var found = new HashSet<int>();
             try
             {
-                var pos = new GTA.Math.Vector3(center.X, center.Y, center.Z);
-                var vehicles = World.GetNearbyVehicles(pos, radius);
-                var handles = new int[vehicles.Length];
-                for (int i = 0; i < vehicles.Length; i++)
+                AddClosestVehicle(found, center.X, center.Y, center.Z, radius);
+
+                const int ringSamples = 6;
+                float ringRadius = radius * 0.55f;
+                for (int i = 0; i < ringSamples; i++)
                 {
-                    handles[i] = vehicles[i].Handle;
+                    double angle = i * (2 * Math.PI / ringSamples);
+                    float sx = center.X + (float)(Math.Cos(angle) * ringRadius);
+                    float sy = center.Y + (float)(Math.Sin(angle) * ringRadius);
+                    AddClosestVehicle(found, sx, sy, center.Z, radius);
                 }
-                return handles;
             }
             catch (Exception ex)
             {
                 FileLogger.Error($"GetNearbyVehicles exception at ({center.X:F0},{center.Y:F0})", ex);
-                return Array.Empty<int>();
+            }
+
+            var result = new int[found.Count];
+            found.CopyTo(result);
+            return result;
+        }
+
+        private static void AddClosestVehicle(HashSet<int> set, float x, float y, float z, float radius)
+        {
+            // GET_CLOSEST_VEHICLE(x, y, z, radius, modelHash, flags); modelHash 0 = any model that
+            // matches the flags. Returns 0 when none is found.
+            int handle = Function.Call<int>(Hash.GET_CLOSEST_VEHICLE, x, y, z, radius, 0, 70);
+            if (handle != 0)
+            {
+                set.Add(handle);
             }
         }
 
