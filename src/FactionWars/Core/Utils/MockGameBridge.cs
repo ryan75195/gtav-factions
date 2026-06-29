@@ -564,9 +564,41 @@ namespace FactionWars.Core.Utils
                 if (_vehicles.TryGetValue(vehicleHandle, out var vehicle))
                 {
                     vehicle.FreeSeatByPed(pedHandle);
+                    if (vehicle.Driver == pedHandle) vehicle.Driver = -1;
                 }
             }
         }
+
+        public int[] GetNearbyVehicles(Vector3 center, float radius)
+        {
+            var result = new List<int>();
+            foreach (var kvp in _vehicles)
+            {
+                if (center.DistanceTo(kvp.Value.Position) <= radius) result.Add(kvp.Key);
+            }
+            return result.ToArray();
+        }
+
+        public int GetVehicleDriver(int vehicleHandle)
+            => _vehicles.TryGetValue(vehicleHandle, out var v) ? v.Driver : -1;
+
+        public bool IsVehiclePersistent(int vehicleHandle)
+            => _vehicles.TryGetValue(vehicleHandle, out var v) && v.IsPersistent;
+
+        public void SetVehicleHandbrake(int vehicleHandle, bool engaged)
+            => _handbrakes[vehicleHandle] = engaged;
+
+        /// <summary>Sets a vehicle's driver ped handle (for testing).</summary>
+        public void SetVehicleDriver(int vehicleHandle, int pedHandle)
+        {
+            if (_vehicles.TryGetValue(vehicleHandle, out var v)) v.Driver = pedHandle;
+        }
+
+        /// <summary>Reads the recorded handbrake state of a vehicle (for testing).</summary>
+        public bool GetVehicleHandbrakeForTest(int vehicleHandle)
+            => _handbrakes.TryGetValue(vehicleHandle, out var on) && on;
+
+        private readonly Dictionary<int, bool> _handbrakes = new Dictionary<int, bool>();
 
         public void GivePedWeapon(int pedHandle, string weaponName)
         {
@@ -1447,7 +1479,18 @@ namespace FactionWars.Core.Utils
         public int CreateVehicle(string modelName, Vector3 position)
         {
             var handle = _nextVehicleHandle++;
-            _vehicles[handle] = new VehicleState(4, modelName, position);
+            // Mod-spawned vehicles are persistent/mission entities (real GameBridge sets IsPersistent).
+            _vehicles[handle] = new VehicleState(4, modelName, position) { IsPersistent = true };
+            return handle;
+        }
+
+        /// <summary>
+        /// Creates a non-persistent (ambient/random-traffic) vehicle for testing.
+        /// </summary>
+        public int CreateAmbientVehicle(string modelName, Vector3 position)
+        {
+            var handle = _nextVehicleHandle++;
+            _vehicles[handle] = new VehicleState(4, modelName, position) { IsPersistent = false };
             return handle;
         }
 
@@ -1683,6 +1726,8 @@ namespace FactionWars.Core.Utils
             public float Heading { get; set; }
             public int VehicleClass { get; set; } = 0; // Default to Compacts
             public HashSet<int> TurretSeats { get; } = new HashSet<int>();
+            public bool IsPersistent { get; set; } = false; // ambient by default; mod-spawned sets true
+            public int Driver { get; set; } = -1;            // driver ped handle, -1 when empty
 
             public VehicleState(int totalSeats, string modelName = "", Vector3 position = default)
             {

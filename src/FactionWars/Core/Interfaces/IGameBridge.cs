@@ -470,6 +470,27 @@ namespace FactionWars.Core.Interfaces
         void TaskPedLeaveVehicle(int pedHandle);
 
         /// <summary>
+        /// Returns the handles of all vehicles within <paramref name="radius"/> of a point.
+        /// </summary>
+        int[] GetNearbyVehicles(Vector3 center, float radius);
+
+        /// <summary>
+        /// Returns the handle of a vehicle's living driver, or -1 if the seat is empty.
+        /// </summary>
+        int GetVehicleDriver(int vehicleHandle);
+
+        /// <summary>
+        /// True if the vehicle is a mission/persistent entity (mod-spawned or scripted); false for
+        /// ambient random traffic. Used to leave the player's and the mod's vehicles untouched.
+        /// </summary>
+        bool IsVehiclePersistent(int vehicleHandle);
+
+        /// <summary>
+        /// Engages or releases a vehicle's handbrake so an emptied car stays put instead of rolling.
+        /// </summary>
+        void SetVehicleHandbrake(int vehicleHandle, bool engaged);
+
+        /// <summary>
         /// Gives a weapon to a ped.
         /// </summary>
         /// <param name="pedHandle">Handle of the ped to give the weapon to.</param>

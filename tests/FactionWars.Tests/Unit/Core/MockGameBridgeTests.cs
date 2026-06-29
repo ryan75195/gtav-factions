@@ -670,5 +670,67 @@ namespace FactionWars.Tests.Unit.Core
             Assert.True(mock.IsPedCombatingPed(ped));
             Assert.Equal(555, mock.GetCombatPedTarget(ped));
         }
+
+        [Fact]
+        public void GetNearbyVehicles_ReturnsVehiclesWithinRadius()
+        {
+            var bridge = new MockGameBridge();
+            int near = bridge.CreateVehicle("adder", new Vector3(0f, 0f, 0f));
+            int far = bridge.CreateVehicle("adder", new Vector3(500f, 0f, 0f));
+
+            var found = bridge.GetNearbyVehicles(new Vector3(0f, 0f, 0f), 80f);
+
+            Assert.Contains(near, found);
+            Assert.DoesNotContain(far, found);
+        }
+
+        [Fact]
+        public void CreateVehicle_IsPersistent_AmbientDefaultsNotPersistent()
+        {
+            var bridge = new MockGameBridge();
+            int mod = bridge.CreateVehicle("adder", new Vector3(0f, 0f, 0f));
+            int ambient = bridge.CreateAmbientVehicle("adder", new Vector3(1f, 0f, 0f));
+
+            Assert.True(bridge.IsVehiclePersistent(mod));
+            Assert.False(bridge.IsVehiclePersistent(ambient));
+        }
+
+        [Fact]
+        public void GetVehicleDriver_ReturnsDriver_OrMinusOneWhenEmpty()
+        {
+            var bridge = new MockGameBridge();
+            int veh = bridge.CreateAmbientVehicle("adder", new Vector3(0f, 0f, 0f));
+            Assert.Equal(-1, bridge.GetVehicleDriver(veh));
+
+            int driver = bridge.CreatePed("d", new Vector3(0f, 0f, 0f));
+            bridge.SetVehicleDriver(veh, driver);
+            Assert.Equal(driver, bridge.GetVehicleDriver(veh));
+        }
+
+        [Fact]
+        public void TaskPedLeaveVehicle_ClearsDriverSeat()
+        {
+            var bridge = new MockGameBridge();
+            int veh = bridge.CreateAmbientVehicle("adder", new Vector3(0f, 0f, 0f));
+            int driver = bridge.CreatePed("d", new Vector3(0f, 0f, 0f));
+            bridge.SetVehicleDriver(veh, driver);
+            bridge.PutPedInVehicle(driver, veh, -1);
+
+            bridge.TaskPedLeaveVehicle(driver);
+
+            Assert.False(bridge.IsPedInVehicle(driver));
+            Assert.Equal(-1, bridge.GetVehicleDriver(veh));
+        }
+
+        [Fact]
+        public void SetVehicleHandbrake_IsObservable()
+        {
+            var bridge = new MockGameBridge();
+            int veh = bridge.CreateAmbientVehicle("adder", new Vector3(0f, 0f, 0f));
+
+            bridge.SetVehicleHandbrake(veh, true);
+
+            Assert.True(bridge.GetVehicleHandbrakeForTest(veh));
+        }
     }
 }
