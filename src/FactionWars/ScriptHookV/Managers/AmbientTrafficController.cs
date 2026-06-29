@@ -73,6 +73,7 @@ namespace FactionWars.ScriptHookV.Managers
             }
 
             var drivers = _suppressor.SelectDriversToEvict(snapshots, _gameBridge.GetPlayerVehicle());
+            FileLogger.AI($"AmbientTraffic: scan at ({center.X:F0},{center.Y:F0}) found {handles.Length} vehicle(s), evicting {drivers.Count} driver(s)");
             foreach (var driver in drivers)
             {
                 _gameBridge.TaskPedLeaveVehicle(driver);
