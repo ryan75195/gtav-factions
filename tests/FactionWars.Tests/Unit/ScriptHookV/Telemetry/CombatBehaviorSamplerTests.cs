@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using FactionWars.Combat.Models;
 using FactionWars.Core.Interfaces;
 using FactionWars.Core.Models;
 using FactionWars.Core.Utils;
@@ -32,11 +33,24 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Telemetry
             public void Dispose() { }
         }
 
+        private sealed class FakeEngagementSource : ISquadEngagementStateSource
+        {
+            private readonly Dictionary<int, SquadEngagementState> _states;
+            public FakeEngagementSource(Dictionary<int, SquadEngagementState> states) => _states = states;
+            public bool TryGetEngagementState(int handle, out SquadEngagementState state)
+                => _states.TryGetValue(handle, out state);
+            public IReadOnlyList<EngagementTransition> DrainEngagementTransitions()
+                => Array.Empty<EngagementTransition>();
+        }
+
         private readonly MockGameBridge _bridge = new MockGameBridge();
         private readonly FakeSink _sink = new FakeSink();
 
         private CombatBehaviorSampler Build(int interval, params ITrackedCombatantSource[] sources)
-            => new CombatBehaviorSampler(_bridge, sources, _sink, interval);
+            => new CombatBehaviorSampler(_bridge, sources, _sink, sampleIntervalMs: interval);
+
+        private CombatBehaviorSampler BuildWithEngagement(int interval, ISquadEngagementStateSource? engagement, params ITrackedCombatantSource[] sources)
+            => new CombatBehaviorSampler(_bridge, sources, _sink, engagement, interval);
 
         private int LivePed(Vector3 pos) => _bridge.CreatePed("c", pos);
 
@@ -138,6 +152,40 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Telemetry
             _bridge.AdvanceGameTime(1000);
             var ex = Record.Exception(() => sampler.Update());
             Assert.Null(ex);
+        }
+
+        [Fact]
+        public void Update_WithEngagementSource_EnrichesRowWithLosAndPhase()
+        {
+            var ped = LivePed(new Vector3(0f, 0f, 0f));
+            var states = new Dictionary<int, SquadEngagementState>
+            {
+                [ped] = new SquadEngagementState(EngagePhase.Engage, true, 0)
+            };
+            var sampler = BuildWithEngagement(1000, new FakeEngagementSource(states),
+                new FakeSource(new TrackedCombatant(ped, CombatantKind.Follower, DefenderRole.Grunt)));
+            _bridge.AdvanceGameTime(1000);
+            sampler.Update();
+
+            var row = _sink.Rows.Find(r => r.Handle == ped);
+            Assert.NotNull(row);
+            Assert.Equal("Engage", row!.EnginePhase);
+            Assert.True(row.HasLineOfSight);
+            Assert.Equal(0, row.MsSinceLos);
+        }
+
+        [Fact]
+        public void Update_WithoutEngagementSource_LeavesEngagementFieldsDefault()
+        {
+            var ped = LivePed(new Vector3(0f, 0f, 0f));
+            var sampler = Build(1000, new FakeSource(new TrackedCombatant(ped, CombatantKind.Follower, DefenderRole.Grunt)));
+            _bridge.AdvanceGameTime(1000);
+            sampler.Update();
+
+            var row = _sink.Rows.Find(r => r.Handle == ped);
+            Assert.NotNull(row);
+            Assert.Equal(string.Empty, row!.EnginePhase);
+            Assert.Equal(-1, row.MsSinceLos);
         }
     }
 }

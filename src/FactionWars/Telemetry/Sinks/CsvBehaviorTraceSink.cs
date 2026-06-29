@@ -20,7 +20,7 @@ namespace FactionWars.Telemetry.Sinks
         private const int BufferCap = 20000;
         private const string FileName = "behavior_trace.csv";
         private static readonly string Header =
-            "session_id,timestamp_utc,sample_ms,handle,kind,role,weapon,is_shooting,in_combat,target_handle,dist_to_target,dist_to_player,pos_x,pos_y,pos_z,in_vehicle,is_following_player,health,combat_ability";
+            "session_id,timestamp_utc,sample_ms,handle,kind,role,weapon,is_shooting,in_combat,target_handle,dist_to_target,dist_to_player,pos_x,pos_y,pos_z,in_vehicle,is_following_player,health,combat_ability,has_los,engine_phase,ms_since_los";
 
         private readonly object _lock = new object();
         private readonly string _baseDir;
@@ -135,7 +135,10 @@ namespace FactionWars.Telemetry.Sinks
             B(r.InVehicle),
             B(r.IsFollowingPlayer),
             I(r.Health),
-            I(r.CombatAbility));
+            I(r.CombatAbility),
+            B(r.HasLineOfSight),
+            Esc(r.EnginePhase),
+            I(r.MsSinceLos));
 
         private static string Esc(string? v) => CsvFieldEscaper.Escape(v);
         private static string I(int v) => v.ToString(CultureInfo.InvariantCulture);

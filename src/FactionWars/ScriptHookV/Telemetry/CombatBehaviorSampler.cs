@@ -18,6 +18,7 @@ namespace FactionWars.ScriptHookV.Telemetry
         private readonly IGameBridge _gameBridge;
         private readonly IReadOnlyList<ITrackedCombatantSource> _sources;
         private readonly IBehaviorTraceSink _sink;
+        private readonly ISquadEngagementStateSource? _engagementState;
         private readonly int _sampleIntervalMs;
         private int _lastSampleMs;
 
@@ -25,11 +26,13 @@ namespace FactionWars.ScriptHookV.Telemetry
             IGameBridge gameBridge,
             IReadOnlyList<ITrackedCombatantSource> sources,
             IBehaviorTraceSink sink,
+            ISquadEngagementStateSource? engagementState = null,
             int sampleIntervalMs = 1000)
         {
             _gameBridge = gameBridge ?? throw new ArgumentNullException(nameof(gameBridge));
             _sources = sources ?? throw new ArgumentNullException(nameof(sources));
             _sink = sink ?? throw new ArgumentNullException(nameof(sink));
+            _engagementState = engagementState;
             _sampleIntervalMs = sampleIntervalMs;
             _lastSampleMs = _gameBridge.GetGameTime();
         }
@@ -93,7 +96,7 @@ namespace FactionWars.ScriptHookV.Telemetry
             int handle = self.Combatant.Handle;
             Vector3 pos = self.Position;
             LiveCombatant? nearest = NearestHostile(self, all);
-            return new BehaviorSampleRow
+            var row = new BehaviorSampleRow
             {
                 SampleMs = sampleMs,
                 Handle = handle,
@@ -113,6 +116,15 @@ namespace FactionWars.ScriptHookV.Telemetry
                 Health = _gameBridge.GetPedHealth(handle),
                 CombatAbility = _gameBridge.GetPedCombatAbilityValue(handle)
             };
+
+            if (_engagementState != null && _engagementState.TryGetEngagementState(handle, out var es))
+            {
+                row.HasLineOfSight = es.HasLineOfSight;
+                row.EnginePhase = es.Phase.ToString();
+                row.MsSinceLos = es.MsSinceLos;
+            }
+
+            return row;
         }
 
         private static LiveCombatant? NearestHostile(LiveCombatant self, List<LiveCombatant> all)
