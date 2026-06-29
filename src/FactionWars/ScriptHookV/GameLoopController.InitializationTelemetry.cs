@@ -77,8 +77,14 @@ namespace FactionWars.ScriptHookV
             if (_enemyDefenderManager != null) sources.Add(_enemyDefenderManager);
             if (_battleAttackerManager != null) sources.Add(_battleAttackerManager);
 
-            _behaviorSampler = new CombatBehaviorSampler(_gameBridge, sources, sink);
-            FileLogger.Info($"Behavior sampler initialized with {sources.Count} source(s); trace root {telemetryRoot}");
+            var engagementSink = new CsvEngagementEventSink(telemetryRoot);
+            _engagementEventSink = engagementSink;
+            _engagementEventRecorder = _squadStanceController != null
+                ? new EngagementEventRecorder(_squadStanceController, engagementSink)
+                : null;
+
+            _behaviorSampler = new CombatBehaviorSampler(_gameBridge, sources, sink, _squadStanceController);
+            FileLogger.Info($"Behavior sampler initialized with {sources.Count} source(s); trace root {telemetryRoot}; engagement events {(_engagementEventRecorder != null ? "on" : "off")}");
         }
 
         /// <summary>

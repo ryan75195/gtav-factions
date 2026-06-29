@@ -26,6 +26,9 @@ namespace FactionWars.ScriptHookV
             _behaviorSampler = null;
             _behaviorTraceSink?.Dispose();
             _behaviorTraceSink = null;
+            _engagementEventRecorder = null;
+            _engagementEventSink?.Dispose();
+            _engagementEventSink = null;
             if (_container.TryResolve<ITelemetrySink>(out var telemetrySink) && telemetrySink != null)
             {
                 telemetrySink.Dispose();
