@@ -251,7 +251,6 @@ namespace FactionWars.ScriptHookV.Managers
             if (playerInVehicle && playerVehicle >= 0 && boardPlayerVehicle)
             {
                 AssignFollowersToVehicle(aliveFollowerHandles, playerVehicle);
-                RestoreBoardedFollowerWeapons(followers);
                 OnFootBodyguardHandles = Array.Empty<int>();
                 SniperBodyguardHandles = Array.Empty<int>();
             }
