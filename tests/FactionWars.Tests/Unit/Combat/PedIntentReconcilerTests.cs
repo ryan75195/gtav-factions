@@ -22,6 +22,29 @@ namespace FactionWars.Tests.Unit.Combat
         }
 
         [Fact]
+        public void Submit_RegroupOnPlayer_BlocksPermanentEventsSoTheSprintIgnoresCombat()
+        {
+            // Escort must reach the player even through a firefight. Blocking non-temporary events
+            // stops the bodyguard breaking off its sprint to fight back at every shot.
+            var r = Build();
+            r.Submit(10, PedIntent.RegroupOnPlayer(7777, 4f));
+            _bridge.Verify(b => b.SetPedBlockPermanentEvents(10, true), Times.Once);
+            _bridge.Verify(
+                b => b.TaskFollowToOffsetFromEntity(10, 7777, It.IsAny<Vector3>(), It.IsAny<float>(), 4f, true),
+                Times.Once);
+        }
+
+        [Fact]
+        public void Submit_CombatTarget_UnblocksPermanentEventsSoItFightsAgain()
+        {
+            // Leaving escort for a combat stance must re-enable threat reactions; a ped that kept its
+            // escort event-block would stand passive under fire.
+            var r = Build();
+            r.Submit(10, PedIntent.CombatTarget(55));
+            _bridge.Verify(b => b.SetPedBlockPermanentEvents(10, false), Times.Once);
+        }
+
+        [Fact]
         public void Submit_IdenticalIntentTwice_AppliesOnce()
         {
             var r = Build();

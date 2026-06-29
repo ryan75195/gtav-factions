@@ -41,7 +41,10 @@ namespace FactionWars.ScriptHookV.Managers
 
         // Past this distance, running back is hopeless (a respawn/fast-travel left the bodyguard
         // far across the map), so the stranded ped is warped next to the player instead of sprinting.
-        private const float EscortTeleportDistance = 150f;
+        // Set well beyond any zone's span so in-zone stragglers always RUN to the player (the
+        // event-block on RegroupOnPlayer makes the sprint reliable even under fire); only genuinely
+        // out-of-zone, cross-map distances teleport.
+        private const float EscortTeleportDistance = 250f;
         private const float HoldRadiusPerBodyguard = 8f;
 
         // HoldArea holds a tight ring around the PLAYER, not the zone. Anchoring on the
