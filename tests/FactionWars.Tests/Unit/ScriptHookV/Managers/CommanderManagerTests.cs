@@ -649,5 +649,53 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             Assert.True(_gameBridge.IsPedWandering(commanderHandle));
             Assert.False(_gameBridge.IsPedCombatTargeting(commanderHandle));
         }
+
+        [Fact]
+        public void PlaceCommanderNearPlayer_NoCommanderYet_SpawnsAndPlacesNearPlayer()
+        {
+            SetupManager();
+            var zone = CreateFriendlyZone();
+            var playerPos = new Vector3(500f, 500f, 0f);
+
+            _manager.PlaceCommanderNearPlayer(zone, playerPos);
+
+            Assert.True(_manager.HasCommanderInZone(TestZoneId));
+            var commander = _gameBridge.GetSpawnedPeds()[0];
+            float dist = playerPos.DistanceTo(_gameBridge.GetPedPosition(commander));
+            Assert.True(dist <= 6f, $"commander should be next to the player, was {dist:F1}m away");
+        }
+
+        [Fact]
+        public void PlaceCommanderNearPlayer_ExistingCommander_MovesItNearPlayerWithoutRespawning()
+        {
+            SetupManager();
+            var zone = CreateFriendlyZone();
+            _manager.OnZoneEntered(zone); // spawns the commander at a random in-zone spot
+            var playerPos = new Vector3(500f, 500f, 0f);
+
+            _manager.PlaceCommanderNearPlayer(zone, playerPos);
+
+            var commander = _gameBridge.GetSpawnedPeds()[0];
+            float dist = playerPos.DistanceTo(_gameBridge.GetPedPosition(commander));
+            Assert.True(dist <= 6f, $"commander should be moved next to the player, was {dist:F1}m away");
+            // The existing commander was moved, not replaced.
+            _pedSpawningServiceMock.Verify(
+                p => p.SpawnPed(It.IsAny<string>(), It.IsAny<Vector3>(), It.IsAny<string>(), It.IsAny<string>()),
+                Times.Once);
+        }
+
+        [Fact]
+        public void PlaceCommanderNearPlayer_EnemyZone_DoesNothing()
+        {
+            SetupManager();
+            var zone = CreateEnemyZone();
+
+            _manager.PlaceCommanderNearPlayer(zone, new Vector3(500f, 500f, 0f));
+
+            Assert.False(_manager.HasCommanderInZone(TestZoneId));
+            _pedSpawningServiceMock.Verify(
+                p => p.SpawnPed(It.IsAny<string>(), It.IsAny<Vector3>(), It.IsAny<string>(), It.IsAny<string>()),
+                Times.Never);
+        }
     }
 }

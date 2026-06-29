@@ -130,6 +130,12 @@ namespace FactionWars.ScriptHookV
 
             if (result == OwnedTerritoryPlacementResult.AlreadyOwned || result == OwnedTerritoryPlacementResult.Moved)
             {
+                // First successful placement after a respawn: drop the player's commander beside them.
+                if (!_pendingOwnedTerritoryLoggedSuccess && _pendingOwnedTerritoryReason == "respawn")
+                {
+                    PlaceCommanderNearPlayerInCurrentZone(_pendingOwnedTerritoryFactionId);
+                }
+
                 _pendingOwnedTerritoryLoggedSuccess = true;
             }
 
@@ -148,6 +154,21 @@ namespace FactionWars.ScriptHookV
                 _pendingOwnedTerritoryFactionId = null;
                 _pendingOwnedTerritoryReason = null;
             }
+        }
+
+        // Resolves the player's owned zone from their current (post-placement) position and drops the
+        // commander next to them. Resolving from the live player position rather than
+        // TerritoryManager.CurrentZone avoids a one-tick lag when the player was just teleported in.
+        private void PlaceCommanderNearPlayerInCurrentZone(string? factionId)
+        {
+            if (string.IsNullOrEmpty(factionId) || _zoneService == null || _commanderManager == null) return;
+
+            var playerPos = _gameBridge.GetPlayerPosition();
+            var zone = _zoneService.GetZoneAtPosition(playerPos);
+            if (zone == null || zone.OwnerFactionId != factionId) return;
+
+            _commanderManager.PlaceCommanderNearPlayer(zone, playerPos);
+            FileLogger.Info($"PlaceCommanderNearPlayerInCurrentZone: commander placed near player in zone {zone.Id}");
         }
 
         private OwnedTerritoryPlacementResult MovePlayerToOwnedTerritory(string? factionId, string reason, bool logAlreadyOwned)
