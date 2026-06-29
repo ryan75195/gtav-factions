@@ -52,6 +52,7 @@ namespace FactionWars.ScriptHookV
         private EconomyManager? _economyManager;
         private FollowerManager? _followerManager;
         private SquadStanceController? _squadStanceController;
+        private SquadRadialMenuRenderer? _squadRadialMenuRenderer;
         private IEnemyTargetCollector? _enemyTargetCollector;
         private IAreaAnchorResolver? _areaAnchorResolver;
         private IFollowerService? _followerService;

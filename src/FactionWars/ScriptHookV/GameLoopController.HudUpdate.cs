@@ -8,6 +8,9 @@ namespace FactionWars.ScriptHookV
         {
             var playerFactionId = CurrentPlayerFactionId;
 
+            // Squad radial: held on the existing squad key, drawn over the HUD each frame.
+            _squadRadialMenuRenderer?.Update();
+
             UpdateTerritoryIndicator(playerFactionId);
 
             // Draw battle HUD showing active AI battles
