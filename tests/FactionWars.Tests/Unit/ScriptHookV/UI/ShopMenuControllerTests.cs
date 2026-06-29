@@ -54,9 +54,9 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
 
             // Assert
             Assert.NotNull(_lastShownMenu);
-            var policeSuv = _lastShownMenu!.Items.FirstOrDefault(i => i.Id == "buy_police_suv");
-            Assert.NotNull(policeSuv);
-            Assert.Contains("Police SUV", policeSuv!.Text);
+            var fbiSuv = _lastShownMenu!.Items.FirstOrDefault(i => i.Id == "buy_police_suv");
+            Assert.NotNull(fbiSuv);
+            Assert.Contains("FBI SUV", fbiSuv!.Text);
         }
 
         [Fact]
@@ -156,6 +156,41 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
 
             var insurgent = _lastShownMenu.Items.FirstOrDefault(i => i.Id == "buy_insurgent");
             Assert.False(insurgent!.IsEnabled); // Cannot afford
+        }
+
+        [Fact]
+        public void Show_IncludesCargobobTransportOption()
+        {
+            // Arrange
+            _gameBridge.PlayerMoney = 100000;
+            var controller = new ShopMenuController(_menuProviderMock.Object, _gameBridge);
+
+            // Act
+            controller.Show();
+
+            // Assert
+            Assert.NotNull(_lastShownMenu);
+            var cargobob = _lastShownMenu!.Items.FirstOrDefault(i => i.Id == "buy_cargobob");
+            Assert.NotNull(cargobob);
+            Assert.Contains("Cargobob", cargobob!.Text);
+            Assert.Contains("$80,000", cargobob.Text);
+        }
+
+        [Fact]
+        public void SelectingCargobob_DeductsMoneyAndSpawnsVehicle()
+        {
+            // Arrange
+            _gameBridge.PlayerMoney = 100000;
+            var controller = new ShopMenuController(_menuProviderMock.Object, _gameBridge);
+            controller.Show();
+
+            // Act
+            _menuProviderMock.Raise(m => m.ItemSelected += null,
+                new MenuItemSelectedEventArgs(ShopMenuController.ShopMenuId, "buy_cargobob"));
+
+            // Assert
+            Assert.Equal(20000, _gameBridge.PlayerMoney); // 100000 - 80000
+            Assert.True(_gameBridge.GetSpawnedVehicleCount() > 0);
         }
 
         [Fact]
