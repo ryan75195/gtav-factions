@@ -81,6 +81,38 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Combat
         }
 
         [Fact]
+        public void UpdateCloseDefense_AfterSniperLeavesActiveSet_ReassertsRifle()
+        {
+            // Repro: a follower sniper rides in the player's vehicle (drops out of the on-foot set,
+            // the engine holsters the rifle), then returns on foot. The weapon cache must not stay
+            // stale, or the rifle is never forced back into the sniper's hand after exiting.
+            int ped = _bridge.CreatePed("s_m_y_blackops_03", new Vector3(0f, 0f, 0f));
+            var farThreats = new List<Vector3> { new Vector3(40f, 0f, 0f) };
+
+            _service.UpdateCloseDefense(ped, farThreats);   // on foot: rifle forced (count 1)
+            Assert.Equal(1, _bridge.GetActiveWeaponSetCount(ped));
+
+            _service.RetainOnly(new List<int>());           // sniper boards -> drops out of the active set
+
+            _service.UpdateCloseDefense(ped, farThreats);   // back on foot: rifle must be re-forced
+            Assert.Equal(2, _bridge.GetActiveWeaponSetCount(ped));
+        }
+
+        [Fact]
+        public void RetainOnly_KeepsStillActiveSniper_DoesNotReassert()
+        {
+            // Pruning must not churn snipers that are continuously on foot — the de-dup still holds.
+            int ped = _bridge.CreatePed("s_m_y_blackops_03", new Vector3(0f, 0f, 0f));
+            var farThreats = new List<Vector3> { new Vector3(40f, 0f, 0f) };
+
+            _service.UpdateCloseDefense(ped, farThreats);   // count 1
+            _service.RetainOnly(new List<int> { ped });     // still active
+            _service.UpdateCloseDefense(ped, farThreats);   // de-dup holds
+
+            Assert.Equal(1, _bridge.GetActiveWeaponSetCount(ped));
+        }
+
+        [Fact]
         public void UpdateCloseDefense_NullThreats_SetsRifleAndDoesNotThrow()
         {
             int ped = _bridge.CreatePed("s_m_y_blackops_03", new Vector3(0f, 0f, 0f));

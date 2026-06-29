@@ -128,6 +128,10 @@ namespace FactionWars.ScriptHookV
             if (_followerManager == null || _sharedSniperDeployment == null) return;
 
             var snipers = _followerManager.SniperBodyguardHandles;
+            // Forget weapon state for snipers no longer on foot (boarded a vehicle, which holsters the
+            // rifle, or died) so a returning sniper re-asserts its rifle instead of being skipped by
+            // the de-dup with a stale, holstered weapon.
+            _sharedSniperDeployment.RetainOnly(snipers);
             if (snipers.Count == 0) return;
 
             var hostilePositions = new List<Vector3>();
