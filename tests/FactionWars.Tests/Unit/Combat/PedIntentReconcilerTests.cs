@@ -22,16 +22,40 @@ namespace FactionWars.Tests.Unit.Combat
         }
 
         [Fact]
-        public void Submit_RegroupOnPlayer_BlocksPermanentEventsSoTheSprintIgnoresCombat()
+        public void Submit_RegroupOnPlayer_Blocking_BlocksPermanentEventsSoTheSprintIgnoresCombat()
         {
-            // Escort must reach the player even through a firefight. Blocking non-temporary events
-            // stops the bodyguard breaking off its sprint to fight back at every shot.
+            // While running back through a firefight, blocking non-temporary events stops the
+            // bodyguard breaking off its sprint to fight back at every shot.
             var r = Build();
-            r.Submit(10, PedIntent.RegroupOnPlayer(7777, 4f));
+            r.Submit(10, PedIntent.RegroupOnPlayer(7777, 4f, blockEvents: true));
             _bridge.Verify(b => b.SetPedBlockPermanentEvents(10, true), Times.Once);
             _bridge.Verify(
                 b => b.TaskFollowToOffsetFromEntity(10, 7777, It.IsAny<Vector3>(), It.IsAny<float>(), 4f, true),
                 Times.Once);
+        }
+
+        [Fact]
+        public void Submit_RegroupOnPlayer_NotBlocking_UnblocksSoItDefendsOnceInProximity()
+        {
+            // Once gathered on the player, the bodyguard must react to threats again so it defends.
+            var r = Build();
+            r.Submit(10, PedIntent.RegroupOnPlayer(7777, 4f, blockEvents: false));
+            _bridge.Verify(b => b.SetPedBlockPermanentEvents(10, false), Times.Once);
+            _bridge.Verify(
+                b => b.TaskFollowToOffsetFromEntity(10, 7777, It.IsAny<Vector3>(), It.IsAny<float>(), 4f, true),
+                Times.Once);
+        }
+
+        [Fact]
+        public void Submit_RegroupOnPlayer_BlockFlagFlip_ReappliesAcrossTheProximityBoundary()
+        {
+            // Crossing from "running back" (block) to "arrived" (unblock) must re-task, not dedup
+            // away — that flip is how the bodyguard switches from ignoring fire to defending.
+            var r = Build();
+            r.Submit(10, PedIntent.RegroupOnPlayer(7777, 4f, blockEvents: true));
+            r.Submit(10, PedIntent.RegroupOnPlayer(7777, 4f, blockEvents: false));
+            _bridge.Verify(b => b.SetPedBlockPermanentEvents(10, true), Times.Once);
+            _bridge.Verify(b => b.SetPedBlockPermanentEvents(10, false), Times.Once);
         }
 
         [Fact]

@@ -314,6 +314,37 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         }
 
         [Fact]
+        public void Update_EscortStance_BodyguardRunningBack_BlocksEventsSoItIgnoresFire()
+        {
+            // Far from the player (running back), the bodyguard ignores threats so the sprint isn't
+            // interrupted by every gunshot on the way.
+            _controller = Build();
+            _bridge.PlayerPosition = new Vector3(0f, 0f, 0f);
+            _bridge.PlayerPedHandle = 7777;
+            int bg = _bridge.CreatePed("bg", new Vector3(50f, 0f, 0f)); // far: still running back
+            var party = new List<int> { bg };
+
+            _controller.Update(Anchor, 50f, party, new List<EnemyTarget>(), NoRoles);
+
+            Assert.True(_bridge.GetPedBlockPermanentEventsForTest(bg));
+        }
+
+        [Fact]
+        public void Update_EscortStance_BodyguardInProximity_UnblocksSoItDefends()
+        {
+            // Once gathered on the player, the bodyguard reacts to threats again and defends.
+            _controller = Build();
+            _bridge.PlayerPosition = new Vector3(0f, 0f, 0f);
+            _bridge.PlayerPedHandle = 7777;
+            int bg = _bridge.CreatePed("bg", new Vector3(3f, 0f, 0f)); // arrived: within defend radius
+            var party = new List<int> { bg };
+
+            _controller.Update(Anchor, 50f, party, new List<EnemyTarget>(), NoRoles);
+
+            Assert.False(_bridge.GetPedBlockPermanentEventsForTest(bg));
+        }
+
+        [Fact]
         public void Update_EscortStance_BodyguardAtZoneRange_RunsBackInsteadOfTeleport()
         {
             // "Run to me regardless of range in the zone": an in-zone straggler (200m) sprints back

@@ -75,7 +75,7 @@ namespace FactionWars.Tests.Unit.Combat
             int follower = bridge.CreatePed("f", new Vector3(50f, 0f, 0f));
             int player = 7777;
 
-            reconciler.Submit(follower, PedIntent.RegroupOnPlayer(player, 25f));
+            reconciler.Submit(follower, PedIntent.RegroupOnPlayer(player, 25f, blockEvents: true));
 
             Assert.True(bridge.IsPedFollowingEntity(follower));
             Assert.Equal(player, bridge.GetFollowEntityTarget(follower));
@@ -92,9 +92,9 @@ namespace FactionWars.Tests.Unit.Combat
             int follower = bridge.CreatePed("f", new Vector3(50f, 0f, 0f));
             int player = 7777;
 
-            reconciler.Submit(follower, PedIntent.RegroupOnPlayer(player, 25f));
+            reconciler.Submit(follower, PedIntent.RegroupOnPlayer(player, 25f, blockEvents: true));
             int callsAfterFirst = bridge.GetFollowEntityCallCount(follower);
-            reconciler.Submit(follower, PedIntent.RegroupOnPlayer(player, 25f)); // identical -> deduped
+            reconciler.Submit(follower, PedIntent.RegroupOnPlayer(player, 25f, blockEvents: true)); // identical -> deduped
 
             Assert.Equal(callsAfterFirst, bridge.GetFollowEntityCallCount(follower));
         }

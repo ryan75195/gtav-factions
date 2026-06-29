@@ -53,14 +53,17 @@ namespace FactionWars.ScriptHookV.Managers
                 // Native group-follow is deliberately not used: its leash strands bodyguards instead
                 // of bringing them in. The follow task is persistent and the reconciler dedups it, so
                 // it is issued once and only re-asserted periodically (never thrashed each tick).
-                RunToPlayer(pedHandle, playerHandle, now);
+                // Block threat reactions only while running back (beyond the defend radius) so the
+                // sprint isn't stalled by fire; once gathered, unblock so the bodyguard defends.
+                bool runningBack = dist > EscortDefendRadius;
+                RunToPlayer(pedHandle, playerHandle, now, blockEvents: runningBack);
             }
         }
 
         // Issues the persistent sprint-to-player task, re-asserting it every FollowerReassertIntervalMs
         // so a bodyguard that drifted (e.g. pulled into a firefight) is re-gathered, without per-tick
         // thrash: within the interval the resubmit is a no-op via the reconciler's intent dedup.
-        private void RunToPlayer(int pedHandle, int playerHandle, int now)
+        private void RunToPlayer(int pedHandle, int playerHandle, int now, bool blockEvents)
         {
             if (!_lastFollowReassertMs.TryGetValue(pedHandle, out var last) || now - last >= FollowerReassertIntervalMs)
             {
@@ -68,7 +71,7 @@ namespace FactionWars.ScriptHookV.Managers
                 _lastFollowReassertMs[pedHandle] = now;
             }
 
-            _reconciler.Submit(pedHandle, PedIntent.RegroupOnPlayer(playerHandle, EscortFollowStopRadius));
+            _reconciler.Submit(pedHandle, PedIntent.RegroupOnPlayer(playerHandle, EscortFollowStopRadius, blockEvents));
         }
 
         // Warps a hopelessly-distant bodyguard next to the player, then runs it in. Throttled so a
@@ -78,7 +81,8 @@ namespace FactionWars.ScriptHookV.Managers
             if (_lastFollowReassertMs.TryGetValue(pedHandle, out var last) && now - last < FollowerReassertIntervalMs) return;
             _gameBridge.SetPedPosition(pedHandle, TeleportPointNear(playerPos));
             _reconciler.Forget(pedHandle);
-            _reconciler.Submit(pedHandle, PedIntent.RegroupOnPlayer(playerHandle, EscortFollowStopRadius));
+            // Warped in adjacent to the player: unblock so it defends immediately.
+            _reconciler.Submit(pedHandle, PedIntent.RegroupOnPlayer(playerHandle, EscortFollowStopRadius, blockEvents: false));
             _lastFollowReassertMs[pedHandle] = now;
             FileLogger.AI($"SquadStance Escort: ped {pedHandle} teleported back dist={dist:F0}");
         }

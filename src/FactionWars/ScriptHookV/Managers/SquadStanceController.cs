@@ -39,6 +39,12 @@ namespace FactionWars.ScriptHookV.Managers
         // actually gather on the player rather than milling a formation-width away.
         private const float EscortFollowStopRadius = 4f;
 
+        // Within this distance of the player a bodyguard is "arrived": it reacts to threats and
+        // defends. Beyond it the bodyguard is running back and ignores fire so the sprint isn't
+        // stalled. Sits comfortably outside EscortFollowStopRadius so an arrived ped doesn't
+        // oscillate between blocking and defending while settling.
+        private const float EscortDefendRadius = 15f;
+
         // Past this distance, running back is hopeless (a respawn/fast-travel left the bodyguard
         // far across the map), so the stranded ped is warped next to the player instead of sprinting.
         // Set well beyond any zone's span so in-zone stragglers always RUN to the player (the

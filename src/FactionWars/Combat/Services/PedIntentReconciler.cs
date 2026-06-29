@@ -83,12 +83,13 @@ namespace FactionWars.Combat.Services
 
         // Group-follow can't drag a ped back from beyond its range; sprint to the moving player with
         // a persistent follow task instead (mirrors the rally controller). Detach from the group
-        // first so group-follow doesn't fight it, and block non-temporary events so gunfire on the
-        // way back doesn't pull the bodyguard into a firefight before it reaches the player.
+        // first so group-follow doesn't fight it. While running back (BlockEvents) gunfire is ignored
+        // so the bodyguard doesn't stall in a firefight before reaching the player; once gathered the
+        // caller clears the flag so it reacts to and defends against nearby threats again.
         private void ApplyRegroupOnPlayer(int pedHandle, PedIntent intent)
         {
             _gameBridge.RemovePedFromFollowerGroup(pedHandle);
-            _gameBridge.SetPedBlockPermanentEvents(pedHandle, true);
+            _gameBridge.SetPedBlockPermanentEvents(pedHandle, intent.BlockEvents);
             _gameBridge.TaskFollowToOffsetFromEntity(
                 pedHandle, intent.Discriminator, new Vector3(0f, 0f, 0f),
                 moveBlendRatio: 3.0f, stoppingRadius: intent.Radius, persistFollowing: true);
