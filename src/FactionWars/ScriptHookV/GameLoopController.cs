@@ -65,6 +65,7 @@ namespace FactionWars.ScriptHookV
         private ISniperDeploymentService? _sharedSniperDeployment;
         private BattleAttackerManager? _battleAttackerManager;
         private PoliceSuppressionController? _policeSuppressionController;
+        private AmbientTrafficController? _ambientTrafficController;
         private CommanderManager? _commanderManager;
         private IAIController? _aiController;
         private IGameStateManager? _gameStateManager;

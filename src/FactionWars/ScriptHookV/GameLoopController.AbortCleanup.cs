@@ -84,6 +84,7 @@ namespace FactionWars.ScriptHookV
             _squadRadialMenuRenderer = null;
             _policeSuppressionController?.Dispose();
             _policeSuppressionController = null;
+            _ambientTrafficController = null; // no native state to restore (evicted drivers stay gone)
 
             // Clean up follower manager
             _followerManager = null;

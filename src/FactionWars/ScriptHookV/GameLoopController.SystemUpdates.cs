@@ -22,6 +22,7 @@ namespace FactionWars.ScriptHookV
             _tickProfiler.Measure("ai", () => _aiController?.Update(deltaTime));
             _tickProfiler.Measure("zoneBattle", () => _zoneBattleManager?.Tick(deltaTime));
             _tickProfiler.Measure("police", () => _policeSuppressionController?.Update());
+            _tickProfiler.Measure("ambientTraffic", () => _ambientTrafficController?.Update());
             _tickProfiler.Measure("victory", () => _victoryManager?.Update(deltaTime));
 
             // Only Escort boards the player's vehicle; HoldArea/S&D keep the squad on the ground.
