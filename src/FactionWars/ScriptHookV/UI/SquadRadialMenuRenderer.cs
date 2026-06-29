@@ -40,6 +40,17 @@ namespace FactionWars.ScriptHookV.UI
         private float _mouseX;
         private float _mouseY;
 
+        // Embedded wheel art, extracted to disk on first draw. Null until extracted; if extraction
+        // fails we fall back to the rectangular slabs so the wheel is never invisible.
+        private const string RingResource = "FactionWars.Resources.wheel_ring.png";
+        private const string HighlightResource = "FactionWars.Resources.wheel_highlight.png";
+        private const int WheelBaseW = 1920;   // NativeUI.Sprite.DrawTexture uses a 1080-height base.
+        private const int WheelBaseH = 1080;
+        private const int WheelSize = 480;      // square wheel, centred on screen
+        private string? _ringTexturePath;
+        private string? _highlightTexturePath;
+        private bool _textureLoadFailed;
+
         public SquadRadialMenuRenderer(
             IGameBridge gameBridge,
             Func<SquadStance> currentStance,
@@ -140,8 +151,67 @@ namespace FactionWars.ScriptHookV.UI
             // Darker full-screen backdrop so the wheel reads clearly against the world.
             DrawRect(0.5f, 0.5f, 1f, 1f, Color.FromArgb(150, 0, 0, 0));
 
-            const float radiusX = 0.12f; // ~radiusY * 9/16 so the ring looks circular on 16:9.
-            const float radiusY = 0.21f;
+            if (!TryDrawWheelTextures())
+            {
+                DrawFallbackSlabs();
+            }
+
+            DrawLabelsAndCenter();
+        }
+
+        // Draws the circular ring plus a highlight wedge rotated onto the selected slice, using the
+        // embedded PNGs. Returns false (so the caller draws the rectangular fallback) if the textures
+        // cannot be extracted — a wrong native call must never leave the wheel invisible.
+        private bool TryDrawWheelTextures()
+        {
+            if (_textureLoadFailed) return false;
+
+            if (_ringTexturePath == null)
+            {
+                try
+                {
+                    var asm = typeof(SquadRadialMenuRenderer).Assembly;
+                    _ringTexturePath = NativeUI.Sprite.WriteFileFromResources(asm, RingResource);
+                    _highlightTexturePath = NativeUI.Sprite.WriteFileFromResources(asm, HighlightResource);
+                }
+                catch (Exception ex)
+                {
+                    _textureLoadFailed = true;
+                    FileLogger.Error("SquadRadial: wheel texture load failed; using fallback slabs", ex);
+                    return false;
+                }
+            }
+
+            var pos = new Point((WheelBaseW - WheelSize) / 2, (WheelBaseH - WheelSize) / 2);
+            var size = new Size(WheelSize, WheelSize);
+            float rotation = _menu.SelectedIndex * (360f / _menu.Segments.Count);
+
+            NativeUI.Sprite.DrawTexture(_ringTexturePath, pos, size, 0f, Color.FromArgb(235, 255, 255, 255));
+            NativeUI.Sprite.DrawTexture(_highlightTexturePath, pos, size, rotation, Color.FromArgb(255, 255, 255, 255));
+            return true;
+        }
+
+        // Original rectangular wheel — only used if the textures fail to load in-game.
+        private void DrawFallbackSlabs()
+        {
+            var segments = _menu.Segments;
+            for (int i = 0; i < segments.Count; i++)
+            {
+                double angle = i * (2 * Math.PI / segments.Count);
+                float px = 0.5f + (0.12f * (float)Math.Sin(angle));
+                float py = 0.5f - (0.21f * (float)Math.Cos(angle));
+                bool selected = i == _menu.SelectedIndex;
+                DrawRect(px, py, 0.165f, 0.072f, selected
+                    ? Color.FromArgb(235, 255, 176, 32)
+                    : Color.FromArgb(185, 20, 20, 20));
+            }
+        }
+
+        // Segment labels around the ring plus the center readout (title / pointed stance / hint).
+        private void DrawLabelsAndCenter()
+        {
+            const float radiusY = 0.155f;          // on the ring band
+            const float radiusX = radiusY * 0.5625f; // * 9/16 so labels sit on a true circle
             var segments = _menu.Segments;
             for (int i = 0; i < segments.Count; i++)
             {
@@ -149,20 +219,14 @@ namespace FactionWars.ScriptHookV.UI
                 float px = 0.5f + (radiusX * (float)Math.Sin(angle));
                 float py = 0.5f - (radiusY * (float)Math.Cos(angle));
                 bool selected = i == _menu.SelectedIndex;
-
-                // Selected segment: bright amber, dark bold label. Unselected: dim slab, light label.
-                DrawRect(px, py, 0.165f, 0.072f, selected
-                    ? Color.FromArgb(235, 255, 176, 32)
-                    : Color.FromArgb(185, 20, 20, 20));
-                DrawCenteredText(Label(segments[i]), px, py - 0.026f, selected ? 0.62f : 0.46f,
+                DrawCenteredText(Label(segments[i]), px, py - 0.018f, selected ? 0.5f : 0.42f,
                     selected ? Color.Black : Color.FromArgb(255, 235, 235, 235));
             }
 
-            // Center readout: title, the stance about to be applied (big), and a release hint.
             var pointed = segments[_menu.SelectedIndex];
-            DrawCenteredText("BODYGUARDS", 0.5f, 0.5f - 0.048f, 0.4f, Color.FromArgb(255, 170, 195, 255));
-            DrawCenteredText(Label(pointed), 0.5f, 0.5f - 0.014f, 0.62f, Color.FromArgb(255, 255, 176, 32));
-            DrawCenteredText("release to apply", 0.5f, 0.5f + 0.03f, 0.32f, Color.FromArgb(205, 225, 225, 225));
+            DrawCenteredText("BODYGUARDS", 0.5f, 0.5f - 0.040f, 0.34f, Color.FromArgb(255, 170, 195, 255));
+            DrawCenteredText(Label(pointed), 0.5f, 0.5f - 0.010f, 0.52f, Color.FromArgb(255, 255, 176, 32));
+            DrawCenteredText("release to apply", 0.5f, 0.5f + 0.028f, 0.30f, Color.FromArgb(205, 225, 225, 225));
         }
 
         private static void DrawRect(float x, float y, float width, float height, Color color)
