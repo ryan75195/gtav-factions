@@ -5,18 +5,19 @@ namespace FactionWars.Combat.Models
 {
     /// <summary>
     /// Describes what a single ped should be doing this tick. Equality is over
-    /// (<see cref="Kind"/>, <see cref="Discriminator"/>) only — position/radius ride along for
-    /// application but do not, by themselves, force a re-task (mirrors the proven SquadStance
-    /// discriminator dedup). The reconciler uses this equality to skip unchanged intents.
+    /// (<see cref="Kind"/>, <see cref="Discriminator"/>, <see cref="BlockEvents"/>) — position/radius
+    /// ride along for application but do not, by themselves, force a re-task (mirrors the proven
+    /// SquadStance discriminator dedup). The reconciler uses this equality to skip unchanged intents.
     /// </summary>
     public readonly struct PedIntent : IEquatable<PedIntent>
     {
-        private PedIntent(PedIntentKind kind, int discriminator, Vector3 position, float radius)
+        private PedIntent(PedIntentKind kind, int discriminator, Vector3 position, float radius, bool blockEvents = false)
         {
             Kind = kind;
             Discriminator = discriminator;
             Position = position;
             Radius = radius;
+            BlockEvents = blockEvents;
         }
 
         /// <summary>The kind of action.</summary>
@@ -30,6 +31,12 @@ namespace FactionWars.Combat.Models
 
         /// <summary>Radius for area intents (unused otherwise).</summary>
         public float Radius { get; }
+
+        /// <summary>Whether the ped should ignore non-temporary world events (gunfire, spotting an
+        /// enemy) while this intent is applied. Used by <see cref="RegroupOnPlayer"/> to ignore fire
+        /// while sprinting back, then react again once gathered. Part of equality so the reconciler
+        /// re-tasks when the flag flips.</summary>
+        public bool BlockEvents { get; }
 
         /// <summary>Do nothing this tick.</summary>
         public static PedIntent Idle() => new PedIntent(PedIntentKind.Idle, 0, default, 0f);
@@ -53,8 +60,8 @@ namespace FactionWars.Combat.Models
         /// <summary>Sprint back to the player and stay glued, recovering a bodyguard stranded
         /// beyond group-follow range. Tracks the moving player (TASK_FOLLOW_TO_OFFSET_FROM_ENTITY,
         /// persistent). <paramref name="stoppingRadius"/> is the idle radius on arrival.</summary>
-        public static PedIntent RegroupOnPlayer(int playerHandle, float stoppingRadius)
-            => new PedIntent(PedIntentKind.RegroupOnPlayer, playerHandle, default, stoppingRadius);
+        public static PedIntent RegroupOnPlayer(int playerHandle, float stoppingRadius, bool blockEvents)
+            => new PedIntent(PedIntentKind.RegroupOnPlayer, playerHandle, default, stoppingRadius, blockEvents);
 
         /// <summary>Seek and fight any hated targets within radius of a center.</summary>
         public static PedIntent SeekHatedTargets(Vector3 center, float radius)
@@ -72,13 +79,14 @@ namespace FactionWars.Combat.Models
         public static PedIntent LeaveVehicle() => new PedIntent(PedIntentKind.LeaveVehicle, 0, default, 0f);
 
         /// <inheritdoc />
-        public bool Equals(PedIntent other) => Kind == other.Kind && Discriminator == other.Discriminator;
+        public bool Equals(PedIntent other)
+            => Kind == other.Kind && Discriminator == other.Discriminator && BlockEvents == other.BlockEvents;
 
         /// <inheritdoc />
         public override bool Equals(object? obj) => obj is PedIntent other && Equals(other);
 
         /// <inheritdoc />
-        public override int GetHashCode() => ((int)Kind * 397) ^ Discriminator;
+        public override int GetHashCode() => (((int)Kind * 397) ^ Discriminator) * 397 ^ (BlockEvents ? 1 : 0);
 
         public static bool operator ==(PedIntent left, PedIntent right) => left.Equals(right);
 
