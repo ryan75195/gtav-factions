@@ -157,6 +157,33 @@ namespace FactionWars.Telemetry.Services
             public float Z { get; }
         }
 
+        private sealed class PlayerDeathDetails
+        {
+            public PlayerDeathDetails(float x, float y, float z, string? killerWeapon, int killerHandle)
+            {
+                X = x;
+                Y = y;
+                Z = z;
+                KillerWeapon = killerWeapon;
+                KillerHandle = killerHandle;
+            }
+
+            [Newtonsoft.Json.JsonProperty("x")]
+            public float X { get; }
+
+            [Newtonsoft.Json.JsonProperty("y")]
+            public float Y { get; }
+
+            [Newtonsoft.Json.JsonProperty("z")]
+            public float Z { get; }
+
+            [Newtonsoft.Json.JsonProperty("killer_weapon")]
+            public string? KillerWeapon { get; }
+
+            [Newtonsoft.Json.JsonProperty("killer_handle")]
+            public int KillerHandle { get; }
+        }
+
         private sealed class SaveMatchStartDetails
         {
             public SaveMatchStartDetails(string save)

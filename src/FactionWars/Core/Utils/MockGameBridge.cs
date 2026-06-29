@@ -325,6 +325,14 @@ namespace FactionWars.Core.Utils
 
         public bool IsPlayerDead() => IsPlayerDeadValue;
 
+        private PlayerDeathCause _playerDeathCause = new PlayerDeathCause(string.Empty, -1);
+
+        /// <summary>Test hook: sets what GetPlayerDeathInfo reports as the player's cause of death.</summary>
+        public void SetPlayerDeathInfo(string weaponName, int killerHandle)
+            => _playerDeathCause = new PlayerDeathCause(weaponName, killerHandle);
+
+        public PlayerDeathCause GetPlayerDeathInfo() => _playerDeathCause;
+
         public bool CanControlCharacter() => CanControlCharacterValue;
 
         public bool IsGamePaused() => IsGamePausedValue;

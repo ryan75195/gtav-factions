@@ -38,6 +38,7 @@ namespace FactionWars.Telemetry.Services
         private readonly Func<bool>? _isPlayerDead;
         private readonly Func<string?> _getCurrentZoneId;
         private readonly Func<Vector3>? _getPlayerPosition;
+        private readonly Func<PlayerDeathCause>? _getPlayerDeathCause;
         private readonly IZoneBattleManager? _zoneBattleManager;
         private readonly List<Action> _unsubscribers = [];
         private float _secondsSinceLastSnapshot;
@@ -85,6 +86,7 @@ namespace FactionWars.Telemetry.Services
             _isPlayerDead = opts.IsPlayerDead;
             _getCurrentZoneId = opts.GetCurrentZoneId ?? (() => null);
             _getPlayerPosition = opts.GetPlayerPosition;
+            _getPlayerDeathCause = opts.GetPlayerDeathCause;
             _zoneBattleManager = opts.ZoneBattleManager;
             if (_isPlayerDead != null)
             {
@@ -221,7 +223,7 @@ namespace FactionWars.Telemetry.Services
                     _getCurrentZoneId(),
                     targetFaction: null,
                     targetTier: null,
-                    details: BuildPlayerPositionDetails()));
+                    details: isDead ? BuildPlayerDeathDetails() : BuildPlayerPositionDetails()));
 
                 if (isDead)
                 {

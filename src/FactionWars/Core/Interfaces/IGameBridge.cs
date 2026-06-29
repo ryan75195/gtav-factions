@@ -231,6 +231,13 @@ namespace FactionWars.Core.Interfaces
         bool IsPlayerDead();
 
         /// <summary>
+        /// Reads what just killed the player (killing weapon name + killer ped handle) from GTA's
+        /// death natives. Call at the alive-to-dead transition while the dead body is still the
+        /// player ped. Returns an empty weapon / -1 handle when the cause is unknown.
+        /// </summary>
+        PlayerDeathCause GetPlayerDeathInfo();
+
+        /// <summary>
         /// Checks whether the game has returned control of the player character.
         /// This stays false during switch animations, cutscenes, and some loading
         /// transitions, so it is a practical gate for safe teleporting.
