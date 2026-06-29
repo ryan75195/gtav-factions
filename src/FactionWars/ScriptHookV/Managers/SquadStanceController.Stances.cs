@@ -163,11 +163,10 @@ namespace FactionWars.ScriptHookV.Managers
             bool los = _gameBridge.HasClearLineOfSight(pedHandle, targetHandle);
             var role = _rolesByHandle.TryGetValue(pedHandle, out var r) ? r : DefenderRole.Grunt;
             var phase = _enginePhase.TryGetValue(pedHandle, out var p) ? p : EngagePhase.Advance;
-            int misses = _losMisses.TryGetValue(pedHandle, out var m) ? m : 0;
+            int msSinceLos = TrackLineOfSight(pedHandle, los);
 
-            var decision = _engagementResolver.Resolve(dist, los, role, phase, misses);
+            var decision = _engagementResolver.Resolve(dist, los, role, phase, msSinceLos);
             _enginePhase[pedHandle] = decision.Phase;
-            _losMisses[pedHandle] = decision.ConsecutiveLosMisses;
 
             if (decision.Phase == EngagePhase.Engage)
             {
@@ -179,10 +178,25 @@ namespace FactionWars.ScriptHookV.Managers
             else
             {
                 if (AlreadyApplied(pedHandle, SquadStance.SearchAndDestroy, BodyguardOrderKind.AdvanceOnTarget, targetHandle)) return;
-                _reconciler.Submit(pedHandle, PedIntent.AdvanceOnTarget(targetHandle, decision.EngageRange));
+                _reconciler.Submit(pedHandle, PedIntent.AdvanceOnTarget(targetHandle, decision.AdvanceStopRange));
                 Remember(pedHandle, SquadStance.SearchAndDestroy, BodyguardOrderKind.AdvanceOnTarget, targetHandle);
-                FileLogger.AI($"SquadStance S&D: ped {pedHandle} advance {targetHandle} dist={dist:F0} stop={decision.EngageRange:F0}");
+                FileLogger.AI($"SquadStance S&D: ped {pedHandle} advance {targetHandle} dist={dist:F0} stop={decision.AdvanceStopRange:F0} los={los} msSinceLos={msSinceLos}");
             }
+        }
+
+        // Maintains the per-ped line-of-sight clock and returns how long LOS has stayed broken (ms).
+        // While LOS holds the clock resets to now; the first no-LOS tick baselines off now so a ped
+        // is never treated as having "just lost" sight for longer than it actually has.
+        private int TrackLineOfSight(int pedHandle, bool los)
+        {
+            int now = _gameBridge.GetGameTime();
+            if (los || !_lastLosMs.ContainsKey(pedHandle))
+            {
+                _lastLosMs[pedHandle] = now;
+                return 0;
+            }
+
+            return now - _lastLosMs[pedHandle];
         }
 
         private Dictionary<int, int> BuildPreviousAssignment()

@@ -11,6 +11,15 @@ namespace FactionWars.Combat.Services
     {
         private const float HysteresisFactor = 1.3f;
 
+        /// <summary>How long line of sight must stay broken while engaged before we stop trusting
+        /// <c>TaskCombatPed</c> to reposition and push the ped toward the target ourselves. Short
+        /// blips (peeking, smoke, a passing body) are ignored to avoid aim/run flicker.</summary>
+        private const int SustainedLosLossMs = 1500;
+
+        /// <summary>Stop range used when advancing purely to regain line of sight: keep closing
+        /// almost onto the target (e.g. to a rooftop parapet) until a shot opens up.</summary>
+        private const float LosRepositionStopRange = 3f;
+
         private readonly IEngageRangeProvider _rangeProvider;
 
         public SquadEngagementResolver(IEngageRangeProvider rangeProvider)
@@ -23,24 +32,42 @@ namespace FactionWars.Combat.Services
             bool hasLineOfSight,
             DefenderRole role,
             EngagePhase currentPhase,
-            int consecutiveLosMisses)
+            int msSinceLastLos)
         {
             float range = _rangeProvider.For(role);
-            int losMisses = hasLineOfSight ? 0 : consecutiveLosMisses + 1;
 
             if (currentPhase == EngagePhase.Engage)
             {
-                // Once engaged, drop back to advance ONLY when the target moves out of range.
-                // Do NOT drop on transient line-of-sight loss: TaskCombatPed already repositions
-                // for LOS, and re-tasking on every LOS blip caused an aim/run flicker. losMisses
-                // is still tracked for telemetry but no longer flips the phase.
+                // Drop back to advance when the target moves out of the hysteresis band...
                 bool rangeBroken = distToTarget > range * HysteresisFactor;
-                var phase = rangeBroken ? EngagePhase.Advance : EngagePhase.Engage;
-                return new EngageDecision(phase, range, losMisses);
+                // ...or when line of sight has stayed broken long enough that TaskCombatPed is
+                // clearly NOT going to reposition (e.g. an elevated ped aiming through a parapet).
+                // A short LOS blip is ignored so the phase doesn't flicker on transient occlusion.
+                bool losLostSustained = !hasLineOfSight && msSinceLastLos >= SustainedLosLossMs;
+
+                if (rangeBroken)
+                {
+                    return new EngageDecision(EngagePhase.Advance, range);
+                }
+
+                if (losLostSustained)
+                {
+                    // Push almost onto the target to break the occlusion and regain a firing line.
+                    return new EngageDecision(EngagePhase.Advance, LosRepositionStopRange);
+                }
+
+                return new EngageDecision(EngagePhase.Engage, range);
             }
 
-            bool canEngage = distToTarget <= range && hasLineOfSight;
-            return new EngageDecision(canEngage ? EngagePhase.Engage : EngagePhase.Advance, range, losMisses);
+            if (distToTarget <= range && hasLineOfSight)
+            {
+                return new EngageDecision(EngagePhase.Engage, range);
+            }
+
+            // Advancing: close to engage range when we can see the target, but push right up to it
+            // when we can't — the blocked sight line means we need a different vantage point.
+            float stopRange = hasLineOfSight ? range : LosRepositionStopRange;
+            return new EngageDecision(EngagePhase.Advance, stopRange);
         }
     }
 }

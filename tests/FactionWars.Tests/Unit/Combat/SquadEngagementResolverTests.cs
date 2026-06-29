@@ -8,20 +8,20 @@ namespace FactionWars.Tests.Unit.Combat
 {
     public class SquadEngagementResolverTests
     {
-        // Grunt range = 18; hysteresis band = 18 * 1.3 = 23.4; LOS grace = 2.
+        // Grunt range = 18; hysteresis band = 18 * 1.3 = 23.4; sustained-LOS-loss threshold = 1500ms;
+        // LOS reposition stop range = 3.
         private readonly ISquadEngagementResolver _resolver =
             new SquadEngagementResolver(new EngageRangeProvider());
 
-        private EngageDecision Resolve(float dist, bool los, EngagePhase phase, int losMisses)
-            => _resolver.Resolve(dist, los, DefenderRole.Grunt, phase, losMisses);
+        private EngageDecision Resolve(float dist, bool los, EngagePhase phase, int msSinceLos)
+            => _resolver.Resolve(dist, los, DefenderRole.Grunt, phase, msSinceLos);
 
         [Fact]
         public void OutOfRange_Advances()
         {
             var d = Resolve(40f, true, EngagePhase.Advance, 0);
             Assert.Equal(EngagePhase.Advance, d.Phase);
-            Assert.Equal(18f, d.EngageRange);
-            Assert.Equal(0, d.ConsecutiveLosMisses); // LOS present -> counter stays cleared
+            Assert.Equal(18f, d.AdvanceStopRange); // LOS present -> close to engage range
         }
 
         [Fact]
@@ -29,15 +29,15 @@ namespace FactionWars.Tests.Unit.Combat
         {
             var d = Resolve(15f, true, EngagePhase.Advance, 0);
             Assert.Equal(EngagePhase.Engage, d.Phase);
-            Assert.Equal(0, d.ConsecutiveLosMisses);
         }
 
         [Fact]
-        public void InRangeNoLos_StaysAdvance()
+        public void InRangeNoLos_AdvancesToReposition()
         {
+            // In range but the sight line is blocked: push right up to the target for a new vantage.
             var d = Resolve(15f, false, EngagePhase.Advance, 0);
             Assert.Equal(EngagePhase.Advance, d.Phase);
-            Assert.Equal(1, d.ConsecutiveLosMisses); // miss counter increments even while advancing
+            Assert.Equal(3f, d.AdvanceStopRange);
         }
 
         [Fact]
@@ -53,31 +53,33 @@ namespace FactionWars.Tests.Unit.Combat
         {
             var d = Resolve(30f, true, EngagePhase.Engage, 0);
             Assert.Equal(EngagePhase.Advance, d.Phase);
+            Assert.Equal(18f, d.AdvanceStopRange); // out of range, not a LOS reposition
         }
 
         [Fact]
-        public void Engaging_FirstLosMiss_StaysEngaged_CounterIncrements()
+        public void Engaging_BriefLosLoss_StaysEngaged()
         {
-            var d = Resolve(15f, false, EngagePhase.Engage, 0);
-            Assert.Equal(EngagePhase.Engage, d.Phase);
-            Assert.Equal(1, d.ConsecutiveLosMisses);
-        }
-
-        [Fact]
-        public void Engaging_SustainedLosLoss_InRange_StaysEngaged()
-        {
-            // In range but line of sight repeatedly broken: stay engaged and let the combat task
-            // reposition for LOS. Dropping to advance here is what caused the aim/run flicker.
-            var d = Resolve(15f, false, EngagePhase.Engage, 5);
+            // LOS lost only briefly (500ms < 1500ms threshold): stay engaged so the phase
+            // doesn't flicker on transient occlusion (peeking, smoke, a passing body).
+            var d = Resolve(15f, false, EngagePhase.Engage, 500);
             Assert.Equal(EngagePhase.Engage, d.Phase);
         }
 
         [Fact]
-        public void Engaging_LosRegained_ResetsMissCounter()
+        public void Engaging_SustainedLosLoss_RepositionsToEdge()
         {
-            var d = Resolve(15f, true, EngagePhase.Engage, 1);
+            // LOS lost for a sustained period (2000ms >= 1500ms) while engaged: drop to advance and
+            // push toward the target (to the building edge) to regain line of sight, then re-engage.
+            var d = Resolve(15f, false, EngagePhase.Engage, 2000);
+            Assert.Equal(EngagePhase.Advance, d.Phase);
+            Assert.Equal(3f, d.AdvanceStopRange);
+        }
+
+        [Fact]
+        public void Engaging_LosRegained_StaysEngaged()
+        {
+            var d = Resolve(15f, true, EngagePhase.Engage, 0);
             Assert.Equal(EngagePhase.Engage, d.Phase);
-            Assert.Equal(0, d.ConsecutiveLosMisses);
         }
     }
 }
