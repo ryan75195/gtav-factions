@@ -277,20 +277,21 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         }
 
         [Fact]
-        public void Update_EscortStance_RepairsFollowerGroupForBodyguardNotFollowingPlayer()
+        public void Update_EscortStance_RunsNearBodyguardToPlayerInsteadOfTrustingGroupFollow()
         {
-            // Controller starts in Escort by default — no cycling needed.
+            // Escort now actively sprints every bodyguard to the player rather than relying on native
+            // group-follow (which leashes/strands them across the zone). Even a nearby bodyguard gets
+            // an explicit run-to-player task, not group membership.
             _controller = Build();
-            int bg = _bridge.CreatePed("bg", new Vector3(1f, 0f, 0f));
+            _bridge.PlayerPosition = new Vector3(0f, 0f, 0f);
+            _bridge.PlayerPedHandle = 7777;
+            int bg = _bridge.CreatePed("bg", new Vector3(3f, 0f, 0f)); // near the player
             var party = new List<int> { bg };
-
-            // CreatePed does not add the ped to the follower group, so it is not following yet.
-            Assert.False(_bridge.IsPedFollowingPlayer(bg));
 
             _controller.Update(Anchor, 50f, party, new List<EnemyTarget>(), NoRoles);
 
-            // ApplyEscort must have called SetPedAsFollower to repair the group.
-            Assert.True(_bridge.IsPedFollowingPlayer(bg));
+            Assert.True(_bridge.IsPedFollowingEntity(bg));        // run-to-player task issued
+            Assert.Equal(7777, _bridge.GetFollowEntityTarget(bg)); // toward the player ped
         }
 
         [Fact]
@@ -327,23 +328,6 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
 
             float dist = _bridge.PlayerPosition.DistanceTo(_bridge.GetPedPosition(bg));
             Assert.True(dist <= 25f, $"expected teleport near player, ped is {dist:F0}m away");
-        }
-
-        [Fact]
-        public void Update_EscortStance_DoesNotRetaskBodyguardFollowingNearPlayer()
-        {
-            // A bodyguard genuinely following close to the player must NOT be re-tasked every
-            // tick — that would thrash its follow task. The follow flag is trustworthy when near.
-            _controller = Build();
-            _bridge.PlayerPosition = new Vector3(0f, 0f, 0f);
-            int bg = _bridge.CreatePed("bg", new Vector3(5f, 0f, 0f)); // 5m: actually following
-            _bridge.SetPedAsFollower(bg);
-            int before = _bridge.GetSetAsFollowerCallCount(bg);
-            var party = new List<int> { bg };
-
-            _controller.Update(Anchor, 50f, party, new List<EnemyTarget>(), NoRoles);
-
-            Assert.Equal(before, _bridge.GetSetAsFollowerCallCount(bg));
         }
 
         [Fact]

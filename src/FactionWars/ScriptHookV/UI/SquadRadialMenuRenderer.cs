@@ -43,12 +43,10 @@ namespace FactionWars.ScriptHookV.UI
         // Embedded wheel art, extracted to disk on first draw. Null until extracted; if extraction
         // fails we fall back to the rectangular slabs so the wheel is never invisible.
         private const string RingResource = "FactionWars.Resources.wheel_ring.png";
-        private const string HighlightResource = "FactionWars.Resources.wheel_highlight.png";
         private const int WheelBaseW = 1920;   // NativeUI.Sprite.DrawTexture uses a 1080-height base.
         private const int WheelBaseH = 1080;
         private const int WheelSize = 480;      // square wheel, centred on screen
         private string? _ringTexturePath;
-        private string? _highlightTexturePath;
         private bool _textureLoadFailed;
 
         public SquadRadialMenuRenderer(
@@ -159,9 +157,10 @@ namespace FactionWars.ScriptHookV.UI
             DrawLabelsAndCenter();
         }
 
-        // Draws the circular ring plus a highlight wedge rotated onto the selected slice, using the
-        // embedded PNGs. Returns false (so the caller draws the rectangular fallback) if the textures
-        // cannot be extracted — a wrong native call must never leave the wheel invisible.
+        // Draws the circular ring using the embedded PNG. The selected slice is conveyed by the
+        // labels (bright + larger) and the centre readout, not a coloured wedge. Returns false (so the
+        // caller draws the rectangular fallback) if the texture cannot be extracted — a wrong native
+        // call must never leave the wheel invisible.
         private bool TryDrawWheelTextures()
         {
             if (_textureLoadFailed) return false;
@@ -172,7 +171,6 @@ namespace FactionWars.ScriptHookV.UI
                 {
                     var asm = typeof(SquadRadialMenuRenderer).Assembly;
                     _ringTexturePath = NativeUI.Sprite.WriteFileFromResources(asm, RingResource);
-                    _highlightTexturePath = NativeUI.Sprite.WriteFileFromResources(asm, HighlightResource);
                 }
                 catch (Exception ex)
                 {
@@ -184,10 +182,8 @@ namespace FactionWars.ScriptHookV.UI
 
             var pos = new Point((WheelBaseW - WheelSize) / 2, (WheelBaseH - WheelSize) / 2);
             var size = new Size(WheelSize, WheelSize);
-            float rotation = _menu.SelectedIndex * (360f / _menu.Segments.Count);
 
             NativeUI.Sprite.DrawTexture(_ringTexturePath, pos, size, 0f, Color.FromArgb(235, 255, 255, 255));
-            NativeUI.Sprite.DrawTexture(_highlightTexturePath, pos, size, rotation, Color.FromArgb(255, 255, 255, 255));
             return true;
         }
 
@@ -202,7 +198,7 @@ namespace FactionWars.ScriptHookV.UI
                 float py = 0.5f - (0.21f * (float)Math.Cos(angle));
                 bool selected = i == _menu.SelectedIndex;
                 DrawRect(px, py, 0.165f, 0.072f, selected
-                    ? Color.FromArgb(235, 255, 176, 32)
+                    ? Color.FromArgb(235, 170, 195, 255)
                     : Color.FromArgb(185, 20, 20, 20));
             }
         }
@@ -219,13 +215,15 @@ namespace FactionWars.ScriptHookV.UI
                 float px = 0.5f + (radiusX * (float)Math.Sin(angle));
                 float py = 0.5f - (radiusY * (float)Math.Cos(angle));
                 bool selected = i == _menu.SelectedIndex;
-                DrawCenteredText(Label(segments[i]), px, py - 0.018f, selected ? 0.5f : 0.42f,
-                    selected ? Color.Black : Color.FromArgb(255, 235, 235, 235));
+                // Selection is shown by a bright, larger label (drawn over the ring); unselected
+                // labels are dimmer and smaller. No coloured highlight wedge.
+                DrawCenteredText(Label(segments[i]), px, py - 0.018f, selected ? 0.5f : 0.40f,
+                    selected ? Color.White : Color.FromArgb(255, 150, 150, 150));
             }
 
             var pointed = segments[_menu.SelectedIndex];
             DrawCenteredText("BODYGUARDS", 0.5f, 0.5f - 0.040f, 0.34f, Color.FromArgb(255, 170, 195, 255));
-            DrawCenteredText(Label(pointed), 0.5f, 0.5f - 0.010f, 0.52f, Color.FromArgb(255, 255, 176, 32));
+            DrawCenteredText(Label(pointed), 0.5f, 0.5f - 0.010f, 0.52f, Color.White);
             DrawCenteredText("release to apply", 0.5f, 0.5f + 0.028f, 0.30f, Color.FromArgb(205, 225, 225, 225));
         }
 

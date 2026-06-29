@@ -35,10 +35,9 @@ namespace FactionWars.ScriptHookV.Managers
 
         private const int FollowerReassertIntervalMs = 2000;
 
-        // Beyond this distance from the player, a bodyguard that still reports as a player-group
-        // member is treated as stranded (native group-follow desync) and re-tasked back into
-        // formation. Generous enough that normal follow lag while sprinting does not trip it.
-        private const float EscortFollowRepairDistance = 25f;
+        // Idle radius the run-to-player follow task settles at: tight enough that bodyguards
+        // actually gather on the player rather than milling a formation-width away.
+        private const float EscortFollowStopRadius = 4f;
 
         // Past this distance, running back is hopeless (a respawn/fast-travel left the bodyguard
         // far across the map), so the stranded ped is warped next to the player instead of sprinting.
