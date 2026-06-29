@@ -18,7 +18,7 @@ namespace FactionWars.Tests.Unit.Core
             Assert.Equal(275, config.Health);
             Assert.Equal(50, config.Armor);
             Assert.Equal("WEAPON_SNIPERRIFLE", config.Weapon);
-            Assert.Equal(0.8f, config.Accuracy);
+            Assert.Equal(0.7f, config.Accuracy);
             Assert.False(config.RagdollEnabled);
         }
 

@@ -28,7 +28,7 @@ namespace FactionWars.Tests.Unit.Core
             Assert.Equal(200, config.Health);
             Assert.Equal(50, config.Armor);
             Assert.Equal("WEAPON_PISTOL", config.Weapon);
-            Assert.Equal(0.3f, config.Accuracy, 2);
+            Assert.Equal(0.25f, config.Accuracy, 2);
             Assert.True(config.RagdollEnabled);
         }
 
@@ -44,7 +44,7 @@ namespace FactionWars.Tests.Unit.Core
             Assert.Equal(350, config.Health);
             Assert.Equal(100, config.Armor);
             Assert.Equal("WEAPON_SMG", config.Weapon);
-            Assert.Equal(0.5f, config.Accuracy, 2);
+            Assert.Equal(0.45f, config.Accuracy, 2);
             Assert.True(config.RagdollEnabled);
         }
 
@@ -60,7 +60,7 @@ namespace FactionWars.Tests.Unit.Core
             Assert.Equal(500, config.Health);
             Assert.Equal(200, config.Armor);
             Assert.Equal("WEAPON_CARBINERIFLE", config.Weapon);
-            Assert.Equal(0.7f, config.Accuracy, 2);
+            Assert.Equal(0.6f, config.Accuracy, 2);
             Assert.False(config.RagdollEnabled);
         }
 
@@ -76,7 +76,7 @@ namespace FactionWars.Tests.Unit.Core
             Assert.Equal(650, config.Health);
             Assert.Equal(200, config.Armor);
             Assert.Equal("WEAPON_RPG", config.Weapon);
-            Assert.Equal(0.8f, config.Accuracy, 2);
+            Assert.Equal(0.7f, config.Accuracy, 2);
             Assert.Equal(2.5f, config.CombatModifier, 2);
             Assert.False(config.RagdollEnabled);
         }

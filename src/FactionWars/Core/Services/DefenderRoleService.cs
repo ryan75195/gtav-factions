@@ -29,7 +29,7 @@ namespace FactionWars.Core.Services
                         health: 200,
                         armor: 50,
                         weapon: "WEAPON_PISTOL",
-                        accuracy: 0.3f,
+                        accuracy: 0.25f,
                         combatModifier: 1.0f,
                         ragdollEnabled: true)
                 },
@@ -41,7 +41,7 @@ namespace FactionWars.Core.Services
                         health: 350,
                         armor: 100,
                         weapon: "WEAPON_SMG",
-                        accuracy: 0.5f,
+                        accuracy: 0.45f,
                         combatModifier: 1.5f,
                         ragdollEnabled: true)
                 },
@@ -53,7 +53,7 @@ namespace FactionWars.Core.Services
                         health: 500,
                         armor: 200,
                         weapon: "WEAPON_CARBINERIFLE",
-                        accuracy: 0.7f,
+                        accuracy: 0.6f,
                         combatModifier: 2.0f,
                         ragdollEnabled: false)
                 },
@@ -65,7 +65,7 @@ namespace FactionWars.Core.Services
                         health: 650,
                         armor: 200,
                         weapon: "WEAPON_RPG",
-                        accuracy: 0.8f,
+                        accuracy: 0.7f,
                         combatModifier: 2.5f,
                         ragdollEnabled: false)
                 },
@@ -77,7 +77,7 @@ namespace FactionWars.Core.Services
                         health: 275,
                         armor: 50,
                         weapon: "WEAPON_SNIPERRIFLE",
-                        accuracy: 0.8f,
+                        accuracy: 0.7f,
                         combatModifier: 2.2f,
                         ragdollEnabled: false)
                 }
