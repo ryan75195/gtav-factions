@@ -54,9 +54,9 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
 
             // Assert
             Assert.NotNull(_lastShownMenu);
-            var policeSuv = _lastShownMenu!.Items.FirstOrDefault(i => i.Id == "buy_police_suv");
-            Assert.NotNull(policeSuv);
-            Assert.Contains("Police SUV", policeSuv!.Text);
+            var fbiSuv = _lastShownMenu!.Items.FirstOrDefault(i => i.Id == "buy_police_suv");
+            Assert.NotNull(fbiSuv);
+            Assert.Contains("FBI SUV", fbiSuv!.Text);
         }
 
         [Fact]
