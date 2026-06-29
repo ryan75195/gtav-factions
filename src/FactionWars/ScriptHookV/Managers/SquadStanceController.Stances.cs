@@ -159,14 +159,16 @@ namespace FactionWars.ScriptHookV.Managers
         // Hysteresis (in the resolver) keeps the phase from flipping every tick.
         private void ApplyEngagement(int pedHandle, int targetHandle, Vector3 targetPos)
         {
+            int now = _gameBridge.GetGameTime();
             float dist = _gameBridge.GetPedPosition(pedHandle).DistanceTo(targetPos);
             bool los = _gameBridge.HasClearLineOfSight(pedHandle, targetHandle);
             var role = _rolesByHandle.TryGetValue(pedHandle, out var r) ? r : DefenderRole.Grunt;
             var phase = _enginePhase.TryGetValue(pedHandle, out var p) ? p : EngagePhase.Advance;
-            int msSinceLos = TrackLineOfSight(pedHandle, los);
+            int msSinceLos = TrackLineOfSight(pedHandle, los, now);
 
             var decision = _engagementResolver.Resolve(dist, los, role, phase, msSinceLos);
             _enginePhase[pedHandle] = decision.Phase;
+            RecordEngagementTelemetry(pedHandle, phase, decision, los, msSinceLos, now, dist);
 
             if (decision.Phase == EngagePhase.Engage)
             {
@@ -187,9 +189,8 @@ namespace FactionWars.ScriptHookV.Managers
         // Maintains the per-ped line-of-sight clock and returns how long LOS has stayed broken (ms).
         // While LOS holds the clock resets to now; the first no-LOS tick baselines off now so a ped
         // is never treated as having "just lost" sight for longer than it actually has.
-        private int TrackLineOfSight(int pedHandle, bool los)
+        private int TrackLineOfSight(int pedHandle, bool los, int now)
         {
-            int now = _gameBridge.GetGameTime();
             if (los || !_lastLosMs.ContainsKey(pedHandle))
             {
                 _lastLosMs[pedHandle] = now;

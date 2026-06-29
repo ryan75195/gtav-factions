@@ -71,6 +71,8 @@ namespace FactionWars.ScriptHookV.Managers
             _reconciler.Clear();
             _enginePhase.Clear();
             _lastLosMs.Clear();
+            _engagementState.Clear();
+            _transitions.Clear();
             FileLogger.AI($"SquadStance.CycleStance: {previous} -> {_currentStance} (party={onFootBodyguardHandles.Count})");
             _gameBridge.ShowNotification($"~b~Bodyguards:~w~ {StanceLabel(_currentStance)}");
         }
@@ -109,6 +111,7 @@ namespace FactionWars.ScriptHookV.Managers
                     _reconciler.Forget(handle);
                     _enginePhase.Remove(handle);
                     _lastLosMs.Remove(handle);
+                    _engagementState.Remove(handle);
                 }
             }
             foreach (var handle in new List<int>(_lastFollowReassertMs.Keys))
