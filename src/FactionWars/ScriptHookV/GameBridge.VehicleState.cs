@@ -1,4 +1,5 @@
 using System;
+using FactionWars.Core.Interfaces;
 using FactionWars.ScriptHookV.Logging;
 using GTA;
 using GTA.Native;
@@ -106,6 +107,68 @@ namespace FactionWars.ScriptHookV
             catch (Exception ex)
             {
                 FileLogger.Error($"SetVehicleHeading exception for vehicle {vehicleHandle}", ex);
+            }
+        }
+
+        public int[] GetNearbyVehicles(Vector3 center, float radius)
+        {
+            try
+            {
+                var pos = new GTA.Math.Vector3(center.X, center.Y, center.Z);
+                var vehicles = World.GetNearbyVehicles(pos, radius);
+                var handles = new int[vehicles.Length];
+                for (int i = 0; i < vehicles.Length; i++)
+                {
+                    handles[i] = vehicles[i].Handle;
+                }
+                return handles;
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error($"GetNearbyVehicles exception at ({center.X:F0},{center.Y:F0})", ex);
+                return Array.Empty<int>();
+            }
+        }
+
+        public int GetVehicleDriver(int vehicleHandle)
+        {
+            try
+            {
+                var vehicle = Entity.FromHandle(vehicleHandle) as Vehicle;
+                if (vehicle == null || !vehicle.Exists())
+                    return -1;
+
+                var driver = vehicle.Driver;
+                return driver != null && driver.Exists() && !driver.IsDead ? driver.Handle : -1;
+            }
+            catch
+            {
+                return -1;
+            }
+        }
+
+        public bool IsVehiclePersistent(int vehicleHandle)
+        {
+            try
+            {
+                var vehicle = Entity.FromHandle(vehicleHandle) as Vehicle;
+                return vehicle != null && vehicle.Exists() && vehicle.IsPersistent;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        public void SetVehicleHandbrake(int vehicleHandle, bool engaged)
+        {
+            try
+            {
+                Function.Call(Hash.SET_VEHICLE_HANDBRAKE, vehicleHandle, engaged);
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error($"SetVehicleHandbrake exception for vehicle {vehicleHandle}", ex);
             }
         }
     }
