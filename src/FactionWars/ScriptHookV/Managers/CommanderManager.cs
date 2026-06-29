@@ -60,6 +60,12 @@ namespace FactionWars.ScriptHookV.Managers
         private const float MinSpawnRadiusFraction = 0.3f;
 
         /// <summary>
+        /// Lateral offset (metres) used to drop the commander right beside the player on respawn,
+        /// before snapping to navmesh-safe ground.
+        /// </summary>
+        private const float NearPlayerSpawnOffset = 3f;
+
+        /// <summary>
         /// Key code for the E key used for interaction.
         /// </summary>
         private const int InteractKeyCode = 0x45; // E key
@@ -177,6 +183,33 @@ namespace FactionWars.ScriptHookV.Managers
             // defenders (which now wear the player faction's colour and would otherwise blend in).
             _pedBlipService.CreateBlipForPed(pedHandle.Handle, BlipColor.Purple);
             _commanderByZone[zone.Id] = pedHandle.Handle;
+        }
+
+        /// <summary>
+        /// Places this zone's commander next to the player (used when the player respawns into a
+        /// zone they own). Ensures a commander exists for the zone — spawning one via the normal
+        /// path if absent (idempotent, so it won't double-spawn with the zone-entry trigger) — then
+        /// repositions it a few metres from the player on navmesh-safe ground. No-op if the zone is
+        /// not owned by the player's faction.
+        /// </summary>
+        /// <param name="zone">The owned zone the player respawned into.</param>
+        /// <param name="playerPosition">The player's current world position.</param>
+        public void PlaceCommanderNearPlayer(Zone zone, Vector3 playerPosition)
+        {
+            if (zone == null || zone.OwnerFactionId != _playerFactionId) return;
+
+            if (!_commanderByZone.ContainsKey(zone.Id))
+            {
+                SpawnCommander(zone);
+            }
+
+            if (!_commanderByZone.TryGetValue(zone.Id, out var pedHandle)) return;
+
+            var nearPlayer = _gameBridge.GetSafeCoordForPed(new Vector3(
+                playerPosition.X + NearPlayerSpawnOffset,
+                playerPosition.Y + NearPlayerSpawnOffset,
+                playerPosition.Z));
+            _gameBridge.SetPedPosition(pedHandle, nearPlayer);
         }
 
         /// <summary>
