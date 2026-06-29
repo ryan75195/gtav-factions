@@ -149,9 +149,9 @@ namespace FactionWars.Tests.Integration.ScriptHookV
             var heavyResult = _followerManager.RecruitFollower(MichaelFactionId, DefenderRole.Rifleman);
 
             // Assert
-            Assert.Equal(0.3f, _gameBridge.GetPedAccuracy(basicResult.Follower!.PedHandle), 0.01);
-            Assert.Equal(0.5f, _gameBridge.GetPedAccuracy(mediumResult.Follower!.PedHandle), 0.01);
-            Assert.Equal(0.7f, _gameBridge.GetPedAccuracy(heavyResult.Follower!.PedHandle), 0.01);
+            Assert.Equal(0.25f, _gameBridge.GetPedAccuracy(basicResult.Follower!.PedHandle), 0.01);
+            Assert.Equal(0.45f, _gameBridge.GetPedAccuracy(mediumResult.Follower!.PedHandle), 0.01);
+            Assert.Equal(0.6f, _gameBridge.GetPedAccuracy(heavyResult.Follower!.PedHandle), 0.01);
         }
 
         [Fact]
