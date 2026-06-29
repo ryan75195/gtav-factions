@@ -47,27 +47,27 @@ namespace FactionWars.Combat.Services
 
                 if (rangeBroken)
                 {
-                    return new EngageDecision(EngagePhase.Advance, range);
+                    return new EngageDecision(EngagePhase.Advance, range, EngagePhaseChangeReason.RangeBroken);
                 }
 
                 if (losLostSustained)
                 {
                     // Push almost onto the target to break the occlusion and regain a firing line.
-                    return new EngageDecision(EngagePhase.Advance, LosRepositionStopRange);
+                    return new EngageDecision(EngagePhase.Advance, LosRepositionStopRange, EngagePhaseChangeReason.LosReposition);
                 }
 
-                return new EngageDecision(EngagePhase.Engage, range);
+                return new EngageDecision(EngagePhase.Engage, range, EngagePhaseChangeReason.None);
             }
 
             if (distToTarget <= range && hasLineOfSight)
             {
-                return new EngageDecision(EngagePhase.Engage, range);
+                return new EngageDecision(EngagePhase.Engage, range, EngagePhaseChangeReason.EngageAcquired);
             }
 
             // Advancing: close to engage range when we can see the target, but push right up to it
             // when we can't — the blocked sight line means we need a different vantage point.
             float stopRange = hasLineOfSight ? range : LosRepositionStopRange;
-            return new EngageDecision(EngagePhase.Advance, stopRange);
+            return new EngageDecision(EngagePhase.Advance, stopRange, EngagePhaseChangeReason.None);
         }
     }
 }

@@ -75,7 +75,10 @@ namespace FactionWars.ScriptHookV
         private void OnGameLoaded(object? sender, GameStateLoadedEventArgs e)
         {
             if (e.Success && !string.IsNullOrEmpty(e.SaveName))
+            {
                 _behaviorTraceSink?.SetSaveFile(e.SaveName!);
+                _engagementEventSink?.SetSaveFile(e.SaveName!);
+            }
 
             if (!e.Success || _difficultyService == null || _gameStateManager == null)
                 return;

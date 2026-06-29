@@ -89,6 +89,8 @@ namespace FactionWars.ScriptHookV
         private TelemetryService? _telemetryService;
         private CombatBehaviorSampler? _behaviorSampler;
         private IBehaviorTraceSink? _behaviorTraceSink;
+        private EngagementEventRecorder? _engagementEventRecorder;
+        private IEngagementEventSink? _engagementEventSink;
         private BattleHudRenderer? _battleHudRenderer;
         private PlayTimeHudRenderer? _playTimeHudRenderer;
         private int _currentBattleHudIndex = 0;

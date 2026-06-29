@@ -22,6 +22,7 @@ namespace FactionWars.Tests.Unit.Combat
             var d = Resolve(40f, true, EngagePhase.Advance, 0);
             Assert.Equal(EngagePhase.Advance, d.Phase);
             Assert.Equal(18f, d.AdvanceStopRange); // LOS present -> close to engage range
+            Assert.Equal(EngagePhaseChangeReason.None, d.Reason);
         }
 
         [Fact]
@@ -29,6 +30,7 @@ namespace FactionWars.Tests.Unit.Combat
         {
             var d = Resolve(15f, true, EngagePhase.Advance, 0);
             Assert.Equal(EngagePhase.Engage, d.Phase);
+            Assert.Equal(EngagePhaseChangeReason.EngageAcquired, d.Reason);
         }
 
         [Fact]
@@ -38,6 +40,7 @@ namespace FactionWars.Tests.Unit.Combat
             var d = Resolve(15f, false, EngagePhase.Advance, 0);
             Assert.Equal(EngagePhase.Advance, d.Phase);
             Assert.Equal(3f, d.AdvanceStopRange);
+            Assert.Equal(EngagePhaseChangeReason.None, d.Reason);
         }
 
         [Fact]
@@ -46,6 +49,7 @@ namespace FactionWars.Tests.Unit.Combat
             // 20m is > range(18) but <= 18*1.3 (23.4): keep engaging.
             var d = Resolve(20f, true, EngagePhase.Engage, 0);
             Assert.Equal(EngagePhase.Engage, d.Phase);
+            Assert.Equal(EngagePhaseChangeReason.None, d.Reason);
         }
 
         [Fact]
@@ -54,6 +58,7 @@ namespace FactionWars.Tests.Unit.Combat
             var d = Resolve(30f, true, EngagePhase.Engage, 0);
             Assert.Equal(EngagePhase.Advance, d.Phase);
             Assert.Equal(18f, d.AdvanceStopRange); // out of range, not a LOS reposition
+            Assert.Equal(EngagePhaseChangeReason.RangeBroken, d.Reason);
         }
 
         [Fact]
@@ -63,6 +68,7 @@ namespace FactionWars.Tests.Unit.Combat
             // doesn't flicker on transient occlusion (peeking, smoke, a passing body).
             var d = Resolve(15f, false, EngagePhase.Engage, 500);
             Assert.Equal(EngagePhase.Engage, d.Phase);
+            Assert.Equal(EngagePhaseChangeReason.None, d.Reason);
         }
 
         [Fact]
@@ -73,6 +79,7 @@ namespace FactionWars.Tests.Unit.Combat
             var d = Resolve(15f, false, EngagePhase.Engage, 2000);
             Assert.Equal(EngagePhase.Advance, d.Phase);
             Assert.Equal(3f, d.AdvanceStopRange);
+            Assert.Equal(EngagePhaseChangeReason.LosReposition, d.Reason);
         }
 
         [Fact]
@@ -80,6 +87,7 @@ namespace FactionWars.Tests.Unit.Combat
         {
             var d = Resolve(15f, true, EngagePhase.Engage, 0);
             Assert.Equal(EngagePhase.Engage, d.Phase);
+            Assert.Equal(EngagePhaseChangeReason.None, d.Reason);
         }
     }
 }

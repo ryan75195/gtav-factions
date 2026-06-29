@@ -47,5 +47,15 @@ namespace FactionWars.Telemetry.Models
 
         /// <summary>Combat ability read-back (0/1/2); -1 if unknown.</summary>
         public int CombatAbility { get; set; } = -1;
+
+        /// <summary>Squad engagement: true if the ped held line of sight to its target this sample.
+        /// Only meaningful for followers in Search &amp; Destroy; false when no engagement state.</summary>
+        public bool HasLineOfSight { get; set; }
+
+        /// <summary>Engagement phase name ("Advance"/"Engage"); empty when no engagement state.</summary>
+        public string EnginePhase { get; set; } = string.Empty;
+
+        /// <summary>Milliseconds since the ped last held line of sight; -1 when no engagement state.</summary>
+        public int MsSinceLos { get; set; } = -1;
     }
 }

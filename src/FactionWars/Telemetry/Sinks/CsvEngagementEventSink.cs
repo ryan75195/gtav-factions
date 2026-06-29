@@ -10,47 +10,44 @@ using FactionWars.Telemetry.Models;
 namespace FactionWars.Telemetry.Sinks
 {
     /// <summary>
-    /// Writes per-ped behavior samples to a per-save <c>behavior_trace.csv</c> under a base directory.
-    /// Buffers rows in memory until <see cref="SetSaveFile"/> is called, then flushes and switches to
-    /// direct-append. Mirrors <see cref="CsvTelemetrySink"/>'s lifecycle but for the single trace file.
-    /// Thread-safe via a single lock; first-error-wins logging avoids spam on a persistently broken path.
+    /// Writes squad engagement phase-change events to a per-save <c>engagement_events.csv</c>. Buffers
+    /// rows until <see cref="SetSaveFile"/> is known, then flushes and appends. Mirrors
+    /// <see cref="CsvBehaviorTraceSink"/>'s lifecycle and thread-safety.
     /// </summary>
-    public sealed class CsvBehaviorTraceSink : IBehaviorTraceSink
+    public sealed class CsvEngagementEventSink : IEngagementEventSink
     {
         private const int BufferCap = 20000;
-        private const string FileName = "behavior_trace.csv";
+        private const string FileName = "engagement_events.csv";
         private static readonly string Header =
-            "session_id,timestamp_utc,sample_ms,handle,kind,role,weapon,is_shooting,in_combat,target_handle,dist_to_target,dist_to_player,pos_x,pos_y,pos_z,in_vehicle,is_following_player,health,combat_ability,has_los,engine_phase,ms_since_los";
+            "session_id,timestamp_utc,handle,at_ms,from_phase,to_phase,reason,dist_to_target,has_los,ms_since_los";
 
         private readonly object _lock = new object();
         private readonly string _baseDir;
         private readonly string _sessionId;
-        private readonly List<BehaviorSampleRow> _buffer = new List<BehaviorSampleRow>();
+        private readonly List<EngagementTransition> _buffer = new List<EngagementTransition>();
         private string? _saveDir;
         private bool _disposed;
         private bool _errored;
 
-        /// <param name="baseDirectory">Root telemetry directory (rows land under baseDirectory/&lt;save&gt;/).</param>
-        public CsvBehaviorTraceSink(string baseDirectory)
+        public CsvEngagementEventSink(string baseDirectory)
         {
             _baseDir = baseDirectory ?? throw new ArgumentNullException(nameof(baseDirectory));
             _sessionId = CreateSessionId();
         }
 
-        public void Write(BehaviorSampleRow row)
+        public void Write(EngagementTransition e)
         {
-            if (row == null) return;
             lock (_lock)
             {
                 if (_disposed) return;
                 if (_saveDir == null)
                 {
                     if (_buffer.Count >= BufferCap) _buffer.RemoveAt(0);
-                    _buffer.Add(row);
+                    _buffer.Add(e);
                     return;
                 }
 
-                AppendLocked(new[] { Serialize(row) });
+                AppendLocked(new[] { Serialize(e) });
             }
         }
 
@@ -70,7 +67,7 @@ namespace FactionWars.Telemetry.Sinks
                 }
                 catch (Exception ex)
                 {
-                    FileLogger.Error($"CsvBehaviorTraceSink: failed to create {dir}", ex);
+                    FileLogger.Error($"CsvEngagementEventSink: failed to create {dir}", ex);
                     return;
                 }
 
@@ -78,7 +75,7 @@ namespace FactionWars.Telemetry.Sinks
                 if (_buffer.Count > 0)
                 {
                     var rows = new List<string>(_buffer.Count);
-                    foreach (var r in _buffer) rows.Add(Serialize(r));
+                    foreach (var e in _buffer) rows.Add(Serialize(e));
                     AppendLocked(rows);
                     _buffer.Clear();
                 }
@@ -111,40 +108,22 @@ namespace FactionWars.Telemetry.Sinks
                 if (!_errored)
                 {
                     _errored = true;
-                    FileLogger.Error($"CsvBehaviorTraceSink: failed to append to {path}", ex);
+                    FileLogger.Error($"CsvEngagementEventSink: failed to append to {path}", ex);
                 }
             }
         }
 
-        private string Serialize(BehaviorSampleRow r) => string.Join(",",
-            Esc(_sessionId),
-            Utc(DateTime.UtcNow),
-            I(r.SampleMs),
-            I(r.Handle),
-            r.Kind.ToString(),
-            r.Role.ToString(),
-            Esc(r.Weapon),
-            B(r.IsShooting),
-            B(r.InCombat),
-            I(r.TargetHandle),
-            F(r.DistToTarget),
-            F(r.DistToPlayer),
-            F(r.PosX),
-            F(r.PosY),
-            F(r.PosZ),
-            B(r.InVehicle),
-            B(r.IsFollowingPlayer),
-            I(r.Health),
-            I(r.CombatAbility),
-            B(r.HasLineOfSight),
-            Esc(r.EnginePhase),
-            I(r.MsSinceLos));
-
-        private static string Esc(string? v) => CsvFieldEscaper.Escape(v);
-        private static string I(int v) => v.ToString(CultureInfo.InvariantCulture);
-        private static string F(float v) => v.ToString("G", CultureInfo.InvariantCulture);
-        private static string B(bool v) => v ? "true" : "false";
-        private static string Utc(DateTime v) => v.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture);
+        private string Serialize(EngagementTransition e) => string.Join(",",
+            CsvFieldEscaper.Escape(_sessionId),
+            DateTime.UtcNow.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture),
+            e.Handle.ToString(CultureInfo.InvariantCulture),
+            e.AtMs.ToString(CultureInfo.InvariantCulture),
+            e.FromPhase.ToString(),
+            e.ToPhase.ToString(),
+            e.Reason.ToString(),
+            e.DistToTarget.ToString("G", CultureInfo.InvariantCulture),
+            e.HasLineOfSight ? "true" : "false",
+            e.MsSinceLos.ToString(CultureInfo.InvariantCulture));
 
         private static string CreateSessionId()
             => DateTime.UtcNow.ToString("yyyyMMddTHHmmssfffZ", CultureInfo.InvariantCulture)

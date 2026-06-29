@@ -50,18 +50,23 @@ namespace FactionWars.Tests.Unit.Telemetry
         {
             using var sink = new CsvBehaviorTraceSink(_tempDir);
             sink.SetSaveFile("SGTA0001");
-            sink.Write(Row(42));
+            var row = Row(42);
+            row.HasLineOfSight = true;
+            row.EnginePhase = "Engage";
+            row.MsSinceLos = 250;
+            sink.Write(row);
 
             var path = Path.Combine(_tempDir, "SGTA0001", "behavior_trace.csv");
             var lines = File.ReadAllLines(path);
             Assert.Equal(2, lines.Length);
             Assert.StartsWith("session_id,timestamp_utc,sample_ms,handle,kind,role,weapon,is_shooting,in_combat,target_handle,dist_to_target,dist_to_player,pos_x,pos_y,pos_z,in_vehicle,is_following_player,health,combat_ability", lines[0]);
+            Assert.Contains("combat_ability,has_los,engine_phase,ms_since_los", lines[0]);
             Assert.Contains("12345", lines[1]);
             Assert.Contains("42", lines[1]);
             Assert.Contains("Follower", lines[1]);
             Assert.Contains("Sniper", lines[1]);
             Assert.Contains("WEAPON_SNIPERRIFLE", lines[1]);
-            Assert.Contains("true", lines[1]);
+            Assert.Contains(",true,Engage,250", lines[1]);
         }
 
         [Fact]
