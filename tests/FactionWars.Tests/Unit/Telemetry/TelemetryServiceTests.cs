@@ -187,6 +187,52 @@ namespace FactionWars.Tests.Unit.Telemetry
         }
 
         [Fact]
+        public void Update_PlayerDies_RecordsKillerWeaponAndHandle()
+        {
+            var dead = false;
+            using var svc = new TelemetryService(_sink.Object, _factionService.Object,
+                _zoneService.Object, _gameStateManager.Object,
+                new TelemetryServiceOptions
+                {
+                    IsPlayerDead = () => dead,
+                    GetCurrentZoneId = () => "little_seoul",
+                    GetPlayerPosition = () => new Vector3(1.5f, 2.5f, 3.5f),
+                    GetPlayerDeathCause = () => new PlayerDeathCause("SNIPERRIFLE", 4242),
+                });
+
+            dead = true;
+            svc.Update(0.1f);
+
+            _sink.Verify(s => s.WritePlayerEvent(It.Is<PlayerEventRow>(r =>
+                r.Type == PlayerEventType.Death
+                && r.Details.Contains("\"killer_weapon\":\"SNIPERRIFLE\"")
+                && r.Details.Contains("\"killer_handle\":4242")
+                && r.Details.Contains("\"x\":1.5"))), Times.Once);
+        }
+
+        [Fact]
+        public void Update_PlayerRespawns_DoesNotIncludeKillerFields()
+        {
+            var dead = true;
+            using var svc = new TelemetryService(_sink.Object, _factionService.Object,
+                _zoneService.Object, _gameStateManager.Object,
+                new TelemetryServiceOptions
+                {
+                    IsPlayerDead = () => dead,
+                    GetCurrentZoneId = () => null,
+                    GetPlayerPosition = () => new Vector3(10f, 20f, 30f),
+                    GetPlayerDeathCause = () => new PlayerDeathCause("SNIPERRIFLE", 4242),
+                });
+
+            dead = false;
+            svc.Update(0.1f);
+
+            _sink.Verify(s => s.WritePlayerEvent(It.Is<PlayerEventRow>(r =>
+                r.Type == PlayerEventType.RespawnAtHospital
+                && !r.Details.Contains("killer_weapon"))), Times.Once);
+        }
+
+        [Fact]
         public void Update_PlayerRespawns_WritesRespawnAtHospital()
         {
             var dead = true;

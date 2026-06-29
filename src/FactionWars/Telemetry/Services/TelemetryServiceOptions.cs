@@ -57,6 +57,12 @@ namespace FactionWars.Telemetry.Services
         public Func<Vector3>? GetPlayerPosition { get; init; }
 
         /// <summary>
+        /// Returns what killed the player (weapon name + killer handle). Read at the death
+        /// transition; included in the Death event details JSON as killer_weapon / killer_handle.
+        /// </summary>
+        public Func<PlayerDeathCause>? GetPlayerDeathCause { get; init; }
+
+        /// <summary>
         /// Predicate returning true when the given save filename has never been seen by the
         /// telemetry system before (i.e. its per-save folder does not yet exist on disk).
         /// When supplied, the first OnGameLoaded for a never-seen save emits MatchStart.

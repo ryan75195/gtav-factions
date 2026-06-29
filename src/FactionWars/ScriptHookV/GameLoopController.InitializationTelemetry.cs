@@ -42,6 +42,7 @@ namespace FactionWars.ScriptHookV
                     IsPlayerDead = () => _gameBridge.IsPlayerDead(),
                     GetCurrentZoneId = () => _territoryManager?.CurrentZone?.Id,
                     GetPlayerPosition = () => _gameBridge.GetPlayerPosition(),
+                    GetPlayerDeathCause = () => _gameBridge.GetPlayerDeathInfo(),
                     IsFirstTimeSeenSave = save => !Directory.Exists(Path.Combine(telemetryRoot, save)),
                     ZoneBattleManager = _zoneBattleManager,
                     AIController = _aiController,

@@ -17,6 +17,7 @@ namespace FactionWars.Telemetry.Interfaces
         Func<bool>? IsPlayerDead { get; }
         Func<string?>? GetCurrentZoneId { get; }
         Func<Vector3>? GetPlayerPosition { get; }
+        Func<PlayerDeathCause>? GetPlayerDeathCause { get; }
         Func<string, bool>? IsFirstTimeSeenSave { get; }
         IZoneBattleManager? ZoneBattleManager { get; }
         IAIController? AIController { get; }

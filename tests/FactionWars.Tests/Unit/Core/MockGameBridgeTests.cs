@@ -17,6 +17,29 @@ namespace FactionWars.Tests.Unit.Core
         }
 
         [Fact]
+        public void GetPlayerDeathInfo_RoundTripsConfiguredCause()
+        {
+            var mockBridge = new MockGameBridge();
+            mockBridge.SetPlayerDeathInfo("SNIPERRIFLE", 4242);
+
+            var cause = mockBridge.GetPlayerDeathInfo();
+
+            Assert.Equal("SNIPERRIFLE", cause.WeaponName);
+            Assert.Equal(4242, cause.KillerHandle);
+        }
+
+        [Fact]
+        public void GetPlayerDeathInfo_DefaultsToEmptyWeaponAndNoKiller()
+        {
+            var mockBridge = new MockGameBridge();
+
+            var cause = mockBridge.GetPlayerDeathInfo();
+
+            Assert.Equal(string.Empty, cause.WeaponName);
+            Assert.Equal(-1, cause.KillerHandle);
+        }
+
+        [Fact]
         public void GetPlayerPosition_ReturnsConfiguredPosition()
         {
             // Arrange
