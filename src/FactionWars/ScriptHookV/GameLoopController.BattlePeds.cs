@@ -8,6 +8,10 @@ namespace FactionWars.ScriptHookV
 {
     public partial class GameLoopController
     {
+        // Radius within which a battle defender seeks hated targets (the player and the player's
+        // squad). Generous enough to cover the immediate firefight without pulling the whole map.
+        private const float BattleDefenderEngageRadius = 100f;
+
         private void ConfigureSpawnedDefenders(IList<PedHandle> spawnedPeds, DefenderRole tier, string defenderFactionId)
         {
             FileLogger.Combat($"ConfigureSpawnedDefenders: {spawnedPeds.Count} peds, tier={tier}, faction={defenderFactionId}");
@@ -49,8 +53,10 @@ namespace FactionWars.ScriptHookV
                 // Set hostile relationship to player
                 SetPedHostileToPlayer(ped.Handle, defenderFactionId);
 
-                // CRITICAL: Give defender a task to fight the player
-                _gameBridge.SetPedToAttackPlayer(ped.Handle);
+                // Seek any hated target in range (the player AND the player's squad, which share the
+                // player's faction relationship group) rather than hard-locking onto the player, so
+                // defenders split their fire across the player and bodyguards.
+                _gameBridge.TaskCombatHatedTargetsAroundPed(ped.Handle, BattleDefenderEngageRadius);
 
                 _gameBridge.SetPedWeaponDamageModifier(ped.Handle, stats.DamageMultiplier);
 

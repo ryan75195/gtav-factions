@@ -37,7 +37,7 @@ namespace FactionWars.ScriptHookV.Managers
 
         // Idle radius the run-to-player follow task settles at: tight enough that bodyguards
         // actually gather on the player rather than milling a formation-width away.
-        private const float EscortFollowStopRadius = 4f;
+        private const float EscortFollowStopRadius = 8f;
 
         // Within this distance of the player a bodyguard is "arrived": it reacts to threats and
         // defends. Beyond it the bodyguard is running back and ignores fire so the sprint isn't
