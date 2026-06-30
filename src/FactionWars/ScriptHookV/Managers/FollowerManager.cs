@@ -253,6 +253,7 @@ namespace FactionWars.ScriptHookV.Managers
             }
             else
             {
+                RestoreLockedFollowers();
                 // On foot / holding / hunting: keep bodyguards grounded for the squad stance controller.
                 OnFootBodyguardHandles = aliveFollowerHandles;
                 SniperBodyguardHandles = FilterSniperHandles(followers, aliveFollowerHandles);

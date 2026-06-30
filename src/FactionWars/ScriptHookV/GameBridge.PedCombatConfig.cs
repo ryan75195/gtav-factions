@@ -110,6 +110,30 @@ namespace FactionWars.ScriptHookV
         }
 
         /// <inheritdoc />
+        public void SetPedCanLeaveVehicle(int pedHandle, bool canLeave)
+        {
+            try
+            {
+                var ped = Entity.FromHandle(pedHandle) as Ped;
+                if (ped == null || !ped.Exists()) return;
+
+                // 3 = BF_CanLeaveVehicle. False keeps the ped seated; pair it with drive-bys
+                // (2 = BF_CanDoDrivebys) so a kept-in bodyguard still shoots from the vehicle.
+                Function.Call(Hash.SET_PED_COMBAT_ATTRIBUTES, ped.Handle, 3, canLeave);
+                if (!canLeave)
+                {
+                    Function.Call(Hash.SET_PED_COMBAT_ATTRIBUTES, ped.Handle, 2, true);
+                }
+
+                FileLogger.AI($"SetPedCanLeaveVehicle: ped {pedHandle} canLeave={canLeave}");
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error($"SetPedCanLeaveVehicle exception for ped {pedHandle}", ex);
+            }
+        }
+
+        /// <inheritdoc />
         public void SetPedCombatProfile(int pedHandle, int ability, int combatRange, int movement)
         {
             try

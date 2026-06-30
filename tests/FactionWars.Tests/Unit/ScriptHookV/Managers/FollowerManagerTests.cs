@@ -917,6 +917,84 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         }
 
         [Fact]
+        public void Update_BoardingFollower_BlocksPermanentEvents()
+        {
+            // A follower being boarded (on foot, gets a board order) has threat events blocked
+            // so the run-to-seat isn't interrupted by nearby gunfire.
+            var factionId = "blue";
+            var follower = CreateFollowerWithPedHandle(factionId, DefenderRole.Grunt, 50);
+            var followers = new List<Follower> { follower };
+            var vehicleHandle = 900;
+
+            _followerServiceMock.Setup(s => s.GetFollowers(factionId)).Returns(followers);
+            _gameBridgeMock.Setup(g => g.IsPedAlive(50)).Returns(true);
+            _gameBridgeMock.Setup(g => g.IsPlayerInVehicle()).Returns(true);
+            _gameBridgeMock.Setup(g => g.GetPlayerVehicle()).Returns(vehicleHandle);
+            _gameBridgeMock.Setup(g => g.IsPedInVehicle(50)).Returns(false);
+            _gameBridgeMock.Setup(g => g.IsPedTryingToEnterVehicle(50)).Returns(false);
+
+            // Act
+            _manager.Update(factionId);
+
+            // Assert
+            _gameBridgeMock.Verify(g => g.TaskPedEnterVehicle(50, vehicleHandle, It.IsAny<int>()), Times.Once);
+            _gameBridgeMock.Verify(g => g.SetPedBlockPermanentEvents(50, true), Times.AtLeastOnce());
+        }
+
+        [Fact]
+        public void Update_SeatedFollower_LockedInAndUnblocked()
+        {
+            // A seated follower (IsPedInVehicle true) is locked in: can't leave + events unblocked
+            // so it keeps shooting from the vehicle instead of bailing or stutter-aiming.
+            var factionId = "blue";
+            var follower = CreateFollowerWithPedHandle(factionId, DefenderRole.Grunt, 50);
+            var followers = new List<Follower> { follower };
+            var vehicleHandle = 900;
+
+            _followerServiceMock.Setup(s => s.GetFollowers(factionId)).Returns(followers);
+            _gameBridgeMock.Setup(g => g.IsPedAlive(50)).Returns(true);
+            _gameBridgeMock.Setup(g => g.IsPlayerInVehicle()).Returns(true);
+            _gameBridgeMock.Setup(g => g.GetPlayerVehicle()).Returns(vehicleHandle);
+            _gameBridgeMock.Setup(g => g.IsPedInVehicle(50)).Returns(true);
+
+            // Act
+            _manager.Update(factionId);
+
+            // Assert
+            _gameBridgeMock.Verify(g => g.SetPedCanLeaveVehicle(50, false), Times.AtLeastOnce());
+            _gameBridgeMock.Verify(g => g.SetPedBlockPermanentEvents(50, false), Times.AtLeastOnce());
+        }
+
+        [Fact]
+        public void Update_PlayerExitsVehicle_RestoresCanLeave()
+        {
+            // When the player is no longer in a vehicle, a previously-locked follower is restored
+            // to normal (can leave again, events unblocked) so on-foot combat isn't crippled.
+            var factionId = "blue";
+            var follower = CreateFollowerWithPedHandle(factionId, DefenderRole.Grunt, 50);
+            var followers = new List<Follower> { follower };
+            var vehicleHandle = 900;
+
+            _followerServiceMock.Setup(s => s.GetFollowers(factionId)).Returns(followers);
+            _gameBridgeMock.Setup(g => g.IsPedAlive(50)).Returns(true);
+            _gameBridgeMock.Setup(g => g.IsPlayerInVehicle()).Returns(true);
+            _gameBridgeMock.Setup(g => g.GetPlayerVehicle()).Returns(vehicleHandle);
+            _gameBridgeMock.Setup(g => g.IsPedInVehicle(50)).Returns(true);
+
+            // Act - tick 1: seated, gets locked in
+            _manager.Update(factionId);
+
+            // Arrange tick 2: player exits the vehicle
+            _gameBridgeMock.Setup(g => g.IsPlayerInVehicle()).Returns(false);
+
+            // Act - tick 2
+            _manager.Update(factionId);
+
+            // Assert
+            _gameBridgeMock.Verify(g => g.SetPedCanLeaveVehicle(50, true), Times.AtLeastOnce());
+        }
+
+        [Fact]
         public void Update_WhenNotBoardingAndPlayerInVehicle_ShouldNotBoardAndKeepBodyguardsOnFoot()
         {
             // In HoldArea / S&D the squad holds or hunts on the ground rather than piling into

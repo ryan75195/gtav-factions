@@ -592,6 +592,14 @@ namespace FactionWars.Core.Interfaces
         void SetPedCombatAttributes(int pedHandle, bool canUseCover, bool willFightArmedPeds);
 
         /// <summary>
+        /// Controls whether a ped's combat AI may exit its vehicle to fight
+        /// (SET_PED_COMBAT_ATTRIBUTES index 3, BF_CanLeaveVehicle). Set false to keep a
+        /// boarded bodyguard seated; doing so also enables drive-bys (index 2) so the
+        /// kept-in ped shoots from the vehicle instead of bailing out to engage on foot.
+        /// </summary>
+        void SetPedCanLeaveVehicle(int pedHandle, bool canLeave);
+
+        /// <summary>
         /// Sets a waypoint on the map at the specified position.
         /// The player can use this for navigation but must travel there manually.
         /// </summary>

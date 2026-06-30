@@ -500,6 +500,16 @@ namespace FactionWars.Core.Utils
         /// <summary>Test hook: true if the ped is currently blocking non-temporary events.</summary>
         public bool GetPedBlockPermanentEventsForTest(int pedHandle) => _blockPermanentEventsPeds.Contains(pedHandle);
 
+        private readonly HashSet<int> _cannotLeaveVehiclePeds = new HashSet<int>();
+
+        public void SetPedCanLeaveVehicle(int pedHandle, bool canLeave)
+        {
+            if (canLeave) _cannotLeaveVehiclePeds.Remove(pedHandle);
+            else _cannotLeaveVehiclePeds.Add(pedHandle);
+        }
+
+        public bool GetPedCanLeaveVehicleForTest(int pedHandle) => !_cannotLeaveVehiclePeds.Contains(pedHandle);
+
         public bool IsPlayerInVehicle() => IsPlayerInVehicleValue;
 
         public int GetPlayerVehicle() => PlayerVehicleHandle;
@@ -1452,12 +1462,20 @@ namespace FactionWars.Core.Utils
             GameTime += milliseconds;
         }
 
+        private void ClearPedState()
+        {
+            _peds.Clear();
+            _pedsInVehicles.Clear();
+            _wanderingPeds.Clear();
+            _cannotLeaveVehiclePeds.Clear();
+        }
+
         /// <summary>
         /// Resets all mock state to initial values.
         /// </summary>
         public void Reset()
         {
-            _peds.Clear();
+            ClearPedState();
             _blips.Clear();
             _notifications.Clear();
             _blipsCreated.Clear();
@@ -1466,8 +1484,6 @@ namespace FactionWars.Core.Utils
             _relationships.Clear();
             _followingPeds.Clear();
             _vehicles.Clear();
-            _pedsInVehicles.Clear();
-            _wanderingPeds.Clear();
             _nextPedHandle = 1;
             _nextBlipHandle = 1;
             _nextVehicleHandle = 1000;
