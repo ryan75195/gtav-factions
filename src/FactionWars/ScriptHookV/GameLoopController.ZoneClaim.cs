@@ -60,8 +60,8 @@ namespace FactionWars.ScriptHookV
                 // Spawn friendly defender(s)
                 _friendlyDefenderManager?.OnZoneEntered(claimedZone);
 
-                // Spawn commander
-                _commanderManager?.OnZoneEntered(claimedZone);
+                // Spawn the commander next to the player (same as respawning into an owned zone)
+                _commanderManager?.PlaceCommanderNearPlayer(claimedZone, _gameBridge.GetPlayerPosition());
             }
         }
 
