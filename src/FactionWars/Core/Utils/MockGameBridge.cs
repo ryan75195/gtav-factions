@@ -345,6 +345,8 @@ namespace FactionWars.Core.Utils
 
         public int SetPoliceSuppressionCallCount { get; private set; }
 
+        public int MenuConflictSuppressCallCount { get; private set; }
+
         public void ClearWantedLevel()
         {
             WantedLevel = 0;
@@ -1487,6 +1489,7 @@ namespace FactionWars.Core.Utils
             PoliceSuppressionEnabled = false;
             ClearWantedLevelCallCount = 0;
             SetPoliceSuppressionCallCount = 0;
+            MenuConflictSuppressCallCount = 0;
             _playerWeapons.Clear();
             _playerWeaponsWithAmmo.Clear();
             WereAllPlayerWeaponsRemoved = false;
@@ -1724,6 +1727,11 @@ namespace FactionWars.Core.Utils
 
         /// <summary>Clears recorded DisableControlThisFrame calls (for testing).</summary>
         public void ClearDisabledControls() => DisabledControls.Clear();
+
+        public void DisableMenuConflictControlsThisFrame()
+        {
+            MenuConflictSuppressCallCount++;
+        }
 
         private class PedState
         {

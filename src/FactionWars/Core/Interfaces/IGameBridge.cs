@@ -854,5 +854,13 @@ namespace FactionWars.Core.Interfaces
         /// </summary>
         /// <param name="control">The GTA V control ID to disable this frame.</param>
         void DisableControlThisFrame(int control);
+
+        /// <summary>
+        /// Disables the native controls that conflict with mod-menu use for this frame
+        /// (weapon wheel, vehicle radio, phone, character switch, attack/aim/melee, cover).
+        /// Movement and frontend menu-navigation controls are intentionally left enabled so
+        /// the mod menus stay operable. Must be called every frame a mod menu is open.
+        /// </summary>
+        void DisableMenuConflictControlsThisFrame();
     }
 }
