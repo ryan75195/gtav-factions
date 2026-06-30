@@ -24,6 +24,19 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         private static readonly IReadOnlyDictionary<int, DefenderRole> NoRoles = new Dictionary<int, DefenderRole>();
 
         [Fact]
+        public void Update_Escort_FollowsPlayerAtEscortStopRadius()
+        {
+            // Escort is the default stance. A bodyguard near the player should be issued a persistent
+            // follow that idles at the escort stop radius (kept loose enough not to crowd the player).
+            _controller = Build();
+            int follower = _bridge.CreatePed("f", new Vector3(0f, 0f, 0f));
+
+            _controller.Update(Anchor, 250f, new List<int> { follower }, new List<EnemyTarget>(), NoRoles);
+
+            Assert.Equal(8f, _bridge.GetFollowEntityStoppingRadius(follower));
+        }
+
+        [Fact]
         public void SetStance_AppliesTargetDirectly()
         {
             _controller = Build();
