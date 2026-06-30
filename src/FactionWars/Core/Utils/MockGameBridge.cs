@@ -749,6 +749,26 @@ namespace FactionWars.Core.Utils
             }
         }
 
+        private readonly System.Collections.Generic.Dictionary<int, float> _pedWeaponDamageMods
+            = new System.Collections.Generic.Dictionary<int, float>();
+        private int _playerMaxHealth = 200;
+        private float _playerWeaponDamageMod = 1f;
+        private float _playerWeaponDefenseMod = 1f;
+
+        public void SetPedWeaponDamageModifier(int pedHandle, float multiplier)
+            => _pedWeaponDamageMods[pedHandle] = multiplier;
+        public float GetPedWeaponDamageModifierForTest(int pedHandle)
+            => _pedWeaponDamageMods.TryGetValue(pedHandle, out var m) ? m : 1f;
+
+        public void SetPlayerMaxHealth(int maxHealth) => _playerMaxHealth = maxHealth;
+        public int GetPlayerMaxHealthForTest() => _playerMaxHealth;
+
+        public void SetPlayerWeaponDamageModifier(float multiplier) => _playerWeaponDamageMod = multiplier;
+        public float GetPlayerWeaponDamageModifierForTest() => _playerWeaponDamageMod;
+
+        public void SetPlayerWeaponDefenseModifier(float multiplier) => _playerWeaponDefenseMod = multiplier;
+        public float GetPlayerWeaponDefenseModifierForTest() => _playerWeaponDefenseMod;
+
         public void SetPedHealth(int pedHandle, int health)
         {
             if (_peds.TryGetValue(pedHandle, out var ped))
@@ -1470,6 +1490,10 @@ namespace FactionWars.Core.Utils
             _playerWeapons.Clear();
             _playerWeaponsWithAmmo.Clear();
             WereAllPlayerWeaponsRemoved = false;
+            _pedWeaponDamageMods.Clear();
+            _playerMaxHealth = 200;
+            _playerWeaponDamageMod = 1f;
+            _playerWeaponDefenseMod = 1f;
         }
 
         /// <summary>

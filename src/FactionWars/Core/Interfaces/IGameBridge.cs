@@ -550,6 +550,18 @@ namespace FactionWars.Core.Interfaces
         /// <param name="armor">Armor value (0 = no armor, 100 = full armor).</param>
         void SetPedArmor(int pedHandle, int armor);
 
+        /// <summary>Multiplies the damage this ped's weapons deal (SET_PED_WEAPON_DAMAGE_MODIFIER).</summary>
+        void SetPedWeaponDamageModifier(int pedHandle, float multiplier);
+
+        /// <summary>Sets the player ped's max health and heals to full (SET_PED_MAX_HEALTH).</summary>
+        void SetPlayerMaxHealth(int maxHealth);
+
+        /// <summary>Multiplies damage the player's weapons deal (SET_PLAYER_WEAPON_DAMAGE_MODIFIER).</summary>
+        void SetPlayerWeaponDamageModifier(float multiplier);
+
+        /// <summary>Multiplies damage the player TAKES; &lt;1 = tougher (SET_PLAYER_WEAPON_DEFENSE_MODIFIER).</summary>
+        void SetPlayerWeaponDefenseModifier(float multiplier);
+
         /// <summary>
         /// Sets a ped's maximum and current health.
         /// </summary>

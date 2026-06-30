@@ -84,5 +84,20 @@ namespace FactionWars.ScriptHookV
         }
 
         /// <inheritdoc />
+        public void SetPedWeaponDamageModifier(int pedHandle, float multiplier)
+        {
+            try
+            {
+                var ped = Entity.FromHandle(pedHandle) as Ped;
+                if (ped == null || !ped.Exists()) return;
+                uint nativeHash = Function.Call<uint>(Hash.GET_HASH_KEY, "SET_PED_WEAPON_DAMAGE_MODIFIER");
+                Function.Call((Hash)nativeHash, ped.Handle, multiplier);
+                FileLogger.Combat($"SetPedWeaponDamageModifier: ped {pedHandle} x{multiplier:F2}");
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error($"SetPedWeaponDamageModifier exception for ped {pedHandle}", ex);
+            }
+        }
     }
 }
