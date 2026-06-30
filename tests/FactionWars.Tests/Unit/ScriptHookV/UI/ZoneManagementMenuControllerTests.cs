@@ -1,7 +1,9 @@
-using FactionWars.Core.Interfaces;
+﻿using FactionWars.Core.Interfaces;
 using FactionWars.Core.Models;
+using FactionWars.Economy.Interfaces;
 using FactionWars.Factions.Interfaces;
 using FactionWars.Factions.Models;
+using FactionWars.ScriptHookV.Models;
 using FactionWars.ScriptHookV.UI;
 using FactionWars.Tests.Mocks;
 using FactionWars.Territory.Interfaces;
@@ -26,10 +28,21 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
         private readonly Mock<IZoneService> _zoneServiceMock;
         private readonly Mock<IPlayerContext> _playerContextMock;
         private readonly Mock<IZoneDefenderAllocationService> _allocationServiceMock;
+        private readonly Mock<IDefenderDeploymentService> _deploymentServiceMock = new Mock<IDefenderDeploymentService>();
         private readonly ZoneManagementMenuController _controller;
 
         private const string PlayerFactionId = "michael";
         private const string PlayerFactionName = "De Santa Enterprises";
+
+        private ZoneManagementMenuControllerDependencies Deps() => new ZoneManagementMenuControllerDependencies
+        {
+            MenuProvider = _menuProvider,
+            FactionService = _factionServiceMock.Object,
+            ZoneService = _zoneServiceMock.Object,
+            PlayerContext = _playerContextMock.Object,
+            AllocationService = _allocationServiceMock.Object,
+            DeploymentService = _deploymentServiceMock.Object
+        };
 
         public ZoneManagementMenuControllerTests()
         {
@@ -69,12 +82,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
             _zoneServiceMock.Setup(z => z.GetZone("zone_vinewood")).Returns(playerZones[1]);
             _zoneServiceMock.Setup(z => z.GetZone("zone_airport")).Returns(playerZones[2]);
 
-            _controller = new ZoneManagementMenuController(
-                _menuProvider,
-                _factionServiceMock.Object,
-                _zoneServiceMock.Object,
-                _playerContextMock.Object,
-                _allocationServiceMock.Object);
+            _controller = new ZoneManagementMenuController(Deps());
         }
 
         #region Constructor Tests
@@ -82,56 +90,49 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
         [Fact]
         public void Constructor_WithNullMenuProvider_ShouldThrowArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => new ZoneManagementMenuController(
-                null!,
-                _factionServiceMock.Object,
-                _zoneServiceMock.Object,
-                _playerContextMock.Object,
-                _allocationServiceMock.Object));
+            var deps = Deps();
+            deps.MenuProvider = null;
+            Assert.Throws<ArgumentNullException>(() => new ZoneManagementMenuController(deps));
         }
 
         [Fact]
         public void Constructor_WithNullFactionService_ShouldThrowArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => new ZoneManagementMenuController(
-                _menuProvider,
-                null!,
-                _zoneServiceMock.Object,
-                _playerContextMock.Object,
-                _allocationServiceMock.Object));
+            var deps = Deps();
+            deps.FactionService = null;
+            Assert.Throws<ArgumentNullException>(() => new ZoneManagementMenuController(deps));
         }
 
         [Fact]
         public void Constructor_WithNullZoneService_ShouldThrowArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => new ZoneManagementMenuController(
-                _menuProvider,
-                _factionServiceMock.Object,
-                null!,
-                _playerContextMock.Object,
-                _allocationServiceMock.Object));
+            var deps = Deps();
+            deps.ZoneService = null;
+            Assert.Throws<ArgumentNullException>(() => new ZoneManagementMenuController(deps));
         }
 
         [Fact]
         public void Constructor_WithNullPlayerContext_ShouldThrowArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => new ZoneManagementMenuController(
-                _menuProvider,
-                _factionServiceMock.Object,
-                _zoneServiceMock.Object,
-                null!,
-                _allocationServiceMock.Object));
+            var deps = Deps();
+            deps.PlayerContext = null;
+            Assert.Throws<ArgumentNullException>(() => new ZoneManagementMenuController(deps));
         }
 
         [Fact]
         public void Constructor_WithNullAllocationService_ShouldThrowArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => new ZoneManagementMenuController(
-                _menuProvider,
-                _factionServiceMock.Object,
-                _zoneServiceMock.Object,
-                _playerContextMock.Object,
-                null!));
+            var deps = Deps();
+            deps.AllocationService = null;
+            Assert.Throws<ArgumentNullException>(() => new ZoneManagementMenuController(deps));
+        }
+
+        [Fact]
+        public void Constructor_WithNullDeploymentService_ShouldThrowArgumentNullException()
+        {
+            var deps = Deps();
+            deps.DeploymentService = null;
+            Assert.Throws<ArgumentNullException>(() => new ZoneManagementMenuController(deps));
         }
 
         #endregion

@@ -1,6 +1,7 @@
 using FactionWars.Core.Interfaces;
 using FactionWars.Economy.Interfaces;
 using FactionWars.Factions.Interfaces;
+using FactionWars.ScriptHookV.Models;
 using FactionWars.ScriptHookV.UI;
 using FactionWars.UI.Interfaces;
 using FactionWars.UI.Services;
@@ -64,7 +65,15 @@ namespace FactionWars.ScriptHookV
             _overviewMenuController.BackRequested += BackTo(OverviewMenuController.OverviewMenuId, () => mainMenuController.OnKeyDown(MainMenuController.MenuToggleKeyCode));
 
             _zoneManagementMenuController = new ZoneManagementMenuController(
-                menuProvider, _factionService, zoneService, playerContext, allocationService);
+                new ZoneManagementMenuControllerDependencies
+                {
+                    MenuProvider = menuProvider,
+                    FactionService = _factionService,
+                    ZoneService = zoneService,
+                    PlayerContext = playerContext,
+                    AllocationService = allocationService,
+                    DeploymentService = _container.Resolve<IDefenderDeploymentService>()
+                });
             _zoneManagementMenuController.BackRequested += BackTo(ZoneManagementMenuController.ZoneManagementMenuId, () => mainMenuController.OnKeyDown(MainMenuController.MenuToggleKeyCode));
         }
 

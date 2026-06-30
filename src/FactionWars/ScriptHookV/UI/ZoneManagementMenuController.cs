@@ -1,7 +1,9 @@
 using FactionWars.Core.Interfaces;
 using FactionWars.Core.Models;
+using FactionWars.Economy.Interfaces;
 using FactionWars.Factions.Interfaces;
 using FactionWars.Factions.Models;
+using FactionWars.ScriptHookV.Models;
 using FactionWars.Territory.Interfaces;
 using FactionWars.UI.Interfaces;
 using FactionWars.UI.Models;
@@ -96,6 +98,7 @@ namespace FactionWars.ScriptHookV.UI
         private readonly IZoneService _zoneService;
         private readonly IPlayerContext _playerContext;
         private readonly IZoneDefenderAllocationService _allocationService;
+        private readonly IDefenderDeploymentService _deploymentService;
 
         private string? _selectedZoneId;
 
@@ -105,28 +108,20 @@ namespace FactionWars.ScriptHookV.UI
         public event EventHandler? BackRequested;
 
         /// <summary>
-        /// Creates a new ZoneManagementMenuController with the specified dependencies.
+        /// Creates a new ZoneManagementMenuController with the specified dependencies bundle.
         /// </summary>
-        /// <param name="menuProvider">The menu provider for displaying menus.</param>
-        /// <param name="factionService">The faction service for retrieving faction data.</param>
-        /// <param name="zoneService">The zone service for retrieving zone data.</param>
-        /// <param name="playerContext">The player context for determining the current faction.</param>
-        /// <param name="allocationService">The service for managing troop allocations.</param>
-        /// <exception cref="ArgumentNullException">Thrown if any parameter is null.</exception>
-        public ZoneManagementMenuController(
-            IMenuProvider menuProvider,
-            IFactionService factionService,
-            IZoneService zoneService,
-            IPlayerContext playerContext,
-            IZoneDefenderAllocationService allocationService)
+        /// <param name="dependencies">The dependencies bundle.</param>
+        /// <exception cref="ArgumentNullException">Thrown if dependencies or any required property is null.</exception>
+        public ZoneManagementMenuController(ZoneManagementMenuControllerDependencies dependencies)
         {
-            _menuProvider = menuProvider ?? throw new ArgumentNullException(nameof(menuProvider));
-            _factionService = factionService ?? throw new ArgumentNullException(nameof(factionService));
-            _zoneService = zoneService ?? throw new ArgumentNullException(nameof(zoneService));
-            _playerContext = playerContext ?? throw new ArgumentNullException(nameof(playerContext));
-            _allocationService = allocationService ?? throw new ArgumentNullException(nameof(allocationService));
+            if (dependencies == null) throw new ArgumentNullException(nameof(dependencies));
+            _menuProvider = dependencies.MenuProvider ?? throw new ArgumentNullException(nameof(dependencies.MenuProvider));
+            _factionService = dependencies.FactionService ?? throw new ArgumentNullException(nameof(dependencies.FactionService));
+            _zoneService = dependencies.ZoneService ?? throw new ArgumentNullException(nameof(dependencies.ZoneService));
+            _playerContext = dependencies.PlayerContext ?? throw new ArgumentNullException(nameof(dependencies.PlayerContext));
+            _allocationService = dependencies.AllocationService ?? throw new ArgumentNullException(nameof(dependencies.AllocationService));
+            _deploymentService = dependencies.DeploymentService ?? throw new ArgumentNullException(nameof(dependencies.DeploymentService));
 
-            // Subscribe to menu item selection events
             _menuProvider.ItemSelected += OnItemSelected;
         }
 
