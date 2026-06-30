@@ -216,8 +216,7 @@ namespace FactionWars.ScriptHookV
         {
             try
             {
-                uint nativeHash = Function.Call<uint>(Hash.GET_HASH_KEY, "SET_PLAYER_WEAPON_DAMAGE_MODIFIER");
-                Function.Call((Hash)nativeHash, Game.Player.Handle, multiplier);
+                Function.Call(Hash.SET_PLAYER_WEAPON_DAMAGE_MODIFIER, Game.Player.Handle, multiplier);
                 FileLogger.Info($"SetPlayerWeaponDamageModifier: x{multiplier:F2}");
             }
             catch (Exception ex) { FileLogger.Error("SetPlayerWeaponDamageModifier exception", ex); }
@@ -228,8 +227,7 @@ namespace FactionWars.ScriptHookV
         {
             try
             {
-                uint nativeHash = Function.Call<uint>(Hash.GET_HASH_KEY, "SET_PLAYER_WEAPON_DEFENSE_MODIFIER");
-                Function.Call((Hash)nativeHash, Game.Player.Handle, multiplier);
+                Function.Call(Hash.SET_PLAYER_WEAPON_DEFENSE_MODIFIER, Game.Player.Handle, multiplier);
                 FileLogger.Info($"SetPlayerWeaponDefenseModifier: x{multiplier:F2}");
             }
             catch (Exception ex) { FileLogger.Error("SetPlayerWeaponDefenseModifier exception", ex); }

@@ -90,8 +90,7 @@ namespace FactionWars.ScriptHookV
             {
                 var ped = Entity.FromHandle(pedHandle) as Ped;
                 if (ped == null || !ped.Exists()) return;
-                uint nativeHash = Function.Call<uint>(Hash.GET_HASH_KEY, "SET_PED_WEAPON_DAMAGE_MODIFIER");
-                Function.Call((Hash)nativeHash, ped.Handle, multiplier);
+                Function.Call((Hash)0x4757F00BC6323CFEUL, ped.Handle, multiplier);
                 FileLogger.Combat($"SetPedWeaponDamageModifier: ped {pedHandle} x{multiplier:F2}");
             }
             catch (Exception ex)
