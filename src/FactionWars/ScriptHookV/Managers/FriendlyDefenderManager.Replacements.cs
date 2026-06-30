@@ -165,13 +165,16 @@ namespace FactionWars.ScriptHookV.Managers
         /// </summary>
         private void ConfigureDefenderCombat(int pedHandle, DefenderRoleConfig roleConfig, Vector3 zoneCenter)
         {
+            var stats = _statsProvider.GetRoleStats(CombatantCategory.Friendlies, roleConfig.Role);
+
             // Give pistol first as secondary weapon for drive-by shooting
             _gameBridge.GivePedWeapon(pedHandle, "weapon_pistol");
             // Give tier-appropriate weapon last so it becomes the equipped/primary weapon
-            _gameBridge.GivePedWeapon(pedHandle, roleConfig.Weapon);
-            _gameBridge.SetPedAccuracy(pedHandle, roleConfig.Accuracy);
-            _gameBridge.SetPedArmor(pedHandle, roleConfig.Armor);
-            _gameBridge.SetPedHealth(pedHandle, roleConfig.Health);
+            _gameBridge.GivePedWeapon(pedHandle, stats.Weapon);
+            _gameBridge.SetPedAccuracy(pedHandle, stats.Accuracy);
+            _gameBridge.SetPedArmor(pedHandle, stats.Armor);
+            _gameBridge.SetPedHealth(pedHandle, stats.Health);
+            _gameBridge.SetPedWeaponDamageModifier(pedHandle, stats.DamageMultiplier);
             _gameBridge.SetPedCriticalHitsEnabled(pedHandle, false);
             _gameBridge.SetPedRagdollEnabled(pedHandle, roleConfig.RagdollEnabled);
             _gameBridge.SetPedCombatAttributes(pedHandle, canUseCover: true, willFightArmedPeds: true);

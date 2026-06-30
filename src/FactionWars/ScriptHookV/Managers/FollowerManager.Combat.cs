@@ -15,20 +15,23 @@ namespace FactionWars.ScriptHookV.Managers
 
         private void ConfigureFollowerCombat(int pedHandle, DefenderRoleConfig roleConfig)
         {
+            var stats = _statsProvider.GetRoleStats(CombatantCategory.Squad, roleConfig.Role);
+
             // Give pistol first as secondary weapon for drive-by shooting from vehicles
             _gameBridge.GivePedWeapon(pedHandle, "weapon_pistol");
 
             // Give tier-appropriate weapon last so it becomes the equipped/primary weapon
-            _gameBridge.GivePedWeapon(pedHandle, roleConfig.Weapon);
+            _gameBridge.GivePedWeapon(pedHandle, stats.Weapon);
 
             // Set shooting accuracy
-            _gameBridge.SetPedAccuracy(pedHandle, roleConfig.Accuracy);
+            _gameBridge.SetPedAccuracy(pedHandle, stats.Accuracy);
 
             // Set armor based on tier
-            _gameBridge.SetPedArmor(pedHandle, roleConfig.Armor);
+            _gameBridge.SetPedArmor(pedHandle, stats.Armor);
 
             // Set health based on tier
-            _gameBridge.SetPedHealth(pedHandle, roleConfig.Health);
+            _gameBridge.SetPedHealth(pedHandle, stats.Health);
+            _gameBridge.SetPedWeaponDamageModifier(pedHandle, stats.DamageMultiplier);
             _gameBridge.SetPedCriticalHitsEnabled(pedHandle, false);
             _gameBridge.SetPedRagdollEnabled(pedHandle, false);
 

@@ -438,5 +438,49 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             Assert.NotEmpty(handles);
             Assert.Equal(_manager.GetSpawnedDefenderCount(TestZoneId), handles.Count);
         }
+
+        [Fact]
+        public void OnEnemyZoneEntered_ShouldApplyEnemiesRiflemanStatsFromProvider()
+        {
+            // Arrange — override Enemies.Rifleman so values are distinctive vs roleConfig defaults
+            SetupManager();
+            var cfg = new CombatantsConfig();
+            cfg.Enemies.Rifleman = new RoleStatsConfig
+            {
+                Health = 999, Armor = 50, Accuracy = 0.11f,
+                Weapon = "WEAPON_MARKSMANRIFLE", DamageMultiplier = 3f
+            };
+            var provider = CombatantStatsProviderFactory.Create(cfg);
+
+            _manager = new EnemyDefenderManager(new EnemyDefenderManagerDependencies
+            {
+                GameBridge = _gameBridge,
+                AllocationService = _allocationServiceMock.Object,
+                PedSpawningService = _pedSpawningServiceMock.Object,
+                PedDespawnService = _pedDespawnServiceMock.Object,
+                DefenderRoleService = _defenderRoleServiceMock.Object,
+                PedBlipService = _pedBlipServiceMock.Object,
+                ZoneService = _zoneServiceMock.Object,
+                ZoneBattleManager = _zoneBattleManagerMock.Object,
+                StatsProvider = provider
+            });
+
+            _defenderRoleServiceMock.Setup(d => d.GetRoleConfig(DefenderRole.Rifleman))
+                .Returns(new DefenderRoleConfig(DefenderRole.Rifleman, 1000, 200, 100, "weapon_smg", 0.8f, 2.0f));
+
+            var zone = CreateEnemyZone();
+            var allocation = CreateAllocationWithDefenders(basic: 0, medium: 0, heavy: 1);
+            _allocationServiceMock.Setup(a => a.GetAllocation(EnemyFactionId, TestZoneId)).Returns(allocation);
+            _zoneServiceMock.Setup(z => z.GetZone(TestZoneId)).Returns(zone);
+
+            // Act
+            _manager.OnEnemyZoneEntered(zone, EnemyFactionId);
+
+            // Assert — stats source is provider (Enemies.Rifleman), not roleConfig
+            var spawnedPed = _gameBridge.GetSpawnedPeds()[0];
+            Assert.Equal(0.11f, _gameBridge.GetPedAccuracy(spawnedPed), 2);
+            Assert.Equal("WEAPON_MARKSMANRIFLE", _gameBridge.GetPedWeapon(spawnedPed));
+            Assert.Equal(3f, _gameBridge.GetPedWeaponDamageModifierForTest(spawnedPed), 2);
+        }
     }
 }
