@@ -1,6 +1,5 @@
 using System;
 using FactionWars.Core.Models;
-using FactionWars.ScriptHookV.Logging;
 using FactionWars.UI.Interfaces;
 using FactionWars.UI.Models;
 
@@ -32,7 +31,6 @@ namespace FactionWars.ScriptHookV.UI
                 return;
             }
 
-            // Zone item was selected - show zone detail
             if (itemId.StartsWith("zone_") || _zoneService.GetZone(itemId) != null)
             {
                 ShowZoneDetailMenu(itemId);
@@ -56,37 +54,23 @@ namespace FactionWars.ScriptHookV.UI
             if (factionState == null || _selectedZoneId == null)
                 return;
 
+            var tier = DeployTierFor(itemId);
+            if (tier == null) return;
+
+            _deploymentService.BuyAndDeploy(factionState, _selectedZoneId, tier.Value, 1);
+            ShowZoneDetailMenu(_selectedZoneId, itemId);
+        }
+
+        private static DefenderRole? DeployTierFor(string itemId)
+        {
             switch (itemId)
             {
-                case AllocateBasicItemId:
-                    _allocationService.AllocateTroops(factionState, _selectedZoneId, DefenderRole.Grunt, 1);
-                    ShowZoneDetailMenu(_selectedZoneId, AllocateBasicItemId);
-                    break;
-
-                case AllocateMediumItemId:
-                    _allocationService.AllocateTroops(factionState, _selectedZoneId, DefenderRole.Gunner, 1);
-                    ShowZoneDetailMenu(_selectedZoneId, AllocateMediumItemId);
-                    break;
-
-                case AllocateHeavyItemId:
-                    _allocationService.AllocateTroops(factionState, _selectedZoneId, DefenderRole.Rifleman, 1);
-                    ShowZoneDetailMenu(_selectedZoneId, AllocateHeavyItemId);
-                    break;
-
-                case WithdrawBasicItemId:
-                    _allocationService.WithdrawTroops(factionState, _selectedZoneId, DefenderRole.Grunt, 1);
-                    ShowZoneDetailMenu(_selectedZoneId, WithdrawBasicItemId);
-                    break;
-
-                case WithdrawMediumItemId:
-                    _allocationService.WithdrawTroops(factionState, _selectedZoneId, DefenderRole.Gunner, 1);
-                    ShowZoneDetailMenu(_selectedZoneId, WithdrawMediumItemId);
-                    break;
-
-                case WithdrawHeavyItemId:
-                    _allocationService.WithdrawTroops(factionState, _selectedZoneId, DefenderRole.Rifleman, 1);
-                    ShowZoneDetailMenu(_selectedZoneId, WithdrawHeavyItemId);
-                    break;
+                case DeployBasicItemId: return DefenderRole.Grunt;
+                case DeployMediumItemId: return DefenderRole.Gunner;
+                case DeployHeavyItemId: return DefenderRole.Rifleman;
+                case DeployEliteItemId: return DefenderRole.Rocketeer;
+                case DeploySniperItemId: return DefenderRole.Sniper;
+                default: return null;
             }
         }
     }
