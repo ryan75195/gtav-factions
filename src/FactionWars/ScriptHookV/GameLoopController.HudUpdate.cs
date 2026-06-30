@@ -11,6 +11,14 @@ namespace FactionWars.ScriptHookV
             // Squad radial: held on the existing squad key, drawn over the HUD each frame.
             _squadRadialMenuRenderer?.Update();
 
+            // Disable native controls that conflict with menu use (weapon wheel, radio, phone,
+            // attack, etc.) while any mod menu is open, so menu interaction can't also trigger
+            // a native action. Re-applied every frame because DISABLE_CONTROL_ACTION is per-frame.
+            if ((_menuProvider?.IsMenuVisible ?? false) || (_squadRadialMenuRenderer?.IsOpen ?? false))
+            {
+                _gameBridge.DisableMenuConflictControlsThisFrame();
+            }
+
             UpdateTerritoryIndicator(playerFactionId);
 
             // Draw battle HUD showing active AI battles
