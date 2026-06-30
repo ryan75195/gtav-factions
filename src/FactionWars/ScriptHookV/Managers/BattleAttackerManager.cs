@@ -205,7 +205,7 @@ namespace FactionWars.ScriptHookV.Managers
                     continue;
                 }
 
-                ConfigureAttacker(pedHandle.Handle, roleConfig, zone.Center, zone.Radius);
+                ConfigureAttacker(pedHandle.Handle, roleConfig, attackerFactionId, zone.Center, zone.Radius);
                 _spawnedPedTierByZone[zone.Id][pedHandle.Handle] = tier;
                 _spawnedPedFactionByZone[zone.Id][pedHandle.Handle] = attackerFactionId;
                 totalSpawned++;

@@ -80,7 +80,7 @@ namespace FactionWars.ScriptHookV.Managers
 
             if (!pedHandle.IsValid) return;
 
-            ConfigureAttacker(pedHandle.Handle, roleConfig, zone.Center, zone.Radius);
+            ConfigureAttacker(pedHandle.Handle, roleConfig, attackerFactionId, zone.Center, zone.Radius);
 
             EnsureSpawnTracking(zoneId);
             _spawnedPedTierByZone[zoneId][pedHandle.Handle] = tier;
@@ -108,14 +108,20 @@ namespace FactionWars.ScriptHookV.Managers
         /// <summary>
         /// Configures an enemy attacker's combat attributes and behavior.
         /// </summary>
-        private void ConfigureAttacker(int pedHandle, DefenderRoleConfig roleConfig, Vector3 zoneCenter, float wanderRadius)
+        private void ConfigureAttacker(int pedHandle, DefenderRoleConfig roleConfig, string attackerFactionId, Vector3 zoneCenter, float wanderRadius)
         {
+            var category = attackerFactionId == _playerFactionId
+                ? CombatantCategory.Friendlies
+                : CombatantCategory.Enemies;
+            var stats = _statsProvider.GetRoleStats(category, roleConfig.Role);
+
             // Give weapons
             _gameBridge.GivePedWeapon(pedHandle, "weapon_pistol");
-            _gameBridge.GivePedWeapon(pedHandle, roleConfig.Weapon);
-            _gameBridge.SetPedAccuracy(pedHandle, roleConfig.Accuracy);
-            _gameBridge.SetPedArmor(pedHandle, roleConfig.Armor);
-            _gameBridge.SetPedHealth(pedHandle, roleConfig.Health);
+            _gameBridge.GivePedWeapon(pedHandle, stats.Weapon);
+            _gameBridge.SetPedAccuracy(pedHandle, stats.Accuracy);
+            _gameBridge.SetPedArmor(pedHandle, stats.Armor);
+            _gameBridge.SetPedHealth(pedHandle, stats.Health);
+            _gameBridge.SetPedWeaponDamageModifier(pedHandle, stats.DamageMultiplier);
             _gameBridge.SetPedCriticalHitsEnabled(pedHandle, true);
             _gameBridge.SetPedRagdollEnabled(pedHandle, roleConfig.RagdollEnabled);
             _gameBridge.SetPedCombatAttributes(pedHandle, canUseCover: true, willFightArmedPeds: true);
