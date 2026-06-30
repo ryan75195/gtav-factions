@@ -113,6 +113,12 @@ namespace FactionWars.ScriptHookV
                     container.Resolve<IGameBridge>(),
                     container.Resolve<IDefenderRoleService>(),
                     container.Resolve<IFactionService>()));
+
+            // Defender deployment service composes purchase + allocation (one-step buy & deploy)
+            container.RegisterSingleton<IDefenderDeploymentService>(() =>
+                new DefenderDeploymentService(
+                    container.Resolve<ITroopPurchaseService>(),
+                    container.Resolve<IZoneDefenderAllocationService>()));
         }
 
     }

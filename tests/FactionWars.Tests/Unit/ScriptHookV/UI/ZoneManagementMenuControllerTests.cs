@@ -1,7 +1,10 @@
 using FactionWars.Core.Interfaces;
 using FactionWars.Core.Models;
+using FactionWars.Economy.Interfaces;
+using FactionWars.Economy.Models;
 using FactionWars.Factions.Interfaces;
 using FactionWars.Factions.Models;
+using FactionWars.ScriptHookV.Models;
 using FactionWars.ScriptHookV.UI;
 using FactionWars.Tests.Mocks;
 using FactionWars.Territory.Interfaces;
@@ -17,7 +20,7 @@ using Xunit;
 namespace FactionWars.Tests.Unit.ScriptHookV.UI
 {
     /// <summary>
-    /// Tests for ZoneManagementMenuController handling zone viewing, troop allocation, and withdrawal.
+    /// Tests for ZoneManagementMenuController handling zone viewing and buy-and-deploy.
     /// </summary>
     public class ZoneManagementMenuControllerTests
     {
@@ -26,10 +29,21 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
         private readonly Mock<IZoneService> _zoneServiceMock;
         private readonly Mock<IPlayerContext> _playerContextMock;
         private readonly Mock<IZoneDefenderAllocationService> _allocationServiceMock;
+        private readonly Mock<IDefenderDeploymentService> _deploymentServiceMock = new Mock<IDefenderDeploymentService>();
         private readonly ZoneManagementMenuController _controller;
 
         private const string PlayerFactionId = "michael";
         private const string PlayerFactionName = "De Santa Enterprises";
+
+        private ZoneManagementMenuControllerDependencies Deps() => new ZoneManagementMenuControllerDependencies
+        {
+            MenuProvider = _menuProvider,
+            FactionService = _factionServiceMock.Object,
+            ZoneService = _zoneServiceMock.Object,
+            PlayerContext = _playerContextMock.Object,
+            AllocationService = _allocationServiceMock.Object,
+            DeploymentService = _deploymentServiceMock.Object
+        };
 
         public ZoneManagementMenuControllerTests()
         {
@@ -39,6 +53,10 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
             _playerContextMock = new Mock<IPlayerContext>();
             _allocationServiceMock = new Mock<IZoneDefenderAllocationService>();
 
+            // Default deployment service: costs 1000, always affordable
+            _deploymentServiceMock.Setup(d => d.GetTroopCost(It.IsAny<DefenderRole>())).Returns(1000);
+            _deploymentServiceMock.Setup(d => d.CanAfford(It.IsAny<DefenderRole>(), 1)).Returns(true);
+
             // Setup default player faction
             _playerContextMock.Setup(p => p.CurrentFactionId).Returns(PlayerFactionId);
 
@@ -47,7 +65,6 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
             _factionServiceMock.Setup(f => f.GetFaction(PlayerFactionId)).Returns(faction);
 
             // Setup default faction state with reserves
-            // After consolidation, initialTroopCount goes to Basic tier, so we use reserve pool only
             var factionState = new FactionState(PlayerFactionId, 10000);
             factionState.AddReserveTroops(DefenderRole.Grunt, 20);
             factionState.AddReserveTroops(DefenderRole.Gunner, 15);
@@ -69,12 +86,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
             _zoneServiceMock.Setup(z => z.GetZone("zone_vinewood")).Returns(playerZones[1]);
             _zoneServiceMock.Setup(z => z.GetZone("zone_airport")).Returns(playerZones[2]);
 
-            _controller = new ZoneManagementMenuController(
-                _menuProvider,
-                _factionServiceMock.Object,
-                _zoneServiceMock.Object,
-                _playerContextMock.Object,
-                _allocationServiceMock.Object);
+            _controller = new ZoneManagementMenuController(Deps());
         }
 
         #region Constructor Tests
@@ -82,56 +94,49 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
         [Fact]
         public void Constructor_WithNullMenuProvider_ShouldThrowArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => new ZoneManagementMenuController(
-                null!,
-                _factionServiceMock.Object,
-                _zoneServiceMock.Object,
-                _playerContextMock.Object,
-                _allocationServiceMock.Object));
+            var deps = Deps();
+            deps.MenuProvider = null;
+            Assert.Throws<ArgumentNullException>(() => new ZoneManagementMenuController(deps));
         }
 
         [Fact]
         public void Constructor_WithNullFactionService_ShouldThrowArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => new ZoneManagementMenuController(
-                _menuProvider,
-                null!,
-                _zoneServiceMock.Object,
-                _playerContextMock.Object,
-                _allocationServiceMock.Object));
+            var deps = Deps();
+            deps.FactionService = null;
+            Assert.Throws<ArgumentNullException>(() => new ZoneManagementMenuController(deps));
         }
 
         [Fact]
         public void Constructor_WithNullZoneService_ShouldThrowArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => new ZoneManagementMenuController(
-                _menuProvider,
-                _factionServiceMock.Object,
-                null!,
-                _playerContextMock.Object,
-                _allocationServiceMock.Object));
+            var deps = Deps();
+            deps.ZoneService = null;
+            Assert.Throws<ArgumentNullException>(() => new ZoneManagementMenuController(deps));
         }
 
         [Fact]
         public void Constructor_WithNullPlayerContext_ShouldThrowArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => new ZoneManagementMenuController(
-                _menuProvider,
-                _factionServiceMock.Object,
-                _zoneServiceMock.Object,
-                null!,
-                _allocationServiceMock.Object));
+            var deps = Deps();
+            deps.PlayerContext = null;
+            Assert.Throws<ArgumentNullException>(() => new ZoneManagementMenuController(deps));
         }
 
         [Fact]
         public void Constructor_WithNullAllocationService_ShouldThrowArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => new ZoneManagementMenuController(
-                _menuProvider,
-                _factionServiceMock.Object,
-                _zoneServiceMock.Object,
-                _playerContextMock.Object,
-                null!));
+            var deps = Deps();
+            deps.AllocationService = null;
+            Assert.Throws<ArgumentNullException>(() => new ZoneManagementMenuController(deps));
+        }
+
+        [Fact]
+        public void Constructor_WithNullDeploymentService_ShouldThrowArgumentNullException()
+        {
+            var deps = Deps();
+            deps.DeploymentService = null;
+            Assert.Throws<ArgumentNullException>(() => new ZoneManagementMenuController(deps));
         }
 
         #endregion
@@ -141,10 +146,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
         [Fact]
         public void Show_ShouldOpenZoneManagementMenu()
         {
-            // Act
             _controller.Show();
 
-            // Assert
             Assert.True(_menuProvider.IsMenuVisible);
             Assert.Equal(ZoneManagementMenuController.ZoneManagementMenuId, _menuProvider.CurrentMenuId);
         }
@@ -152,10 +155,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
         [Fact]
         public void Show_ShouldHaveCorrectTitle()
         {
-            // Act
             _controller.Show();
 
-            // Assert
             var menu = _menuProvider.GetCurrentMenuDefinition();
             Assert.NotNull(menu);
             Assert.Equal("Zone Management", menu!.Title);
@@ -164,10 +165,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
         [Fact]
         public void Show_ShouldHaveFactionNameInSubtitle()
         {
-            // Act
             _controller.Show();
 
-            // Assert
             var menu = _menuProvider.GetCurrentMenuDefinition();
             Assert.NotNull(menu);
             Assert.Contains(PlayerFactionName, menu!.Subtitle);
@@ -180,14 +179,11 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
         [Fact]
         public void Show_ShouldListAllOwnedZones()
         {
-            // Act
             _controller.Show();
 
-            // Assert
             var menu = _menuProvider.GetCurrentMenuDefinition();
             Assert.NotNull(menu);
 
-            // Should have items for each zone plus back button
             var zoneItems = menu!.Items.Where(i => i.Id.StartsWith("zone_")).ToList();
             Assert.Equal(3, zoneItems.Count);
         }
@@ -195,10 +191,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
         [Fact]
         public void Show_ShouldDisplayZoneNamesInItems()
         {
-            // Act
             _controller.Show();
 
-            // Assert
             var menu = _menuProvider.GetCurrentMenuDefinition();
             Assert.NotNull(menu);
 
@@ -216,7 +210,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
         }
 
         [Fact]
-        public void Show_ShouldDisplayAllocationInZoneDescription()
+        public void Show_ShouldDisplayTotalTroopCountInZoneText()
         {
             // Arrange
             var allocation = new ZoneDefenderAllocation(PlayerFactionId, "zone_downtown");
@@ -225,50 +219,40 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
             allocation.AddTroops(DefenderRole.Rifleman, 2);
             _allocationServiceMock.Setup(a => a.GetAllocation(PlayerFactionId, "zone_downtown")).Returns(allocation);
 
-            // Act
             _controller.Show();
 
-            // Assert
             var menu = _menuProvider.GetCurrentMenuDefinition();
             var downtownItem = menu?.GetItem("zone_downtown");
             Assert.NotNull(downtownItem);
 
-            // Should show troop allocation in description
-            Assert.Contains("5", downtownItem!.Description);
-            Assert.Contains("3", downtownItem.Description);
-            Assert.Contains("2", downtownItem.Description);
+            // Should show total troops (5+3+2=10) in item text
+            Assert.Contains("10", downtownItem!.Text);
         }
 
         [Fact]
         public void Show_WhenNoAllocation_ShouldShowZeroTroops()
         {
-            // Arrange
             _allocationServiceMock.Setup(a => a.GetAllocation(PlayerFactionId, "zone_downtown")).Returns((ZoneDefenderAllocation?)null);
 
-            // Act
             _controller.Show();
 
-            // Assert
             var menu = _menuProvider.GetCurrentMenuDefinition();
             var downtownItem = menu?.GetItem("zone_downtown");
             Assert.NotNull(downtownItem);
 
-            // Should indicate no troops allocated
-            Assert.Contains("0", downtownItem!.Description);
+            // Should indicate no troops in item text
+            Assert.Contains("0", downtownItem!.Text);
         }
 
         [Fact]
         public void Show_WhenNoOwnedZones_ShouldShowNoZonesMessage()
         {
-            // Arrange
             _zoneServiceMock.Setup(z => z.GetZonesByOwner(PlayerFactionId)).Returns(new List<Zone>());
             var emptyState = new FactionState(PlayerFactionId, 10000);
             _factionServiceMock.Setup(f => f.GetFactionState(PlayerFactionId)).Returns(emptyState);
 
-            // Act
             _controller.Show();
 
-            // Assert
             var menu = _menuProvider.GetCurrentMenuDefinition();
             Assert.NotNull(menu);
 
@@ -279,36 +263,40 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
 
         #endregion
 
-        #region Reserve Display Tests
+        #region Zone List Menu Content Tests
 
         [Fact]
-        public void Show_ShouldDisplayReservePoolSummary()
+        public void Show_ZoneListMenu_HasNoReserveSummaryItem()
         {
-            // Act
             _controller.Show();
 
-            // Assert
             var menu = _menuProvider.GetCurrentMenuDefinition();
             Assert.NotNull(menu);
 
-            var reserveItem = menu!.GetItem(ZoneManagementMenuController.ReserveSummaryItemId);
-            Assert.NotNull(reserveItem);
-            Assert.Contains("20", reserveItem!.Text); // Basic
-            Assert.Contains("15", reserveItem.Text); // Medium
-            Assert.Contains("10", reserveItem.Text); // Heavy
+            // Reserve summary was removed; zone list should not contain it
+            Assert.Null(menu!.GetItem("reserve_summary"));
         }
 
         [Fact]
-        public void Show_ReserveItemShouldBeDisabled()
+        public void ZoneDetailMenu_CurrentAllocationItems_AreDisabled()
         {
-            // Act
             _controller.Show();
+            _menuProvider.SimulateItemSelection("zone_downtown");
 
-            // Assert
             var menu = _menuProvider.GetCurrentMenuDefinition();
-            var reserveItem = menu?.GetItem(ZoneManagementMenuController.ReserveSummaryItemId);
-            Assert.NotNull(reserveItem);
-            Assert.False(reserveItem!.IsEnabled);
+            Assert.NotNull(menu);
+
+            var basicItem = menu!.GetItem(ZoneManagementMenuController.CurrentBasicItemId);
+            var mediumItem = menu.GetItem(ZoneManagementMenuController.CurrentMediumItemId);
+            var heavyItem = menu.GetItem(ZoneManagementMenuController.CurrentHeavyItemId);
+
+            Assert.NotNull(basicItem);
+            Assert.NotNull(mediumItem);
+            Assert.NotNull(heavyItem);
+
+            Assert.False(basicItem!.IsEnabled);
+            Assert.False(mediumItem!.IsEnabled);
+            Assert.False(heavyItem!.IsEnabled);
         }
 
         #endregion
@@ -318,13 +306,10 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
         [Fact]
         public void OnZoneSelected_ShouldShowZoneDetailMenu()
         {
-            // Arrange
             _controller.Show();
 
-            // Act
             _menuProvider.SimulateItemSelection("zone_downtown");
 
-            // Assert
             Assert.True(_menuProvider.IsMenuVisible);
             Assert.Equal(ZoneManagementMenuController.ZoneDetailMenuId, _menuProvider.CurrentMenuId);
         }
@@ -332,13 +317,10 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
         [Fact]
         public void ZoneDetailMenu_ShouldShowZoneNameInTitle()
         {
-            // Arrange
             _controller.Show();
 
-            // Act
             _menuProvider.SimulateItemSelection("zone_downtown");
 
-            // Assert
             var menu = _menuProvider.GetCurrentMenuDefinition();
             Assert.NotNull(menu);
             Assert.Contains("Downtown", menu!.Title);
@@ -355,10 +337,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
             _allocationServiceMock.Setup(a => a.GetAllocation(PlayerFactionId, "zone_downtown")).Returns(allocation);
             _controller.Show();
 
-            // Act
             _menuProvider.SimulateItemSelection("zone_downtown");
 
-            // Assert
             var menu = _menuProvider.GetCurrentMenuDefinition();
             Assert.NotNull(menu);
 
@@ -376,195 +356,152 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
         }
 
         [Fact]
-        public void ZoneDetailMenu_ShouldHaveAllocateOptions()
+        public void ZoneDetailMenu_ShouldHaveDeployOptions()
         {
-            // Arrange
             _controller.Show();
 
-            // Act
             _menuProvider.SimulateItemSelection("zone_downtown");
 
-            // Assert
             var menu = _menuProvider.GetCurrentMenuDefinition();
             Assert.NotNull(menu);
 
-            var allocateBasicItem = menu!.GetItem(ZoneManagementMenuController.AllocateBasicItemId);
-            var allocateMediumItem = menu.GetItem(ZoneManagementMenuController.AllocateMediumItemId);
-            var allocateHeavyItem = menu.GetItem(ZoneManagementMenuController.AllocateHeavyItemId);
-
-            Assert.NotNull(allocateBasicItem);
-            Assert.NotNull(allocateMediumItem);
-            Assert.NotNull(allocateHeavyItem);
+            Assert.NotNull(menu!.GetItem(ZoneManagementMenuController.DeployBasicItemId));
+            Assert.NotNull(menu.GetItem(ZoneManagementMenuController.DeployMediumItemId));
+            Assert.NotNull(menu.GetItem(ZoneManagementMenuController.DeployHeavyItemId));
+            Assert.NotNull(menu.GetItem(ZoneManagementMenuController.DeployEliteItemId));
+            Assert.NotNull(menu.GetItem(ZoneManagementMenuController.DeploySniperItemId));
         }
 
         [Fact]
-        public void ZoneDetailMenu_ShouldHaveWithdrawOptions()
+        public void ZoneDetailMenu_ShouldShowAllFiveTierAllocations()
         {
-            // Arrange
             _controller.Show();
 
-            // Act
             _menuProvider.SimulateItemSelection("zone_downtown");
 
-            // Assert
             var menu = _menuProvider.GetCurrentMenuDefinition();
             Assert.NotNull(menu);
 
-            var withdrawBasicItem = menu!.GetItem(ZoneManagementMenuController.WithdrawBasicItemId);
-            var withdrawMediumItem = menu.GetItem(ZoneManagementMenuController.WithdrawMediumItemId);
-            var withdrawHeavyItem = menu.GetItem(ZoneManagementMenuController.WithdrawHeavyItemId);
-
-            Assert.NotNull(withdrawBasicItem);
-            Assert.NotNull(withdrawMediumItem);
-            Assert.NotNull(withdrawHeavyItem);
+            Assert.NotNull(menu!.GetItem(ZoneManagementMenuController.CurrentBasicItemId));
+            Assert.NotNull(menu.GetItem(ZoneManagementMenuController.CurrentMediumItemId));
+            Assert.NotNull(menu.GetItem(ZoneManagementMenuController.CurrentHeavyItemId));
+            Assert.NotNull(menu.GetItem(ZoneManagementMenuController.CurrentEliteItemId));
+            Assert.NotNull(menu.GetItem(ZoneManagementMenuController.CurrentSniperItemId));
         }
 
         #endregion
 
-        #region Allocate Troops Tests
+        #region Deploy Troops Tests
 
         [Fact]
-        public void OnAllocateBasic_ShouldCallAllocationService()
+        public void OnDeployBasic_ShouldCallBuyAndDeploy()
         {
-            // Arrange
-            var factionState = _factionServiceMock.Object.GetFactionState(PlayerFactionId)!;
-            _allocationServiceMock.Setup(a => a.AllocateTroops(factionState, "zone_downtown", DefenderRole.Grunt, 1)).Returns(true);
+            _deploymentServiceMock.Setup(d => d.BuyAndDeploy(It.IsAny<FactionState>(), "zone_downtown", DefenderRole.Grunt, 1))
+                .Returns(DeploymentResult.Deployed(DefenderRole.Grunt, 1, 1000));
             _controller.Show();
             _menuProvider.SimulateItemSelection("zone_downtown");
 
-            // Act
-            _menuProvider.SimulateItemSelection(ZoneManagementMenuController.AllocateBasicItemId);
+            _menuProvider.SimulateItemSelection(ZoneManagementMenuController.DeployBasicItemId);
 
-            // Assert
-            _allocationServiceMock.Verify(a => a.AllocateTroops(It.IsAny<FactionState>(), "zone_downtown", DefenderRole.Grunt, It.IsAny<int>()), Times.Once);
+            _deploymentServiceMock.Verify(d => d.BuyAndDeploy(It.IsAny<FactionState>(), "zone_downtown", DefenderRole.Grunt, It.IsAny<int>()), Times.Once);
         }
 
         [Fact]
-        public void OnAllocateMedium_ShouldCallAllocationService()
+        public void OnDeployMedium_ShouldCallBuyAndDeploy()
         {
-            // Arrange
-            var factionState = _factionServiceMock.Object.GetFactionState(PlayerFactionId)!;
-            _allocationServiceMock.Setup(a => a.AllocateTroops(factionState, "zone_downtown", DefenderRole.Gunner, 1)).Returns(true);
+            _deploymentServiceMock.Setup(d => d.BuyAndDeploy(It.IsAny<FactionState>(), "zone_downtown", DefenderRole.Gunner, 1))
+                .Returns(DeploymentResult.Deployed(DefenderRole.Gunner, 1, 1000));
             _controller.Show();
             _menuProvider.SimulateItemSelection("zone_downtown");
 
-            // Act
-            _menuProvider.SimulateItemSelection(ZoneManagementMenuController.AllocateMediumItemId);
+            _menuProvider.SimulateItemSelection(ZoneManagementMenuController.DeployMediumItemId);
 
-            // Assert
-            _allocationServiceMock.Verify(a => a.AllocateTroops(It.IsAny<FactionState>(), "zone_downtown", DefenderRole.Gunner, It.IsAny<int>()), Times.Once);
+            _deploymentServiceMock.Verify(d => d.BuyAndDeploy(It.IsAny<FactionState>(), "zone_downtown", DefenderRole.Gunner, It.IsAny<int>()), Times.Once);
         }
 
         [Fact]
-        public void OnAllocateHeavy_ShouldCallAllocationService()
+        public void OnDeployHeavy_ShouldCallBuyAndDeploy()
         {
-            // Arrange
-            var factionState = _factionServiceMock.Object.GetFactionState(PlayerFactionId)!;
-            _allocationServiceMock.Setup(a => a.AllocateTroops(factionState, "zone_downtown", DefenderRole.Rifleman, 1)).Returns(true);
+            _deploymentServiceMock.Setup(d => d.BuyAndDeploy(It.IsAny<FactionState>(), "zone_downtown", DefenderRole.Rifleman, 1))
+                .Returns(DeploymentResult.Deployed(DefenderRole.Rifleman, 1, 1000));
             _controller.Show();
             _menuProvider.SimulateItemSelection("zone_downtown");
 
-            // Act
-            _menuProvider.SimulateItemSelection(ZoneManagementMenuController.AllocateHeavyItemId);
+            _menuProvider.SimulateItemSelection(ZoneManagementMenuController.DeployHeavyItemId);
 
-            // Assert
-            _allocationServiceMock.Verify(a => a.AllocateTroops(It.IsAny<FactionState>(), "zone_downtown", DefenderRole.Rifleman, It.IsAny<int>()), Times.Once);
+            _deploymentServiceMock.Verify(d => d.BuyAndDeploy(It.IsAny<FactionState>(), "zone_downtown", DefenderRole.Rifleman, It.IsAny<int>()), Times.Once);
         }
 
         [Fact]
-        public void OnAllocate_WhenNoReserveTroops_ShouldDisableAllocateButton()
+        public void OnDeploy_WhenUnaffordable_ShouldDisableDeployButton()
         {
-            // Arrange
-            // After consolidation, don't use initialTroopCount to get truly empty reserves
-            var emptyState = new FactionState(PlayerFactionId, 10000);
-            // No reserve troops added
-            emptyState.AddZone("zone_downtown");
-            _factionServiceMock.Setup(f => f.GetFactionState(PlayerFactionId)).Returns(emptyState);
+            // Override: all tiers unaffordable
+            _deploymentServiceMock.Setup(d => d.CanAfford(It.IsAny<DefenderRole>(), 1)).Returns(false);
             _controller.Show();
 
-            // Act
             _menuProvider.SimulateItemSelection("zone_downtown");
 
-            // Assert
             var menu = _menuProvider.GetCurrentMenuDefinition();
-            var allocateBasicItem = menu?.GetItem(ZoneManagementMenuController.AllocateBasicItemId);
-            Assert.NotNull(allocateBasicItem);
-            Assert.False(allocateBasicItem!.IsEnabled);
+            var deployBasicItem = menu?.GetItem(ZoneManagementMenuController.DeployBasicItemId);
+            Assert.NotNull(deployBasicItem);
+            Assert.False(deployBasicItem!.IsEnabled);
         }
 
         #endregion
 
-        #region Withdraw Troops Tests
+        #region Additional Deploy Coverage Tests
 
         [Fact]
-        public void OnWithdrawBasic_ShouldCallAllocationService()
+        public void OnDeployElite_ShouldCallBuyAndDeploy()
         {
-            // Arrange
-            var allocation = new ZoneDefenderAllocation(PlayerFactionId, "zone_downtown");
-            allocation.AddTroops(DefenderRole.Grunt, 5);
-            _allocationServiceMock.Setup(a => a.GetAllocation(PlayerFactionId, "zone_downtown")).Returns(allocation);
-            _allocationServiceMock.Setup(a => a.WithdrawTroops(It.IsAny<FactionState>(), "zone_downtown", DefenderRole.Grunt, 1)).Returns(true);
+            _deploymentServiceMock.Setup(d => d.BuyAndDeploy(It.IsAny<FactionState>(), "zone_downtown", DefenderRole.Rocketeer, 1))
+                .Returns(DeploymentResult.Deployed(DefenderRole.Rocketeer, 1, 2000));
             _controller.Show();
             _menuProvider.SimulateItemSelection("zone_downtown");
 
-            // Act
-            _menuProvider.SimulateItemSelection(ZoneManagementMenuController.WithdrawBasicItemId);
+            _menuProvider.SimulateItemSelection(ZoneManagementMenuController.DeployEliteItemId);
 
-            // Assert
-            _allocationServiceMock.Verify(a => a.WithdrawTroops(It.IsAny<FactionState>(), "zone_downtown", DefenderRole.Grunt, It.IsAny<int>()), Times.Once);
+            _deploymentServiceMock.Verify(d => d.BuyAndDeploy(It.IsAny<FactionState>(), "zone_downtown", DefenderRole.Rocketeer, It.IsAny<int>()), Times.Once);
         }
 
         [Fact]
-        public void OnWithdrawMedium_ShouldCallAllocationService()
+        public void OnDeploySniper_ShouldCallBuyAndDeploy()
         {
-            // Arrange
-            var allocation = new ZoneDefenderAllocation(PlayerFactionId, "zone_downtown");
-            allocation.AddTroops(DefenderRole.Gunner, 5);
-            _allocationServiceMock.Setup(a => a.GetAllocation(PlayerFactionId, "zone_downtown")).Returns(allocation);
-            _allocationServiceMock.Setup(a => a.WithdrawTroops(It.IsAny<FactionState>(), "zone_downtown", DefenderRole.Gunner, 1)).Returns(true);
+            _deploymentServiceMock.Setup(d => d.BuyAndDeploy(It.IsAny<FactionState>(), "zone_downtown", DefenderRole.Sniper, 1))
+                .Returns(DeploymentResult.Deployed(DefenderRole.Sniper, 1, 3000));
             _controller.Show();
             _menuProvider.SimulateItemSelection("zone_downtown");
 
-            // Act
-            _menuProvider.SimulateItemSelection(ZoneManagementMenuController.WithdrawMediumItemId);
+            _menuProvider.SimulateItemSelection(ZoneManagementMenuController.DeploySniperItemId);
 
-            // Assert
-            _allocationServiceMock.Verify(a => a.WithdrawTroops(It.IsAny<FactionState>(), "zone_downtown", DefenderRole.Gunner, It.IsAny<int>()), Times.Once);
+            _deploymentServiceMock.Verify(d => d.BuyAndDeploy(It.IsAny<FactionState>(), "zone_downtown", DefenderRole.Sniper, It.IsAny<int>()), Times.Once);
         }
 
         [Fact]
-        public void OnWithdrawHeavy_ShouldCallAllocationService()
+        public void OnDeploy_RefreshesDetailMenu()
         {
-            // Arrange
-            var allocation = new ZoneDefenderAllocation(PlayerFactionId, "zone_downtown");
-            allocation.AddTroops(DefenderRole.Rifleman, 5);
-            _allocationServiceMock.Setup(a => a.GetAllocation(PlayerFactionId, "zone_downtown")).Returns(allocation);
-            _allocationServiceMock.Setup(a => a.WithdrawTroops(It.IsAny<FactionState>(), "zone_downtown", DefenderRole.Rifleman, 1)).Returns(true);
+            _deploymentServiceMock.Setup(d => d.BuyAndDeploy(It.IsAny<FactionState>(), "zone_downtown", DefenderRole.Grunt, 1))
+                .Returns(DeploymentResult.Deployed(DefenderRole.Grunt, 1, 1000));
             _controller.Show();
             _menuProvider.SimulateItemSelection("zone_downtown");
 
-            // Act
-            _menuProvider.SimulateItemSelection(ZoneManagementMenuController.WithdrawHeavyItemId);
+            _menuProvider.SimulateItemSelection(ZoneManagementMenuController.DeployBasicItemId);
 
-            // Assert
-            _allocationServiceMock.Verify(a => a.WithdrawTroops(It.IsAny<FactionState>(), "zone_downtown", DefenderRole.Rifleman, It.IsAny<int>()), Times.Once);
+            // After deploy, the detail menu should still be showing (refreshed)
+            Assert.Equal(ZoneManagementMenuController.ZoneDetailMenuId, _menuProvider.CurrentMenuId);
         }
 
         [Fact]
-        public void OnWithdraw_WhenNoAllocatedTroops_ShouldDisableWithdrawButton()
+        public void ZoneDetailMenu_DeployItems_AreLabeledWithCost()
         {
-            // Arrange
-            _allocationServiceMock.Setup(a => a.GetAllocation(PlayerFactionId, "zone_downtown")).Returns((ZoneDefenderAllocation?)null);
+            _deploymentServiceMock.Setup(d => d.GetTroopCost(DefenderRole.Grunt)).Returns(500);
             _controller.Show();
-
-            // Act
             _menuProvider.SimulateItemSelection("zone_downtown");
 
-            // Assert
             var menu = _menuProvider.GetCurrentMenuDefinition();
-            var withdrawBasicItem = menu?.GetItem(ZoneManagementMenuController.WithdrawBasicItemId);
-            Assert.NotNull(withdrawBasicItem);
-            Assert.False(withdrawBasicItem!.IsEnabled);
+            var deployBasicItem = menu?.GetItem(ZoneManagementMenuController.DeployBasicItemId);
+            Assert.NotNull(deployBasicItem);
+            Assert.Contains("500", deployBasicItem!.Text);
         }
 
         #endregion
@@ -574,10 +511,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
         [Fact]
         public void Show_ShouldHaveBackItem()
         {
-            // Act
             _controller.Show();
 
-            // Assert
             var menu = _menuProvider.GetCurrentMenuDefinition();
             Assert.NotNull(menu);
             var item = menu!.GetItem(ZoneManagementMenuController.BackItemId);
@@ -588,40 +523,32 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
         [Fact]
         public void OnBackSelected_FromMainMenu_ShouldRaiseBackRequestedEvent()
         {
-            // Arrange
             bool eventRaised = false;
             _controller.BackRequested += (sender, args) => eventRaised = true;
             _controller.Show();
 
-            // Act
             _menuProvider.SimulateItemSelection(ZoneManagementMenuController.BackItemId);
 
-            // Assert
             Assert.True(eventRaised);
         }
 
         [Fact]
         public void OnBackSelected_FromMainMenu_ShouldCloseMenu()
         {
-            // Arrange
             _controller.BackRequested += (sender, args) => { };
             _controller.Show();
 
-            // Act
             _menuProvider.SimulateItemSelection(ZoneManagementMenuController.BackItemId);
 
-            // Assert
             Assert.False(_menuProvider.IsMenuVisible);
         }
 
         [Fact]
         public void ZoneDetailMenu_ShouldHaveBackItem()
         {
-            // Arrange
             _controller.Show();
             _menuProvider.SimulateItemSelection("zone_downtown");
 
-            // Assert
             var menu = _menuProvider.GetCurrentMenuDefinition();
             Assert.NotNull(menu);
             var item = menu!.GetItem(ZoneManagementMenuController.DetailBackItemId);
@@ -632,14 +559,11 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
         [Fact]
         public void OnBackSelected_FromZoneDetail_ShouldReturnToZoneList()
         {
-            // Arrange
             _controller.Show();
             _menuProvider.SimulateItemSelection("zone_downtown");
 
-            // Act
             _menuProvider.SimulateItemSelection(ZoneManagementMenuController.DetailBackItemId);
 
-            // Assert
             Assert.True(_menuProvider.IsMenuVisible);
             Assert.Equal(ZoneManagementMenuController.ZoneManagementMenuId, _menuProvider.CurrentMenuId);
         }
@@ -651,30 +575,24 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
         [Fact]
         public void Show_WhenNoPlayerFaction_ShouldStillShowMenu()
         {
-            // Arrange
             _playerContextMock.Setup(p => p.CurrentFactionId).Returns((string?)null);
 
-            // Act
             _controller.Show();
 
-            // Assert
             Assert.True(_menuProvider.IsMenuVisible);
         }
 
         [Fact]
-        public void Show_WhenFactionStateNotFound_ShouldShowEmptyReserves()
+        public void ZoneDetailMenu_WhenFactionStateNull_ShowsZeroCurrentAllocation()
         {
-            // Arrange
             _factionServiceMock.Setup(f => f.GetFactionState(PlayerFactionId)).Returns((FactionState?)null);
-
-            // Act
             _controller.Show();
+            _menuProvider.SimulateItemSelection("zone_downtown");
 
-            // Assert
             var menu = _menuProvider.GetCurrentMenuDefinition();
-            var reserveItem = menu?.GetItem(ZoneManagementMenuController.ReserveSummaryItemId);
-            Assert.NotNull(reserveItem);
-            Assert.Contains("0", reserveItem!.Text);
+            var basicItem = menu?.GetItem(ZoneManagementMenuController.CurrentBasicItemId);
+            Assert.NotNull(basicItem);
+            Assert.Contains("0", basicItem!.Text);
         }
 
         #endregion
@@ -684,10 +602,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
         [Fact]
         public void Show_ZonesShouldBeListedBeforeBackButton()
         {
-            // Act
             _controller.Show();
 
-            // Assert
             var menu = _menuProvider.GetCurrentMenuDefinition();
             Assert.NotNull(menu);
 
@@ -708,10 +624,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
         [Fact]
         public void Show_ZoneItemsShouldBeEnabled()
         {
-            // Act
             _controller.Show();
 
-            // Assert
             var menu = _menuProvider.GetCurrentMenuDefinition();
             Assert.NotNull(menu);
 
@@ -725,10 +639,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
         [Fact]
         public void Show_BackItemShouldBeEnabled()
         {
-            // Act
             _controller.Show();
 
-            // Assert
             var menu = _menuProvider.GetCurrentMenuDefinition();
             var backItem = menu?.GetItem(ZoneManagementMenuController.BackItemId);
             Assert.True(backItem!.IsEnabled);
@@ -741,16 +653,54 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
         [Fact]
         public void Show_ShouldDisplayStrategicValueInZoneDescription()
         {
-            // Act
             _controller.Show();
 
-            // Assert
             var menu = _menuProvider.GetCurrentMenuDefinition();
             var airportItem = menu?.GetItem("zone_airport");
             Assert.NotNull(airportItem);
 
             // Airport has strategic value 7
             Assert.Contains("7", airportItem!.Description);
+        }
+
+        #endregion
+
+        #region Buy And Deploy Tests
+
+        [Fact]
+        public void DeployItem_WhenSelected_CallsBuyAndDeployForThatTier()
+        {
+            _deploymentServiceMock.Setup(d => d.BuyAndDeploy(It.IsAny<FactionState>(), "zone_downtown", DefenderRole.Rifleman, 1))
+                .Returns(DeploymentResult.Deployed(DefenderRole.Rifleman, 1, 1000));
+
+            _controller.Show();
+            _menuProvider.SimulateItemSelection("zone_downtown");
+            _menuProvider.SimulateItemSelection(ZoneManagementMenuController.DeployHeavyItemId);
+
+            _deploymentServiceMock.Verify(d => d.BuyAndDeploy(It.IsAny<FactionState>(), "zone_downtown", DefenderRole.Rifleman, 1), Times.Once);
+        }
+
+        [Fact]
+        public void DeployItem_WhenUnaffordable_IsDisabledAndShowsCost()
+        {
+            _deploymentServiceMock.Setup(d => d.GetTroopCost(DefenderRole.Rocketeer)).Returns(2000);
+            _deploymentServiceMock.Setup(d => d.CanAfford(DefenderRole.Rocketeer, 1)).Returns(false);
+
+            _controller.Show();
+            _menuProvider.SimulateItemSelection("zone_downtown");
+
+            var item = _menuProvider.GetCurrentMenuDefinition()!.Items.Single(i => i.Id == ZoneManagementMenuController.DeployEliteItemId);
+            Assert.False(item.IsEnabled);
+            Assert.Contains("2000", item.Text);
+        }
+
+        [Fact]
+        public void ZoneDetailMenu_HasNoWithdrawItems()
+        {
+            _controller.Show();
+            _menuProvider.SimulateItemSelection("zone_downtown");
+
+            Assert.DoesNotContain(_menuProvider.GetCurrentMenuDefinition()!.Items, i => i.Id.StartsWith("withdraw_"));
         }
 
         #endregion
