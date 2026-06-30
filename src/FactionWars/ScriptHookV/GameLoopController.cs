@@ -95,6 +95,7 @@ namespace FactionWars.ScriptHookV
         private IEngagementEventSink? _engagementEventSink;
         private BattleHudRenderer? _battleHudRenderer;
         private PlayTimeHudRenderer? _playTimeHudRenderer;
+        private PlayerStatsApplier? _playerStatsApplier;
         private int _currentBattleHudIndex = 0;
         private const int BattleCycleKeyCode = 0x42; // B key
         private DateTime _lastTickTime;

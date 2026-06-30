@@ -2,7 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using FactionWars.Configuration;
+using FactionWars.Core.Interfaces;
 using FactionWars.Factions.Interfaces;
+using FactionWars.ScriptHookV.Managers;
 using FactionWars.Persistence.Models;
 using FactionWars.ScriptHookV.Logging;
 using FactionWars.ScriptHookV.Persistence;
@@ -96,6 +98,8 @@ namespace FactionWars.ScriptHookV
         private void ConfigureSessionSettings()
         {
             _gameBridge.ConfigurePlayerSettings();
+            _playerStatsApplier = new PlayerStatsApplier(_gameBridge, _container.Resolve<ICombatantStatsProvider>());
+            _playerStatsApplier.Apply();
         }
 
         /// <summary>
@@ -124,6 +128,7 @@ namespace FactionWars.ScriptHookV
 
             // Configure weapon persistence
             _gameBridge.ConfigurePlayerSettings();
+            _playerStatsApplier?.Apply();
         }
 
         /// <summary>
