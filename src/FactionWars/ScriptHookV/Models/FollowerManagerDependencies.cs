@@ -12,5 +12,6 @@ namespace FactionWars.ScriptHookV.Models
         public IDefenderRoleService? DefenderRoleService { get; set; }
         public IPedBlipService? PedBlipService { get; set; }
         public IVehicleSeatPriorityService? SeatPriorityService { get; set; }
+        public ICombatantStatsProvider? StatsProvider { get; set; }
     }
 }

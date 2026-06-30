@@ -1,9 +1,11 @@
 using FactionWars.Combat.Interfaces;
 using FactionWars.Combat.Models;
+using FactionWars.Configuration;
 using FactionWars.Core.Interfaces;
 using FactionWars.Core.Models;
 using FactionWars.Core.Utils;
 using FactionWars.ScriptHookV.Managers;
+using FactionWars.ScriptHookV.Models;
 using FactionWars.ScriptHookV.Services;
 using FactionWars.Territory.Interfaces;
 using FactionWars.Territory.Models;
@@ -123,14 +125,17 @@ namespace FactionWars.Tests.Unit.ScriptHookV
             allocation.AddTroops(DefenderRole.Grunt, 1);
             allocationServiceMock.Setup(a => a.GetAllocation(EnemyFactionId, TestZoneId)).Returns(allocation);
 
-            var manager = new EnemyDefenderManager(
-                bridge,
-                allocationServiceMock.Object,
-                pedSpawningServiceMock.Object,
-                pedDespawnServiceMock.Object,
-                defenderRoleServiceMock.Object,
-                pedBlipServiceMock.Object,
-                zoneServiceMock.Object);
+            var manager = new EnemyDefenderManager(new EnemyDefenderManagerDependencies
+            {
+                GameBridge = bridge,
+                AllocationService = allocationServiceMock.Object,
+                PedSpawningService = pedSpawningServiceMock.Object,
+                PedDespawnService = pedDespawnServiceMock.Object,
+                DefenderRoleService = defenderRoleServiceMock.Object,
+                PedBlipService = pedBlipServiceMock.Object,
+                ZoneService = zoneServiceMock.Object,
+                StatsProvider = CombatantStatsProviderFactory.Create(new CombatantsConfig())
+            });
 
             manager.OnEnemyZoneEntered(zone, EnemyFactionId);
             int handle = bridge.GetSpawnedPeds()[0];

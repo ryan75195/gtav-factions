@@ -5,6 +5,7 @@ using FactionWars.AI.Models;
 using FactionWars.Combat.Events;
 using FactionWars.Combat.Interfaces;
 using FactionWars.Combat.Models;
+using FactionWars.Configuration;
 using FactionWars.Core.Interfaces;
 using FactionWars.Core.Models;
 using FactionWars.Economy.Interfaces;
@@ -878,7 +879,7 @@ namespace FactionWars.Tests.Unit.Telemetry
             var manager = new BattleAttackerManager(
                 bridge.Object, zoneBattleManager.Object, pedSpawning.Object, pedDespawn.Object,
                 defenderTier.Object, pedBlip.Object, zoneSvc.Object, factionSvc.Object,
-                "michael");
+                "michael", CombatantStatsProviderFactory.Create(new CombatantsConfig()));
 
             // Capture the AttackerKilled event via reflection so the test can raise it.
             raiser = (args) =>

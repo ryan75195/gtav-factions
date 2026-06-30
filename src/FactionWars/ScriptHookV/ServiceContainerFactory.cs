@@ -65,6 +65,9 @@ namespace FactionWars.ScriptHookV
             container.Register<IConfigLoader>(configLoader);
             container.Register(config);
 
+            container.RegisterSingleton<ICombatantStatsProvider>(() =>
+                CombatantStatsProviderFactory.Create(container.Resolve<GameConfig>().Combatants));
+
             // Register core infrastructure
             RegisterCoreServices(container, gameBridge);
 

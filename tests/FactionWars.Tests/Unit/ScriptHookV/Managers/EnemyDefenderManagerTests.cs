@@ -1,10 +1,12 @@
 using System.Collections.Generic;
 using FactionWars.Combat.Interfaces;
 using FactionWars.Combat.Models;
+using FactionWars.Configuration;
 using FactionWars.Core.Interfaces;
 using FactionWars.Core.Models;
 using FactionWars.Core.Utils;
 using FactionWars.ScriptHookV.Managers;
+using FactionWars.ScriptHookV.Models;
 using FactionWars.Territory.Interfaces;
 using FactionWars.Territory.Models;
 using FactionWars.UI.Interfaces;
@@ -61,15 +63,18 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             _pedBlipServiceMock.Setup(p => p.CreateBlipForPed(It.IsAny<int>(), It.IsAny<BlipColor>()))
                 .Returns(1);
 
-            _manager = new EnemyDefenderManager(
-                _gameBridge,
-                _allocationServiceMock.Object,
-                _pedSpawningServiceMock.Object,
-                _pedDespawnServiceMock.Object,
-                _defenderRoleServiceMock.Object,
-                _pedBlipServiceMock.Object,
-                _zoneServiceMock.Object,
-                _zoneBattleManagerMock.Object);
+            _manager = new EnemyDefenderManager(new EnemyDefenderManagerDependencies
+            {
+                GameBridge = _gameBridge,
+                AllocationService = _allocationServiceMock.Object,
+                PedSpawningService = _pedSpawningServiceMock.Object,
+                PedDespawnService = _pedDespawnServiceMock.Object,
+                DefenderRoleService = _defenderRoleServiceMock.Object,
+                PedBlipService = _pedBlipServiceMock.Object,
+                ZoneService = _zoneServiceMock.Object,
+                ZoneBattleManager = _zoneBattleManagerMock.Object,
+                StatsProvider = CombatantStatsProviderFactory.Create(new CombatantsConfig())
+            });
         }
 
         private Zone CreateEnemyZone()
@@ -112,7 +117,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             var spawnerMock = new Mock<FactionWars.ScriptHookV.Combat.Interfaces.IZoneCombatantSpawner>();
             spawnerMock.Setup(s => s.Spawn(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<Vector3>(), It.IsAny<string>()))
                 .Returns(new PedHandle(42));
-            var manager = new EnemyDefenderManager(new FactionWars.ScriptHookV.Models.EnemyDefenderManagerDependencies
+            var manager = new EnemyDefenderManager(new EnemyDefenderManagerDependencies
             {
                 GameBridge = _gameBridge,
                 AllocationService = _allocationServiceMock.Object,
@@ -123,7 +128,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
                 ZoneService = _zoneServiceMock.Object,
                 ZoneBattleManager = _zoneBattleManagerMock.Object,
                 Spawner = spawnerMock.Object,
-                CurrentPlayerFactionIdAccessor = () => "michael"
+                CurrentPlayerFactionIdAccessor = () => "michael",
+                StatsProvider = CombatantStatsProviderFactory.Create(new CombatantsConfig())
             });
             var zone = CreateEnemyZone();
             _allocationServiceMock.Setup(a => a.GetAllocation(EnemyFactionId, TestZoneId))

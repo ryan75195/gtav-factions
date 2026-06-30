@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using FactionWars.Combat.Interfaces;
 using FactionWars.Combat.Models;
+using FactionWars.Configuration;
 using FactionWars.Core.Interfaces;
 using FactionWars.Core.Models;
 using FactionWars.Persistence.Models;
@@ -56,7 +57,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
                 _pedSpawningServiceMock.Object,
                 _defenderRoleServiceMock.Object,
                 _pedBlipServiceMock.Object,
-                _seatPriorityServiceMock.Object);
+                _seatPriorityServiceMock.Object,
+                CombatantStatsProviderFactory.Create(new CombatantsConfig()));
         }
 
         #region Constructor Tests

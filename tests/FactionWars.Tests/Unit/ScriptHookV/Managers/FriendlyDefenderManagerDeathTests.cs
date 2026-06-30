@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using FactionWars.Combat.Interfaces;
 using FactionWars.Combat.Models;
+using FactionWars.Configuration;
 using FactionWars.Core.Interfaces;
 using FactionWars.Core.Models;
 using FactionWars.Core.Utils;
@@ -60,7 +61,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
                 _defenderRoleServiceMock.Object,
                 _pedBlipServiceMock.Object,
                 _zoneServiceMock.Object,
-                PlayerFactionId);
+                PlayerFactionId,
+                CombatantStatsProviderFactory.Create(new CombatantsConfig()));
         }
 
         private Zone CreateFriendlyZone()

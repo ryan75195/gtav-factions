@@ -1,6 +1,7 @@
 using FactionWars.Combat.Events;
 using FactionWars.Combat.Interfaces;
 using FactionWars.Combat.Models;
+using FactionWars.Configuration;
 using FactionWars.Core.Interfaces;
 using FactionWars.Core.Models;
 using FactionWars.Factions.Interfaces;
@@ -452,7 +453,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV
                 PedBlipService = _blipServiceMock.Object,
                 ZoneService = _zoneServiceMock.Object,
                 FactionService = _factionServiceMock.Object,
-                Spawner = spawnerMock.Object
+                Spawner = spawnerMock.Object,
+                StatsProvider = CombatantStatsProviderFactory.Create(new CombatantsConfig())
             }, "player");
 
             manager.OnPlayerZoneEntered(zone);
@@ -472,7 +474,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV
                 _blipServiceMock.Object,
                 _zoneServiceMock.Object,
                 _factionServiceMock.Object,
-                playerFactionId);
+                playerFactionId,
+                CombatantStatsProviderFactory.Create(new CombatantsConfig()));
         }
     }
 }

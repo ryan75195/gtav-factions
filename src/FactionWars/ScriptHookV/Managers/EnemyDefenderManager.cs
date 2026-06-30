@@ -37,6 +37,7 @@ namespace FactionWars.ScriptHookV.Managers
         private readonly IZoneCombatantSpawner _spawner;
         private readonly Func<string?> _playerFactionIdAccessor;
         private readonly ISniperDeploymentService _sniperDeployment;
+        private readonly ICombatantStatsProvider _statsProvider;
 
         private readonly Dictionary<string, Dictionary<int, DefenderRole>> _spawnedPedTierByZone;
         private readonly Dictionary<int, int> _corpseDeathTimes; // pedHandle -> game time when died
@@ -71,6 +72,7 @@ namespace FactionWars.ScriptHookV.Managers
             _playerFactionIdAccessor = dependencies.CurrentPlayerFactionIdAccessor ?? (() => null);
             _sniperDeployment = dependencies.SniperDeployment
                 ?? new SniperDeploymentService(new PerchResolver(), _gameBridge);
+            _statsProvider = dependencies.StatsProvider ?? throw new ArgumentNullException(nameof(dependencies.StatsProvider));
 
             _spawnedPedTierByZone = new Dictionary<string, Dictionary<int, DefenderRole>>();
             _corpseDeathTimes = new Dictionary<int, int>();
@@ -88,7 +90,8 @@ namespace FactionWars.ScriptHookV.Managers
                 ZoneService = (IZoneService?)dependencies[6],
                 ZoneBattleManager = dependencies.Length > 7 ? (IZoneBattleManager?)dependencies[7] : null,
                 Spawner = dependencies.Length > 8 ? (IZoneCombatantSpawner?)dependencies[8] : null,
-                CurrentPlayerFactionIdAccessor = dependencies.Length > 9 ? (Func<string?>?)dependencies[9] : null
+                CurrentPlayerFactionIdAccessor = dependencies.Length > 9 ? (Func<string?>?)dependencies[9] : null,
+                StatsProvider = dependencies.Length > 10 ? (ICombatantStatsProvider?)dependencies[10] : null
             })
         {
         }

@@ -17,5 +17,6 @@ namespace FactionWars.ScriptHookV.Models
         public IZoneService? ZoneService { get; set; }
         public IZoneCombatantSpawner? Spawner { get; set; }
         public ISniperDeploymentService? SniperDeployment { get; set; }
+        public ICombatantStatsProvider? StatsProvider { get; set; }
     }
 }

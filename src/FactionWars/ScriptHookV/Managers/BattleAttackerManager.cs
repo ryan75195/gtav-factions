@@ -35,6 +35,7 @@ namespace FactionWars.ScriptHookV.Managers
         private readonly IZoneService _zoneService;
         private readonly IFactionService _factionService;
         private readonly IZoneCombatantSpawner _spawner;
+        private readonly ICombatantStatsProvider _statsProvider;
         private string _playerFactionId;
 
         private readonly Dictionary<DefenderRole, string> _modelsByTier;
@@ -74,6 +75,7 @@ namespace FactionWars.ScriptHookV.Managers
             _spawner = dependencies.Spawner
                 ?? new ZoneCombatantSpawner(new AllegianceResolver(), _pedSpawningService, _pedBlipService, _gameBridge);
             _playerFactionId = playerFactionId ?? throw new ArgumentNullException(nameof(playerFactionId));
+            _statsProvider = dependencies.StatsProvider ?? throw new ArgumentNullException(nameof(dependencies.StatsProvider));
 
             // Enemy faction ped models (hostile attackers)
             _modelsByTier = new Dictionary<DefenderRole, string>
@@ -100,7 +102,8 @@ namespace FactionWars.ScriptHookV.Managers
                     DefenderRoleService = (IDefenderRoleService?)dependencies[4],
                     PedBlipService = (IPedBlipService?)dependencies[5],
                     ZoneService = (IZoneService?)dependencies[6],
-                    FactionService = (IFactionService?)dependencies[7]
+                    FactionService = (IFactionService?)dependencies[7],
+                    StatsProvider = dependencies.Length > 9 ? (ICombatantStatsProvider?)dependencies[9] : null
                 },
                 (string)dependencies[8]!)
         {
