@@ -1,6 +1,7 @@
 using FactionWars.Combat.Interfaces;
 using FactionWars.Combat.Models;
 using FactionWars.Combat.Services;
+using FactionWars.Configuration;
 using FactionWars.Core.Interfaces;
 using FactionWars.Core.Models;
 using FactionWars.Core.Utils;
@@ -65,7 +66,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
                 DefenderRoleService = defenderRoleServiceMock.Object,
                 PedBlipService = pedBlipServiceMock.Object,
                 ZoneService = zoneServiceMock.Object,
-                SniperDeployment = new SniperDeploymentService(new PerchResolver(), bridge)
+                SniperDeployment = new SniperDeploymentService(new PerchResolver(), bridge),
+                StatsProvider = CombatantStatsProviderFactory.Create(new CombatantsConfig())
             }, PlayerFactionId);
         }
 

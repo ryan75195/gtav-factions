@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using FactionWars.Combat.Interfaces;
 using FactionWars.Combat.Models;
+using FactionWars.Configuration;
 using FactionWars.Core.Interfaces;
 using FactionWars.Core.Models;
 using FactionWars.Persistence.Models;
@@ -50,13 +51,25 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
                 It.IsAny<int[]>(), It.IsAny<int>(), It.IsAny<float>()))
                 .Returns<int[], int, float>((handles, v, d) => handles);
 
+            // Custom Squad stats matching the values the existing test assertions expect.
+            // Each existing stat-asserting test overrides roleConfig to matching values; the
+            // provider must agree so production code (which now reads from the provider) returns
+            // exactly what each test verifies.
+            var sharedCfg = new CombatantsConfig();
+            sharedCfg.Squad.Grunt = new RoleStatsConfig
+                { Health = 100, Armor = 0, Accuracy = 0.3f, Weapon = "weapon_pistol", DamageMultiplier = 1.0f };
+            sharedCfg.Squad.Gunner = new RoleStatsConfig
+                { Health = 150, Armor = 50, Accuracy = 0.5f, Weapon = "weapon_smg", DamageMultiplier = 1.5f };
+            sharedCfg.Squad.Rifleman = new RoleStatsConfig
+                { Health = 200, Armor = 100, Accuracy = 0.7f, Weapon = "weapon_carbinerifle", DamageMultiplier = 2.0f };
             _manager = new FollowerManager(
                 _gameBridgeMock.Object,
                 _followerServiceMock.Object,
                 _pedSpawningServiceMock.Object,
                 _defenderRoleServiceMock.Object,
                 _pedBlipServiceMock.Object,
-                _seatPriorityServiceMock.Object);
+                _seatPriorityServiceMock.Object,
+                CombatantStatsProviderFactory.Create(sharedCfg));
         }
 
         #region Constructor Tests
@@ -1537,6 +1550,57 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
 
             // Assert
             _gameBridgeMock.Verify(g => g.SetPedIntoVehicle(42, 100, 1), Times.Once);
+        }
+
+        #endregion
+
+        #region Stats Provider Tests
+
+        [Fact]
+        public void RecruitFollower_ShouldApplySquadRiflemanStatsFromProvider()
+        {
+            // Arrange — provider overrides Squad.Rifleman so values are distinctive vs roleConfig
+            var cfg = new CombatantsConfig();
+            cfg.Squad.Rifleman = new RoleStatsConfig
+            {
+                Health = 999, Armor = 50, Accuracy = 0.11f,
+                Weapon = "WEAPON_MARKSMANRIFLE", DamageMultiplier = 3f
+            };
+            var provider = CombatantStatsProviderFactory.Create(cfg);
+
+            var manager = new FollowerManager(
+                _gameBridgeMock.Object,
+                _followerServiceMock.Object,
+                _pedSpawningServiceMock.Object,
+                _defenderRoleServiceMock.Object,
+                _pedBlipServiceMock.Object,
+                _seatPriorityServiceMock.Object,
+                provider);
+
+            var factionId = "blue";
+            var tier = DefenderRole.Rifleman;
+            var pedHandle = 42;
+            var playerPos = new Vector3(100f, 200f, 30f);
+            var follower = new Follower(factionId, tier);
+
+            _gameBridgeMock.Setup(g => g.GetPlayerPosition()).Returns(playerPos);
+            _defenderRoleServiceMock.Setup(s => s.GetRoleConfig(tier))
+                .Returns(new DefenderRoleConfig(tier, 1000, 200, 100, "weapon_smg", 0.8f, 2.0f));
+            _followerServiceMock.Setup(s => s.Recruit(factionId, tier))
+                .Returns(FollowerRecruitResult.Succeeded(follower));
+            _pedSpawningServiceMock.Setup(s => s.CanSpawn()).Returns(true);
+            _pedSpawningServiceMock.Setup(s => s.SpawnPed(
+                    It.IsAny<string>(), It.IsAny<Vector3>(), factionId, null))
+                .Returns(new PedHandle(pedHandle, factionId, playerPos, "model", null));
+            manager.SetModelForTier(tier, "model");
+
+            // Act
+            manager.RecruitFollower(factionId, tier);
+
+            // Assert — stats source is provider (Squad.Rifleman), not roleConfig
+            _gameBridgeMock.Verify(g => g.SetPedAccuracy(pedHandle, 0.11f), Times.Once);
+            _gameBridgeMock.Verify(g => g.GivePedWeapon(pedHandle, "WEAPON_MARKSMANRIFLE"), Times.Once);
+            _gameBridgeMock.Verify(g => g.SetPedWeaponDamageModifier(pedHandle, 3f), Times.Once);
         }
 
         #endregion

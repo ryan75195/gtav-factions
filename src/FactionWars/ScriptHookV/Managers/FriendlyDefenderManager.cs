@@ -34,6 +34,7 @@ namespace FactionWars.ScriptHookV.Managers
         private readonly IZoneService _zoneService;
         private readonly IZoneCombatantSpawner _spawner;
         private readonly ISniperDeploymentService _sniperDeployment;
+        private readonly ICombatantStatsProvider _statsProvider;
         private string _playerFactionId;
 
         private readonly Dictionary<string, Dictionary<int, DefenderRole>> _spawnedPedTierByZone; // zoneId -> (pedHandle -> tier)
@@ -71,14 +72,7 @@ namespace FactionWars.ScriptHookV.Managers
         /// <summary>
         /// Creates a new FriendlyDefenderManager instance.
         /// </summary>
-        /// <param name="gameBridge">The game bridge for native function calls.</param>
-        /// <param name="allocationService">Service for getting zone defender allocations.</param>
-        /// <param name="pedSpawningService">Service for spawning peds.</param>
-        /// <param name="defenderRoleService">Service for defender tier configurations.</param>
-        /// <param name="pedBlipService">Service for managing ped blips.</param>
-        /// <param name="zoneService">Service for zone operations.</param>
-        /// <param name="playerFactionId">The player's current faction ID.</param>
-        /// <exception cref="ArgumentNullException">Thrown if any required parameter is null.</exception>
+        /// <exception cref="ArgumentNullException">Thrown if any required dependency is null.</exception>
         public FriendlyDefenderManager(FriendlyDefenderManagerDependencies dependencies, string playerFactionId)
         {
             if (dependencies == null) throw new ArgumentNullException(nameof(dependencies));
@@ -93,6 +87,7 @@ namespace FactionWars.ScriptHookV.Managers
                 ?? new ZoneCombatantSpawner(new AllegianceResolver(), _pedSpawningService, _pedBlipService, _gameBridge);
             _sniperDeployment = dependencies.SniperDeployment ?? new SniperDeploymentService(new PerchResolver(), _gameBridge);
             _playerFactionId = playerFactionId ?? throw new ArgumentNullException(nameof(playerFactionId));
+            _statsProvider = dependencies.StatsProvider ?? throw new ArgumentNullException(nameof(dependencies.StatsProvider));
 
             _spawnedPedTierByZone = new Dictionary<string, Dictionary<int, DefenderRole>>();
             _corpseDeathTimes = new Dictionary<int, int>();
@@ -109,7 +104,8 @@ namespace FactionWars.ScriptHookV.Managers
                     PedDespawnService = (IPedDespawnService?)dependencies[3],
                     DefenderRoleService = (IDefenderRoleService?)dependencies[4],
                     PedBlipService = (IPedBlipService?)dependencies[5],
-                    ZoneService = (IZoneService?)dependencies[6]
+                    ZoneService = (IZoneService?)dependencies[6],
+                    StatsProvider = dependencies.Length > 8 ? (ICombatantStatsProvider?)dependencies[8] : null
                 },
                 (string)dependencies[7]!)
         {

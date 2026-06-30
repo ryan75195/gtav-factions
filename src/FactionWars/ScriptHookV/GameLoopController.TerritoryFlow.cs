@@ -132,9 +132,7 @@ namespace FactionWars.ScriptHookV
             {
                 // First successful placement after a respawn: drop the player's commander beside them.
                 if (!_pendingOwnedTerritoryLoggedSuccess && _pendingOwnedTerritoryReason == "respawn")
-                {
-                    PlaceCommanderNearPlayerInCurrentZone(_pendingOwnedTerritoryFactionId);
-                }
+                    OnRespawnPlacementSucceeded(_pendingOwnedTerritoryFactionId);
 
                 _pendingOwnedTerritoryLoggedSuccess = true;
             }
@@ -169,6 +167,12 @@ namespace FactionWars.ScriptHookV
 
             _commanderManager.PlaceCommanderNearPlayer(zone, playerPos);
             FileLogger.Info($"PlaceCommanderNearPlayerInCurrentZone: commander placed near player in zone {zone.Id}");
+        }
+
+        private void OnRespawnPlacementSucceeded(string? factionId)
+        {
+            PlaceCommanderNearPlayerInCurrentZone(factionId);
+            _playerStatsApplier?.Apply();
         }
 
         private OwnedTerritoryPlacementResult MovePlayerToOwnedTerritory(string? factionId, string reason, bool logAlreadyOwned)

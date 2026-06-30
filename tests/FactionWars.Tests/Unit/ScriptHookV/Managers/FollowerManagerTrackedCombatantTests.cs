@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using FactionWars.Combat.Interfaces;
+using FactionWars.Configuration;
 using FactionWars.Core.Interfaces;
 using FactionWars.Core.Models;
 using FactionWars.ScriptHookV.Managers;
@@ -27,7 +28,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
                 new Mock<IPedSpawningService>().Object,
                 new Mock<IDefenderRoleService>().Object,
                 new Mock<IPedBlipService>().Object,
-                new Mock<IVehicleSeatPriorityService>().Object);
+                new Mock<IVehicleSeatPriorityService>().Object,
+                CombatantStatsProviderFactory.Create(new CombatantsConfig()));
         }
 
         private ITrackedCombatantSource Source => _manager;

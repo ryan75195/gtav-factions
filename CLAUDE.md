@@ -108,3 +108,33 @@ When debugging against logs reveals that **in-game behavior differs from mock be
 Example: If logs show `SetPedAsFriendly` puts peds in `FRIENDLY_DEFENDERS` group but the mock assumed `PLAYER` group, update the mock and tests to use `FRIENDLY_DEFENDERS`.
 
 This keeps our test suite accurate and prevents false confidence from tests that pass but don't reflect reality.
+
+## Combat Balance Config
+
+The mod reads `E:\SteamLibrary\steamapps\common\Grand Theft Auto V\scripts\FactionWars\config.json` at startup and caches it for the session. **Edit the file then restart GTA V to apply changes. Delete the file to regenerate defaults.**
+
+The `Combatants` block controls all combatant stats and has four groups:
+
+- `Player` — `MaxHealth` (int), `SpawnArmor` (int), `OutgoingDamageMultiplier` (float), `IncomingDamageMultiplier` (float)
+- `Enemies`, `Squad`, `Friendlies` — each has five per-role entries: `Grunt`, `Gunner`, `Rifleman`, `Rocketeer`, `Sniper`
+
+Each role entry has: `Health` (int), `Armor` (int), `Accuracy` (0–1 float), `Weapon` (`WEAPON_*` string), `DamageMultiplier` (float).
+
+Minimal example (one role per group):
+
+```json
+"Combatants": {
+  "Player": { "MaxHealth": 200, "SpawnArmor": 0, "OutgoingDamageMultiplier": 1.0, "IncomingDamageMultiplier": 1.0 },
+  "Enemies": {
+    "Rifleman": { "Health": 500, "Armor": 200, "Accuracy": 0.6, "Weapon": "WEAPON_CARBINERIFLE", "DamageMultiplier": 1.0 }
+  },
+  "Squad": {
+    "Sniper": { "Health": 275, "Armor": 50, "Accuracy": 0.7, "Weapon": "WEAPON_SNIPERRIFLE", "DamageMultiplier": 1.0 }
+  },
+  "Friendlies": {
+    "Sniper": { "Health": 275, "Armor": 50, "Accuracy": 0.7, "Weapon": "WEAPON_SNIPERRIFLE", "DamageMultiplier": 1.0 }
+  }
+}
+```
+
+**Making friendly snipers one-shot NPCs:** Set `DamageMultiplier` to a high value (e.g. `10.0`) on `Friendlies.Sniper` and/or `Squad.Sniper`. This buffs only those roles without touching `Enemies.Sniper`.

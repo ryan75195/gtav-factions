@@ -22,6 +22,7 @@ namespace FactionWars.ScriptHookV.Managers
         private readonly IDefenderRoleService _defenderRoleService;
         private readonly IPedBlipService _pedBlipService;
         private readonly IVehicleSeatPriorityService _seatPriorityService;
+        private readonly ICombatantStatsProvider _statsProvider;
         private readonly Dictionary<DefenderRole, string> _modelsByTier;
 
         /// <summary>
@@ -45,13 +46,7 @@ namespace FactionWars.ScriptHookV.Managers
         /// <summary>
         /// Creates a new FollowerManager.
         /// </summary>
-        /// <param name="gameBridge">The game bridge for game interactions.</param>
-        /// <param name="followerService">The domain-layer follower service.</param>
-        /// <param name="pedSpawningService">Service for spawning peds.</param>
-        /// <param name="defenderRoleService">Service for defender tier configurations.</param>
-        /// <param name="pedBlipService">Service for managing ped blips on the minimap.</param>
-        /// <param name="seatPriorityService">Service for coordinated vehicle seat assignment.</param>
-        /// <exception cref="ArgumentNullException">Thrown if any parameter is null.</exception>
+        /// <exception cref="ArgumentNullException">Thrown if any required dependency is null.</exception>
         public FollowerManager(FollowerManagerDependencies dependencies)
         {
             if (dependencies == null) throw new ArgumentNullException(nameof(dependencies));
@@ -61,6 +56,7 @@ namespace FactionWars.ScriptHookV.Managers
             _defenderRoleService = dependencies.DefenderRoleService ?? throw new ArgumentNullException(nameof(dependencies.DefenderRoleService));
             _pedBlipService = dependencies.PedBlipService ?? throw new ArgumentNullException(nameof(dependencies.PedBlipService));
             _seatPriorityService = dependencies.SeatPriorityService ?? throw new ArgumentNullException(nameof(dependencies.SeatPriorityService));
+            _statsProvider = dependencies.StatsProvider ?? throw new ArgumentNullException(nameof(dependencies.StatsProvider));
 
             _modelsByTier = new Dictionary<DefenderRole, string>
             {
@@ -78,7 +74,8 @@ namespace FactionWars.ScriptHookV.Managers
                 PedSpawningService = (IPedSpawningService?)dependencies[2],
                 DefenderRoleService = (IDefenderRoleService?)dependencies[3],
                 PedBlipService = (IPedBlipService?)dependencies[4],
-                SeatPriorityService = (IVehicleSeatPriorityService?)dependencies[5]
+                SeatPriorityService = (IVehicleSeatPriorityService?)dependencies[5],
+                StatsProvider = dependencies.Length > 6 ? (ICombatantStatsProvider?)dependencies[6] : null
             })
         {
         }

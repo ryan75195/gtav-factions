@@ -1,5 +1,6 @@
 using FactionWars.Combat.Interfaces;
 using FactionWars.Combat.Models;
+using FactionWars.Configuration;
 using FactionWars.Core.Interfaces;
 using FactionWars.Core.Models;
 using FactionWars.Core.Utils;
@@ -137,7 +138,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV
                 defenderRoleServiceMock.Object,
                 pedBlipServiceMock.Object,
                 zoneServiceMock.Object,
-                PlayerFactionId);
+                PlayerFactionId,
+                CombatantStatsProviderFactory.Create(new CombatantsConfig()));
 
             manager.OnZoneEntered(zone);
             int handle = bridge.GetSpawnedPeds()[0];

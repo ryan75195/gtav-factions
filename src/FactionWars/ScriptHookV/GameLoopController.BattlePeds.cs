@@ -14,15 +14,12 @@ namespace FactionWars.ScriptHookV
 
             var defenderRoleService = _container.Resolve<IDefenderRoleService>();
             var config = defenderRoleService.GetRoleConfig(tier);
+            var statsProvider = _container.Resolve<ICombatantStatsProvider>();
 
-            // Map weapon names to GTA V weapon names
-            var weaponName = tier switch
-            {
-                DefenderRole.Grunt => "WEAPON_PISTOL",
-                DefenderRole.Gunner => "WEAPON_SMG",
-                DefenderRole.Rifleman => "WEAPON_CARBINERIFLE",
-                _ => "WEAPON_PISTOL"
-            };
+            var category = defenderFactionId == CurrentPlayerFactionId
+                ? CombatantCategory.Friendlies
+                : CombatantCategory.Enemies;
+            var stats = statsProvider.GetRoleStats(category, tier);
 
             foreach (var ped in spawnedPeds)
             {
@@ -35,16 +32,16 @@ namespace FactionWars.ScriptHookV
                 FileLogger.Combat($"Configuring defender ped {ped.Handle}");
 
                 // Set health and armor based on tier
-                _gameBridge.SetPedHealth(ped.Handle, config.Health);
+                _gameBridge.SetPedHealth(ped.Handle, stats.Health);
                 _gameBridge.SetPedCriticalHitsEnabled(ped.Handle, true);
                 _gameBridge.SetPedRagdollEnabled(ped.Handle, config.RagdollEnabled);
-                _gameBridge.SetPedArmor(ped.Handle, config.Armor);
+                _gameBridge.SetPedArmor(ped.Handle, stats.Armor);
 
                 // Give weapon
-                _gameBridge.GivePedWeapon(ped.Handle, weaponName);
+                _gameBridge.GivePedWeapon(ped.Handle, stats.Weapon);
 
                 // Set accuracy
-                _gameBridge.SetPedAccuracy(ped.Handle, config.Accuracy);
+                _gameBridge.SetPedAccuracy(ped.Handle, stats.Accuracy);
 
                 // Set combat attributes - make them aggressive fighters
                 _gameBridge.SetPedCombatAttributes(ped.Handle, canUseCover: true, willFightArmedPeds: true);
@@ -55,7 +52,9 @@ namespace FactionWars.ScriptHookV
                 // CRITICAL: Give defender a task to fight the player
                 _gameBridge.SetPedToAttackPlayer(ped.Handle);
 
-                FileLogger.Combat($"Defender {ped.Handle} configured with weapon={weaponName}, health={config.Health}, accuracy={config.Accuracy}");
+                _gameBridge.SetPedWeaponDamageModifier(ped.Handle, stats.DamageMultiplier);
+
+                FileLogger.Combat($"Defender {ped.Handle} configured with weapon={stats.Weapon}, health={stats.Health}, accuracy={stats.Accuracy}");
             }
         }
 

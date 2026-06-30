@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using FactionWars.Combat.Interfaces;
 using FactionWars.Combat.Models;
+using FactionWars.Configuration;
 using FactionWars.Core.Interfaces;
 using FactionWars.Core.Models;
 using FactionWars.Core.Utils;
@@ -68,7 +69,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
                 _pedBlipServiceMock.Object,
                 _zoneServiceMock.Object,
                 _factionServiceMock.Object,
-                PlayerFactionId);
+                PlayerFactionId,
+                CombatantStatsProviderFactory.Create(new CombatantsConfig()));
         }
 
         [Fact]
@@ -89,6 +91,92 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
 
             var handles = _manager.GetHostilePedHandles();
             Assert.NotEmpty(handles);
+        }
+
+        [Fact]
+        public void ConfigureAttacker_WhenAttackerFactionEqualsPlayerFaction_UsesFriendliesStats()
+        {
+            SetupManager();
+
+            // Distinctive Friendlies vs Enemies Grunt values so category choice is observable
+            var cfg = new CombatantsConfig();
+            cfg.Friendlies.Grunt = new RoleStatsConfig { Health = 100, Armor = 10, Accuracy = 0.11f, Weapon = "WEAPON_CARBINERIFLE", DamageMultiplier = 0.50f };
+            cfg.Enemies.Grunt    = new RoleStatsConfig { Health = 900, Armor = 90, Accuracy = 0.77f, Weapon = "WEAPON_RPG",          DamageMultiplier = 2.00f };
+
+            _manager = new BattleAttackerManager(
+                _gameBridge,
+                _zoneBattleManagerMock.Object,
+                _pedSpawningServiceMock.Object,
+                _pedDespawnServiceMock.Object,
+                _defenderRoleServiceMock.Object,
+                _pedBlipServiceMock.Object,
+                _zoneServiceMock.Object,
+                _factionServiceMock.Object,
+                PlayerFactionId,
+                CombatantStatsProviderFactory.Create(cfg));
+
+            // Battle where attacker faction == player faction → Friendlies path
+            var battle = new ZoneBattle(
+                PlayerFactionId,
+                PlayerFactionId,
+                TestZoneId,
+                new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 1 } },
+                new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 1 } });
+            _zoneBattleManagerMock.Setup(b => b.GetBattleForZone(TestZoneId)).Returns(battle);
+
+            var zone = new Zone(TestZoneId, "Test Zone", new Vector3(0, 0, 0), 150f, 1);
+            zone.OwnerFactionId = PlayerFactionId;
+
+            _manager.OnPlayerZoneEntered(zone);
+
+            var handles = _manager.GetHostilePedHandles();
+            Assert.NotEmpty(handles);
+            Assert.Equal(0.11f, _gameBridge.GetPedAccuracy(handles[0]));
+            Assert.Equal("WEAPON_CARBINERIFLE", _gameBridge.GetPedWeapon(handles[0]));
+            Assert.Equal(0.50f, _gameBridge.GetPedWeaponDamageModifierForTest(handles[0]));
+        }
+
+        [Fact]
+        public void ConfigureAttacker_WhenAttackerFactionDiffersFromPlayerFaction_UsesEnemiesStats()
+        {
+            SetupManager();
+
+            // Distinctive Friendlies vs Enemies Grunt values so category choice is observable
+            var cfg = new CombatantsConfig();
+            cfg.Friendlies.Grunt = new RoleStatsConfig { Health = 100, Armor = 10, Accuracy = 0.11f, Weapon = "WEAPON_CARBINERIFLE", DamageMultiplier = 0.50f };
+            cfg.Enemies.Grunt    = new RoleStatsConfig { Health = 900, Armor = 90, Accuracy = 0.77f, Weapon = "WEAPON_RPG",          DamageMultiplier = 2.00f };
+
+            _manager = new BattleAttackerManager(
+                _gameBridge,
+                _zoneBattleManagerMock.Object,
+                _pedSpawningServiceMock.Object,
+                _pedDespawnServiceMock.Object,
+                _defenderRoleServiceMock.Object,
+                _pedBlipServiceMock.Object,
+                _zoneServiceMock.Object,
+                _factionServiceMock.Object,
+                PlayerFactionId,
+                CombatantStatsProviderFactory.Create(cfg));
+
+            // Battle where attacker faction != player faction → Enemies path
+            var battle = new ZoneBattle(
+                EnemyFactionId,
+                PlayerFactionId,
+                TestZoneId,
+                new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 1 } },
+                new Dictionary<DefenderRole, int> { { DefenderRole.Grunt, 1 } });
+            _zoneBattleManagerMock.Setup(b => b.GetBattleForZone(TestZoneId)).Returns(battle);
+
+            var zone = new Zone(TestZoneId, "Test Zone", new Vector3(0, 0, 0), 150f, 1);
+            zone.OwnerFactionId = PlayerFactionId;
+
+            _manager.OnPlayerZoneEntered(zone);
+
+            var handles = _manager.GetHostilePedHandles();
+            Assert.NotEmpty(handles);
+            Assert.Equal(0.77f, _gameBridge.GetPedAccuracy(handles[0]));
+            Assert.Equal("WEAPON_RPG", _gameBridge.GetPedWeapon(handles[0]));
+            Assert.Equal(2.00f, _gameBridge.GetPedWeaponDamageModifierForTest(handles[0]));
         }
     }
 }

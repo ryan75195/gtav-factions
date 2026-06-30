@@ -8,6 +8,7 @@ namespace FactionWars.Configuration
     {
         public AIConfig AI { get; set; } = new AIConfig();
         public CombatConfig Combat { get; set; } = new CombatConfig();
+        public CombatantsConfig Combatants { get; set; } = new CombatantsConfig();
         public EconomyConfig Economy { get; set; } = new EconomyConfig();
         public InitializationConfig Initialization { get; set; } = new InitializationConfig();
         public PersistenceConfig Persistence { get; set; } = new PersistenceConfig();

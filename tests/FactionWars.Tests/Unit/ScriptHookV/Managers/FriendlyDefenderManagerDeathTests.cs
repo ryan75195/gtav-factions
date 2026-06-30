@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using FactionWars.Combat.Interfaces;
 using FactionWars.Combat.Models;
+using FactionWars.Configuration;
 using FactionWars.Core.Interfaces;
 using FactionWars.Core.Models;
 using FactionWars.Core.Utils;
@@ -60,7 +61,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
                 _defenderRoleServiceMock.Object,
                 _pedBlipServiceMock.Object,
                 _zoneServiceMock.Object,
-                PlayerFactionId);
+                PlayerFactionId,
+                CombatantStatsProviderFactory.Create(new CombatantsConfig()));
         }
 
         private Zone CreateFriendlyZone()
@@ -389,6 +391,48 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             Assert.Equal(2, _manager.GetSpawnedCountByTier(TestZoneId, DefenderRole.Grunt));
             Assert.Equal(1, _manager.GetSpawnedCountByTier(TestZoneId, DefenderRole.Gunner));
             Assert.Equal(1, _manager.GetSpawnedCountByTier(TestZoneId, DefenderRole.Rifleman));
+        }
+
+        [Fact]
+        public void OnZoneEntered_ShouldApplyFriendliesRiflemanStatsFromProvider()
+        {
+            // Arrange — override Friendlies.Rifleman so values are distinctive vs roleConfig defaults
+            SetupManager();
+            var cfg = new CombatantsConfig();
+            cfg.Friendlies.Rifleman = new RoleStatsConfig
+            {
+                Health = 999, Armor = 50, Accuracy = 0.11f,
+                Weapon = "WEAPON_MARKSMANRIFLE", DamageMultiplier = 3f
+            };
+            var provider = CombatantStatsProviderFactory.Create(cfg);
+
+            _manager = new FriendlyDefenderManager(
+                _gameBridge,
+                _allocationServiceMock.Object,
+                _pedSpawningServiceMock.Object,
+                _pedDespawnServiceMock.Object,
+                _defenderRoleServiceMock.Object,
+                _pedBlipServiceMock.Object,
+                _zoneServiceMock.Object,
+                PlayerFactionId,
+                provider);
+
+            _defenderRoleServiceMock.Setup(d => d.GetRoleConfig(DefenderRole.Rifleman))
+                .Returns(new DefenderRoleConfig(DefenderRole.Rifleman, 1000, 200, 100, "weapon_smg", 0.8f, 2.0f));
+
+            var zone = CreateFriendlyZone();
+            var allocation = CreateAllocationWithDefenders(basic: 0, medium: 0, heavy: 1);
+            _allocationServiceMock.Setup(a => a.GetAllocation(PlayerFactionId, TestZoneId))
+                .Returns(allocation);
+
+            // Act
+            _manager.OnZoneEntered(zone);
+
+            // Assert — stats source is provider (Friendlies.Rifleman), not roleConfig
+            var spawnedPed = _gameBridge.GetSpawnedPeds()[0];
+            Assert.Equal(0.11f, _gameBridge.GetPedAccuracy(spawnedPed), 2);
+            Assert.Equal("WEAPON_MARKSMANRIFLE", _gameBridge.GetPedWeapon(spawnedPed));
+            Assert.Equal(3f, _gameBridge.GetPedWeaponDamageModifierForTest(spawnedPed), 2);
         }
     }
 }

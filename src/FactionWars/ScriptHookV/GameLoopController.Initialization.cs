@@ -135,7 +135,8 @@ namespace FactionWars.ScriptHookV
                 PedSpawningService = spawnServices.PedSpawning,
                 DefenderRoleService = spawnServices.DefenderRole,
                 PedBlipService = spawnServices.PedBlip,
-                SeatPriorityService = seatPriorityService
+                SeatPriorityService = seatPriorityService,
+                StatsProvider = _container.Resolve<ICombatantStatsProvider>()
             });
         }
 
@@ -162,7 +163,8 @@ namespace FactionWars.ScriptHookV
                     DefenderRoleService = spawnServices.DefenderRole,
                     PedBlipService = spawnServices.PedBlip,
                     ZoneService = _zoneService,
-                    SniperDeployment = _sharedSniperDeployment
+                    SniperDeployment = _sharedSniperDeployment,
+                    StatsProvider = _container.Resolve<ICombatantStatsProvider>()
                 },
                 CurrentPlayerFactionId ?? "");
 
@@ -176,11 +178,6 @@ namespace FactionWars.ScriptHookV
             return allocationService;
         }
 
-        /// <summary>
-        /// Wires reactions to ownership changes that happen while the player is still inside a zone
-        /// (no exit/re-enter fires): the reconciler despawns whichever side just lost the zone, and
-        /// the boundary blip is recoloured into the new owner's colour.
-        /// </summary>
         private void WireZoneOwnershipReconciliation()
         {
             if (_zoneService == null) return;
@@ -222,8 +219,6 @@ namespace FactionWars.ScriptHookV
         {
             var zoneService = RequiredZoneService;
             var zoneBattleManager = RequiredZoneBattleManager;
-            var territoryManager = RequiredTerritoryManager;
-            var friendlyDefenderManager = RequiredFriendlyDefenderManager;
 
             _enemyDefenderManager = new EnemyDefenderManager(new EnemyDefenderManagerDependencies
             {
@@ -236,7 +231,8 @@ namespace FactionWars.ScriptHookV
                 ZoneService = zoneService,
                 ZoneBattleManager = zoneBattleManager,
                 CurrentPlayerFactionIdAccessor = () => CurrentPlayerFactionId,
-                SniperDeployment = _sharedSniperDeployment
+                SniperDeployment = _sharedSniperDeployment,
+                StatsProvider = _container.Resolve<ICombatantStatsProvider>()
             });
 
             _battleAttackerManager = new BattleAttackerManager(
@@ -249,15 +245,15 @@ namespace FactionWars.ScriptHookV
                     DefenderRoleService = spawnServices.DefenderRole,
                     PedBlipService = spawnServices.PedBlip,
                     ZoneService = zoneService,
-                    FactionService = _factionService
+                    FactionService = _factionService,
+                    StatsProvider = _container.Resolve<ICombatantStatsProvider>()
                 },
                 CurrentPlayerFactionId ?? "");
-
             _defenderRallyController = new DefenderRallyController(new DefenderRallyControllerDependencies
             {
                 Bridge = _gameBridge,
-                Territory = territoryManager,
-                Defenders = friendlyDefenderManager,
+                Territory = RequiredTerritoryManager,
+                Defenders = RequiredFriendlyDefenderManager,
                 Combat = new ZoneBattleCombatActivityAdapter(zoneBattleManager),
                 CurrentPlayerFactionIdAccessor = () => CurrentPlayerFactionId,
                 NowMs = () => System.Environment.TickCount

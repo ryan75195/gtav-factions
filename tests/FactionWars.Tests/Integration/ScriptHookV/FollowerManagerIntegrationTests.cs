@@ -2,6 +2,7 @@ using System;
 using FactionWars.Combat.Interfaces;
 using FactionWars.Combat.Pools;
 using FactionWars.Combat.Services;
+using FactionWars.Configuration;
 using FactionWars.Core.Interfaces;
 using FactionWars.Core.Models;
 using FactionWars.Core.Services;
@@ -52,7 +53,8 @@ namespace FactionWars.Tests.Integration.ScriptHookV
                 _pedSpawningService,
                 _defenderRoleService,
                 _pedBlipService,
-                _seatPriorityService);
+                _seatPriorityService,
+                CombatantStatsProviderFactory.Create(new CombatantsConfig()));
         }
 
         #region Following Behavior Tests

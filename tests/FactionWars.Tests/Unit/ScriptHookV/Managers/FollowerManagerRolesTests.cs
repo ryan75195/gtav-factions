@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using FactionWars.Combat.Interfaces;
+using FactionWars.Configuration;
 using FactionWars.Core.Interfaces;
 using FactionWars.Core.Models;
 using FactionWars.ScriptHookV.Managers;
@@ -28,7 +29,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             var manager = new FollowerManager(
                 gameBridge.Object, followerService.Object,
                 new Mock<IPedSpawningService>().Object, new Mock<IDefenderRoleService>().Object,
-                new Mock<IPedBlipService>().Object, new Mock<IVehicleSeatPriorityService>().Object);
+                new Mock<IPedBlipService>().Object, new Mock<IVehicleSeatPriorityService>().Object,
+                CombatantStatsProviderFactory.Create(new CombatantsConfig()));
 
             manager.Update("player", boardPlayerVehicle: false);
 
@@ -43,7 +45,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             var manager = new FollowerManager(
                 gameBridge.Object, new Mock<IFollowerService>().Object,
                 new Mock<IPedSpawningService>().Object, new Mock<IDefenderRoleService>().Object,
-                new Mock<IPedBlipService>().Object, new Mock<IVehicleSeatPriorityService>().Object);
+                new Mock<IPedBlipService>().Object, new Mock<IVehicleSeatPriorityService>().Object,
+                CombatantStatsProviderFactory.Create(new CombatantsConfig()));
 
             manager.Update("", boardPlayerVehicle: false);
 

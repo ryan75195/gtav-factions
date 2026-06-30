@@ -198,5 +198,39 @@ namespace FactionWars.ScriptHookV
         }
 
         /// <inheritdoc />
+        public void SetPlayerMaxHealth(int maxHealth)
+        {
+            try
+            {
+                var player = Game.Player.Character;
+                if (player == null || !player.Exists()) return;
+                Function.Call(Hash.SET_PED_MAX_HEALTH, player.Handle, maxHealth);
+                Function.Call(Hash.SET_ENTITY_HEALTH, player.Handle, maxHealth);
+                FileLogger.Info($"SetPlayerMaxHealth: max={maxHealth}");
+            }
+            catch (Exception ex) { FileLogger.Error("SetPlayerMaxHealth exception", ex); }
+        }
+
+        /// <inheritdoc />
+        public void SetPlayerWeaponDamageModifier(float multiplier)
+        {
+            try
+            {
+                Function.Call(Hash.SET_PLAYER_WEAPON_DAMAGE_MODIFIER, Game.Player.Handle, multiplier);
+                FileLogger.Info($"SetPlayerWeaponDamageModifier: x{multiplier:F2}");
+            }
+            catch (Exception ex) { FileLogger.Error("SetPlayerWeaponDamageModifier exception", ex); }
+        }
+
+        /// <inheritdoc />
+        public void SetPlayerWeaponDefenseModifier(float multiplier)
+        {
+            try
+            {
+                Function.Call(Hash.SET_PLAYER_WEAPON_DEFENSE_MODIFIER, Game.Player.Handle, multiplier);
+                FileLogger.Info($"SetPlayerWeaponDefenseModifier: x{multiplier:F2}");
+            }
+            catch (Exception ex) { FileLogger.Error("SetPlayerWeaponDefenseModifier exception", ex); }
+        }
     }
 }
