@@ -38,8 +38,6 @@ namespace FactionWars.ScriptHookV
 
             _recruitmentMenuController = new RecruitmentMenuController(menuProvider, _gameBridge);
             _recruitmentMenuController.BackRequested += BackTo(RecruitmentMenuController.MenuId, () => mainMenuController.OnKeyDown(MainMenuController.MenuToggleKeyCode));
-            _defendersMenuController = new DefendersMenuController(menuProvider, _factionService, purchaseService, playerContext);
-            _defendersMenuController.BackRequested += BackTo(DefendersMenuController.MenuId, () => _recruitmentMenuController.Show());
             _squadMenuController = new SquadMenuController(
                 new SquadMenuControllerDependencies
                 {
@@ -51,7 +49,6 @@ namespace FactionWars.ScriptHookV
                 _followerManager,
                 _gameBridge);
             _squadMenuController.BackRequested += BackTo(SquadMenuController.MenuId, () => _recruitmentMenuController.Show());
-            _recruitmentMenuController.DefendersRequested += (s, e) => _defendersMenuController.Show();
             _recruitmentMenuController.SquadRequested += (s, e) => _squadMenuController.Show();
         }
 

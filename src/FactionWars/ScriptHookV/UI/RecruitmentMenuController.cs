@@ -6,7 +6,7 @@ using System;
 namespace FactionWars.ScriptHookV.UI
 {
     /// <summary>
-    /// Controller for the Recruitment submenu. Provides navigation to Defenders and Squad submenus.
+    /// Controller for the Recruitment submenu. Provides navigation to the Squad submenu.
     /// </summary>
     public class RecruitmentMenuController
     {
@@ -21,11 +21,6 @@ namespace FactionWars.ScriptHookV.UI
         public const string CashDisplayItemId = "cash_display";
 
         /// <summary>
-        /// Item ID for defenders option.
-        /// </summary>
-        public const string DefendersItemId = "defenders";
-
-        /// <summary>
         /// Item ID for squad option.
         /// </summary>
         public const string SquadItemId = "squad";
@@ -37,11 +32,6 @@ namespace FactionWars.ScriptHookV.UI
 
         private readonly IMenuProvider _menuProvider;
         private readonly IGameBridge _gameBridge;
-
-        /// <summary>
-        /// Event raised when the user selects the Defenders option.
-        /// </summary>
-        public event EventHandler? DefendersRequested;
 
         /// <summary>
         /// Event raised when the user selects the Squad option.
@@ -77,13 +67,6 @@ namespace FactionWars.ScriptHookV.UI
             cashItem.IsEnabled = false;
             menu.AddItem(cashItem);
 
-            // Defenders option
-            var defendersItem = new MenuItem(
-                DefendersItemId,
-                "Defenders",
-                "Buy troops for zone defense");
-            menu.AddItem(defendersItem);
-
             // Squad option
             var squadItem = new MenuItem(
                 SquadItemId,
@@ -103,10 +86,6 @@ namespace FactionWars.ScriptHookV.UI
 
             switch (e.ItemId)
             {
-                case DefendersItemId:
-                    DefendersRequested?.Invoke(this, EventArgs.Empty);
-                    break;
-
                 case SquadItemId:
                     SquadRequested?.Invoke(this, EventArgs.Empty);
                     break;

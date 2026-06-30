@@ -69,7 +69,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
         }
 
         [Fact]
-        public void Show_ShouldIncludeDefendersOption()
+        public void Show_DoesNotIncludeDefendersOption()
         {
             // Act
             _controller.Show();
@@ -77,9 +77,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
             // Assert
             var menu = _menuProvider.GetCurrentMenuDefinition();
             Assert.NotNull(menu);
-            var defendersItem = menu!.GetItem(RecruitmentMenuController.DefendersItemId);
-            Assert.NotNull(defendersItem);
-            Assert.Equal("Defenders", defendersItem!.Text);
+            Assert.DoesNotContain(menu!.Items, i => i.Id == "defenders");
         }
 
         [Fact]
@@ -109,30 +107,15 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
         }
 
         [Fact]
-        public void Show_ShouldHaveFourItems()
+        public void Show_ShouldHaveThreeItems()
         {
             // Act
             _controller.Show();
 
-            // Assert - cash display, defenders, squad, back = 4
+            // Assert - cash display, squad, back = 3
             var menu = _menuProvider.GetCurrentMenuDefinition();
             Assert.NotNull(menu);
-            Assert.Equal(4, menu!.Items.Count);
-        }
-
-        [Fact]
-        public void SelectDefenders_ShouldRaiseDefendersRequestedEvent()
-        {
-            // Arrange
-            var eventRaised = false;
-            _controller.DefendersRequested += (s, e) => eventRaised = true;
-            _controller.Show();
-
-            // Act
-            _menuProvider.SimulateItemSelection(RecruitmentMenuController.DefendersItemId);
-
-            // Assert
-            Assert.True(eventRaised);
+            Assert.Equal(3, menu!.Items.Count);
         }
 
         [Fact]

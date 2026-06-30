@@ -131,23 +131,6 @@ namespace FactionWars.Tests.Integration.ScriptHookV
             Assert.Equal(MainMenuController.MainMenuId, _menuProvider.CurrentMenuId);
         }
 
-        [Fact]
-        public void DefendersSubmenu_NativeBackReturnsToRecruitmentMenu()
-        {
-            // Arrange - drill main -> recruitment -> defenders
-            _controller.OnKeyDown(F7KeyCode);
-            _menuProvider.SimulateItemSelection(MainMenuController.RecruitmentItemId);
-            _menuProvider.SimulateItemSelection(RecruitmentMenuController.DefendersItemId);
-            Assert.Equal(DefendersMenuController.MenuId, _menuProvider.CurrentMenuId);
-
-            // Act - native back from defenders
-            _menuProvider.SimulateBackOut();
-
-            // Assert - returns to the recruitment menu (one level up), not the main menu or closed
-            Assert.True(_menuProvider.IsMenuVisible);
-            Assert.Equal(RecruitmentMenuController.MenuId, _menuProvider.CurrentMenuId);
-        }
-
         #endregion
 
         #region Recruitment Submenu Tests
@@ -167,7 +150,7 @@ namespace FactionWars.Tests.Integration.ScriptHookV
         }
 
         [Fact]
-        public void RecruitmentSubmenu_DisplaysDefendersAndSquadOptions()
+        public void RecruitmentSubmenu_DisplaysSquadAndBackOptions_NoDefenders()
         {
             // Arrange
             _controller.OnKeyDown(F7KeyCode);
@@ -178,7 +161,7 @@ namespace FactionWars.Tests.Integration.ScriptHookV
 
             // Assert
             Assert.NotNull(menu);
-            Assert.NotNull(menu!.GetItem(RecruitmentMenuController.DefendersItemId));
+            Assert.DoesNotContain(menu!.Items, i => i.Id == "defenders");
             Assert.NotNull(menu.GetItem(RecruitmentMenuController.SquadItemId));
             Assert.NotNull(menu.GetItem(RecruitmentMenuController.BackItemId));
         }
@@ -196,40 +179,6 @@ namespace FactionWars.Tests.Integration.ScriptHookV
             // Assert
             Assert.True(_menuProvider.IsMenuVisible);
             Assert.Equal(MainMenuController.MainMenuId, _menuProvider.CurrentMenuId);
-        }
-
-        [Fact]
-        public void DefendersSubmenu_OpensFromRecruitmentMenu()
-        {
-            // Arrange
-            _controller.OnKeyDown(F7KeyCode);
-            _menuProvider.SimulateItemSelection(MainMenuController.RecruitmentItemId);
-
-            // Act
-            _menuProvider.SimulateItemSelection(RecruitmentMenuController.DefendersItemId);
-
-            // Assert
-            Assert.True(_menuProvider.IsMenuVisible);
-            Assert.Equal(DefendersMenuController.MenuId, _menuProvider.CurrentMenuId);
-        }
-
-        [Fact]
-        public void DefendersSubmenu_DisplaysAllTierPurchaseOptions()
-        {
-            // Arrange
-            _controller.OnKeyDown(F7KeyCode);
-            _menuProvider.SimulateItemSelection(MainMenuController.RecruitmentItemId);
-            _menuProvider.SimulateItemSelection(RecruitmentMenuController.DefendersItemId);
-
-            // Act
-            var menu = _menuProvider.GetCurrentMenuDefinition();
-
-            // Assert
-            Assert.NotNull(menu);
-            Assert.NotNull(menu!.GetItem(DefendersMenuController.PurchaseBasicItemId));
-            Assert.NotNull(menu.GetItem(DefendersMenuController.PurchaseMediumItemId));
-            Assert.NotNull(menu.GetItem(DefendersMenuController.PurchaseHeavyItemId));
-            Assert.NotNull(menu.GetItem(DefendersMenuController.PurchaseEliteItemId));
         }
 
         [Fact]
