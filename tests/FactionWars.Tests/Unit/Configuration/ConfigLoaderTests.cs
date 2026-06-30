@@ -100,6 +100,21 @@ namespace FactionWars.Tests.Unit.Configuration
             Assert.Equal(configPath, loader.ConfigPath);
         }
 
+        [Fact]
+        public void Load_WhenDefaultsWrittenAndReloaded_CombatantsSectionRoundTrips()
+        {
+            var configPath = Path.Combine(_testDir, "roundtrip.json");
+            var firstLoader = new ConfigLoader(configPath);
+            firstLoader.Load(); // writes the default file to disk
+
+            var secondLoader = new ConfigLoader(configPath);
+            var reloaded = secondLoader.Load();
+
+            Assert.Equal(0.6f, reloaded.Combatants.Enemies.Rifleman.Accuracy, 2);
+            Assert.Equal(500, reloaded.Combatants.Enemies.Rifleman.Health);
+            Assert.Equal(200, reloaded.Combatants.Player.MaxHealth);
+        }
+
         public void Dispose()
         {
             if (Directory.Exists(_testDir))
