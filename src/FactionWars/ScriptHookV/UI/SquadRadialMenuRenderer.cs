@@ -61,6 +61,9 @@ namespace FactionWars.ScriptHookV.UI
             _handles = handles ?? throw new ArgumentNullException(nameof(handles));
         }
 
+        /// <summary>True while the radial wheel is currently open (the squad key is held).</summary>
+        public bool IsOpen => _menu.IsOpen;
+
         /// <summary>Called once per frame from the HUD pass. Owns the open/point/apply lifecycle.</summary>
         public void Update()
         {

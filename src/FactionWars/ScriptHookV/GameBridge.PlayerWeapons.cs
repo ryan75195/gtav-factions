@@ -95,6 +95,43 @@ namespace FactionWars.ScriptHookV
             Function.Call(Hash.DISABLE_CONTROL_ACTION, 0, control, true);
         }
 
+        // Native controls that conflict with mod-menu use. Expressed as GTA.Control members
+        // (compile-checked) so the list is self-documenting. Movement + every frontend
+        // navigation control are deliberately excluded so menus stay operable.
+        private static readonly GTA.Control[] MenuConflictControls =
+        {
+            GTA.Control.SelectWeapon,
+            GTA.Control.VehicleRadioWheel,
+            GTA.Control.VehicleNextRadio,
+            GTA.Control.VehiclePrevRadio,
+            GTA.Control.Phone,
+            GTA.Control.CharacterWheel,
+            GTA.Control.Attack,
+            GTA.Control.Attack2,
+            GTA.Control.Aim,
+            GTA.Control.MeleeAttack1,
+            GTA.Control.MeleeAttack2,
+            GTA.Control.VehicleAttack,
+            GTA.Control.Cover,
+        };
+
+        private bool _loggedMenuConflictSuppress;
+
+        /// <inheritdoc />
+        public void DisableMenuConflictControlsThisFrame()
+        {
+            foreach (var control in MenuConflictControls)
+            {
+                Function.Call(Hash.DISABLE_CONTROL_ACTION, 0, (int)control, true);
+            }
+
+            if (!_loggedMenuConflictSuppress)
+            {
+                FileLogger.Info($"DisableMenuConflictControlsThisFrame: suppressing {MenuConflictControls.Length} menu-conflict controls while a mod menu is open");
+                _loggedMenuConflictSuppress = true;
+            }
+        }
+
         private static WeaponHash GetWeaponHash(string weaponName)
         {
             return (WeaponHash)StringHash.AtStringHash(weaponName.ToUpperInvariant(), 0);
