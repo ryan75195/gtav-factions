@@ -119,6 +119,12 @@ namespace FactionWars.ScriptHookV
                 new DefenderDeploymentService(
                     container.Resolve<ITroopPurchaseService>(),
                     container.Resolve<IZoneDefenderAllocationService>()));
+
+            // Support package service for purchasing and consuming support squad packages
+            container.RegisterSingleton<ISupportPackageService>(() =>
+                new SupportPackageService(
+                    container.Resolve<IGameBridge>(),
+                    container.Resolve<IFactionService>()));
         }
 
     }
