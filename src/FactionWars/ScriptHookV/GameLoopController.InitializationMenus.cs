@@ -81,6 +81,12 @@ namespace FactionWars.ScriptHookV
             _settingsMenuController.BackRequested += BackTo(SettingsMenuController.SettingsMenuId, () => mainMenuController.OnKeyDown(MainMenuController.MenuToggleKeyCode));
             _shopMenuController = new ShopMenuController(menuProvider, _gameBridge);
             _shopMenuController.BackRequested += BackTo(ShopMenuController.ShopMenuId, () => mainMenuController.OnKeyDown(MainMenuController.MenuToggleKeyCode));
+
+            _supportMenuController = new SupportMenuController(
+                menuProvider, _gameBridge,
+                _container.Resolve<ISupportPackageService>(), playerContext);
+            _supportMenuController.BackRequested += BackTo(SupportMenuController.MenuId,
+                () => mainMenuController.OnKeyDown(MainMenuController.MenuToggleKeyCode));
         }
 
     }

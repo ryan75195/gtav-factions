@@ -79,6 +79,7 @@ namespace FactionWars.ScriptHookV
         private ResourcesMenuController? _resourcesMenuController;
         private SettingsMenuController? _settingsMenuController;
         private ShopMenuController? _shopMenuController;
+        private SupportMenuController? _supportMenuController;
         private CombatHudRenderer? _combatHudRenderer;
         private TerritoryIndicatorRenderer? _territoryIndicatorRenderer;
         private EventFeedRenderer? _eventFeedRenderer;
