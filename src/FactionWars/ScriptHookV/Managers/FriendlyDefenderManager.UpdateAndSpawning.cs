@@ -18,6 +18,8 @@ namespace FactionWars.ScriptHookV.Managers
             var streamedOutPeds = new List<(string zoneId, int pedHandle)>();
             var currentGameTime = _gameBridge.GetGameTime();
 
+            MonitorGraceZones();
+
             // Check all spawned defenders for death
             foreach (var kvp in _spawnedPedTierByZone)
             {
@@ -202,15 +204,24 @@ namespace FactionWars.ScriptHookV.Managers
         }
 
         /// <summary>
-        /// Handles territory loss when all defenders die.
+        /// Handles territory loss when all defenders die. If the player is present and alive,
+        /// the loss is deferred into a grace state instead of transferring immediately.
+        /// The grace-state fields and helpers live in the .Grace.cs partial.
         /// </summary>
         private void HandleTerritoryLost(string zoneId)
         {
-            // Transfer zone to neutral
-            _zoneService.TransferZoneOwnership(zoneId, null);
+            if (PlayerIsInZoneAndAlive(zoneId))
+            {
+                if (_undefendedGraceZones.Add(zoneId))
+                {
+                    var name = _zoneService.GetZone(zoneId)?.Name ?? zoneId;
+                    _gameBridge.ShowNotification($"~y~{name} is undefended — hold it or redeploy!");
+                    FileLogger.Zone($"HandleTerritoryLost: {zoneId} undefended but player present — grace, not lost.");
+                }
+                return;
+            }
 
-            // Raise event
-            TerritoryLost?.Invoke(this, new TerritoryLostEventArgs(zoneId));
+            FinalizeZoneLoss(zoneId);
         }
 
         /// <summary>
