@@ -101,6 +101,10 @@ namespace FactionWars.ScriptHookV
             // Clean up battle attacker manager
             _battleAttackerManager?.DespawnAllAttackers();
             _battleAttackerManager = null;
+
+            // Clean up support squad manager (no despawn-all needed: allies are plain zone
+            // combatants pruned by the normal ped despawn/streaming path, same as battle attackers).
+            _supportSquadManager = null;
         }
 
         private void CleanupStateServices()

@@ -43,6 +43,7 @@ namespace FactionWars.ScriptHookV
             }
 
             _tickProfiler.Measure("battleAttackers", () => _battleAttackerManager?.Update());
+            _tickProfiler.Measure("supportSquad", UpdateSupportSquad);
 
             // Sampled last so every manager's tracked-combatant snapshot reflects this tick.
             _tickProfiler.Measure("behaviorSampler", () => _behaviorSampler?.Update());
@@ -118,6 +119,14 @@ namespace FactionWars.ScriptHookV
             if (_enemyDefenderManager != null) handles.AddRange(_enemyDefenderManager.GetHostilePedHandles());
             if (_battleAttackerManager != null) handles.AddRange(_battleAttackerManager.GetHostilePedHandles());
             return handles;
+        }
+
+        private void UpdateSupportSquad()
+        {
+            if (_supportSquadManager == null || !_supportSquadManager.HasActiveSquad) return;
+
+            var enemies = _enemyTargetCollector!.CollectAll(GatherHostileHandles());
+            _supportSquadManager.Update(enemies);
         }
 
         // Sniper bodyguards hold a scoped rifle that the AI barely fires at point-blank range.

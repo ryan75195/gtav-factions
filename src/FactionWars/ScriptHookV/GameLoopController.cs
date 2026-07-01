@@ -67,6 +67,7 @@ namespace FactionWars.ScriptHookV
         private PoliceSuppressionController? _policeSuppressionController;
         private AmbientTrafficController? _ambientTrafficController;
         private CommanderManager? _commanderManager;
+        private SupportSquadManager? _supportSquadManager;
         private IAIController? _aiController;
         private IGameStateManager? _gameStateManager;
         private MainMenuController? _mainMenuController;
