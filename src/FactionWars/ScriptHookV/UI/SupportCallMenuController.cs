@@ -88,7 +88,7 @@ namespace FactionWars.ScriptHookV.UI
             AddOwnedItem(menu, owned);
             AddCallItem(menu, owned);
 
-            menu.AddItem(new MenuItem(BackItemId, "Back", "Return to squad menu"));
+            menu.AddItem(new MenuItem(BackItemId, "Back", "Return to squad hub"));
 
             _menuProvider.ShowMenu(menu);
         }

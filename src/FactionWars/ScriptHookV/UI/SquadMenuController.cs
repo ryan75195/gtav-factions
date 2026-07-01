@@ -194,7 +194,7 @@ namespace FactionWars.ScriptHookV.UI
             var backItem = new MenuItem(
                 BackItemId,
                 "Back",
-                "Return to recruitment menu");
+                "Return to squad hub");
             menu.AddItem(backItem);
 
             _menuProvider.ShowMenu(menu, _lastSelectedItemId);

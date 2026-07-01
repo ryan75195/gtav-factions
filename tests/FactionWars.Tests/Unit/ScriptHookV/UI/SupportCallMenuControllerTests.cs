@@ -244,6 +244,30 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
         }
 
         [Fact]
+        public void SelectCall_WhenNoneOwned_DoesNotCallSquad()
+        {
+            _supportPackageServiceMock.Setup(s => s.GetOwnedCount(PlayerFactionId)).Returns(0);
+            _controller.Show();
+
+            _menuProvider.SimulateItemSelection(SupportCallMenuController.CallItemId);
+
+            _supportSquadManagerMock.Verify(m => m.CallSupportSquad(It.IsAny<Zone>()), Times.Never);
+            _supportPackageServiceMock.Verify(s => s.TryConsume(It.IsAny<string>()), Times.Never);
+        }
+
+        [Fact]
+        public void SelectCall_WhenNoCurrentZone_DoesNotCallSquad()
+        {
+            _territoryMock.Setup(t => t.CurrentZone).Returns((Zone?)null);
+            _controller.Show();
+
+            _menuProvider.SimulateItemSelection(SupportCallMenuController.CallItemId);
+
+            _supportSquadManagerMock.Verify(m => m.CallSupportSquad(It.IsAny<Zone>()), Times.Never);
+            _supportPackageServiceMock.Verify(s => s.TryConsume(It.IsAny<string>()), Times.Never);
+        }
+
+        [Fact]
         public void Back_ShouldRaiseBackRequestedEvent()
         {
             var eventRaised = false;
