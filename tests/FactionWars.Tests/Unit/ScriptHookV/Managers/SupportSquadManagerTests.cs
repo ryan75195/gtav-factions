@@ -250,6 +250,48 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         }
 
         [Fact]
+        public void Update_InboundStalledSuv_ReassertsDriveTaskTowardPlayer()
+        {
+            var zone = CreateZone();
+            var manager = CreateManager();
+
+            _bridge.PlayerPosition = new Vector3(0f, 0f, 0f);
+            manager.CallSupportSquad(zone);
+            var spawnedPeds = _bridge.GetSpawnedPeds();
+            var suv = _bridge.GetPedVehicle(spawnedPeds[0]);
+
+            // Player has moved; the SUV has not (mock vehicles never move), so after the stall
+            // interval the manager re-issues the drive task toward the player's CURRENT position.
+            var newPlayerPos = new Vector3(500f, 500f, 0f);
+            _bridge.PlayerPosition = newPlayerPos;
+            _bridge.AdvanceGameTime(3000);
+
+            manager.Update(new List<EnemyTarget>());
+
+            Assert.Equal(newPlayerPos, _bridge.GetVehicleDriveTargetForTest(suv));
+        }
+
+        [Fact]
+        public void Update_InboundBeforeStallInterval_DoesNotReassertDriveTask()
+        {
+            var zone = CreateZone();
+            var manager = CreateManager();
+
+            var originalPlayerPos = new Vector3(0f, 0f, 0f);
+            _bridge.PlayerPosition = originalPlayerPos;
+            manager.CallSupportSquad(zone);
+            var spawnedPeds = _bridge.GetSpawnedPeds();
+            var suv = _bridge.GetPedVehicle(spawnedPeds[0]);
+
+            // No game time has passed since the call: the original drive target must stand.
+            _bridge.PlayerPosition = new Vector3(500f, 500f, 0f);
+
+            manager.Update(new List<EnemyTarget>());
+
+            Assert.Equal(originalPlayerPos, _bridge.GetVehicleDriveTargetForTest(suv));
+        }
+
+        [Fact]
         public void Update_AllAlliesDead_ClearsActiveSquad()
         {
             var zone = CreateZone();

@@ -74,6 +74,13 @@ namespace FactionWars.ScriptHookV.Managers
         private Zone? _activeZone;
         private int _suv = -1;
 
+        // Inbound-drive watchdog (see MonitorInboundDrive): sample interval and the distance under
+        // which the SUV counts as stalled (a light/stop-start still clears 1m between samples).
+        private const int InboundLogIntervalMs = 3000;
+        private const float DriveStallEpsilon = 1f;
+        private int _lastInboundLogMs;
+        private Vector3 _lastInboundSuvPos;
+
         public SupportSquadManager(SupportSquadManagerDependencies dependencies, string playerFactionId)
         {
             if (dependencies == null) throw new ArgumentNullException(nameof(dependencies));
@@ -142,6 +149,8 @@ namespace FactionWars.ScriptHookV.Managers
             _activeZone = zone;
             _suv = suv;
             _phase = Phase.Inbound;
+            _lastInboundLogMs = 0;
+            _lastInboundSuvPos = spawnPos;
             HasActiveSquad = true;
 
             _stance.SetStance(SquadStance.SearchAndDestroy, AliveHandles());

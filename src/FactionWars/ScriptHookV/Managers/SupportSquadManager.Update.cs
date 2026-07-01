@@ -61,15 +61,17 @@ namespace FactionWars.ScriptHookV.Managers
 
         private void UpdateInbound()
         {
-            var anySeated = false;
+            var seatedCount = 0;
             foreach (var handle in _rolesByHandle.Keys)
             {
                 if (_gameBridge.IsPedInVehicle(handle))
                 {
-                    anySeated = true;
-                    break;
+                    seatedCount++;
                 }
             }
+
+            var anySeated = seatedCount > 0;
+            MonitorInboundDrive(seatedCount);
 
             // No ally still seated means the SUV is effectively gone (destroyed/ejected); treat
             // that the same as "arrived" so the squad falls back to on-foot Search & Destroy.
@@ -89,6 +91,40 @@ namespace FactionWars.ScriptHookV.Managers
 
             _phase = Phase.Engaging;
             FileLogger.AI($"SupportSquadManager.Update: squad dismounting (suvGone={suvGone}), entering Search & Destroy");
+        }
+
+        // Watchdog for the inbound drive: in-game evidence showed the SUV spawning and getting a
+        // drive task but never arriving, with nothing logged in between. Samples the SUV's position
+        // every few seconds so a stuck/never-moving/combat-interrupted drive is visible in the log,
+        // and re-issues the drive task toward the player's current position when the SUV has not
+        // moved — GTA drops native tasks (same-frame warp+task, ambient event overrides), so
+        // reassertion is the same repair the follower system uses.
+        private void MonitorInboundDrive(int seatedCount)
+        {
+            var now = _gameBridge.GetGameTime();
+            if (now - _lastInboundLogMs < InboundLogIntervalMs) return;
+            _lastInboundLogMs = now;
+
+            var suvPos = _gameBridge.GetVehiclePosition(_suv);
+            var dist = _gameBridge.GetPlayerPosition().DistanceTo(suvPos);
+            var moved = suvPos.DistanceTo(_lastInboundSuvPos);
+            _lastInboundSuvPos = suvPos;
+
+            var inCombat = 0;
+            foreach (var handle in _rolesByHandle.Keys)
+            {
+                if (_gameBridge.IsPedInCombat(handle)) inCombat++;
+            }
+
+            FileLogger.AI(
+                $"SupportSquadManager.Inbound: suv={_suv} pos=({suvPos.X:F1}, {suvPos.Y:F1}, {suvPos.Z:F1}) " +
+                $"distToPlayer={dist:F1} movedSinceLast={moved:F1} seated={seatedCount}/{_rolesByHandle.Count} inCombat={inCombat}");
+
+            if (moved < DriveStallEpsilon && dist > DismountRange)
+            {
+                FileLogger.AI($"SupportSquadManager.Inbound: SUV {_suv} stalled - reasserting drive task toward player");
+                _gameBridge.TaskVehicleDriveToCoord(_suv, _gameBridge.GetPlayerPosition(), DriveSpeed, DriveStopRange);
+            }
         }
 
         private void UpdateEngaging(IReadOnlyList<EnemyTarget> enemies)
