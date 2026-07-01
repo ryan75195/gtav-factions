@@ -182,7 +182,7 @@ namespace FactionWars.Tests.Integration.ScriptHookV
         }
 
         [Fact]
-        public void SquadSubmenu_OpensFromRecruitmentMenu()
+        public void SquadHubSubmenu_OpensFromRecruitmentMenu()
         {
             // Arrange
             _controller.OnKeyDown(F7KeyCode);
@@ -193,7 +193,56 @@ namespace FactionWars.Tests.Integration.ScriptHookV
 
             // Assert
             Assert.True(_menuProvider.IsMenuVisible);
+            Assert.Equal(SquadHubMenuController.MenuId, _menuProvider.CurrentMenuId);
+        }
+
+        [Fact]
+        public void SquadHubSubmenu_BackReturnsToRecruitmentMenu()
+        {
+            // Arrange
+            _controller.OnKeyDown(F7KeyCode);
+            _menuProvider.SimulateItemSelection(MainMenuController.RecruitmentItemId);
+            _menuProvider.SimulateItemSelection(RecruitmentMenuController.SquadItemId);
+
+            // Act
+            _menuProvider.SimulateItemSelection(SquadHubMenuController.BackItemId);
+
+            // Assert
+            Assert.True(_menuProvider.IsMenuVisible);
+            Assert.Equal(RecruitmentMenuController.MenuId, _menuProvider.CurrentMenuId);
+        }
+
+        [Fact]
+        public void SquadSubmenu_OpensFromSquadHub_ManageSquad()
+        {
+            // Arrange
+            _controller.OnKeyDown(F7KeyCode);
+            _menuProvider.SimulateItemSelection(MainMenuController.RecruitmentItemId);
+            _menuProvider.SimulateItemSelection(RecruitmentMenuController.SquadItemId);
+
+            // Act
+            _menuProvider.SimulateItemSelection(SquadHubMenuController.ManageSquadItemId);
+
+            // Assert
+            Assert.True(_menuProvider.IsMenuVisible);
             Assert.Equal(SquadMenuController.MenuId, _menuProvider.CurrentMenuId);
+        }
+
+        [Fact]
+        public void SquadSubmenu_BackReturnsToSquadHub()
+        {
+            // Arrange
+            _controller.OnKeyDown(F7KeyCode);
+            _menuProvider.SimulateItemSelection(MainMenuController.RecruitmentItemId);
+            _menuProvider.SimulateItemSelection(RecruitmentMenuController.SquadItemId);
+            _menuProvider.SimulateItemSelection(SquadHubMenuController.ManageSquadItemId);
+
+            // Act
+            _menuProvider.SimulateItemSelection(SquadMenuController.BackItemId);
+
+            // Assert
+            Assert.True(_menuProvider.IsMenuVisible);
+            Assert.Equal(SquadHubMenuController.MenuId, _menuProvider.CurrentMenuId);
         }
 
         [Fact]
@@ -203,6 +252,7 @@ namespace FactionWars.Tests.Integration.ScriptHookV
             _controller.OnKeyDown(F7KeyCode);
             _menuProvider.SimulateItemSelection(MainMenuController.RecruitmentItemId);
             _menuProvider.SimulateItemSelection(RecruitmentMenuController.SquadItemId);
+            _menuProvider.SimulateItemSelection(SquadHubMenuController.ManageSquadItemId);
 
             // Act
             var menu = _menuProvider.GetCurrentMenuDefinition();
@@ -213,6 +263,39 @@ namespace FactionWars.Tests.Integration.ScriptHookV
             Assert.NotNull(menu.GetItem(SquadMenuController.RecruitMediumItemId));
             Assert.NotNull(menu.GetItem(SquadMenuController.RecruitHeavyItemId));
             Assert.NotNull(menu.GetItem(SquadMenuController.RecruitEliteItemId));
+        }
+
+        [Fact]
+        public void SupportCallSubmenu_OpensFromSquadHub_Support()
+        {
+            // Arrange
+            _controller.OnKeyDown(F7KeyCode);
+            _menuProvider.SimulateItemSelection(MainMenuController.RecruitmentItemId);
+            _menuProvider.SimulateItemSelection(RecruitmentMenuController.SquadItemId);
+
+            // Act
+            _menuProvider.SimulateItemSelection(SquadHubMenuController.SupportItemId);
+
+            // Assert
+            Assert.True(_menuProvider.IsMenuVisible);
+            Assert.Equal(SupportCallMenuController.MenuId, _menuProvider.CurrentMenuId);
+        }
+
+        [Fact]
+        public void SupportCallSubmenu_BackReturnsToSquadHub()
+        {
+            // Arrange
+            _controller.OnKeyDown(F7KeyCode);
+            _menuProvider.SimulateItemSelection(MainMenuController.RecruitmentItemId);
+            _menuProvider.SimulateItemSelection(RecruitmentMenuController.SquadItemId);
+            _menuProvider.SimulateItemSelection(SquadHubMenuController.SupportItemId);
+
+            // Act
+            _menuProvider.SimulateItemSelection(SupportCallMenuController.BackItemId);
+
+            // Assert
+            Assert.True(_menuProvider.IsMenuVisible);
+            Assert.Equal(SquadHubMenuController.MenuId, _menuProvider.CurrentMenuId);
         }
 
         #endregion

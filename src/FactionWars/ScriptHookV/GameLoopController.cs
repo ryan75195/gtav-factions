@@ -74,6 +74,8 @@ namespace FactionWars.ScriptHookV
         private IMenuProvider? _menuProvider;
         private RecruitmentMenuController? _recruitmentMenuController;
         private SquadMenuController? _squadMenuController;
+        private SquadHubMenuController? _squadHubMenuController;
+        private SupportCallMenuController? _supportCallMenuController;
         private OverviewMenuController? _overviewMenuController;
         private ZoneManagementMenuController? _zoneManagementMenuController;
         private ResourcesMenuController? _resourcesMenuController;

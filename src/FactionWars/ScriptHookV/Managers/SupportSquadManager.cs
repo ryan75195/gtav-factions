@@ -6,6 +6,7 @@ using FactionWars.Core.Interfaces;
 using FactionWars.Core.Models;
 using FactionWars.ScriptHookV.Combat.Interfaces;
 using FactionWars.ScriptHookV.Logging;
+using FactionWars.ScriptHookV.Managers.Interfaces;
 using FactionWars.ScriptHookV.Models;
 using FactionWars.Territory.Interfaces;
 using FactionWars.Territory.Models;
@@ -20,7 +21,7 @@ namespace FactionWars.ScriptHookV.Managers
     /// never added to the player's follower group. Owns a private <see cref="SquadStanceController"/>
     /// so this squad's stance state never interacts with the player's own bodyguard squad.
     /// </summary>
-    public partial class SupportSquadManager
+    public partial class SupportSquadManager : ISupportSquadManager
     {
         /// <summary>Vehicle model used for the support squad's transport.</summary>
         public const string Model = "fbi2";

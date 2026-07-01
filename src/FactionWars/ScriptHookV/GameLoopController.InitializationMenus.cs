@@ -48,8 +48,27 @@ namespace FactionWars.ScriptHookV
                 },
                 _followerManager,
                 _gameBridge);
-            _squadMenuController.BackRequested += BackTo(SquadMenuController.MenuId, () => _recruitmentMenuController.Show());
-            _recruitmentMenuController.SquadRequested += (s, e) => _squadMenuController.Show();
+
+            _squadHubMenuController = new SquadHubMenuController(menuProvider, _gameBridge);
+            _supportCallMenuController = new SupportCallMenuController(new SupportCallMenuControllerDependencies
+            {
+                MenuProvider = menuProvider,
+                SupportPackageService = _container.Resolve<ISupportPackageService>(),
+                SupportSquadManager = _supportSquadManager!,
+                Territory = _territoryManager!,
+                PlayerContext = playerContext,
+                GameBridge = _gameBridge
+            });
+
+            // Recruitment → Squad now opens the hub
+            _recruitmentMenuController.SquadRequested += (s, e) => _squadHubMenuController.Show();
+            _squadHubMenuController.ManageSquadRequested += (s, e) => _squadMenuController.Show();
+            _squadHubMenuController.SupportRequested += (s, e) => _supportCallMenuController.Show();
+
+            // Back targets: hub → recruitment; manage-squad → hub; support-call → hub
+            _squadHubMenuController.BackRequested += BackTo(SquadHubMenuController.MenuId, () => _recruitmentMenuController.Show());
+            _squadMenuController.BackRequested += BackTo(SquadMenuController.MenuId, () => _squadHubMenuController.Show());
+            _supportCallMenuController.BackRequested += BackTo(SupportCallMenuController.MenuId, () => _squadHubMenuController.Show());
         }
 
         private void InitializeResourcesAndSettingsMenus(IPlayerContext playerContext)
