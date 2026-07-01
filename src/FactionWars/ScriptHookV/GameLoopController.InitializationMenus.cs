@@ -85,8 +85,10 @@ namespace FactionWars.ScriptHookV
             _supportMenuController = new SupportMenuController(
                 menuProvider, _gameBridge,
                 _container.Resolve<ISupportPackageService>(), playerContext);
-            _supportMenuController.BackRequested += BackTo(SupportMenuController.MenuId,
-                () => mainMenuController.OnKeyDown(MainMenuController.MenuToggleKeyCode));
+            // Unlike the other submenus, the Support menu is opened directly by the commander
+            // interaction, not from the main menu. Its parent action is a no-op so backing out
+            // (Back item or native back) closes to gameplay instead of popping the main menu open.
+            _supportMenuController.BackRequested += BackTo(SupportMenuController.MenuId, () => { });
         }
 
     }
