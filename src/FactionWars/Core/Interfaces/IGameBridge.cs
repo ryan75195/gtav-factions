@@ -481,6 +481,12 @@ namespace FactionWars.Core.Interfaces
         void TaskPedLeaveVehicle(int pedHandle);
 
         /// <summary>
+        /// Tasks a vehicle's driver to drive the vehicle to <paramref name="dest"/>, stopping within
+        /// <paramref name="stopRange"/> metres. Used to drive a spawned squad toward the player.
+        /// </summary>
+        void TaskVehicleDriveToCoord(int vehicleHandle, Vector3 dest, float speed, float stopRange);
+
+        /// <summary>
         /// Returns the handles of all vehicles within <paramref name="radius"/> of a point.
         /// </summary>
         int[] GetNearbyVehicles(Vector3 center, float radius);
