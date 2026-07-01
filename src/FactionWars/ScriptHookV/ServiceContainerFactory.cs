@@ -141,9 +141,10 @@ namespace FactionWars.ScriptHookV
             container.RegisterSingleton<IDefenderRoleService>(() =>
                 new DefenderRoleService());
 
-            // Follower service - manages player followers (bodyguards)
+            // Follower service - manages player followers (bodyguards). Cap 9 fits a full squad
+            // in one Barracks (driver + 9 seats).
             container.RegisterSingleton<IFollowerService>(() =>
-                new FollowerService());
+                new FollowerService(9));
 
             // Zone defender allocation repository - stores allocations
             container.RegisterSingleton<IZoneDefenderAllocationRepository>(() =>

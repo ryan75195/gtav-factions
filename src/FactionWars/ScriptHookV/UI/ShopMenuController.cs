@@ -39,7 +39,8 @@ namespace FactionWars.ScriptHookV.UI
             { "buy_buzzard", ("Buzzard", "buzzard", 75000) },
             { "buy_bati", ("Bati 801", "bati", 10000) },
             { "buy_zentorno", ("Zentorno", "zentorno", 40000) },
-            { "buy_police_suv", ("FBI SUV", "fbi2", 20000) }
+            { "buy_police_suv", ("FBI SUV", "fbi2", 20000) },
+            { "buy_barracks", ("Barracks", "barracks", 25000) }
         };
 
         /// <summary>
@@ -81,6 +82,7 @@ namespace FactionWars.ScriptHookV.UI
             AddVehicleItem(menu, "buy_bati", "Bati 801", 10000, "Fast sport motorcycle", playerMoney);
             AddVehicleItem(menu, "buy_zentorno", "Zentorno", 40000, "Supercar", playerMoney);
             AddVehicleItem(menu, "buy_police_suv", "FBI SUV", 20000, "FIB pursuit SUV", playerMoney);
+            AddVehicleItem(menu, "buy_barracks", "Barracks", 25000, "Army troop truck, seats 9", playerMoney);
 
             // Back button
             menu.AddItem(new MenuItem(BackItemId, "Back", "Return to main menu"));

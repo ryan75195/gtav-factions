@@ -60,6 +60,41 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
         }
 
         [Fact]
+        public void Show_IncludesBarracksOption()
+        {
+            // Arrange
+            _gameBridge.PlayerMoney = 100000;
+            var controller = new ShopMenuController(_menuProviderMock.Object, _gameBridge);
+
+            // Act
+            controller.Show();
+
+            // Assert
+            Assert.NotNull(_lastShownMenu);
+            var barracks = _lastShownMenu!.Items.FirstOrDefault(i => i.Id == "buy_barracks");
+            Assert.NotNull(barracks);
+            Assert.Contains("Barracks", barracks!.Text);
+            Assert.Contains("25,000", barracks.Text);
+        }
+
+        [Fact]
+        public void SelectingBarracks_DeductsMoneyAndSpawnsVehicle()
+        {
+            // Arrange
+            _gameBridge.PlayerMoney = 100000;
+            var controller = new ShopMenuController(_menuProviderMock.Object, _gameBridge);
+            controller.Show();
+            var startMoney = _gameBridge.PlayerMoney;
+
+            // Act
+            _menuProviderMock.Raise(m => m.ItemSelected += null,
+                new MenuItemSelectedEventArgs(ShopMenuController.ShopMenuId, "buy_barracks"));
+
+            // Assert - $25,000 deducted
+            Assert.Equal(startMoney - 25000, _gameBridge.PlayerMoney);
+        }
+
+        [Fact]
         public void SelectingPoliceSuv_DeductsMoneyAndSpawnsVehicle()
         {
             // Arrange
