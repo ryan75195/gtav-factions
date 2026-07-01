@@ -18,6 +18,7 @@ namespace FactionWars.Factions.Models
         private int _cash;
         private int _recruitmentPoints;
         private int _weapons;
+        private int _supportSquadPackages;
 
         /// <summary>
         /// The ID of the faction this state belongs to.
@@ -53,6 +54,11 @@ namespace FactionWars.Factions.Models
             get => _weapons;
             set => _weapons = Math.Max(0, value);
         }
+
+        /// <summary>
+        /// Number of purchased-but-unused support squad packages this faction owns.
+        /// </summary>
+        public int SupportSquadPackages => _supportSquadPackages;
 
         /// <summary>
         /// Current number of troops in the faction's army.
@@ -191,6 +197,31 @@ namespace FactionWars.Factions.Models
         public bool CanAfford(int amount)
         {
             return _cash >= amount;
+        }
+
+        #endregion
+
+        #region Support Squad Packages
+
+        /// <summary>
+        /// Adds purchased support squad packages to the inventory.
+        /// </summary>
+        /// <param name="count">The number of packages to add (must be positive).</param>
+        public void AddSupportSquadPackage(int count = 1)
+        {
+            if (count <= 0) return;
+            _supportSquadPackages += count;
+        }
+
+        /// <summary>
+        /// Consumes one support squad package if any are available. Returns true if one was consumed.
+        /// </summary>
+        /// <returns>True if a package was consumed, false if none are available.</returns>
+        public bool TryConsumeSupportSquadPackage()
+        {
+            if (_supportSquadPackages <= 0) return false;
+            _supportSquadPackages--;
+            return true;
         }
 
         #endregion

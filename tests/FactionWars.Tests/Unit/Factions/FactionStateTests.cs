@@ -669,6 +669,133 @@ namespace FactionWars.Tests.Unit.Factions
 
         #endregion
 
+        #region Support Squad Packages
+
+        [Fact]
+        public void FactionState_ShouldHaveZeroSupportSquadPackagesByDefault()
+        {
+            // Arrange & Act
+            var state = new FactionState("faction_michael");
+
+            // Assert
+            Assert.Equal(0, state.SupportSquadPackages);
+        }
+
+        [Fact]
+        public void FactionState_AddSupportSquadPackage_ShouldIncrement()
+        {
+            // Arrange
+            var state = new FactionState("faction_michael");
+
+            // Act
+            state.AddSupportSquadPackage();
+
+            // Assert
+            Assert.Equal(1, state.SupportSquadPackages);
+        }
+
+        [Fact]
+        public void FactionState_AddSupportSquadPackage_ShouldIncrementByCount()
+        {
+            // Arrange
+            var state = new FactionState("faction_michael");
+
+            // Act
+            state.AddSupportSquadPackage(3);
+
+            // Assert
+            Assert.Equal(3, state.SupportSquadPackages);
+        }
+
+        [Fact]
+        public void FactionState_AddSupportSquadPackage_ShouldAccumulate()
+        {
+            // Arrange
+            var state = new FactionState("faction_michael");
+
+            // Act
+            state.AddSupportSquadPackage(2);
+            state.AddSupportSquadPackage(1);
+
+            // Assert
+            Assert.Equal(3, state.SupportSquadPackages);
+        }
+
+        [Fact]
+        public void FactionState_AddSupportSquadPackage_ShouldIgnoreZero()
+        {
+            // Arrange
+            var state = new FactionState("faction_michael");
+            state.AddSupportSquadPackage(5);
+
+            // Act
+            state.AddSupportSquadPackage(0);
+
+            // Assert
+            Assert.Equal(5, state.SupportSquadPackages);
+        }
+
+        [Fact]
+        public void FactionState_AddSupportSquadPackage_ShouldIgnoreNegativeCount()
+        {
+            // Arrange
+            var state = new FactionState("faction_michael");
+            state.AddSupportSquadPackage(5);
+
+            // Act
+            state.AddSupportSquadPackage(-2);
+
+            // Assert
+            Assert.Equal(5, state.SupportSquadPackages);
+        }
+
+        [Fact]
+        public void FactionState_TryConsumeSupportSquadPackage_ShouldReturnTrueAndDecrement()
+        {
+            // Arrange
+            var state = new FactionState("faction_michael");
+            state.AddSupportSquadPackage(3);
+
+            // Act
+            var consumed = state.TryConsumeSupportSquadPackage();
+
+            // Assert
+            Assert.True(consumed);
+            Assert.Equal(2, state.SupportSquadPackages);
+        }
+
+        [Fact]
+        public void FactionState_TryConsumeSupportSquadPackage_ShouldReturnFalseWhenEmpty()
+        {
+            // Arrange
+            var state = new FactionState("faction_michael");
+
+            // Act
+            var consumed = state.TryConsumeSupportSquadPackage();
+
+            // Assert
+            Assert.False(consumed);
+            Assert.Equal(0, state.SupportSquadPackages);
+        }
+
+        [Fact]
+        public void FactionState_TryConsumeSupportSquadPackage_ShouldReturnFalseWhenAllConsumed()
+        {
+            // Arrange
+            var state = new FactionState("faction_michael");
+            state.AddSupportSquadPackage(1);
+            state.TryConsumeSupportSquadPackage();
+
+            // Act
+            var consumed = state.TryConsumeSupportSquadPackage();
+
+            // Assert
+            Assert.False(consumed);
+            Assert.Equal(0, state.SupportSquadPackages);
+        }
+
+        #endregion
+
         #region Reserve Pool - Troops by Tier
 
         [Fact]

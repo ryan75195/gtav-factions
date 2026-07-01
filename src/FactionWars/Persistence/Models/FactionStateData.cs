@@ -16,6 +16,7 @@ namespace FactionWars.Persistence.Models
         public int RecruitmentPoints { get; set; }
         public int Weapons { get; set; }
         public int TroopCount { get; set; }
+        public int SupportSquadPackages { get; set; }
         public List<string> OwnedZoneIds { get; set; } = new List<string>();
         [JsonConverter(typeof(LegacyRoleDictionaryConverter))]
         public Dictionary<DefenderRole, int> ReservePool { get; set; } = new Dictionary<DefenderRole, int>();
@@ -32,6 +33,7 @@ namespace FactionWars.Persistence.Models
                 RecruitmentPoints = state.RecruitmentPoints,
                 Weapons = state.Weapons,
                 TroopCount = state.TroopCount,
+                SupportSquadPackages = state.SupportSquadPackages,
                 OwnedZoneIds = new List<string>(state.OwnedZoneIds),
                 ReservePool = state.GetReservePoolCopy()
             };
@@ -62,6 +64,10 @@ namespace FactionWars.Persistence.Models
                 {
                     state.AddReserveTroops(kvp.Key, kvp.Value);
                 }
+            }
+            if (SupportSquadPackages > 0)
+            {
+                state.AddSupportSquadPackage(SupportSquadPackages);
             }
             return state;
         }
