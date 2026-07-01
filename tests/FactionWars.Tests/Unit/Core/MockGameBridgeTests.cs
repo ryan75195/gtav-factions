@@ -1,3 +1,4 @@
+using System.Linq;
 using FactionWars.Core.Interfaces;
 using FactionWars.Core.Utils;
 using Xunit;
@@ -720,6 +721,20 @@ namespace FactionWars.Tests.Unit.Core
             bridge.DeleteVehicle(vehicleHandle);
 
             Assert.False(bridge.IsPedInVehicle(pedHandle));
+        }
+
+        [Fact]
+        public void DeleteVehicle_RemovesTrackedBlip()
+        {
+            var bridge = new MockGameBridge();
+            int vehicleHandle = bridge.CreateVehicle("fbi2", new Vector3(0f, 0f, 0f));
+            int blipHandle = bridge.CreateBlipForVehicle(vehicleHandle);
+            Assert.Equal(1, bridge.GetVehicleBlipCount());
+
+            bridge.DeleteVehicle(vehicleHandle);
+
+            Assert.Equal(0, bridge.GetVehicleBlipCount());
+            Assert.Contains(blipHandle, bridge.BlipsDeleted);
         }
 
         [Fact]

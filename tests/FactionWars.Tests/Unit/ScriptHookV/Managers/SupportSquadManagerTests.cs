@@ -357,5 +357,18 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
 
             Assert.True(result);
         }
+
+        [Fact]
+        public void DespawnSquad_NoActiveSquad_DoesNothing()
+        {
+            var manager = CreateManager();
+
+            manager.DespawnSquad();
+
+            Assert.False(manager.HasActiveSquad);
+            _pedBlipMock.Verify(b => b.RemoveBlipForPed(It.IsAny<int>()), Times.Never);
+            _pedDespawnMock.Verify(d => d.DespawnPed(It.IsAny<int>()), Times.Never);
+            _pedDespawnMock.Verify(d => d.UntrackPed(It.IsAny<int>()), Times.Never);
+        }
     }
 }

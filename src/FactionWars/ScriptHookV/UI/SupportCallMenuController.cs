@@ -138,6 +138,7 @@ namespace FactionWars.ScriptHookV.UI
                 && _supportPackageService.GetOwnedCount(factionId) > 0
                 && _supportSquadManager.CallSupportSquad(zone))
             {
+                // Safe to ignore the return: GetOwnedCount > 0 was checked above and nothing mutates the owned count in between, so this consume always succeeds.
                 _supportPackageService.TryConsume(factionId);
                 _gameBridge.ShowNotification("~g~Support squad inbound!");
             }

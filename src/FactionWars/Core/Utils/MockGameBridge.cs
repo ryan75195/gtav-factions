@@ -1581,6 +1581,7 @@ namespace FactionWars.Core.Utils
         /// <summary>
         /// Deletes a vehicle from the world (IGameBridge implementation). Mirrors DeletePed:
         /// removes the vehicle from tracking and unseats any peds still tracked as inside it.
+        /// Also cleans up any tracked blip for the vehicle to prevent blip state leakage.
         /// </summary>
         public void DeleteVehicle(int vehicleHandle)
         {
@@ -1594,6 +1595,14 @@ namespace FactionWars.Core.Utils
             foreach (var pedHandle in seatedPeds)
             {
                 _pedsInVehicles.Remove(pedHandle);
+            }
+
+            // Clean up vehicle blip if one was tracked for this vehicle.
+            if (_vehicleBlips.TryGetValue(vehicleHandle, out var blipHandle))
+            {
+                _vehicleBlips.Remove(vehicleHandle);
+                _blips.Remove(blipHandle);
+                _blipsDeleted.Add(blipHandle);
             }
         }
 
