@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using FactionWars.Combat.Models;
@@ -53,6 +54,61 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
 
         private static Zone CreateZone() =>
             new Zone("downtown", "Downtown", new Vector3(0f, 0f, 0f), 100f) { OwnerFactionId = PlayerFactionId };
+
+        [Fact]
+        public void Constructor_ThrowsOnNullGameBridge()
+        {
+            Assert.Throws<ArgumentNullException>(() => new SupportSquadManager(
+                null,
+                _spawnerMock.Object,
+                _statsProviderMock.Object,
+                _zoneServiceMock.Object,
+                PlayerFactionId));
+        }
+
+        [Fact]
+        public void Constructor_ThrowsOnNullSpawner()
+        {
+            Assert.Throws<ArgumentNullException>(() => new SupportSquadManager(
+                _bridge,
+                null,
+                _statsProviderMock.Object,
+                _zoneServiceMock.Object,
+                PlayerFactionId));
+        }
+
+        [Fact]
+        public void Constructor_ThrowsOnNullStatsProvider()
+        {
+            Assert.Throws<ArgumentNullException>(() => new SupportSquadManager(
+                _bridge,
+                _spawnerMock.Object,
+                null,
+                _zoneServiceMock.Object,
+                PlayerFactionId));
+        }
+
+        [Fact]
+        public void Constructor_ThrowsOnNullZoneService()
+        {
+            Assert.Throws<ArgumentNullException>(() => new SupportSquadManager(
+                _bridge,
+                _spawnerMock.Object,
+                _statsProviderMock.Object,
+                null,
+                PlayerFactionId));
+        }
+
+        [Fact]
+        public void Constructor_ThrowsOnNullPlayerFactionId()
+        {
+            Assert.Throws<ArgumentNullException>(() => new SupportSquadManager(
+                _bridge,
+                _spawnerMock.Object,
+                _statsProviderMock.Object,
+                _zoneServiceMock.Object,
+                null!));
+        }
 
         [Fact]
         public void CallSupportSquad_SpawnsVehicleAndEightSeatedNonFollowerAllies()
