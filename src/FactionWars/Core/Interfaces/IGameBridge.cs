@@ -820,6 +820,12 @@ namespace FactionWars.Core.Interfaces
         int CreateVehicle(string modelName, Vector3 position);
 
         /// <summary>
+        /// Deletes a vehicle from the world.
+        /// </summary>
+        /// <param name="vehicleHandle">Handle of the vehicle to delete.</param>
+        void DeleteVehicle(int vehicleHandle);
+
+        /// <summary>
         /// Creates a blip attached to a vehicle that follows the vehicle on the minimap.
         /// </summary>
         /// <param name="vehicleHandle">Handle of the vehicle to attach blip to.</param>

@@ -22,7 +22,9 @@ namespace FactionWars.ScriptHookV
                     GameBridge = _gameBridge,
                     Spawner = spawner,
                     StatsProvider = _container.Resolve<ICombatantStatsProvider>(),
-                    ZoneService = _zoneService
+                    ZoneService = _zoneService,
+                    PedDespawn = spawnServices.PedDespawn,
+                    PedBlip = spawnServices.PedBlip
                 },
                 CurrentPlayerFactionId ?? "");
         }

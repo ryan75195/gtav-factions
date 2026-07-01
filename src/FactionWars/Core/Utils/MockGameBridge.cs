@@ -1579,6 +1579,25 @@ namespace FactionWars.Core.Utils
         }
 
         /// <summary>
+        /// Deletes a vehicle from the world (IGameBridge implementation). Mirrors DeletePed:
+        /// removes the vehicle from tracking and unseats any peds still tracked as inside it.
+        /// </summary>
+        public void DeleteVehicle(int vehicleHandle)
+        {
+            _vehicles.Remove(vehicleHandle);
+
+            var seatedPeds = new List<int>();
+            foreach (var kvp in _pedsInVehicles)
+            {
+                if (kvp.Value == vehicleHandle) seatedPeds.Add(kvp.Key);
+            }
+            foreach (var pedHandle in seatedPeds)
+            {
+                _pedsInVehicles.Remove(pedHandle);
+            }
+        }
+
+        /// <summary>
         /// Gets the count of spawned vehicles (for testing).
         /// </summary>
         public int GetSpawnedVehicleCount() => _vehicles.Count;

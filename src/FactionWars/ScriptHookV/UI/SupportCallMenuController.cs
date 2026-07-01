@@ -132,11 +132,13 @@ namespace FactionWars.ScriptHookV.UI
             var factionId = _playerContext.CurrentFactionId;
             var zone = _territory.CurrentZone;
 
+            // Spawn first, consume the owned package only once the squad actually exists - a
+            // failed spawn (e.g. CreateVehicle returning -1) must never burn a paid-for package.
             if (factionId != null && zone != null && !_supportSquadManager.HasActiveSquad
                 && _supportPackageService.GetOwnedCount(factionId) > 0
-                && _supportPackageService.TryConsume(factionId))
+                && _supportSquadManager.CallSupportSquad(zone))
             {
-                _supportSquadManager.CallSupportSquad(zone);
+                _supportPackageService.TryConsume(factionId);
                 _gameBridge.ShowNotification("~g~Support squad inbound!");
             }
 

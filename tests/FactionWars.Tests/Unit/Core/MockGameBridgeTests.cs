@@ -696,6 +696,33 @@ namespace FactionWars.Tests.Unit.Core
         }
 
         [Fact]
+        public void DeleteVehicle_RemovesVehicleFromCount()
+        {
+            var bridge = new MockGameBridge();
+            var before = bridge.GetSpawnedVehicleCount();
+            int vehicleHandle = bridge.CreateVehicle("fbi2", new Vector3(0f, 0f, 0f));
+            Assert.Equal(before + 1, bridge.GetSpawnedVehicleCount());
+
+            bridge.DeleteVehicle(vehicleHandle);
+
+            Assert.Equal(before, bridge.GetSpawnedVehicleCount());
+        }
+
+        [Fact]
+        public void DeleteVehicle_UnseatsPedsTrackedInsideIt()
+        {
+            var bridge = new MockGameBridge();
+            int vehicleHandle = bridge.CreateVehicle("fbi2", new Vector3(0f, 0f, 0f));
+            int pedHandle = bridge.CreatePed("s_m_y_cop_01", new Vector3(0f, 0f, 0f));
+            bridge.TaskPedEnterVehicle(pedHandle, vehicleHandle, 0);
+            Assert.True(bridge.IsPedInVehicle(pedHandle));
+
+            bridge.DeleteVehicle(vehicleHandle);
+
+            Assert.False(bridge.IsPedInVehicle(pedHandle));
+        }
+
+        [Fact]
         public void GetVehicleDriver_ReturnsDriver_OrMinusOneWhenEmpty()
         {
             var bridge = new MockGameBridge();

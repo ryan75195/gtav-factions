@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using FactionWars.Combat.Interfaces;
 using FactionWars.Combat.Models;
 using FactionWars.Core.Interfaces;
 using FactionWars.Core.Models;
@@ -10,6 +11,7 @@ using FactionWars.ScriptHookV.Managers;
 using FactionWars.ScriptHookV.Models;
 using FactionWars.Territory.Interfaces;
 using FactionWars.Territory.Models;
+using FactionWars.UI.Interfaces;
 using Moq;
 using Xunit;
 
@@ -23,6 +25,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         private readonly Mock<IZoneCombatantSpawner> _spawnerMock = new Mock<IZoneCombatantSpawner>();
         private readonly Mock<ICombatantStatsProvider> _statsProviderMock = new Mock<ICombatantStatsProvider>();
         private readonly Mock<IZoneService> _zoneServiceMock = new Mock<IZoneService>();
+        private readonly Mock<IPedDespawnService> _pedDespawnMock = new Mock<IPedDespawnService>();
+        private readonly Mock<IPedBlipService> _pedBlipMock = new Mock<IPedBlipService>();
 
         public SupportSquadManagerTests()
         {
@@ -47,7 +51,9 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
                     GameBridge = _bridge,
                     Spawner = _spawnerMock.Object,
                     StatsProvider = _statsProviderMock.Object,
-                    ZoneService = _zoneServiceMock.Object
+                    ZoneService = _zoneServiceMock.Object,
+                    PedDespawn = _pedDespawnMock.Object,
+                    PedBlip = _pedBlipMock.Object
                 },
                 PlayerFactionId);
         }
@@ -63,6 +69,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
                 _spawnerMock.Object,
                 _statsProviderMock.Object,
                 _zoneServiceMock.Object,
+                _pedDespawnMock.Object,
+                _pedBlipMock.Object,
                 PlayerFactionId));
         }
 
@@ -74,6 +82,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
                 null,
                 _statsProviderMock.Object,
                 _zoneServiceMock.Object,
+                _pedDespawnMock.Object,
+                _pedBlipMock.Object,
                 PlayerFactionId));
         }
 
@@ -85,6 +95,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
                 _spawnerMock.Object,
                 null,
                 _zoneServiceMock.Object,
+                _pedDespawnMock.Object,
+                _pedBlipMock.Object,
                 PlayerFactionId));
         }
 
@@ -95,6 +107,34 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
                 _bridge,
                 _spawnerMock.Object,
                 _statsProviderMock.Object,
+                null,
+                _pedDespawnMock.Object,
+                _pedBlipMock.Object,
+                PlayerFactionId));
+        }
+
+        [Fact]
+        public void Constructor_ThrowsOnNullPedDespawn()
+        {
+            Assert.Throws<ArgumentNullException>(() => new SupportSquadManager(
+                _bridge,
+                _spawnerMock.Object,
+                _statsProviderMock.Object,
+                _zoneServiceMock.Object,
+                null,
+                _pedBlipMock.Object,
+                PlayerFactionId));
+        }
+
+        [Fact]
+        public void Constructor_ThrowsOnNullPedBlip()
+        {
+            Assert.Throws<ArgumentNullException>(() => new SupportSquadManager(
+                _bridge,
+                _spawnerMock.Object,
+                _statsProviderMock.Object,
+                _zoneServiceMock.Object,
+                _pedDespawnMock.Object,
                 null,
                 PlayerFactionId));
         }
@@ -107,6 +147,8 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
                 _spawnerMock.Object,
                 _statsProviderMock.Object,
                 _zoneServiceMock.Object,
+                _pedDespawnMock.Object,
+                _pedBlipMock.Object,
                 null!));
         }
 
@@ -238,6 +280,82 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
             manager.Update(new List<EnemyTarget>());
 
             Assert.True(manager.HasActiveSquad);
+        }
+
+        [Fact]
+        public void Update_AllAlliesDead_FreesPoolSlotsAndBlips()
+        {
+            var zone = CreateZone();
+            var manager = CreateManager();
+
+            manager.CallSupportSquad(zone);
+            var spawnedPeds = _bridge.GetSpawnedPeds();
+            foreach (var ped in spawnedPeds)
+            {
+                _bridge.KillPed(ped);
+            }
+
+            manager.Update(new List<EnemyTarget>());
+
+            // Each dead ally is a corpse still present in the world (KillPed only flips
+            // IsAlive), so pruning must free the pool slot via DespawnPed, not UntrackPed.
+            foreach (var ped in spawnedPeds)
+            {
+                _pedBlipMock.Verify(b => b.RemoveBlipForPed(ped), Times.Once);
+                _pedDespawnMock.Verify(d => d.DespawnPed(ped), Times.Once);
+            }
+            _pedDespawnMock.Verify(d => d.UntrackPed(It.IsAny<int>()), Times.Never);
+        }
+
+        [Fact]
+        public void Update_AllAlliesDead_DeletesSuv()
+        {
+            var zone = CreateZone();
+            var manager = CreateManager();
+            var vehiclesBefore = _bridge.GetSpawnedVehicleCount();
+
+            manager.CallSupportSquad(zone);
+            var spawnedPeds = _bridge.GetSpawnedPeds();
+            foreach (var ped in spawnedPeds)
+            {
+                _bridge.KillPed(ped);
+            }
+
+            manager.Update(new List<EnemyTarget>());
+
+            Assert.Equal(vehiclesBefore, _bridge.GetSpawnedVehicleCount());
+        }
+
+        [Fact]
+        public void DespawnSquad_DeletesSuvAndRemainingAllies()
+        {
+            var zone = CreateZone();
+            var manager = CreateManager();
+            var vehiclesBefore = _bridge.GetSpawnedVehicleCount();
+
+            manager.CallSupportSquad(zone);
+            var spawnedPeds = _bridge.GetSpawnedPeds();
+
+            manager.DespawnSquad();
+
+            Assert.Equal(vehiclesBefore, _bridge.GetSpawnedVehicleCount());
+            foreach (var ped in spawnedPeds)
+            {
+                _pedBlipMock.Verify(b => b.RemoveBlipForPed(ped), Times.Once);
+                _pedDespawnMock.Verify(d => d.DespawnPed(ped), Times.Once);
+            }
+            Assert.False(manager.HasActiveSquad);
+        }
+
+        [Fact]
+        public void CallSupportSquad_ReturnsTrue_OnSuccessfulSpawn()
+        {
+            var zone = CreateZone();
+            var manager = CreateManager();
+
+            var result = manager.CallSupportSquad(zone);
+
+            Assert.True(result);
         }
     }
 }

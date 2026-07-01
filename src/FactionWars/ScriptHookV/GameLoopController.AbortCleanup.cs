@@ -102,8 +102,9 @@ namespace FactionWars.ScriptHookV
             _battleAttackerManager?.DespawnAllAttackers();
             _battleAttackerManager = null;
 
-            // Clean up support squad manager (no despawn-all needed: allies are plain zone
-            // combatants pruned by the normal ped despawn/streaming path, same as battle attackers).
+            // Clean up support squad manager: despawn any active squad (allies + persistent SUV)
+            // so a mod reload never orphans a live squad.
+            _supportSquadManager?.DespawnSquad();
             _supportSquadManager = null;
         }
 

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using FactionWars.Combat.Interfaces;
 using FactionWars.Combat.Models;
 using FactionWars.Combat.Services;
 using FactionWars.Core.Interfaces;
@@ -10,6 +11,7 @@ using FactionWars.ScriptHookV.Managers.Interfaces;
 using FactionWars.ScriptHookV.Models;
 using FactionWars.Territory.Interfaces;
 using FactionWars.Territory.Models;
+using FactionWars.UI.Interfaces;
 
 namespace FactionWars.ScriptHookV.Managers
 {
@@ -62,6 +64,8 @@ namespace FactionWars.ScriptHookV.Managers
         private readonly IZoneCombatantSpawner _spawner;
         private readonly ICombatantStatsProvider _statsProvider;
         private readonly IZoneService _zoneService;
+        private readonly IPedDespawnService _pedDespawn;
+        private readonly IPedBlipService _pedBlip;
         private readonly string _playerFactionId;
         private readonly SquadStanceController _stance;
         private readonly Dictionary<int, DefenderRole> _rolesByHandle = new Dictionary<int, DefenderRole>();
@@ -77,6 +81,8 @@ namespace FactionWars.ScriptHookV.Managers
             _spawner = dependencies.Spawner ?? throw new ArgumentNullException(nameof(dependencies.Spawner));
             _statsProvider = dependencies.StatsProvider ?? throw new ArgumentNullException(nameof(dependencies.StatsProvider));
             _zoneService = dependencies.ZoneService ?? throw new ArgumentNullException(nameof(dependencies.ZoneService));
+            _pedDespawn = dependencies.PedDespawn ?? throw new ArgumentNullException(nameof(dependencies.PedDespawn));
+            _pedBlip = dependencies.PedBlip ?? throw new ArgumentNullException(nameof(dependencies.PedBlip));
             _playerFactionId = playerFactionId ?? throw new ArgumentNullException(nameof(playerFactionId));
 
             _stance = new SquadStanceController(
@@ -94,9 +100,11 @@ namespace FactionWars.ScriptHookV.Managers
                     GameBridge = (IGameBridge?)dependencies[0],
                     Spawner = (IZoneCombatantSpawner?)dependencies[1],
                     StatsProvider = (ICombatantStatsProvider?)dependencies[2],
-                    ZoneService = (IZoneService?)dependencies[3]
+                    ZoneService = (IZoneService?)dependencies[3],
+                    PedDespawn = (IPedDespawnService?)dependencies[4],
+                    PedBlip = (IPedBlipService?)dependencies[5]
                 },
-                (string)dependencies[4]!)
+                (string)dependencies[6]!)
         {
         }
 
@@ -106,12 +114,14 @@ namespace FactionWars.ScriptHookV.Managers
         /// <summary>
         /// Calls the support squad into the given zone: spawns an FBI SUV just outside the zone
         /// boundary, seats 8 friendly allies, and tasks the SUV to drive to the player. No-op if a
-        /// support squad is already active.
+        /// support squad is already active. Returns false (and consumes nothing spawn-side) if a
+        /// squad is already active or the SUV failed to spawn, so callers can avoid charging the
+        /// player for a call that produced no squad.
         /// </summary>
-        public void CallSupportSquad(Zone zone)
+        public bool CallSupportSquad(Zone zone)
         {
             if (zone == null) throw new ArgumentNullException(nameof(zone));
-            if (HasActiveSquad) return;
+            if (HasActiveSquad) return false;
 
             var edgePoint = ResolveSpawnEdgePoint(zone);
             var spawnPos = _gameBridge.GetNearestRoadPosition(edgePoint);
@@ -119,7 +129,7 @@ namespace FactionWars.ScriptHookV.Managers
             if (suv == -1)
             {
                 FileLogger.Warn($"SupportSquadManager.CallSupportSquad: CreateVehicle({Model}) failed for zone {zone.Id}");
-                return;
+                return false;
             }
 
             FileLogger.Spawn($"SupportSquadManager.CallSupportSquad: FBI SUV {suv} spawned for zone {zone.Id} at ({spawnPos.X:F1}, {spawnPos.Y:F1}, {spawnPos.Z:F1})");
@@ -136,6 +146,7 @@ namespace FactionWars.ScriptHookV.Managers
 
             _stance.SetStance(SquadStance.SearchAndDestroy, AliveHandles());
             FileLogger.AI($"SupportSquadManager.CallSupportSquad: {_rolesByHandle.Count} allies inbound to zone {zone.Id} in SUV {suv}");
+            return true;
         }
 
         private static Vector3 ResolveSpawnEdgePoint(Zone zone)

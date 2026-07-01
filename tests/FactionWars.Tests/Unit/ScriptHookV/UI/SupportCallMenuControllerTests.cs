@@ -212,12 +212,13 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
         public void SelectCall_WithPreconditionsMet_ConsumesAndCallsSquadAndNotifies()
         {
             _supportPackageServiceMock.Setup(s => s.TryConsume(PlayerFactionId)).Returns(true);
+            _supportSquadManagerMock.Setup(m => m.CallSupportSquad(It.IsAny<Zone>())).Returns(true);
             _controller.Show();
 
             _menuProvider.SimulateItemSelection(SupportCallMenuController.CallItemId);
 
-            _supportPackageServiceMock.Verify(s => s.TryConsume(PlayerFactionId), Times.Once);
             _supportSquadManagerMock.Verify(m => m.CallSupportSquad(_zone), Times.Once);
+            _supportPackageServiceMock.Verify(s => s.TryConsume(PlayerFactionId), Times.Once);
             Assert.NotEmpty(_gameBridge.Notifications);
         }
 
@@ -233,14 +234,19 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
         }
 
         [Fact]
-        public void SelectCall_WhenTryConsumeFails_DoesNotCallSquad()
+        public void SelectCall_WhenCallFails_DoesNotConsume()
         {
-            _supportPackageServiceMock.Setup(s => s.TryConsume(PlayerFactionId)).Returns(false);
+            // CallSupportSquad returns false when the squad manager couldn't actually spawn a
+            // squad (e.g. CreateVehicle failed). The package must not be consumed and no
+            // "inbound" notification shown in that case - see finding #3 (consume-without-spawn).
+            _supportSquadManagerMock.Setup(m => m.CallSupportSquad(It.IsAny<Zone>())).Returns(false);
             _controller.Show();
 
             _menuProvider.SimulateItemSelection(SupportCallMenuController.CallItemId);
 
-            _supportSquadManagerMock.Verify(m => m.CallSupportSquad(It.IsAny<Zone>()), Times.Never);
+            _supportSquadManagerMock.Verify(m => m.CallSupportSquad(_zone), Times.Once);
+            _supportPackageServiceMock.Verify(s => s.TryConsume(It.IsAny<string>()), Times.Never);
+            Assert.Empty(_gameBridge.Notifications);
         }
 
         [Fact]

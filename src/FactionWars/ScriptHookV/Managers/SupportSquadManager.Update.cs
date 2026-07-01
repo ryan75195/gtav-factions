@@ -50,6 +50,11 @@ namespace FactionWars.ScriptHookV.Managers
 
             foreach (var handle in dead)
             {
+                _pedBlip.RemoveBlipForPed(handle);
+                if (!_gameBridge.DoesPedExist(handle))
+                    _pedDespawn.UntrackPed(handle);   // engine already culled the entity
+                else
+                    _pedDespawn.DespawnPed(handle);   // dead corpse present: free pool slot + delete entity
                 _rolesByHandle.Remove(handle);
             }
         }
@@ -96,11 +101,33 @@ namespace FactionWars.ScriptHookV.Managers
         {
             if (!HasActiveSquad) return;
 
+            if (_suv != -1) _gameBridge.DeleteVehicle(_suv);
+
             FileLogger.AI("SupportSquadManager.Update: support squad wiped out, call re-enabled");
             HasActiveSquad = false;
             _activeZone = null;
             _suv = -1;
             _phase = Phase.None;
+        }
+
+        /// <summary>
+        /// Force-despawns the active squad: removes blips and despawns every still-tracked ally,
+        /// then deletes the SUV and resets state via <see cref="ClearActiveSquad"/>. Used by mod
+        /// shutdown/reload so a support squad never survives past the manager that owns it.
+        /// </summary>
+        public void DespawnSquad()
+        {
+            if (!HasActiveSquad) return;
+
+            foreach (var handle in _rolesByHandle.Keys)
+            {
+                _pedBlip.RemoveBlipForPed(handle);
+                _pedDespawn.DespawnPed(handle);
+            }
+            _rolesByHandle.Clear();
+
+            FileLogger.AI("SupportSquadManager.DespawnSquad: support squad force-despawned");
+            ClearActiveSquad();
         }
     }
 }
