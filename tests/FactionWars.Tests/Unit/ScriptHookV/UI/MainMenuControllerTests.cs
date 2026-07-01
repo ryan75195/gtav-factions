@@ -167,7 +167,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
         }
 
         [Fact]
-        public void MainMenu_ShouldHaveFourItems()
+        public void MainMenu_ShouldHaveSupportItem()
         {
             // Act
             _controller.OnKeyDown(F7KeyCode);
@@ -175,7 +175,21 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
             // Assert
             var menu = _menuProvider.GetCurrentMenuDefinition();
             Assert.NotNull(menu);
-            Assert.Equal(4, menu!.Items.Count);
+            var item = menu!.GetItem(MainMenuController.SupportItemId);
+            Assert.NotNull(item);
+            Assert.Equal("Support", item!.Text);
+        }
+
+        [Fact]
+        public void MainMenu_ShouldHaveFiveItems()
+        {
+            // Act
+            _controller.OnKeyDown(F7KeyCode);
+
+            // Assert
+            var menu = _menuProvider.GetCurrentMenuDefinition();
+            Assert.NotNull(menu);
+            Assert.Equal(5, menu!.Items.Count);
         }
 
         [Fact]
@@ -191,6 +205,7 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
             Assert.Equal(MainMenuController.RecruitmentItemId, menu!.Items[1].Id);
             Assert.Equal(MainMenuController.ShopItemId, menu!.Items[2].Id);
             Assert.Equal(MainMenuController.SettingsItemId, menu!.Items[3].Id);
+            Assert.Equal(MainMenuController.SupportItemId, menu!.Items[4].Id);
         }
 
         #endregion
@@ -232,6 +247,19 @@ namespace FactionWars.Tests.Unit.ScriptHookV.UI
             // Assert
             var menu = _menuProvider.GetCurrentMenuDefinition();
             var item = menu?.GetItem(MainMenuController.SettingsItemId);
+            Assert.NotNull(item);
+            Assert.False(string.IsNullOrEmpty(item!.Description));
+        }
+
+        [Fact]
+        public void SupportItem_ShouldHaveDescription()
+        {
+            // Act
+            _controller.OnKeyDown(F7KeyCode);
+
+            // Assert
+            var menu = _menuProvider.GetCurrentMenuDefinition();
+            var item = menu?.GetItem(MainMenuController.SupportItemId);
             Assert.NotNull(item);
             Assert.False(string.IsNullOrEmpty(item!.Description));
         }

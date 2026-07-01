@@ -211,7 +211,7 @@ namespace FactionWars.ScriptHookV
                     ZoneService = _zoneService
                 },
                 CurrentPlayerFactionId ?? "",
-                _ => _supportMenuController?.Show());
+                _ => _mainMenuController?.ShowMainMenu());
         }
 
         private void InitializeEnemyAndRallyManagers(

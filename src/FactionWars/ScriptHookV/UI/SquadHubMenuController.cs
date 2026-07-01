@@ -77,7 +77,9 @@ namespace FactionWars.ScriptHookV.UI
                 "Support",
                 "Call in a purchased support squad"));
 
-            menu.AddItem(new MenuItem(BackItemId, "Back", "Return to recruitment menu"));
+            // The hub can be opened from the Recruitment menu or directly from gameplay
+            // (d-pad-left tap), so the back copy stays destination-neutral.
+            menu.AddItem(new MenuItem(BackItemId, "Back", "Go back"));
 
             _menuProvider.ShowMenu(menu);
         }

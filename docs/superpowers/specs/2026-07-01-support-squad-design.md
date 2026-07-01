@@ -59,18 +59,37 @@ existing managers/services (verified by codebase exploration).
 - **Roles:** `DefenderRole` = Sniper(4), Gunner(1), Rifleman(2); integer values are a
   persistence contract — never reorder.
 
-## Menu tree (after)
+## Menu tree (after — revised 2026-07-01 post-playtest)
+
+The first cut replaced the commander's main-menu callback and left the hub buried under
+F7 → Recruitment. Revised per user feedback: **additive, not replacing**.
 
 ```
-Main (F7)
-└─ Recruitment
-   └─ Squad            → Squad Hub  (NEW parent)
-      ├─ Manage Squad  → existing SquadMenuController (recruit + manage followers)
-      └─ Support       → SupportCallMenuController (NEW: call a purchased package)
-Commander (E)
-└─ Support (purchase)  → SupportMenuController (NEW: buy packages)   [replaces the current
-                                                                      commander→main-menu callback]
+Main (F7 or Commander E — same menu)
+├─ Zone Management / Recruitment / Shop / Settings   (unchanged)
+│  └─ Recruitment → Squad → Squad Hub                (kept for discoverability)
+└─ Support (purchase)  → SupportMenuController (NEW item; buy packages. Also reachable
+                          via F7 — accepted: buying is just cash, the CALL is zone-gated)
+
+D-pad Left / Left Arrow (control 174)
+├─ TAP  (<250 ms)      → Squad Hub (menu)            (NEW)
+│                        ├─ Manage Squad  → existing SquadMenuController
+│                        └─ Support       → SupportCallMenuController (call)
+└─ HOLD (≥250 ms)      → stance radial (unchanged, now opens after the hold threshold)
 ```
+
+Revision details:
+
+- Commander callback reverts to `ShowMainMenu()`; `MainMenuController` gains a `SupportItemId`
+  item dispatched in the existing `Lifecycle.cs` switch. `SupportMenuController`'s back action
+  becomes "return to main menu" (its parent from both entry points), replacing the no-op.
+- Tap-vs-hold via a new portable `HoldTapDetector` (alongside `SquadRadialMenu` in `UI.Models`):
+  fed `(isPressed, nowMs)` per frame with injected `Func<long>` time (`Environment.TickCount`
+  in production); release before 250 ms → Tap, held past it → Hold. `SquadRadialMenuRenderer`
+  drives the detector and exposes a `Tapped` event; the radial opens on Hold instead of raw press.
+- `Tapped` → hub is guarded by `IsMenuVisible == false` (left is also a NativeUI navigation key).
+- The hub has two parents, so its back target is set at show time via the existing
+  `_menuBackActions` map: from Recruitment → back to Recruitment; from tap → close to gameplay.
 
 ## Error handling / edge cases
 

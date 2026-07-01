@@ -65,7 +65,7 @@ namespace FactionWars.Tests.Integration.ScriptHookV
         }
 
         [Fact]
-        public void MainMenu_HasAllFourSubmenus()
+        public void MainMenu_HasAllFiveSubmenus()
         {
             // Arrange
             _controller.OnKeyDown(F7KeyCode);
@@ -75,11 +75,12 @@ namespace FactionWars.Tests.Integration.ScriptHookV
 
             // Assert
             Assert.NotNull(menu);
-            Assert.Equal(4, menu!.Items.Count);
+            Assert.Equal(5, menu!.Items.Count);
             Assert.NotNull(menu.GetItem(MainMenuController.ZoneManagementItemId));
             Assert.NotNull(menu.GetItem(MainMenuController.RecruitmentItemId));
             Assert.NotNull(menu.GetItem(MainMenuController.ShopItemId));
             Assert.NotNull(menu.GetItem(MainMenuController.SettingsItemId));
+            Assert.NotNull(menu.GetItem(MainMenuController.SupportItemId));
         }
 
         #endregion
@@ -296,6 +297,55 @@ namespace FactionWars.Tests.Integration.ScriptHookV
             // Assert
             Assert.True(_menuProvider.IsMenuVisible);
             Assert.Equal(SquadHubMenuController.MenuId, _menuProvider.CurrentMenuId);
+        }
+
+        #endregion
+
+        #region Support Submenu Tests
+
+        [Fact]
+        public void SupportSubmenu_OpensWhenSelected()
+        {
+            // Arrange
+            _controller.OnKeyDown(F7KeyCode);
+
+            // Act
+            _menuProvider.SimulateItemSelection(MainMenuController.SupportItemId);
+
+            // Assert
+            Assert.True(_menuProvider.IsMenuVisible);
+            Assert.Equal(SupportMenuController.MenuId, _menuProvider.CurrentMenuId);
+        }
+
+        [Fact]
+        public void SupportSubmenu_BackReturnsToMainMenu()
+        {
+            // Arrange
+            _controller.OnKeyDown(F7KeyCode);
+            _menuProvider.SimulateItemSelection(MainMenuController.SupportItemId);
+
+            // Act
+            _menuProvider.SimulateItemSelection(SupportMenuController.BackItemId);
+
+            // Assert
+            Assert.True(_menuProvider.IsMenuVisible);
+            Assert.Equal(MainMenuController.MainMenuId, _menuProvider.CurrentMenuId);
+        }
+
+        [Fact]
+        public void SupportSubmenu_NativeBackReturnsToMainMenu()
+        {
+            // Arrange
+            _controller.OnKeyDown(F7KeyCode);
+            _menuProvider.SimulateItemSelection(MainMenuController.SupportItemId);
+            Assert.Equal(SupportMenuController.MenuId, _menuProvider.CurrentMenuId);
+
+            // Act - press the native back control (B / Backspace / Esc)
+            _menuProvider.SimulateBackOut();
+
+            // Assert
+            Assert.True(_menuProvider.IsMenuVisible);
+            Assert.Equal(MainMenuController.MainMenuId, _menuProvider.CurrentMenuId);
         }
 
         #endregion

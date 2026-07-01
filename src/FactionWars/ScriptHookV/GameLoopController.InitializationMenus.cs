@@ -23,12 +23,22 @@ namespace FactionWars.ScriptHookV
             return (s, e) => toParent();
         }
 
-        private void OnMenuBackedOut(object? sender, string menuId)
+        private void OnMenuBackedOut(object? sender, string menuId) => InvokeBackAction(menuId);
+
+        private void InvokeBackAction(string menuId)
         {
             if (_menuBackActions.TryGetValue(menuId, out var toParent))
             {
                 toParent();
             }
+        }
+
+        // The squad hub has two parents: Recruitment (F7 path) and gameplay (d-pad-left tap).
+        // The back target is set at show time so backing out returns to wherever it was opened from.
+        private void ShowSquadHub(Action backTarget)
+        {
+            _menuBackActions[SquadHubMenuController.MenuId] = backTarget;
+            _squadHubMenuController?.Show();
         }
 
         private void InitializeRecruitmentMenus(IPlayerContext playerContext, ITroopPurchaseService purchaseService)
@@ -60,13 +70,16 @@ namespace FactionWars.ScriptHookV
                 GameBridge = _gameBridge
             });
 
-            // Recruitment → Squad now opens the hub
-            _recruitmentMenuController.SquadRequested += (s, e) => _squadHubMenuController.Show();
+            // Recruitment → Squad opens the hub with Recruitment as the back target; the d-pad-left
+            // tap path (see InitializeHudAndEventRenderers) opens the same hub with a
+            // close-to-gameplay back target instead.
+            _recruitmentMenuController.SquadRequested += (s, e) => ShowSquadHub(() => _recruitmentMenuController.Show());
             _squadHubMenuController.ManageSquadRequested += (s, e) => _squadMenuController.Show();
             _squadHubMenuController.SupportRequested += (s, e) => _supportCallMenuController.Show();
 
-            // Back targets: hub → recruitment; manage-squad → hub; support-call → hub
-            _squadHubMenuController.BackRequested += BackTo(SquadHubMenuController.MenuId, () => _recruitmentMenuController.Show());
+            // Back targets: hub → whatever opened it (set per-show above); manage-squad → hub;
+            // support-call → hub.
+            _squadHubMenuController.BackRequested += (s, e) => InvokeBackAction(SquadHubMenuController.MenuId);
             _squadMenuController.BackRequested += BackTo(SquadMenuController.MenuId, () => _squadHubMenuController.Show());
             _supportCallMenuController.BackRequested += BackTo(SupportCallMenuController.MenuId, () => _squadHubMenuController.Show());
         }
@@ -104,10 +117,9 @@ namespace FactionWars.ScriptHookV
             _supportMenuController = new SupportMenuController(
                 menuProvider, _gameBridge,
                 _container.Resolve<ISupportPackageService>(), playerContext);
-            // Unlike the other submenus, the Support menu is opened directly by the commander
-            // interaction, not from the main menu. Its parent action is a no-op so backing out
-            // (Back item or native back) closes to gameplay instead of popping the main menu open.
-            _supportMenuController.BackRequested += BackTo(SupportMenuController.MenuId, () => { });
+            // The Support menu is a main-menu submenu (the commander interaction also opens the
+            // main menu), so backing out returns to the main menu like its siblings.
+            _supportMenuController.BackRequested += BackTo(SupportMenuController.MenuId, () => mainMenuController.OnKeyDown(MainMenuController.MenuToggleKeyCode));
         }
 
     }
