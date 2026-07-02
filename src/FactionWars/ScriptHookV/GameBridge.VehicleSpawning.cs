@@ -43,6 +43,28 @@ namespace FactionWars.ScriptHookV
             }
         }
 
+        /// <inheritdoc />
+        public void DeleteVehicle(int vehicleHandle)
+        {
+            try
+            {
+                var vehicle = Entity.FromHandle(vehicleHandle) as Vehicle;
+                if (vehicle != null && vehicle.Exists())
+                {
+                    vehicle.Delete();
+                    FileLogger.Spawn($"DeleteVehicle: vehicle {vehicleHandle} deleted");
+                }
+                else
+                {
+                    FileLogger.Spawn($"DeleteVehicle: vehicle {vehicleHandle} no longer exists, nothing to delete");
+                }
+            }
+            catch (Exception ex)
+            {
+                FileLogger.Error($"DeleteVehicle exception for vehicle {vehicleHandle}", ex);
+            }
+        }
+
         private static void AddPedToPlayerGroup(Ped player, Ped ped, int pedHandle)
         {
             var pedGroup = player.PedGroup;

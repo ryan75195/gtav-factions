@@ -55,6 +55,7 @@ namespace FactionWars.Tests.Unit.Telemetry
             row.EnginePhase = "Engage";
             row.MsSinceLos = 250;
             sink.Write(row);
+            sink.Flush();
 
             var path = Path.Combine(_tempDir, "SGTA0001", "behavior_trace.csv");
             var lines = File.ReadAllLines(path);
@@ -79,6 +80,7 @@ namespace FactionWars.Tests.Unit.Telemetry
             Assert.False(Directory.Exists(Path.Combine(_tempDir, "SGTA0002")));
 
             sink.SetSaveFile("SGTA0002");
+            sink.Flush();
 
             var path = Path.Combine(_tempDir, "SGTA0002", "behavior_trace.csv");
             var lines = File.ReadAllLines(path);
@@ -91,7 +93,9 @@ namespace FactionWars.Tests.Unit.Telemetry
             using var sink = new CsvBehaviorTraceSink(_tempDir);
             sink.SetSaveFile("SGTA0003");
             sink.Write(Row(1));
+            sink.Flush();
             sink.Write(Row(2));
+            sink.Flush();
 
             var path = Path.Combine(_tempDir, "SGTA0003", "behavior_trace.csv");
             var lines = File.ReadAllLines(path);
@@ -105,6 +109,7 @@ namespace FactionWars.Tests.Unit.Telemetry
             using var sink = new CsvBehaviorTraceSink(_tempDir);
             sink.SetSaveFile("SGTA0004");
             sink.Write(null!);
+            sink.Flush();
 
             var path = Path.Combine(_tempDir, "SGTA0004", "behavior_trace.csv");
             Assert.False(File.Exists(path));
@@ -123,11 +128,41 @@ namespace FactionWars.Tests.Unit.Telemetry
         }
 
         [Fact]
+        public void Write_DoesNotTouchDiskUntilFlush()
+        {
+            // Long auto-flush interval so the background writer cannot race this assertion.
+            using var sink = new CsvBehaviorTraceSink(_tempDir, flushIntervalMs: 60_000);
+            sink.SetSaveFile("SGTA0007");
+            sink.Write(Row(1));
+
+            var path = Path.Combine(_tempDir, "SGTA0007", "behavior_trace.csv");
+            Assert.False(File.Exists(path));
+
+            sink.Flush();
+            Assert.True(File.Exists(path));
+        }
+
+        [Fact]
+        public void Dispose_FlushesPendingRows()
+        {
+            var sink = new CsvBehaviorTraceSink(_tempDir, flushIntervalMs: 60_000);
+            sink.SetSaveFile("SGTA0008");
+            sink.Write(Row(1));
+            sink.Write(Row(2));
+            sink.Dispose();
+
+            var path = Path.Combine(_tempDir, "SGTA0008", "behavior_trace.csv");
+            var lines = File.ReadAllLines(path);
+            Assert.Equal(3, lines.Length); // header + 2 rows
+        }
+
+        [Fact]
         public void DistanceFields_UseInvariantCulture()
         {
             using var sink = new CsvBehaviorTraceSink(_tempDir);
             sink.SetSaveFile("SGTA0006");
             sink.Write(Row(5));
+            sink.Flush();
 
             var path = Path.Combine(_tempDir, "SGTA0006", "behavior_trace.csv");
             var line = File.ReadAllLines(path)[1];

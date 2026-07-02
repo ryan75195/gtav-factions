@@ -50,6 +50,9 @@ namespace FactionWars.ScriptHookV
                 case MainMenuController.SettingsItemId:
                     _settingsMenuController?.Show();
                     break;
+                case MainMenuController.SupportItemId:
+                    _supportMenuController?.Show();
+                    break;
             }
         }
 
@@ -132,9 +135,9 @@ namespace FactionWars.ScriptHookV
                 }
             }
 
-            // D-pad Left / Left Arrow (control 174) now opens the squad radial menu instead of
-            // instantly cycling. The radial is held-to-open and is driven each frame from the HUD
-            // pass (see SquadRadialMenuController.Update), so there is no just-pressed handler here.
+            // D-pad Left / Left Arrow (control 174): tap opens the squad hub menu, hold opens the
+            // stance radial. Both are driven each frame from the HUD pass via HoldTapDetector
+            // (see SquadRadialMenuRenderer.Update), so there is no just-pressed handler here.
 
             // Note: the A button's held state for menu hold-to-repeat is polled
             // live where it is consumed (see IsSelectKeyHeld). It must NOT be

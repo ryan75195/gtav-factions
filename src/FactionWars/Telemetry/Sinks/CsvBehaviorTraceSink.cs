@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Text;
+using System.Threading;
 using FactionWars.ScriptHookV.Logging;
 using FactionWars.Telemetry.Interfaces;
 using FactionWars.Telemetry.Models;
@@ -11,9 +12,13 @@ namespace FactionWars.Telemetry.Sinks
 {
     /// <summary>
     /// Writes per-ped behavior samples to a per-save <c>behavior_trace.csv</c> under a base directory.
-    /// Buffers rows in memory until <see cref="SetSaveFile"/> is called, then flushes and switches to
-    /// direct-append. Mirrors <see cref="CsvTelemetrySink"/>'s lifecycle but for the single trace file.
-    /// Thread-safe via a single lock; first-error-wins logging avoids spam on a persistently broken path.
+    /// <see cref="Write"/> only serializes and queues (rows buffer until <see cref="SetSaveFile"/> is
+    /// called); a background writer thread drains the queue on an interval with one file append per
+    /// flush. File I/O NEVER runs on the caller's thread: in-game evidence (issue #146 lag spikes)
+    /// showed individual per-row <c>File.AppendAllText</c> calls stalling 0.8-2.7s on external
+    /// file-system contention, freezing the game tick. <see cref="Flush"/> drains synchronously
+    /// (tests, and <see cref="Dispose"/> for the shutdown tail). First-error-wins logging avoids
+    /// spam on a persistently broken path.
     /// </summary>
     public sealed class CsvBehaviorTraceSink : IBehaviorTraceSink
     {
@@ -23,35 +28,45 @@ namespace FactionWars.Telemetry.Sinks
             "session_id,timestamp_utc,sample_ms,handle,kind,role,weapon,is_shooting,in_combat,target_handle,dist_to_target,dist_to_player,pos_x,pos_y,pos_z,in_vehicle,is_following_player,health,combat_ability,has_los,engine_phase,ms_since_los";
 
         private readonly object _lock = new object();
+        private readonly object _ioLock = new object();
         private readonly string _baseDir;
         private readonly string _sessionId;
-        private readonly List<BehaviorSampleRow> _buffer = new List<BehaviorSampleRow>();
+        private readonly int _flushIntervalMs;
+        private List<string> _pending = new List<string>();
         private string? _saveDir;
         private bool _disposed;
         private bool _errored;
 
+        // Writer thread machinery, created lazily on the first queued row so idle sinks never
+        // spawn a thread. The event doubles as the stop signal (set after _stopRequested).
+        private Thread? _writerThread;
+        private AutoResetEvent? _wake;
+        private volatile bool _stopRequested;
+
         /// <param name="baseDirectory">Root telemetry directory (rows land under baseDirectory/&lt;save&gt;/).</param>
-        public CsvBehaviorTraceSink(string baseDirectory)
+        /// <param name="flushIntervalMs">How often the background writer drains the queue.</param>
+        public CsvBehaviorTraceSink(string baseDirectory, int flushIntervalMs = 5000)
         {
             _baseDir = baseDirectory ?? throw new ArgumentNullException(nameof(baseDirectory));
+            _flushIntervalMs = flushIntervalMs;
             _sessionId = CreateSessionId();
         }
 
         public void Write(BehaviorSampleRow row)
         {
             if (row == null) return;
+
+            // Serialized on the caller's thread so timestamp_utc reflects the sample time,
+            // not the (possibly seconds-later) background flush time.
+            var line = Serialize(row);
             lock (_lock)
             {
                 if (_disposed) return;
-                if (_saveDir == null)
-                {
-                    if (_buffer.Count >= BufferCap) _buffer.RemoveAt(0);
-                    _buffer.Add(row);
-                    return;
-                }
-
-                AppendLocked(new[] { Serialize(row) });
+                if (_pending.Count >= BufferCap) _pending.RemoveAt(0);
+                _pending.Add(line);
             }
+
+            EnsureWriterStarted();
         }
 
         public void SetSaveFile(string saveFilename)
@@ -75,15 +90,17 @@ namespace FactionWars.Telemetry.Sinks
                 }
 
                 _saveDir = dir;
-                if (_buffer.Count > 0)
-                {
-                    var rows = new List<string>(_buffer.Count);
-                    foreach (var r in _buffer) rows.Add(Serialize(r));
-                    AppendLocked(rows);
-                    _buffer.Clear();
-                }
             }
+
+            // Nudge the writer so pre-save buffered rows land without waiting a full interval.
+            _wake?.Set();
         }
+
+        /// <summary>
+        /// Synchronously drains all queued rows to disk. Called by <see cref="Dispose"/> for the
+        /// shutdown tail and by tests; gameplay code should rely on the background interval.
+        /// </summary>
+        public void Flush() => FlushCore();
 
         public void Dispose()
         {
@@ -91,14 +108,62 @@ namespace FactionWars.Telemetry.Sinks
             {
                 if (_disposed) return;
                 _disposed = true;
-                _buffer.Clear();
+            }
+
+            _stopRequested = true;
+            _wake?.Set();
+            _writerThread?.Join(2000);
+            FlushCore();
+        }
+
+        private void EnsureWriterStarted()
+        {
+            if (_writerThread != null) return;
+            lock (_lock)
+            {
+                if (_writerThread != null || _disposed) return;
+                _wake = new AutoResetEvent(false);
+                _writerThread = new Thread(WriterLoop)
+                {
+                    IsBackground = true,
+                    Name = "FactionWars.BehaviorTraceWriter"
+                };
+                _writerThread.Start();
             }
         }
 
-        private void AppendLocked(IReadOnlyCollection<string> rows)
+        private void WriterLoop()
         {
-            if (_saveDir == null || rows.Count == 0) return;
-            var path = Path.Combine(_saveDir, FileName);
+            while (!_stopRequested)
+            {
+                _wake!.WaitOne(_flushIntervalMs);
+                if (_stopRequested) break;
+                FlushCore();
+            }
+        }
+
+        // Drains the queue and appends it as ONE file write. _ioLock serializes concurrent
+        // flushers (background writer vs Flush/Dispose) so batches land in queue order; the
+        // queue swap under _lock is O(1), so Write callers never wait on file I/O.
+        private void FlushCore()
+        {
+            lock (_ioLock)
+            {
+                List<string> toWrite;
+                lock (_lock)
+                {
+                    if (_saveDir == null || _pending.Count == 0) return;
+                    toWrite = _pending;
+                    _pending = new List<string>();
+                }
+
+                AppendBatch(toWrite);
+            }
+        }
+
+        private void AppendBatch(IReadOnlyCollection<string> rows)
+        {
+            var path = Path.Combine(_saveDir!, FileName);
             try
             {
                 var sb = new StringBuilder();

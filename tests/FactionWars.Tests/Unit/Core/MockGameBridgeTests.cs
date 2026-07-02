@@ -1,3 +1,4 @@
+using System.Linq;
 using FactionWars.Core.Interfaces;
 using FactionWars.Core.Utils;
 using Xunit;
@@ -693,6 +694,47 @@ namespace FactionWars.Tests.Unit.Core
 
             Assert.True(bridge.IsVehiclePersistent(mod));
             Assert.False(bridge.IsVehiclePersistent(ambient));
+        }
+
+        [Fact]
+        public void DeleteVehicle_RemovesVehicleFromCount()
+        {
+            var bridge = new MockGameBridge();
+            var before = bridge.GetSpawnedVehicleCount();
+            int vehicleHandle = bridge.CreateVehicle("fbi2", new Vector3(0f, 0f, 0f));
+            Assert.Equal(before + 1, bridge.GetSpawnedVehicleCount());
+
+            bridge.DeleteVehicle(vehicleHandle);
+
+            Assert.Equal(before, bridge.GetSpawnedVehicleCount());
+        }
+
+        [Fact]
+        public void DeleteVehicle_UnseatsPedsTrackedInsideIt()
+        {
+            var bridge = new MockGameBridge();
+            int vehicleHandle = bridge.CreateVehicle("fbi2", new Vector3(0f, 0f, 0f));
+            int pedHandle = bridge.CreatePed("s_m_y_cop_01", new Vector3(0f, 0f, 0f));
+            bridge.TaskPedEnterVehicle(pedHandle, vehicleHandle, 0);
+            Assert.True(bridge.IsPedInVehicle(pedHandle));
+
+            bridge.DeleteVehicle(vehicleHandle);
+
+            Assert.False(bridge.IsPedInVehicle(pedHandle));
+        }
+
+        [Fact]
+        public void DeleteVehicle_RemovesTrackedBlip()
+        {
+            var bridge = new MockGameBridge();
+            int vehicleHandle = bridge.CreateVehicle("fbi2", new Vector3(0f, 0f, 0f));
+            int blipHandle = bridge.CreateBlipForVehicle(vehicleHandle);
+            Assert.Equal(1, bridge.GetVehicleBlipCount());
+
+            bridge.DeleteVehicle(vehicleHandle);
+
+            Assert.Equal(0, bridge.GetVehicleBlipCount());
+            Assert.Contains(blipHandle, bridge.BlipsDeleted);
         }
 
         [Fact]

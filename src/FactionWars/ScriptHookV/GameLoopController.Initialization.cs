@@ -48,6 +48,7 @@ namespace FactionWars.ScriptHookV
             _battleHudRenderer = new BattleHudRenderer();
 
             InitializeEnemyAndRallyManagers(spawnServices, allocationService);
+            InitializeSupportSquadManager(spawnServices);
             _areaAnchorResolver = new AreaAnchorResolver();
             _enemyTargetCollector = new EnemyTargetCollector(_gameBridge);
             _squadStanceController = new SquadStanceController(_gameBridge, new SquadStanceResolver(), new TargetAssignmentResolver(), new PedIntentReconciler(_gameBridge), new SquadEngagementResolver(new EngageRangeProvider()));

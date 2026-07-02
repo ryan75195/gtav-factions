@@ -40,6 +40,11 @@ namespace FactionWars.ScriptHookV.UI
         /// </summary>
         public const string SettingsItemId = "settings";
 
+        /// <summary>
+        /// Item ID for the Support submenu option.
+        /// </summary>
+        public const string SupportItemId = "support";
+
         private readonly IMenuProvider _menuProvider;
 
         /// <summary>
@@ -110,6 +115,11 @@ namespace FactionWars.ScriptHookV.UI
                 SettingsItemId,
                 "Settings",
                 "Save, load, and configure options"));
+
+            menu.AddItem(new MenuItem(
+                SupportItemId,
+                "Support",
+                "Purchase support packages"));
 
             _menuProvider.ShowMenu(menu);
         }

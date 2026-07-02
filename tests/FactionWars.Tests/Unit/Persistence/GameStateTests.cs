@@ -591,6 +591,100 @@ namespace FactionWars.Tests.Unit.Persistence
         }
 
         [Fact]
+        public void FactionStateData_FromFactionState_ShouldConvertSupportSquadPackages()
+        {
+            // Arrange
+            var state = new FactionState("faction_michael", initialCash: 50000, initialTroopCount: 30);
+            state.RecruitmentPoints = 100;
+            state.Weapons = 25;
+            state.AddSupportSquadPackage(3);
+            state.AddZone("zone_downtown");
+
+            // Act
+            var data = FactionStateData.FromFactionState(state);
+
+            // Assert
+            Assert.Equal(3, data.SupportSquadPackages);
+            Assert.Equal("faction_michael", data.FactionId);
+            Assert.Equal(50000, data.Cash);
+        }
+
+        [Fact]
+        public void FactionStateData_ToFactionState_ShouldRestoreSupportSquadPackages()
+        {
+            // Arrange
+            var data = new FactionStateData
+            {
+                FactionId = "faction_michael",
+                Cash = 50000,
+                RecruitmentPoints = 100,
+                Weapons = 25,
+                TroopCount = 30,
+                SupportSquadPackages = 3,
+                OwnedZoneIds = new List<string> { "zone_downtown" }
+            };
+
+            // Act
+            var state = data.ToFactionState();
+
+            // Assert
+            Assert.Equal(3, state.SupportSquadPackages);
+            Assert.Equal("faction_michael", state.FactionId);
+            Assert.Equal(50000, state.Cash);
+        }
+
+        [Fact]
+        public void FactionStateData_RoundTrip_ShouldPreserveSupportSquadPackages()
+        {
+            // Arrange
+            var original = new FactionState("faction_michael", initialCash: 50000, initialTroopCount: 30);
+            original.RecruitmentPoints = 100;
+            original.Weapons = 25;
+            original.AddSupportSquadPackage(3);
+            original.AddZone("zone_downtown");
+            original.AddZone("zone_vinewood");
+
+            // Act
+            var data = FactionStateData.FromFactionState(original);
+            var restored = data.ToFactionState();
+
+            // Assert
+            Assert.Equal(3, restored.SupportSquadPackages);
+            Assert.Equal("faction_michael", restored.FactionId);
+            Assert.Equal(50000, restored.Cash);
+            Assert.Equal(100, restored.RecruitmentPoints);
+            Assert.Equal(25, restored.Weapons);
+            Assert.Equal(30, restored.TroopCount);
+            Assert.Equal(2, restored.ZoneCount);
+            Assert.True(restored.OwnsZone("zone_downtown"));
+            Assert.True(restored.OwnsZone("zone_vinewood"));
+        }
+
+        [Fact]
+        public void FactionStateData_LegacySave_ShouldDefaultSupportSquadPackagesToZero()
+        {
+            // Arrange - Legacy save without SupportSquadPackages field
+            var data = new FactionStateData
+            {
+                FactionId = "faction_michael",
+                Cash = 50000,
+                RecruitmentPoints = 100,
+                Weapons = 25,
+                TroopCount = 30,
+                OwnedZoneIds = new List<string> { "zone_downtown" }
+            };
+            // SupportSquadPackages not set, defaults to 0
+
+            // Act
+            var state = data.ToFactionState();
+
+            // Assert
+            Assert.Equal(0, state.SupportSquadPackages);
+            Assert.Equal("faction_michael", state.FactionId);
+            Assert.Equal(50000, state.Cash);
+        }
+
+        [Fact]
         public void ZoneData_FromZone_ShouldConvertCorrectly()
         {
             // Arrange

@@ -101,6 +101,11 @@ namespace FactionWars.ScriptHookV
             // Clean up battle attacker manager
             _battleAttackerManager?.DespawnAllAttackers();
             _battleAttackerManager = null;
+
+            // Clean up support squad manager: despawn any active squad (allies + persistent SUV)
+            // so a mod reload never orphans a live squad.
+            _supportSquadManager?.DespawnSquad();
+            _supportSquadManager = null;
         }
 
         private void CleanupStateServices()

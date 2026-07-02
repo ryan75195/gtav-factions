@@ -23,12 +23,22 @@ namespace FactionWars.ScriptHookV
             return (s, e) => toParent();
         }
 
-        private void OnMenuBackedOut(object? sender, string menuId)
+        private void OnMenuBackedOut(object? sender, string menuId) => InvokeBackAction(menuId);
+
+        private void InvokeBackAction(string menuId)
         {
             if (_menuBackActions.TryGetValue(menuId, out var toParent))
             {
                 toParent();
             }
+        }
+
+        // The squad hub has two parents: Recruitment (F7 path) and gameplay (d-pad-left tap).
+        // The back target is set at show time so backing out returns to wherever it was opened from.
+        private void ShowSquadHub(Action backTarget)
+        {
+            _menuBackActions[SquadHubMenuController.MenuId] = backTarget;
+            _squadHubMenuController?.Show();
         }
 
         private void InitializeRecruitmentMenus(IPlayerContext playerContext, ITroopPurchaseService purchaseService)
@@ -48,8 +58,30 @@ namespace FactionWars.ScriptHookV
                 },
                 _followerManager,
                 _gameBridge);
-            _squadMenuController.BackRequested += BackTo(SquadMenuController.MenuId, () => _recruitmentMenuController.Show());
-            _recruitmentMenuController.SquadRequested += (s, e) => _squadMenuController.Show();
+
+            _squadHubMenuController = new SquadHubMenuController(menuProvider, _gameBridge);
+            _supportCallMenuController = new SupportCallMenuController(new SupportCallMenuControllerDependencies
+            {
+                MenuProvider = menuProvider,
+                SupportPackageService = _container.Resolve<ISupportPackageService>(),
+                SupportSquadManager = _supportSquadManager!,
+                Territory = _territoryManager!,
+                PlayerContext = playerContext,
+                GameBridge = _gameBridge
+            });
+
+            // Recruitment → Squad opens the hub with Recruitment as the back target; the d-pad-left
+            // tap path (see InitializeHudAndEventRenderers) opens the same hub with a
+            // close-to-gameplay back target instead.
+            _recruitmentMenuController.SquadRequested += (s, e) => ShowSquadHub(() => _recruitmentMenuController.Show());
+            _squadHubMenuController.ManageSquadRequested += (s, e) => _squadMenuController.Show();
+            _squadHubMenuController.SupportRequested += (s, e) => _supportCallMenuController.Show();
+
+            // Back targets: hub → whatever opened it (set per-show above); manage-squad → hub;
+            // support-call → hub.
+            _squadHubMenuController.BackRequested += (s, e) => InvokeBackAction(SquadHubMenuController.MenuId);
+            _squadMenuController.BackRequested += BackTo(SquadMenuController.MenuId, () => _squadHubMenuController.Show());
+            _supportCallMenuController.BackRequested += BackTo(SupportCallMenuController.MenuId, () => _squadHubMenuController.Show());
         }
 
         private void InitializeResourcesAndSettingsMenus(IPlayerContext playerContext)
@@ -81,6 +113,13 @@ namespace FactionWars.ScriptHookV
             _settingsMenuController.BackRequested += BackTo(SettingsMenuController.SettingsMenuId, () => mainMenuController.OnKeyDown(MainMenuController.MenuToggleKeyCode));
             _shopMenuController = new ShopMenuController(menuProvider, _gameBridge);
             _shopMenuController.BackRequested += BackTo(ShopMenuController.ShopMenuId, () => mainMenuController.OnKeyDown(MainMenuController.MenuToggleKeyCode));
+
+            _supportMenuController = new SupportMenuController(
+                menuProvider, _gameBridge,
+                _container.Resolve<ISupportPackageService>(), playerContext);
+            // The Support menu is a main-menu submenu (the commander interaction also opens the
+            // main menu), so backing out returns to the main menu like its siblings.
+            _supportMenuController.BackRequested += BackTo(SupportMenuController.MenuId, () => mainMenuController.OnKeyDown(MainMenuController.MenuToggleKeyCode));
         }
 
     }

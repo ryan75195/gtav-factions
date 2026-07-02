@@ -30,6 +30,15 @@ namespace FactionWars.ScriptHookV
                     () => _squadStanceController!.CurrentStance,
                     (stance, handles) => _squadStanceController!.SetStance(stance, handles),
                     () => _followerManager?.OnFootBodyguardHandles ?? System.Array.Empty<int>());
+
+                // Tap (vs hold) on the squad key opens the squad hub. Guarded on menu visibility:
+                // left / d-pad-left is also a NativeUI navigation key, so a tap while any mod menu
+                // is open must not hijack it. Backing out of a tap-opened hub returns to gameplay.
+                _squadRadialMenuRenderer.Tapped += () =>
+                {
+                    if (_menuProvider?.IsMenuVisible ?? false) return;
+                    ShowSquadHub(() => { });
+                };
             }
 
             territoryManager.ZoneEntered += OnZoneEntered;

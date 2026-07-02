@@ -445,6 +445,7 @@ namespace FactionWars.Core.Utils
         private readonly Dictionary<int, int> _pedsInVehicles = new Dictionary<int, int>(); // pedHandle -> vehicleHandle
         private readonly HashSet<int> _pedsTryingToEnterVehicle = new HashSet<int>();
         private readonly Dictionary<int, int> _vehicleBlips = new Dictionary<int, int>(); // vehicleHandle -> blipHandle
+        private readonly Dictionary<int, (Vector3 Dest, float Speed, float StopRange)> _vehicleDriveTargets = new Dictionary<int, (Vector3, float, float)>();
         private int _nextVehicleHandle = 1000;
         private int _nextVehicleBlipHandle = 9000;
 
@@ -616,6 +617,14 @@ namespace FactionWars.Core.Utils
         {
             if (_vehicles.TryGetValue(vehicleHandle, out var v)) v.Driver = pedHandle;
         }
+
+        public void TaskVehicleDriveToCoord(int vehicleHandle, Vector3 dest, float speed, float stopRange)
+        {
+            _vehicleDriveTargets[vehicleHandle] = (dest, speed, stopRange);
+        }
+
+        public Vector3? GetVehicleDriveTargetForTest(int vehicleHandle)
+            => _vehicleDriveTargets.TryGetValue(vehicleHandle, out var t) ? t.Dest : (Vector3?)null;
 
         /// <summary>Reads the recorded handbrake state of a vehicle (for testing).</summary>
         public bool GetVehicleHandbrakeForTest(int vehicleHandle)
@@ -1484,6 +1493,7 @@ namespace FactionWars.Core.Utils
             _relationships.Clear();
             _followingPeds.Clear();
             _vehicles.Clear();
+            _vehicleDriveTargets.Clear();
             _nextPedHandle = 1;
             _nextBlipHandle = 1;
             _nextVehicleHandle = 1000;
@@ -1566,6 +1576,34 @@ namespace FactionWars.Core.Utils
             };
             _blipsCreated.Add(blipHandle);
             return blipHandle;
+        }
+
+        /// <summary>
+        /// Deletes a vehicle from the world (IGameBridge implementation). Mirrors DeletePed:
+        /// removes the vehicle from tracking and unseats any peds still tracked as inside it.
+        /// Also cleans up any tracked blip for the vehicle to prevent blip state leakage.
+        /// </summary>
+        public void DeleteVehicle(int vehicleHandle)
+        {
+            _vehicles.Remove(vehicleHandle);
+
+            var seatedPeds = new List<int>();
+            foreach (var kvp in _pedsInVehicles)
+            {
+                if (kvp.Value == vehicleHandle) seatedPeds.Add(kvp.Key);
+            }
+            foreach (var pedHandle in seatedPeds)
+            {
+                _pedsInVehicles.Remove(pedHandle);
+            }
+
+            // Clean up vehicle blip if one was tracked for this vehicle.
+            if (_vehicleBlips.TryGetValue(vehicleHandle, out var blipHandle))
+            {
+                _vehicleBlips.Remove(vehicleHandle);
+                _blips.Remove(blipHandle);
+                _blipsDeleted.Add(blipHandle);
+            }
         }
 
         /// <summary>
