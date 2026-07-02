@@ -83,6 +83,8 @@ namespace FactionWars.ScriptHookV.Managers
 
             foreach (var handle in _rolesByHandle.Keys)
             {
+                // Re-enable event reactions (blocked for the drive in) so S&D allies fight.
+                _gameBridge.SetPedBlockPermanentEvents(handle, false);
                 if (_gameBridge.IsPedInVehicle(handle))
                 {
                     _gameBridge.TaskPedLeaveVehicle(handle);

@@ -250,6 +250,42 @@ namespace FactionWars.Tests.Unit.ScriptHookV.Managers
         }
 
         [Fact]
+        public void CallSupportSquad_BlocksPermanentEventsOnAllAllies()
+        {
+            var zone = CreateZone();
+            var manager = CreateManager();
+
+            manager.CallSupportSquad(zone);
+
+            // Blocked while riding so distant-battle events can't put allies in combat and hijack
+            // the driver mid-drive (in-game: combat state froze the SUV at its spawn point).
+            foreach (var ped in _bridge.GetSpawnedPeds())
+            {
+                Assert.True(_bridge.GetPedBlockPermanentEventsForTest(ped));
+            }
+        }
+
+        [Fact]
+        public void Update_InboundWithinDismountRange_UnblocksPermanentEventsOnAllAllies()
+        {
+            var zone = CreateZone();
+            var manager = CreateManager();
+
+            manager.CallSupportSquad(zone);
+            var spawnedPeds = _bridge.GetSpawnedPeds();
+            var suv = _bridge.GetPedVehicle(spawnedPeds[0]);
+            _bridge.PlayerPosition = _bridge.GetVehiclePosition(suv);
+
+            manager.Update(new List<EnemyTarget>());
+
+            // Dismounted allies must react to enemies again for Search & Destroy.
+            foreach (var ped in spawnedPeds)
+            {
+                Assert.False(_bridge.GetPedBlockPermanentEventsForTest(ped));
+            }
+        }
+
+        [Fact]
         public void Update_InboundStalledSuv_ReassertsDriveTaskTowardPlayer()
         {
             var zone = CreateZone();

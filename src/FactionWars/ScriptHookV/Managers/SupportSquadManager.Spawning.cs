@@ -22,6 +22,11 @@ namespace FactionWars.ScriptHookV.Managers
                 if (!handle.IsValid) continue;
 
                 ConfigureAlly(handle.Handle, role);
+                // Blocked while riding: the allies spawn hostile to the enemy faction with high
+                // alertness, and in-game the ongoing zone battle put seated allies into combat
+                // state within seconds — which overrides the driver's vehicle task and froze the
+                // SUV at its spawn point. Unblocked again at dismount so S&D can fight.
+                _gameBridge.SetPedBlockPermanentEvents(handle.Handle, true);
                 // Seat index 0 = driver; 1-3 = cabin seats; 4-7 = FBI SUV side rails (unverified
                 // in-game — see the FBI-SUV side-rail risk note in the support-squad design doc).
                 _gameBridge.SetPedIntoVehicle(handle.Handle, suv, seatIndex);
