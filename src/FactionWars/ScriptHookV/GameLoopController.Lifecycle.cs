@@ -97,6 +97,9 @@ namespace FactionWars.ScriptHookV
             _pendingRuntimeWorldRestore = e.RuntimeWorldState;
         }
 
+        // Tap/hold split for D-pad Right: tap = claim/commander, hold = main menu.
+        private readonly HoldTapDetector _dpadRightHoldTap = new HoldTapDetector();
+
         /// <summary>
         /// Polls controller (gamepad) input each frame and triggers the same actions as keyboard keys.
         /// </summary>
@@ -104,15 +107,16 @@ namespace FactionWars.ScriptHookV
         {
             if (!_isInitialized) return;
 
-            // LB + D-pad Right = Toggle menu (same as F7)
-            if (_gameBridge.IsControlJustPressed(ControlDpadRight) && _gameBridge.IsControlPressed(ControlLB))
+            // D-pad Right: TAP = claim zone / commander interact (same as E key); HOLD = toggle
+            // the main menu (same as F7, replaces the old LB + D-pad Right chord). The detector
+            // guarantees a hold never also fires the tap action, so opening the menu can't claim.
+            var dpadRight = _dpadRightHoldTap.Update(
+                _gameBridge.IsControlPressed(ControlDpadRight), _gameBridge.GetGameTime());
+            if (dpadRight == HoldTapResult.HoldStart)
             {
                 _mainMenuController?.OnKeyDown(MainMenuController.MenuToggleKeyCode);
-                return; // Don't also process D-pad Right as claim
             }
-
-            // D-pad Right (no LB) = Claim zone (same as E key)
-            if (_gameBridge.IsControlJustPressed(ControlDpadRight) && !_gameBridge.IsControlPressed(ControlLB))
+            else if (dpadRight == HoldTapResult.Tap)
             {
                 if (_showingClaimPrompt && _currentNeutralZone != null)
                 {

@@ -399,6 +399,72 @@ namespace FactionWars.Tests.Integration.ScriptHookV
 
         #endregion
 
+        #region Controller Input Tests
+
+        private const int ControlDpadRight = 175;
+
+        [Fact]
+        public void DpadRightHold_OpensMainMenu()
+        {
+            // Press and hold past the hold threshold across ticks.
+            _gameBridge.SetControlPressed(ControlDpadRight, true);
+            _controller.OnTick();
+            _gameBridge.GameTime += 300;
+            _controller.OnTick();
+
+            Assert.True(_menuProvider.IsMenuVisible);
+            Assert.Equal(MainMenuController.MainMenuId, _menuProvider.CurrentMenuId);
+        }
+
+        [Fact]
+        public void DpadRightTap_DoesNotOpenMainMenu()
+        {
+            // Press and release before the hold threshold: tap = claim/commander, never the menu.
+            _gameBridge.SetControlPressed(ControlDpadRight, true);
+            _controller.OnTick();
+            _gameBridge.GameTime += 100;
+            _gameBridge.SetControlPressed(ControlDpadRight, false);
+            _controller.OnTick();
+
+            Assert.False(_menuProvider.IsMenuVisible);
+        }
+
+        [Fact]
+        public void DpadRightJustPressed_DoesNotOpenMainMenuInstantly()
+        {
+            // The old LB + D-pad Right chord opened the menu on the press frame; the hold
+            // binding must not fire before the threshold.
+            _gameBridge.SetControlJustPressed(ControlDpadRight, true);
+            _gameBridge.SetControlPressed(ControlDpadRight, true);
+            _controller.OnTick();
+
+            Assert.False(_menuProvider.IsMenuVisible);
+        }
+
+        [Fact]
+        public void DpadRightHold_WhenMenuOpen_ClosesMenu()
+        {
+            // Hold toggles like F7: a second hold closes the menu.
+            _gameBridge.SetControlPressed(ControlDpadRight, true);
+            _controller.OnTick();
+            _gameBridge.GameTime += 300;
+            _controller.OnTick();
+            Assert.True(_menuProvider.IsMenuVisible);
+
+            // Release, then hold again.
+            _gameBridge.SetControlPressed(ControlDpadRight, false);
+            _controller.OnTick();
+            _gameBridge.SetControlPressed(ControlDpadRight, true);
+            _gameBridge.GameTime += 100;
+            _controller.OnTick();
+            _gameBridge.GameTime += 300;
+            _controller.OnTick();
+
+            Assert.False(_menuProvider.IsMenuVisible);
+        }
+
+        #endregion
+
         #region Menu Update Tests
 
         [Fact]
