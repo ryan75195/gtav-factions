@@ -133,7 +133,6 @@ namespace FactionWars.ScriptHookV
         private const int ControlDpadLeft = 174;     // INPUT_PHONE_LEFT
         private const int ControlDpadDown = 173;     // INPUT_PHONE_DOWN
         private const float SquadDefaultLooseRadius = 30f;
-        private const int ControlLB = 37;            // INPUT_AIM (LB/L1)
         private const int ControlFrontendAccept = 201; // A/Cross button
         private const int ControlFrontendUp = 188;     // INPUT_FRONTEND_UP
         private const int ControlFrontendDown = 187;   // INPUT_FRONTEND_DOWN
